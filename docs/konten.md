@@ -174,6 +174,7 @@ Umgebung:
 | `FR_CIMD_HOSTS` | Hosts, von denen Client ID Metadata Documents geladen werden (Vorgabe `claude.ai`) |
 | `FR_GRENZE_REISEN`, `FR_GRENZE_SCHREIBEN` | Grenzen je Konto (Vorgaben 10 Reisen, 300 Schreibvorgänge je Stunde; Abschnitt „Sicherheit“); ungültige oder nicht positive Werte gelten als nicht gesetzt |
 | `FR_GRENZE_WARTELISTE_TAG` | Bestätigungsmails der Warteliste je Kalendertag (UTC), Vorgabe 20 (#534, Abschnitt „Warteliste“); ungültige oder nicht positive Werte gelten als nicht gesetzt |
+| `FR_GRENZE_CODES_TAG` | Anmeldecodes je Kalendertag (UTC) an Adressen ohne Konto und ohne offene Einladung, Vorgabe 30; ist die Grenze erreicht, geht an solche Adressen keine Mail mehr hinaus, die Antwort bleibt gleich |
 | `FR_LOESCHFRIST_TAGE` | Schonfrist zwischen „Reise löschen“ und dem endgültigen Entfernen (Vorgabe 14 Tage, #381) |
 
 Befehle für den Betreiber: `python3 engine/konten.py liste | anfragen | freischalten <email> [--nein] |

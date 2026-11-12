@@ -15,6 +15,7 @@ Nur Standardbibliothek: Rückmeldedienst und Konnektor laufen mit dem Python des
 import datetime
 import hashlib
 import hmac
+import re
 import sys
 import urllib.parse
 from pathlib import Path
@@ -221,8 +222,14 @@ def _buchung_text(r, bid, sprache=None):
 
 # ---------- iCalendar schreiben (RFC 5545) ----------
 
+_STEUERZEICHEN = re.compile(r"[\x00-\x09\x0b-\x1f\x7f\u0085\u2028\u2029]")
+
+
 def _esc(t):
-    return str(t).replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\r\n", "\n").replace("\n", "\\n")
+    # Jedes Zeilenende (auch ein einzelnes CR) wird ein \n im Text, übrige Steuerzeichen fallen weg: Sonst könnte ein
+    # Titel in Programmen, die CR als Zeilenende lesen, eigene Felder oder Termine in die Datei schreiben.
+    t = _STEUERZEICHEN.sub("", str(t).replace("\r\n", "\n").replace("\r", "\n"))
+    return t.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
 
 def _falten(zeile):

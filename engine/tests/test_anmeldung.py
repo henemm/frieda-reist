@@ -245,7 +245,7 @@ def test_kontoseite(welt):
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "anfragen"}, cookie=mo)
     assert "liegt beim Betreiber" in abruf(f"{u.kurl}/konto", cookie=mo)[2]
     m = [json.loads(z) for z in (konten.pfad().parent / "neu" / "meldungen.jsonl").read_text().splitlines()]
-    assert m[-1]["an"] == ["Ida"] and "Mo Beispiel" in m[-1]["text"]
+    assert m[-1]["an"] == [konten.konto_per_email(IDA)["id"]] and "Mo Beispiel" in m[-1]["text"]
     s, _, t = abruf(f"{u.kurl}/konto", cookie=ida)
     assert "Mo Beispiel" in t and "Freischalten" in t
     mo_id = konten.konto_per_email(MO)["id"]
@@ -297,9 +297,9 @@ def test_doppeltes_absenden_zeigt_keinen_fehler(welt):
     assert s == 303 and kopf(h, "Set-Cookie"), t
     s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {**felder, "code": "000000"})
     assert s == 200 and "stimmt nicht" in t
-    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {**felder, "code": "000000"})
-    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", felder)                     # Fehlversuche beleben den Code nicht
-    assert s == 303
+    # ein falscher Code beendet die Nachfrist: Sonst ließe sich in dieser Minute unbegrenzt raten
+    s, _, t = abruf(f"{u.kurl}/anmelden", "POST", felder)
+    assert s == 200 and "stimmt nicht" in t
 
 
 def test_eingeloester_code_gilt_nach_der_nachfrist_nicht_mehr(welt, monkeypatch):
@@ -416,7 +416,7 @@ def test_meldungen_auf_mein_konto_und_der_reiseseite(welt):
     assert json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])["meldungen"] == []
     rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "allgemein", "Treffpunkt am Bahnhof ist jetzt 8:40 Uhr.")
     rm.meldung_anlegen(u.o, ["Ida"], "hinweis", "allgemein", "Nur für Ida.")
-    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), ["Karl"], "neue_reise", "winterwoche", "Deine neue Reise ist angelegt.")
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [konten.konto_per_email(KARL)["id"]], "neue_reise", "winterwoche", "Deine neue Reise ist angelegt.")
     s, _, t = abruf(f"{u.kurl}/konto", cookie=karl)
     abschnitt = t.split('id="meldungen"', 1)[1].split('class="abschnitt"', 1)[0]
     assert "Meldungen an dich" in t and "Treffpunkt am Bahnhof" in abschnitt and "Deine neue Reise ist angelegt." in abschnitt
@@ -452,7 +452,7 @@ def test_meldungen_fuehren_an_die_stelle_mit_marke_und_buendel(welt):
     for i in range(3):
         rm.meldung_anlegen(u.o, ["Karl"], "pruefung", f"U-0{i + 1}", f"Preis U-0{i + 1} prüfen (Beispielwert).",
                            bezug=f"U-0{i + 1}", zeit=jetzt - datetime.timedelta(seconds=i))
-    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), ["Karl"], "neue_reise", "beispielreise",
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [konten.konto_per_email(KARL)["id"]], "neue_reise", "beispielreise",
                        "Deine neue Reise „Beispielreise“ ist angelegt (Status Idee) und steht in meine_reisen. "
                        "Seite: https://frieda.beispiel.invalid/beispielreise-0123/ · Einladung per Mail an 2 Personen verschickt.",
                        zeit=vor(2))
@@ -506,7 +506,7 @@ def test_lesestand_gilt_fuer_konto_reiseseite_und_konnektor(welt):
     m1 = rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "reise", "Treffpunkt am Bahnhof (Beispielwert).")
     m2 = rm.meldung_anlegen(u.o, ["Karl"], "hinweis", "reise", "Rucksack leichter packen (Beispielwert).")
     ida = rm.meldung_anlegen(u.o, ["Ida"], "hinweis", "reise", "Nur für Ida.")
-    neu = rm.meldung_anlegen(rm.ordner_neu(anlegen=True), ["Karl"], "neue_reise", "beispielreise", "Deine neue Reise ist angelegt.")
+    neu = rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [konten.konto_per_email(KARL)["id"]], "neue_reise", "beispielreise", "Deine neue Reise ist angelegt.")
     assert abruf(f"{u.rurl}/beispielreise/gelesen", "POST", json_body={"ids": [m1["id"]]})[0] == 401
     ich = json.loads(abruf(f"{u.rurl}/beispielreise/ich", cookie=karl)[2])
     assert {m["id"]: m["gelesen"] for m in ich["meldungen"]} == {m1["id"]: False, m2["id"]: False}
@@ -568,11 +568,11 @@ def test_meldung_aus_teilen_in_der_sprache_des_kontos(welt):
     konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
     karl, _ = anmelden(u, KARL)
     o = rm.ordner_neu(anlegen=True)
-    rm.meldung_anlegen(o, ["Karl"], "neue_reise", "beispielreise", "Deine neue Reise „Beispielreise“ ist angelegt (deutsch gespeichert).",
+    rm.meldung_anlegen(o, [konten.konto_per_email(KARL)["id"]], "neue_reise", "beispielreise", "Deine neue Reise „Beispielreise“ ist angelegt (deutsch gespeichert).",
                        teile=[("konto.meldungen.text.neue_reise", {"titel": "Beispielreise"}), ("konto.meldungen.text.einladungen", {"n": 2})])
-    rm.meldung_anlegen(o, ["Karl"], "hinweis", "reise", "Gespeicherter Text (Beispielwert).", teile=[("konto.meldungen.gibt_es_nicht", {})])
+    rm.meldung_anlegen(o, [konten.konto_per_email(KARL)["id"]], "hinweis", "reise", "Gespeicherter Text (Beispielwert).", teile=[("konto.meldungen.gibt_es_nicht", {})])
     with pytest.raises(ValueError):
-        rm.meldung_anlegen(o, ["Karl"], "neue_reise", "beispielreise", "x", teile=[("konto.meldungen.text.neue_reise",
+        rm.meldung_anlegen(o, [konten.konto_per_email(KARL)["id"]], "neue_reise", "beispielreise", "x", teile=[("konto.meldungen.text.neue_reise",
                                                                                      {"titel": "https://frieda.beispiel.invalid/x/"})])
     t = abruf(f"{u.kurl}/konto", cookie=karl)[2]
     assert "Deine neue Reise „Beispielreise“ ist angelegt (Status Idee). Einladungen per Mail an 2 Personen verschickt." in t
@@ -583,6 +583,66 @@ def test_meldung_aus_teilen_in_der_sprache_des_kontos(welt):
     k = konten.konto_per_email(KARL)
     konten.recht_setzen(k["id"], "betreiber")
     anmeldung.betreiber_melden(k)
-    [m] = [x for x in rm.meldungen(o, "Karl") if x["art"] == "anfrage_reisen"]
+    [m] = [x for x in rm.meldungen(o, k["id"]) if x["art"] == "anfrage_reisen"]
     assert m["t"] == [["konto.meldungen.text.anfrage_reisen", {"name": "Karl", "email": KARL}]]
     assert f"Karl ({KARL}) asks to be allowed to create trips." in abruf(f"{u.kurl}/konto", cookie=karl)[2]
+
+
+
+# ---------- Sicherheitsprüfung 12.11.2026 ----------
+
+def test_meldung_ohne_reise_folgt_nicht_dem_namen(welt):
+    """Den Anzeigenamen wählt jedes Konto frei, auch den eines anderen. Meldungen ohne Reise (neue Reise mit Seitenlink,
+    Bitten an Betreiber) gehen deshalb an die Kennung des Kontos: Wer sich „Karl“ nennt, liest Karls Meldungen nicht."""
+    import rueckmeldungen as rm
+    u = welt()
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    karl, _ = anmelden(u, KARL)
+    mo, _ = anmelden(u, MO, "Mo")
+    o = rm.ordner_neu(anlegen=True)
+    rm.meldung_anlegen(o, [konten.konto_per_email(KARL)["id"]], "neue_reise", "winterwoche", "Geheim: nur für Karl (Beispielwert).")
+    rm.meldung_anlegen(o, ["Karl"], "neue_reise", "winterwoche", "Alt, an den Namen adressiert (Beispielwert).")
+    assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "name", "name": "Karl"}, cookie=mo)[0] == 303
+    assert konten.konto_per_email(MO)["name"] == "Karl"
+    t = abruf(f"{u.kurl}/konto", cookie=mo)[2]
+    assert "nur für Karl" not in t and "an den Namen adressiert" not in t
+    assert rm.meldungen_des_kontos(konten.konto_per_email(MO)) == []
+    assert "nur für Karl" in abruf(f"{u.kurl}/konto", cookie=karl)[2]
+    # auch den Namen eines Betreibers anzunehmen bringt dessen Meldungen nicht
+    konten.recht_setzen(konten.konto_per_email(KARL)["id"], "betreiber")
+    import anmeldung
+    anmeldung.betreiber_melden(konten.konto_per_email(MO))
+    assert rm.meldungen_des_kontos(konten.konto_per_email(MO)) == []
+    assert [m["art"] for m in rm.meldungen_des_kontos(konten.konto_per_email(KARL))].count("anfrage_reisen") == 1
+
+
+def test_anmeldecodes_an_fremde_adressen_haben_eine_tagesgrenze(welt, monkeypatch):
+    """Über das Anmeldeformular lässt sich das Mail-Kontingent nicht leeren: An Adressen ohne Konto und ohne Einladung
+    gehen am Tag höchstens FR_GRENZE_CODES_TAG Codes; die Antwort bleibt gleich, und wer ein Konto hat, bekommt seinen."""
+    monkeypatch.setenv("FR_GRENZE_CODES_TAG", "3")      # der erste Code geht an Ida, die noch kein Konto hat
+    u = welt()
+    anmelden(u, IDA, "Ida")
+    konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
+    an = lambda: [json.loads(z)["an"] for z in u.mails.read_text().splitlines() if "Dein Code" in z]   # noqa: E731
+    antworten = []
+    for i in range(4):
+        s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": f"fremd{i}@beispiel.invalid"})
+        antworten.append((s, re.sub(r"fremd\d", "fremd", t)))
+    assert len(set(antworten)) == 1                                           # keine Auskunft: jede Antwort gleich
+    assert [a for a in an() if a.startswith("fremd")] == ["fremd0@beispiel.invalid", "fremd1@beispiel.invalid"]
+    abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": IDA})   # Konto
+    abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": KARL})  # offene Einladung
+    assert an()[-2:] == [IDA, KARL]
+
+
+def test_adresswechsel_verraet_nicht_unbegrenzt_welche_adressen_konten_haben(welt):
+    u = welt()
+    anmelden(u, IDA, "Ida")
+    mo, _ = anmelden(u, MO, "Mo")
+    belegt = 0
+    for _ in range(konten.JE_IP[0] + 3):
+        t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "adresse_code", "email": IDA}, cookie=mo)[2]
+        belegt += meldet(t, "konto.fehler.adresse_belegt")
+    assert belegt == konten.JE_IP[0]
+    assert meldet(t, "konto.fehler.zu_viele_codes")
+

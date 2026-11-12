@@ -3,6 +3,7 @@
 # Neue Bibliothek: hier eintragen, den Befehl ausführen, beide Dateien committen. CI und jede Instanz installieren
 # dann genau diese Versionen (veroeffentlichen.sh).
 markdown
+nh3
 Pillow
 pytest
 pytest-xdist

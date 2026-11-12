@@ -57,9 +57,9 @@ import instanz
 import texte
 from reise import rolle_neu
 
-EMAIL_MUSTER = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}$")
-REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")          # wie rueckmeldungen.REISE_MUSTER
-PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")        # wie konnektor.PERSON_MUSTER
+EMAIL_MUSTER = re.compile(r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]{2,}\Z")
+REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}\Z")          # wie rueckmeldungen.REISE_MUSTER
+PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}\Z")        # wie konnektor.PERSON_MUSTER
 ROLLEN = ("gast", "mitwirkend", "organisator")
 RECHTE = ("reise_anlegen", "betreiber")
 MAX_NAME = 80
@@ -73,6 +73,7 @@ SITZUNG_TAGE = 365               # rollierend: jede Nutzung verlängert
 EINLADUNG_TAGE = 30
 WARTELISTE_TAGE = 7              # so lange gilt der Bestätigungslink; unbestätigte Einträge verfallen danach
 WARTELISTE_MAX_UNBESTAETIGT = 1000   # mehr unbestätigte Einträge zugleich nimmt die Warteliste nicht an
+CODES_TAG = "codes-fremd-tag"         # Versand-Zeile je Anmeldecode an eine Adresse ohne Konto und Einladung (Tagesgrenze)
 WARTELISTE_TAG = "warteliste-tag"    # Versand-Zeile je Bestätigungsmail der Warteliste, ohne Adresse (Tagesgrenze, #534)
 WARTELISTE_TAG_GEMELDET = "warteliste-tag-gemeldet"   # Merker: Tagesgrenze heute schon dem Betreiber gemeldet
 BETREIBER_MELDUNG_ARTEN = ("Fehler", "Wunsch", "Frage")   # Datenwerte, angezeigt über wert.<Art> (#530)
@@ -303,9 +304,16 @@ def code_anfordern(roh, ip="", zweck="anmelden", konto=None, sprache=None):
     sprache = sprache or texte.VORGABE_REISE
     e = adresse(roh)
     with closing(db()) as v, v:
+        still = False
         if zweck == "adresse":
             if not konto:
                 raise KontoFehler("konto.fehler.adresse_erst_anmelden")
+            # Jede Frage zählt, bevor sie beantwortet wird: Sonst ließe sich hier unbegrenzt erfragen, welche Adressen
+            # ein Konto haben („Adresse belegt“ kommt ohne Mail zurück).
+            if _begrenzt(v, "adresse-frage:" + konto, JE_IP):
+                raise KontoFehler("konto.fehler.zu_viele_codes")
+            v.execute("INSERT INTO versand VALUES (?, ?)", ("adresse-frage:" + konto, _jetzt()))
+            v.commit()
             belegt = v.execute("SELECT id FROM konten WHERE email = ?", (e,)).fetchone()
             if belegt:
                 raise KontoFehler("konto.fehler.adresse_belegt" if belegt["id"] != konto
@@ -314,12 +322,25 @@ def code_anfordern(roh, ip="", zweck="anmelden", konto=None, sprache=None):
             raise ValueError(zweck)
         if _begrenzt(v, "adresse:" + e, JE_ADRESSE) or (ip and _begrenzt(v, "ip:" + ip, JE_IP)):
             raise KontoFehler("konto.fehler.zu_viele_codes")
+        if zweck == "anmelden" and not v.execute(
+                "SELECT 1 FROM konten WHERE email = ? UNION ALL SELECT 1 FROM einladungen WHERE email = ? AND eingeloest IS NULL "
+                "AND ablauf > ? LIMIT 1", (e, e, _jetzt())).fetchone():
+            # Adresse ohne Konto und ohne Einladung: Tagesgrenze über alle (Mail-Kontingent). Ist sie erreicht, geht
+            # keine Mail hinaus; die Antwort bleibt dieselbe wie sonst (keine Auskunft, ob es ein Konto gibt).
+            if v.execute("SELECT COUNT(*) FROM versand WHERE schluessel = ? AND zeit >= ?",
+                         (CODES_TAG, _tagesbeginn())).fetchone()[0] >= instanz.grenze_codes_tag():
+                still = True
+            else:
+                v.execute("INSERT INTO versand VALUES (?, ?)", (CODES_TAG, _jetzt()))
         code = f"{secrets.randbelow(10 ** 6):06d}"
         v.execute("INSERT OR REPLACE INTO codes (email, zweck, hash, konto, ablauf, versuche) VALUES (?,?,?,?,?,0)",
                   (e, zweck, _hash(e, zweck, code), konto, _jetzt() + CODE_MINUTEN * 60))
         v.execute("INSERT INTO versand VALUES (?, ?)", ("adresse:" + e, _jetzt()))
         if ip:
             v.execute("INSERT INTO versand VALUES (?, ?)", ("ip:" + ip, _jetzt()))
+    if still:
+        sys.stderr.write("Daily limit for sign-in codes to addresses without an account reached (FR_GRENZE_CODES_TAG); no mail sent.\n")
+        return
     lesbar = f"{code[:3]} {code[3:]}"
     zeilen = [texte.t(sprache, "mail.code.zeile_code", code=lesbar), "",
               texte.t(sprache, "mail.code.zeile_eingabe", minuten=CODE_MINUTEN), ""]
@@ -341,7 +362,10 @@ def _code_einloesen(v, e, zweck, code):
     eingeloest = z["versuche"] < 0      # Anmeldecode schon verbraucht, steht nur noch kurz für ein doppeltes Absenden bereit
     if eingeloest:
         if z["ablauf"] < _jetzt() or not secrets.compare_digest(z["hash"], _hash(e, zweck, code)):
-            raise falsch                # kein Fehlversuch zählen: das würde den Code wiederbeleben
+            # Ein falscher Code beendet die Nachfrist: Sonst ließe sich in dieser Minute unbegrenzt raten
+            v.execute("DELETE FROM codes WHERE email = ? AND zweck = ?", (e, zweck))
+            v.commit()
+            raise falsch
         return z
     if z["ablauf"] < _jetzt() or z["versuche"] >= CODE_VERSUCHE:
         v.execute("DELETE FROM codes WHERE email = ? AND zweck = ?", (e, zweck))
@@ -1124,6 +1148,27 @@ PUSH_ENDPUNKT = re.compile(r"^https://[^\s]{8,1024}$")
 PUSH_SCHLUESSEL = re.compile(r"^[A-Za-z0-9_=-]{8,256}$")
 PUSH_GERAET = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 PUSH_ZONE = re.compile(r"^[A-Za-z0-9_+/-]{1,64}$")
+# Push-Dienste der Browser (Chrome und Verwandte, Firefox, Safari, Edge). Der Server schickt Nachrichten nur dorthin:
+# Die Adresse eines Abos kommt vom Gerät, also von außen, und dürfte sonst auf beliebige (auch interne) Rechner zeigen.
+# FR_PUSH_DIENSTE (Hosts oder Endungen mit Punkt, durch Komma getrennt) ersetzt die Liste.
+PUSH_DIENSTE = ("fcm.googleapis.com", "android.googleapis.com", ".push.services.mozilla.com", ".push.apple.com",
+                ".notify.windows.com")
+
+
+def push_endpunkt_erlaubt(endpoint):
+    if not (isinstance(endpoint, str) and PUSH_ENDPUNKT.match(endpoint)):
+        return False
+    try:
+        u = urllib.parse.urlsplit(endpoint)
+        host, port = (u.hostname or "").lower().rstrip("."), u.port
+    except ValueError:
+        return False
+    if u.scheme != "https" or u.username is not None or u.password is not None or port not in (None, 443):
+        return False
+    eigene = [x.strip().lower() for x in (instanz.wert("FR_PUSH_DIENSTE") or "").split(",") if x.strip()]
+    return any(host == d or (d.startswith(".") and host.endswith(d)) for d in (eigene or PUSH_DIENSTE))
+
+
 MAX_PUSH_ABOS = 10      # je Konto; das älteste fällt weg (alte Telefone, neu installierte Apps)
 
 
@@ -1132,7 +1177,7 @@ def push_abo_speichern(kid, abo, reise="", seite="", geraet="", zeitzone=""):
     wie PushSubscription.toJSON(). seite: Adresse der Reiseseite (Scope des Service Workers), für den Link in Nachrichten."""
     keys = abo.get("keys") if isinstance(abo, dict) else None
     endpoint = abo.get("endpoint") if isinstance(abo, dict) else None
-    if not (isinstance(endpoint, str) and PUSH_ENDPUNKT.match(endpoint) and isinstance(keys, dict)
+    if not (push_endpunkt_erlaubt(endpoint) and isinstance(keys, dict)
             and all(isinstance(keys.get(k), str) and PUSH_SCHLUESSEL.match(keys[k]) for k in ("p256dh", "auth"))):
         raise KontoFehler("konto.fehler.push_abo_ungueltig")
     reise = reise if REISE_MUSTER.match(reise or "") else ""
@@ -1406,9 +1451,14 @@ def oauth_client_speichern(client_id, name, redirect_uris, art):
 def oauth_registrierung_erlaubt(ip):
     """Begrenzung der Client-Registrierung je IP (20 in der Stunde)."""
     with closing(db()) as v, v:
-        if _begrenzt(v, "register:" + (ip or "?"), (20, 3600)):
+        if _begrenzt(v, "register:" + (ip or "?"), (20, 3600)) or _begrenzt(v, "register-alle", (500, 24 * 3600)):
             return False
         v.execute("INSERT INTO versand VALUES (?, ?)", ("register:" + (ip or "?"), _jetzt()))
+        v.execute("INSERT INTO versand VALUES (?, ?)", ("register-alle", _jetzt()))
+        # Aufräumen: registrierte Clients, die nach einer Woche weder einen Code noch ein Token haben, verbindet niemand mehr
+        v.execute("DELETE FROM oauth_clients WHERE art = 'dcr' AND erstellt < ? AND client_id NOT IN "
+                  "(SELECT client_id FROM oauth_tokens) AND client_id NOT IN (SELECT client_id FROM oauth_codes)",
+                  (_jetzt() - 7 * 86400,))
         return True
 
 

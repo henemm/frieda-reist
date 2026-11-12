@@ -67,9 +67,9 @@ def meine_reisen():
 
 ist = (kopf("Ida", "ida@example.org")
        + '<div class="abschnitt" id="meldungen"><h2>Meldungen an dich</h2><div class="liste">'
-       + ist_zeile("3.11.", f"Deine neue Reise „{HERBST}“ ist angelegt (Status Idee) und steht in meine_reisen. Seite: https://frieda.example.org/beispiel-herbstwanderung-erfunden-2027-3f9c1a0b7d2e4c6f8a1b5d3e/ · Einladung per Mail an 2 Personen verschickt.")
-       + ist_zeile("3.11.", f"Deine neue Reise „Testreise Karten (erfunden)“ ist angelegt (Status Idee) und steht in meine_reisen. Seite: https://frieda.example.org/testreise-karten-erfunden-2027-9a8b7c6d5e4f3a2b1c0d9e8f/")
-       + ist_zeile("2.11.", "Deine neue Reise „Testreise Abnahme (erfunden)“ ist angelegt (Status Idee) und steht in meine_reisen. Seite: https://alt.example.org/testreise-abnahme-erfunden-2027-0f1e2d3c4b5a69788796a5b4/")
+       + ist_zeile("3.11.", f"Deine neue Reise „{HERBST}“ ist angelegt (Status Idee) und steht in meine_reisen. Seite: https://frieda.example.org/beispiel-herbstwanderung-erfunden-2027-000000000000000000000000/ · Einladung per Mail an 2 Personen verschickt.")
+       + ist_zeile("3.11.", f"Deine neue Reise „Testreise Karten (erfunden)“ ist angelegt (Status Idee) und steht in meine_reisen. Seite: https://frieda.example.org/testreise-karten-erfunden-2027-000000000000000000000000/")
+       + ist_zeile("2.11.", "Deine neue Reise „Testreise Abnahme (erfunden)“ ist angelegt (Status Idee) und steht in meine_reisen. Seite: https://alt.example.org/testreise-abnahme-erfunden-2027-000000000000000000000000/")
        + ist_zeile(f"1.11. · {MALERWEG}", "Frist morgen: Anzahlung zur Buchung Hotel Elbblick (Frist 2.11.).", True)
        + ist_zeile(f"1.11. · {MALERWEG}", "Waldschänke Hohnstein, Öffnungszeiten: zuletzt geprüft 2.9. (vor 60 Tagen). Bitte im Gespräch nachschlagen und mit Prüfdatum und Quelle eintragen.", True)
        + ist_zeile(f"1.11. · {MALERWEG}", "Pension Rathen, Preis je Nacht: noch nie geprüft. Bitte im Gespräch nachschlagen und mit Prüfdatum und Quelle eintragen.", True)

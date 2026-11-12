@@ -98,16 +98,16 @@ WUNSCH_ZIEL = "wuensche"
 STATUSWERTE = {"neu", "uebernommen", "verworfen", "rueckfrage", "konflikt"}
 LAENGE = {"ziel": 80, "text": 4000, "quelle": 300, "name": 80}
 ZIEL_MUSTER = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
-REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
-RID_MUSTER = re.compile(r"^R-\d{8}-\d{6}-[0-9a-f]{4}$")
-AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")   # Änderungsaufträge (Übergang, bis O-3 sie abschafft)
+REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}\Z")
+RID_MUSTER = re.compile(r"^R-\d{8}-\d{6}-[0-9a-f]{4}\Z")
+AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}\Z")   # Änderungsaufträge (Übergang, bis O-3 sie abschafft)
 MAX_BODY = 16 * 1024
 MAX_JE_MINUTE = 30
 DOPPELT_SEKUNDEN = 600   # identische Rückmeldung innerhalb dieser Zeit = Doppelklick / erneut gesendet
 INHALT = ("name", "art", "ziel", "text", "quelle")
 KONTEXT_STAND_MAX = 999999   # Kontext der Rückmeldung (#449): ansicht, abschnitt (höchstens 40 Zeichen), stand
 
-AG_MUSTER = re.compile(r"^AG-\d{2,}$")
+AG_MUSTER = re.compile(r"^AG-\d{2,}\Z")
 AG_STATUS = ("offen", "in_arbeit", "erledigt", "entfaellt")
 AG_PRIO = ("hoch", "normal", "niedrig")
 AG_LAENGE = {"titel": 200, "zustaendig": 80, "notiz": 2000, "kommentar": 500, "name": 80}
@@ -378,7 +378,8 @@ def meldung_anker(m):
 
 
 def meldungen_des_kontos(k):
-    """Alle Meldungen an ein Konto, die noch gelten (#21, #41): die ohne Reise (Name des Kontos) und die jeder Reise, in der
+    """Alle Meldungen an ein Konto, die noch gelten (#21, #41): die ohne Reise (Kennung des Kontos, nie sein Name: den
+    wählt jede:r frei, auch den eines anderen Kontos) und die jeder Reise, in der
     das Konto Mitglied ist (Name der Person dort). Eine Quelle für meine_reisen, Mein Konto und die Reiseseiten.
     Eine Meldung „neue Reise“ gehört zu der Reise in ziel, sobald das Konto dort Mitglied ist (#407: Link statt Adresse).
     gelesen: das Konto hat sie gelesen (#407, Lesestand in konten.db).
@@ -388,10 +389,9 @@ def meldungen_des_kontos(k):
     o = ordner_neu()
     meine = {mg["reise"] for mg in konten.mitgliedschaften(k["id"])}
     if o:
+        # an genau dieses Konto (Kennung statt Name, #381); gilt auch ohne Seite der Reise
         aus += [m | {"reise": m.get("ziel") if m.get("art") == "neue_reise" and m.get("ziel") in meine else None}
-                for m in meldungen_aktuell(o, k["name"])]
-        # an genau dieses Konto (Kennung statt Name, #381: Reise gelöscht oder zurückgeholt); gilt auch ohne Seite der Reise
-        aus += [m | {"reise": None} for m in meldungen_aktuell(o, k["id"])]
+                for m in meldungen_aktuell(o, k["id"])]
     for mg in konten.mitgliedschaften(k["id"]):
         z = zustand(mg["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == mg["schluessel"]), None)
@@ -409,7 +409,7 @@ def neue_reise_gesehen(k, reise):
     o = ordner_neu()
     if not o:
         return
-    ids = [m["id"] for m in meldungen(o, k["name"]) if m.get("art") == "neue_reise" and m.get("ziel") == reise and m.get("id")]
+    ids = [m["id"] for m in meldungen(o, k["id"]) if m.get("art") == "neue_reise" and m.get("ziel") == reise and m.get("id")]
     if ids and not set(ids) <= konten.gelesen(k["id"]):
         konten.gelesen_merken(k["id"], ids)
 
@@ -481,7 +481,7 @@ def pruefen(roh):
         return None, texte.satz("dienst.pruefen.5")
     if not e["name"]:
         return None, texte.satz("dienst.pruefen.6")
-    if "\n" in e["name"]:
+    if "\n" in e["name"] or "\r" in e["name"]:
         return None, texte.satz("dienst.pruefen.7")
     for feld, n in LAENGE.items():
         if len(e[feld]) > n:
@@ -541,7 +541,7 @@ def ag_felder(roh, neu):
             v = v.strip()
             if k in AG_LAENGE and len(v) > AG_LAENGE[k]:
                 return None, texte.satz("dienst.ag_felder.5", k=k, w2=AG_LAENGE[k])
-            if k in ("titel", "zustaendig") and "\n" in v:
+            if k in ("titel", "zustaendig") and ("\n" in v or "\r" in v):
                 return None, texte.satz("dienst.ag_felder.6", k=k)
             if k in ("ab", "frist") and v and not ist_datum(v):
                 return None, texte.satz("dienst.ag_felder.7", k=k)
@@ -638,7 +638,7 @@ def aufgabe_aendern(o, agid, roh):
 # Was eine Person schon eingepackt hat, liegt live in <ablage>/<reise>/packstand.json, nicht als Version im Reisespeicher: So geht Abhaken
 # ohne Netz auf der Seite, ohne dass jeder Haken ein Verlaufseintrag wird. Form: {G-ID: {Name der Person: Zeitpunkt (UTC)}}. Ein Gegenstand
 # mit wer wird von dieser Person abgehakt, einer ohne wer von jeder Person für sich. Dieser Dienst ist der einzige Schreiber.
-GID_MUSTER = re.compile(r"^G-\d+$")
+GID_MUSTER = re.compile(r"^G-\d+\Z")
 MAX_PACKSTAND = 4000      # Haken je Reise
 
 
@@ -988,7 +988,11 @@ def darf_anstossen(ident):
 
 
 def anstoss_stand():
-    return {"angestossen": _lies_json(ablage() / ANSTOSS), "ergebnis": _lies_json(ablage() / ANSTOSS_ERGEBNIS)}
+    """Stand für die Seite: nur Zeit und Ausgang. Der Anstoß gilt für die ganze Instanz; welche Reise und wer ihn gab,
+    geht andere Reisen nichts an (die Antwort ist mit jedem Seitenlink lesbar)."""
+    a, e = _lies_json(ablage() / ANSTOSS), _lies_json(ablage() / ANSTOSS_ERGEBNIS)
+    return {"angestossen": {"zeit": a.get("zeit")} if isinstance(a, dict) else None,
+            "ergebnis": {"zeit": e.get("zeit"), "ok": bool(e.get("ok"))} if isinstance(e, dict) else None}
 
 
 def anstossen(reise, name):
@@ -1125,7 +1129,7 @@ class Dienst(BaseHTTPRequestHandler):
             if did is None:
                 return self._antwort(200, bl.liste(o, name, rolle, (q.get("buchung") or [None])[0]))
             b = bl.finden(o, did)
-            if b is None or not bl.darf_sehen(b, name, rolle):
+            if b is None or not bl.darf_abrufen(b, name, rolle):
                 return self._antwort(404, {"fehler": texte.satz("dienst.do_get.1")})
             return self._datei(b, bl.datei_pfad(o, b))
         if not t or t[2] is not None:
@@ -1143,7 +1147,11 @@ class Dienst(BaseHTTPRequestHandler):
         if was == "aktualisieren":
             return self._antwort(200, {"darf": darf_anstossen(wer_ist(self.headers, o.name, lesen=True)), **anstoss_stand()})
         if was == "stand":
-            return self._antwort(200, reisestand.lesen(o.name))
+            st = reisestand.lesen(o.name)
+            ident = wer_ist(self.headers, o.name, lesen=True)
+            if not (ident["art"] == "dienst" or (ident["art"] == "konto" and ident["person"])):
+                st["grund"] = None   # der Wortlaut eines Baufehlers (kann Pfade enthalten) nur für Angemeldete der Reise
+            return self._antwort(200, st)
         if was == "brett":
             return self._antwort(200, brett(o, zustand(o.name)))
         if was == "packstand":

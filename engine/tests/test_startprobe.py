@@ -40,7 +40,7 @@ def test_startfehler_ist_rot(gebaut):
     index = gebaut / "index.html"
     html = index.read_text(encoding="utf-8")
     assert "<script>" in html
-    index.write_text(html.replace("<script>", "<script>throw new Error('Startfehler-Test');", 1), encoding="utf-8")
+    index.write_text(bauen.skripte_festlegen(html.replace("<script>", "<script>throw new Error('Startfehler-Test');", 1)), encoding="utf-8")
     aus = probe(gebaut)
     assert aus.returncode == 1
     assert "Startfehler-Test" in aus.stdout + aus.stderr
@@ -56,7 +56,7 @@ def test_sichtbare_startfehler_meldung_ist_rot(gebaut):
     index = gebaut / "index.html"
     html = index.read_text(encoding="utf-8")
     assert "const D = " in html
-    index.write_text(html.replace("const D = ", "Promise.reject(new Error('Startfehler-Test'));const D = ", 1), encoding="utf-8")
+    index.write_text(bauen.skripte_festlegen(html.replace("const D = ", "Promise.reject(new Error('Startfehler-Test'));const D = ", 1)), encoding="utf-8")
     aus = probe(gebaut)
     assert aus.returncode == 1
     assert "Startfehler-Meldung sichtbar" in aus.stdout + aus.stderr
@@ -89,7 +89,7 @@ def test_adressen_gesunde_seite(live):
 
 def test_adressen_kaputte_seite_rot_ohne_geheimen_pfad(live, gebaut):
     index = gebaut / "index.html"
-    index.write_text(index.read_text(encoding="utf-8").replace("<script>", "<script>throw new Error('Startfehler-Test');", 1),
+    index.write_text(bauen.skripte_festlegen(index.read_text(encoding="utf-8").replace("<script>", "<script>throw new Error('Startfehler-Test');", 1)),
                      encoding="utf-8")
     aus = probe_adressen(f"gut-und-kaputt\t{live}\nfehlt\t{live}gibt-es-nicht/\n")
     assert aus.returncode == 1

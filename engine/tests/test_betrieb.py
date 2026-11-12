@@ -1870,7 +1870,8 @@ def test_neue_reise_aus_dem_konnektor_frieda(fs, monkeypatch, capsys):
     assert konten.mitglied(ida["id"], "beispielreise") == "ida"
     einl = [json.loads(z) for z in (fs["tmp"] / "mails.jsonl").read_text().splitlines() if "karl@" in z]
     assert len(einl) == 1 and "Ida hat dich zur Reise" in einl[0]["text"]
-    m = rm.meldungen(rm.ordner_neu(), "Ida")[-1]
+    assert rm.meldungen(rm.ordner_neu(), "Ida") == []        # nie an den Namen: den wählt jedes Konto frei
+    m = rm.meldungen(rm.ordner_neu(), ida["id"])[-1]
     assert meldet(m["text"], "dienst.zustellen.konto") and "Einladung per Mail an 1 Person" in m["text"]
     assert "https://example.invalid/mcp/" not in m["text"]                  # kein App-Link
     assert m["t"] == [["konto.meldungen.text.neue_reise", {"titel": "Beispielreise – Malerweg in vier Tagen"}],

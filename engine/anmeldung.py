@@ -1600,7 +1600,7 @@ def betreiber_melden(k, art="anfrage_reisen", text=None, teile=None):
     oder, mit art, text und teile, etwas anderes (bestätigter Eintrag der Warteliste, #382). teile: für Mein Konto, in
     der Sprache jedes Betreibers (#407 Stufe C)."""
     with konten.closing(konten.db()) as v:
-        namen = [z["name"] for z in v.execute("SELECT name, rechte FROM konten WHERE gesperrt = 0")
+        namen = [z["id"] for z in v.execute("SELECT id, rechte FROM konten WHERE gesperrt = 0")
                  if "betreiber" in z["rechte"].split(",")]
     if namen:
         rm.meldung_anlegen(rm.ordner_neu(anlegen=True), namen, art, "reise", text or

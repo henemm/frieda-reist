@@ -69,7 +69,7 @@ from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaub
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
 from routen import FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
-PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
+PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}\Z")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
                      "frage_beantworten", "entscheiden", "person_einladen", "person_entfernen", "wunsch_aendern", "beleg_anlegen",
                      "gegenstand_packen"}
@@ -110,7 +110,7 @@ MAX_GRUND = 500
 PROTOKOLLE = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 MAX_BODY = 64 * 1024
 MAX_AUFTRAG = 4000
-AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}$")
+AID_MUSTER = re.compile(r"^A-\d{8}-\d{6}-[0-9a-f]{4}\Z")
 
 _sperre = threading.Lock()
 
@@ -1584,8 +1584,12 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         dv = daten(von) if rm.REISE_MUSTER.match(von) else None
         if not dv or von == reise:
             return tk("konnektor.ontologie_werkzeug.9", von=von), True
-        if wer_spricht({**zugang, "reise": von}, dv) is None:
-            return tk("konnektor.ontologie_werkzeug.10", von=von), True
+        # Das Konto muss dort Mitglied sein. Der Personen-Schlüssel allein genügt nicht: Er folgt aus dem Vornamen, und
+        # „ida“ einer fremden Reise ist eine andere Person. Die Antwort ist dieselbe wie bei einer Reise, die es nicht
+        # gibt, damit sich fremde Ordnernamen nicht erfragen lassen.
+        dort = konten.mitglied(zugang["konto_id"], von) if zugang.get("konto_id") else zugang.get("person")
+        if not dort or wer_spricht({**zugang, "reise": von, "person": dort}, dv) is None:
+            return tk("konnektor.ontologie_werkzeug.9", von=von), True
     if name == "wunsch_vorschlagen":
         rid = str(args.get("wunsch") or "").strip()
         if not any(w.get("id") == rid for w in (wuensche_liste(reise) or [])):
@@ -2076,9 +2080,9 @@ def person_entfernen(reise, d, wer, args):
     if p["rolle"] == "organisator":
         return (tk("konnektor.person_entfernen.3", w1=p['name'])), True
     grund = str(args.get("grund") or "").strip()[:300]
-    konten.entfernen(reise, p["schluessel"])
     o = rm.ordner(reise)
     if p.get("eingeladen") and o is not None:
+        konten.entfernen(reise, p["schluessel"])
         with _sperre:
             alle = rm.einladungen_lesen(o)
             alle.pop(p["schluessel"], None)
@@ -2092,6 +2096,8 @@ def person_entfernen(reise, d, wer, args):
                                                                          "ausgeschieden": grund or True}})
         if fehler:
             return tk("konnektor.person_entfernen.6", fehler=fehler), True
+        # erst jetzt: Der Schreibweg hat die Rolle mit reise.yaml geprüft (die hier stammt aus dem veröffentlichten Stand)
+        konten.entfernen(reise, p["schluessel"])
     return (tk("konnektor.person_entfernen.4", w1=p['name'])
             + ("" if p.get("eingeladen") else tk("konnektor.person_entfernen.7"))), False
 
@@ -2188,7 +2194,8 @@ def reise_anlegen(konto, args):
             person = next(k_ for k_, p_ in neu["personen"].items() if p_["name"] == neu["wer"])
             ausstehend_datei().parent.mkdir(parents=True, exist_ok=True)
             with ausstehend_datei().open("a", encoding="utf-8") as f:
-                f.write(json.dumps({"ordner": neu["pfad"], "aid": e["id"], "name": konto["name"], "person": person}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"ordner": neu["pfad"], "aid": e["id"], "name": konto["name"], "person": person,
+                                    "konto_id": konto.get("konto_id")}, ensure_ascii=False) + "\n")
             if wer_konto:
                 konten.reise_vormerken(wer_konto, neu["pfad"])
     if fehler:
@@ -3389,7 +3396,13 @@ class Dienst(BaseHTTPRequestHandler):
         # Alles andere gibt es nicht; die geheimen Links je Reise sind abgeschafft (#421)
         self._senden(404, {"fehler": "unbekannt"})
 
-    do_DELETE = do_GET
+    def do_DELETE(self):
+        # DELETE kennt nur /mcp (ein Client beendet so seine Verbindung). Für die Seiten der Anmeldung gibt es GET und
+        # POST; ein anderes Verb liefe dort wie ein POST, aber ohne dass ein Formular es je schickt.
+        if self.path.split("?", 1)[0] == "/mcp":
+            return self.do_GET()
+        self._senden(405, {"fehler": "GET, POST"}, {"Allow": "GET, POST"})
+
     do_HEAD = do_GET    # Kalender-Apps und Prüfdienste fragen mit HEAD, ob es die Adresse gibt; 501 lässt das Abo scheitern
 
     def _erlaubt(self):

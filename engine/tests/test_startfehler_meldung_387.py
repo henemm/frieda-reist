@@ -40,7 +40,7 @@ def kaputt(index, einsatz):
     """Setzt `einsatz` unmittelbar vor das Hauptskript (vor `const D`), also nach dem Fänger."""
     html = index.read_text(encoding="utf-8")
     assert html.count(HAUPT) == 1
-    index.write_text(html.replace(HAUPT, einsatz + HAUPT, 1), encoding="utf-8")
+    index.write_text(bauen.skripte_festlegen(html.replace(HAUPT, einsatz + HAUPT, 1)), encoding="utf-8")   # Prüfsummen der Skripte neu
 
 
 def lauf(tmp_path, modus):
@@ -165,7 +165,7 @@ def test_platzhalter_ersetzt_und_ausschnitt_hat_alle_sprachen(tmp_path):
         assert "/*__STARTFEHLER__*/" not in html
         for kuerzel in texte.SPRACHEN:
             for text in titel_und_knopf(kuerzel):
-                assert json.dumps(text, ensure_ascii=False)[1:-1].replace("</", "<\\/") in html, (reise, kuerzel)
+                assert bauen.js_einbetten(json.dumps(text, ensure_ascii=False)[1:-1]) in html, (reise, kuerzel)
 
 
 @pytest.mark.parametrize("aenderung", [PLATZHALTER + ";" + PLATZHALTER, "null"], ids=["zweimal", "fehlt"])

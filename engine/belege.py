@@ -29,8 +29,8 @@ MAX_ANZAHL = 200
 TYPEN = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic",
          "text/plain; charset=utf-8": "txt"}   # txt: Abschrift einer Bestätigung aus dem Gespräch (beleg_anlegen, Issue #135)
 SICHTBAR = ("beteiligte", "alle")
-DID_MUSTER = re.compile(r"^D-\d{2,}$")
-BID_MUSTER = re.compile(r"^B-\d+$")
+DID_MUSTER = re.compile(r"^D-\d{2,}\Z")
+BID_MUSTER = re.compile(r"^B-\d+\Z")
 
 
 def typ_erkennen(daten, dateiname=None):
@@ -99,12 +99,20 @@ def liste(o, name, rolle, buchung=None):
     for b in lesen(o)["belege"]:
         if buchung and b.get("buchung") != buchung:
             continue
-        if not darf_sehen(b, name, rolle):
-            continue
-        if b.get("zurueckgezogen") and not (rolle == "organisator" or str(b.get("wer", "")).casefold() == str(name or "").casefold()):
+        if not darf_abrufen(b, name, rolle):
             continue
         aus.append(b)
     return aus
+
+
+def darf_abrufen(b, name, rolle):
+    """Liste und Datei nach derselben Regel: Ein zurückgezogener Beleg ist nur noch für Organisator:innen
+    und die hochladende Person da, auch wenn er vorher für alle freigegeben war."""
+    if not darf_sehen(b, name, rolle):
+        return False
+    if b.get("zurueckgezogen"):
+        return rolle == "organisator" or (bool(name) and str(b.get("wer", "")).casefold() == str(name).casefold())
+    return True
 
 
 def datei_pfad(o, b):

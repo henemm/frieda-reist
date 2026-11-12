@@ -23,6 +23,7 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -35,7 +36,7 @@ import texte
 
 CLAUDE_CALLBACK = "https://claude.ai/api/mcp/auth_callback"
 SCOPES = ("frieda", "offline_access")
-CHALLENGE_MUSTER = re.compile(r"^[A-Za-z0-9._~-]{43,128}$")
+CHALLENGE_MUSTER = re.compile(r"^[A-Za-z0-9._~-]{43,128}\Z")
 CIMD_CACHE_SEKUNDEN = 86400
 LOOPBACK = ("localhost", "127.0.0.1")
 
@@ -114,6 +115,32 @@ class _KeineWeiterleitung(urllib.request.HTTPRedirectHandler):
         return None
 
 
+# Abrufe von Client-Dokumenten bremsen: /token und /authorize sind ohne Anmeldung erreichbar, und jede unbekannte
+# client_id löst sonst einen Abruf beim freigegebenen Host aus (der die Adresse des Servers dafür sperren könnte).
+ABRUFE_JE_MINUTE = 20
+FEHLSCHLAG_SEKUNDEN = 600
+_abrufe, _fehlschlaege, _abruf_sperre = [], {}, threading.Lock()
+
+
+def _abruf_erlaubt(client_id):
+    jetzt = time.time()
+    with _abruf_sperre:
+        if jetzt - _fehlschlaege.get(client_id, 0) < FEHLSCHLAG_SEKUNDEN:
+            return False
+        _abrufe[:] = [t for t in _abrufe if jetzt - t < 60]
+        if len(_abrufe) >= ABRUFE_JE_MINUTE:
+            return False
+        _abrufe.append(jetzt)
+        return True
+
+
+def _abruf_gescheitert(client_id):
+    with _abruf_sperre:
+        if len(_fehlschlaege) > 1000:
+            _fehlschlaege.clear()
+        _fehlschlaege[client_id] = time.time()
+
+
 def cimd_laden(client_id):
     """Client ID Metadata Document holen (nur von freigegebenen Hosts, ohne Weiterleitungen, höchstens 64 KB)."""
     if not cimd_erlaubt(client_id):
@@ -124,6 +151,8 @@ def cimd_laden(client_id):
     alt = konten.oauth_client(client_id)
     if alt and alt["art"] == "cimd" and time.time() - alt["erstellt"] < CIMD_CACHE_SEKUNDEN:
         return alt
+    if not _abruf_erlaubt(client_id):
+        return alt
     try:
         oeffner = urllib.request.build_opener(_KeineWeiterleitung)
         # Eigene Kennung: claude.ai (Cloudflare) weist die Standardkennung „Python-urllib“ mit 403 ab (28.10.2026)
@@ -131,6 +160,7 @@ def cimd_laden(client_id):
         with oeffner.open(anfrage, timeout=5) as r:
             doc = json.loads(r.read(65536 + 1)[:65536])
     except (urllib.error.URLError, OSError, ValueError) as f:
+        _abruf_gescheitert(client_id)
         print(f"OAuth: client document from {urllib.parse.urlsplit(client_id).hostname} not readable: "
               f"{getattr(f, 'code', '') or type(f).__name__}", file=sys.stderr, flush=True)
         return alt

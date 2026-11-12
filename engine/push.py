@@ -451,11 +451,24 @@ def webpush_sender():
     vapid = Vapid02.from_pem(privat.encode("ascii"))
     kontakt = konten.basis() or "mailto:push@localhost"
 
+    import requests
+
+    class OhneUmleitung:
+        """Ein Push-Dienst leitet nicht um; einer Umleitung zu folgen hieße, eine Anfrage an eine Adresse zu schicken,
+        die niemand geprüft hat (etwa einen Dienst im eigenen Netz)."""
+        @staticmethod
+        def post(url, **kw):
+            return requests.post(url, **{**kw, "allow_redirects": False})
+
+    sitzung = OhneUmleitung()
+
     def senden(abo, inhalt):
+        if not konten.push_endpunkt_erlaubt(abo["endpoint"]):
+            return "weg"      # altes Abo an eine Adresse, die kein Push-Dienst ist: nicht senden, Abo löschen
         try:
             webpush({"endpoint": abo["endpoint"], "keys": {"p256dh": abo["p256dh"], "auth": abo["auth"]}},
                     json.dumps(inhalt, ensure_ascii=False), vapid_private_key=vapid,
-                    vapid_claims={"sub": kontakt}, ttl=TTL, timeout=15)
+                    vapid_claims={"sub": kontakt}, ttl=TTL, timeout=15, requests_session=sitzung)
             return "ok"
         except WebPushException as x:
             if x.response is not None and x.response.status_code in (404, 410):

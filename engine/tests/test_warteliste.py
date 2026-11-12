@@ -326,7 +326,7 @@ def test_link_bestaetigt_erst_per_knopf_und_meldet_den_betreibern_genau_einmal(w
     assert s == 200 and meldet(t, "warteliste.bestaetigt")
     assert [z["email"] for z in konten.warteliste()] == [LEA]
     neu = [json.loads(z) for z in meldungen.read_text().splitlines()][vorher:]
-    assert len(neu) == 1 and neu[0]["an"] == ["Ida"] and neu[0]["art"] == "anfrage_warteliste" and LEA in neu[0]["text"]
+    assert len(neu) == 1 and neu[0]["an"] == [konten.konto_per_email(IDA)["id"]] and neu[0]["art"] == "anfrage_warteliste" and LEA in neu[0]["text"]
     s, _, t = abruf(f"{u.kurl}/warteliste/bestaetigen/{wort}", "POST", {})   # Wiederholung
     assert meldet(t, "warteliste.link_ungueltig")
     assert len(meldungen.read_text().splitlines()) == vorher + 1

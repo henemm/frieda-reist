@@ -426,9 +426,10 @@ def test_anstoss_nur_organisatorinnen(reise):
     assert s == 403 and "Organisator:innen" in t
     s, _, t = abruf(url, "POST", json_body={}, cookie=u.ida)
     a = json.loads(t)["angestossen"]
-    assert s == 200 and a["von"] == "Ida" and a["reise"] == "beispielreise"
     datei = u.ablage / rm.ANSTOSS
-    assert json.loads(datei.read_text()) == a
+    ganz = json.loads(datei.read_text())
+    assert s == 200 and ganz["von"] == "Ida" and ganz["reise"] == "beispielreise"
+    assert a == {"zeit": ganz["zeit"]}      # die Antwort nennt weder Reise noch Person: Sie ist mit jedem Seitenlink lesbar
     # ein zweiter Anstoß vor dem Veröffentlichen ändert nichts
     assert json.loads(abruf(url, "POST", json_body={}, cookie=u.ida)[2])["angestossen"] == a
 

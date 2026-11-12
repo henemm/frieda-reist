@@ -145,6 +145,11 @@ FR_ADRESSE=https://reisen.example.org
 # Instanz reicht; darüber heißt es „Heute sind alle Plätze vergeben“. Wert ebenfalls in <FR_DIENST>/konten.env. (20)
 #FR_GRENZE_WARTELISTE_TAG=20
 
+# Höchstzahl der Anmeldecodes je Kalendertag (UTC) an Adressen ohne Konto und ohne offene Einladung, damit niemand über
+# das Anmeldeformular das Mail-Kontingent leert; wer ein Konto oder eine Einladung hat, bekommt seinen Code immer. Wert
+# ebenfalls in <FR_DIENST>/konten.env. (30)
+#FR_GRENZE_CODES_TAG=30
+
 # Schonfrist in Tagen zwischen „Reise löschen“ und dem endgültigen Entfernen (#381, docs/konten.md). Die Frist setzt der
 # Konnektor beim Vormerken; ein abweichender Wert gehört darum ebenfalls in <FR_DIENST>/konten.env. (14)
 #FR_LOESCHFRIST_TAGE=14
@@ -156,3 +161,8 @@ FR_ADRESSE=https://reisen.example.org
 #FR_BETREIBER_NAME=Beispiel-Betreiber
 #FR_BETREIBER_ANSCHRIFT=Musterweg 1, 12345 Beispielstadt
 #FR_BETREIBER_KONTAKT=kontakt@example.org
+
+# Push-Dienste, an die Benachrichtigungen gehen dürfen (Hosts oder Endungen mit Punkt, durch Komma getrennt). Nötig nur
+# für einen Browser, dessen Push-Dienst nicht in der Vorgabe steht (konten.PUSH_DIENSTE: Chrome und Verwandte, Firefox,
+# Safari, Edge); der Wert ersetzt die Vorgabe und gehört in <FR_DIENST>/konten.env. (leer)
+#FR_PUSH_DIENSTE=push.example.org,.push.example.net

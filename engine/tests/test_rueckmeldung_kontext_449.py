@@ -174,7 +174,7 @@ def gebaut(tmp_path, reise, rs_null=False):
     if rs_null:
         html = index.read_text(encoding="utf-8")
         assert RS_ALT in html
-        index.write_text(html.replace(RS_ALT, "const RS = null;"), encoding="utf-8")
+        index.write_text(bauen.skripte_festlegen(html.replace(RS_ALT, "const RS = null;")), encoding="utf-8")
 
 
 def lauf(tmp_path, hash_, selektor, modus="online"):

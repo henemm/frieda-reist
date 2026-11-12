@@ -156,7 +156,7 @@ def zeitraeume_ueberschneiden(a, b):
 # Zeitpunkt an einer Bewegung (ab, an; Issue #135): Uhrzeit HH:MM am Tag der Strecke oder JJJJ-MM-TTTHH:MM mit Zeitzone
 # (+01:00, Z); die Software prüft nur die Form und meldet, wenn eine Strecke abfährt, bevor die vorige ankommt (Anschluss;
 # eine Uhrzeit ohne Datum ist Ortszeit und wird mit der Uhrzeit eines Zeitpunkts am Ort verglichen)
-ZEIT_MUSTER = re.compile(r"^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})(Z|[+-]\d{2}:\d{2})?$")
+ZEIT_MUSTER = re.compile(r"^(?:(\d{4}-\d{2}-\d{2})T)?(\d{2}):(\d{2})(Z|[+-]\d{2}:\d{2})?\Z")
 
 def gpx_datei(s):
     """GPX-Track einer Strecke (K13): gpx ist der Pfad unter medien/ oder eine Aussage {datei, quelle, geprueft} (track_anhaengen)."""

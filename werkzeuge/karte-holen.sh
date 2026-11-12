@@ -32,6 +32,9 @@ else
   MAXZOOM="${MAXZOOM:-15}"
 fi
 PMTILES_VERSION="1.31.2"   # go-pmtiles (BSD-3), github.com/protomaps/go-pmtiles
+# SHA-256 der Release-Archive dieser Version (bei einer neuen Version mit ersetzen)
+PMTILES_SHA256_X86_64="3ed7dbf4ec2e6dfe5e25b6f70d1ffc932729f93c86db353bf514dd71010a312f"
+PMTILES_SHA256_ARM64="f8bd47e7ea866863489cad588fbaf2f31f42e5821f7a03f009b3769f05801cb1"
 WERKZEUG="$WURZEL/engine/.bin/pmtiles"
 
 [ -n "${FR_KARTE_BBOX:-}" ] || [ -f "$KARTE" ] || { echo "$KARTE fehlt."; exit 1; }
@@ -43,8 +46,8 @@ WERKZEUG="$WURZEL/engine/.bin/pmtiles"
 # Werkzeug einmalig holen (liegt in engine/.bin, nicht im Repo)
 if [ ! -x "$WERKZEUG" ]; then
   case "$(uname -m)" in
-    x86_64|amd64) ARCH=x86_64 ;;
-    aarch64|arm64) ARCH=arm64 ;;
+    x86_64|amd64) ARCH=x86_64; SUMME="$PMTILES_SHA256_X86_64" ;;
+    aarch64|arm64) ARCH=arm64; SUMME="$PMTILES_SHA256_ARM64" ;;
     *) echo "Unbekannte Prozessorart $(uname -m)."; exit 1 ;;
   esac
   mkdir -p "$(dirname "$WERKZEUG")"
@@ -52,6 +55,8 @@ if [ ! -x "$WERKZEUG" ]; then
   URL="https://github.com/protomaps/go-pmtiles/releases/download/v$PMTILES_VERSION/go-pmtiles_${PMTILES_VERSION}_Linux_${ARCH}.tar.gz"
   echo "Hole pmtiles $PMTILES_VERSION ($ARCH) …"
   curl -fsSL "$URL" -o "$TMP/p.tgz" || { echo "Download fehlgeschlagen: $URL (Dateiname auf der Release-Seite prüfen)."; exit 1; }
+  # Prüfsumme: Das Programm läuft danach mit den Rechten des Aufrufers; eine ausgetauschte Datei darf nicht starten
+  echo "$SUMME  $TMP/p.tgz" | sha256sum -c --status - || { echo "Prüfsumme von $URL stimmt nicht (erwartet $SUMME). Nichts installiert."; exit 1; }
   tar xzf "$TMP/p.tgz" -C "$TMP" pmtiles
   install -m 755 "$TMP/pmtiles" "$WERKZEUG"
 fi

@@ -80,7 +80,7 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
                 continue
             n = len(auftrag.get("einladen") or [])
         # Teile für Mein Konto (#407 Stufe C): ohne Adresse, in der Sprache des Kontos; der Text bleibt für den Konnektor
-        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [e["name"]], "neue_reise", e["ordner"],
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [auftrag.get("konto_id") or e.get("konto_id") or e["name"]], "neue_reise", e["ordner"],
                            texte.t(sprache, "dienst.zustellen.konto", titel=titel, seite=links["Seite"])
                            + (texte.t(sprache, "dienst.zustellen.einladungen_eine" if n == 1 else "dienst.zustellen.einladungen_viele", n=n)
                               if n else ""), auftraege=[e["aid"]],

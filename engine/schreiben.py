@@ -59,8 +59,8 @@ import konten  # noqa: E402
 import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
 
-REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
-SCHLUESSEL_MUSTER = re.compile(r"^[a-z][a-z0-9_]*$")
+REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}\Z")
+SCHLUESSEL_MUSTER = re.compile(r"^[a-z][a-z0-9_]*\Z")
 MAX_BODY = 64 * 1024
 MAX_TEXT = 500          # Namen, Hilfe, Fragen, Beschreibungen
 MAX_WERTE = 20
@@ -863,7 +863,7 @@ def merkmal_definieren(reise_dir, wer, args):
 # ---------- Werte an Dingen (plan/routen.yaml) ----------
 # Die Routendatei wird mit ruamel.yaml rund gelesen und geschrieben: Kommentare, Reihenfolge und Fließform bleiben; nur von
 # Hand umbrochene Fließ-Mappings werden in eine Zeile gezogen (einmalige Normalform, danach ändert ein Schreibvorgang nur seine Stelle).
-ZIEL_MUSTER = re.compile(r"^(U-\d+|A-\d+|O-\d+|E-\d+[A-Za-z]?|V-\d+\.[a-z])$")
+ZIEL_MUSTER = re.compile(r"^(U-\d+|A-\d+|O-\d+|E-\d+[A-Za-z]?|V-\d+\.[a-z])\Z")
 
 
 def yaml_rund():
@@ -1191,12 +1191,12 @@ def wert_leeren(reise_dir, ziel, k):
 
 # ---------- Dinge, Wahlstellen, Optionen (plan/routen.yaml) ----------
 DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufenthalte"), "strecke": ("E", "strecken"), "ort": ("O", "orte")}
-ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+|G-\d+)$")
+ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+|G-\d+)\Z")
 
 
 PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte", "aufenthalte", "orte",
                 "strecken", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
-PLAIN_MUSTER = re.compile(r"^[^\W\d_][\w .\-]*$")
+PLAIN_MUSTER = re.compile(r"^[^\W\d_][\w .\-]*\Z")
 
 
 def skalar(k, v):
@@ -2920,7 +2920,7 @@ def tag_aendern(reise_dir, wer, args, heute=None):
 
 
 # ---------- Wissen, Fragen schließen, Personen (inhalt/*.md, offene-fragen.md, reise.yaml) ----------
-PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
+PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}\Z")
 
 
 def uebersicht_wert(reise_dir, args):
@@ -4027,6 +4027,12 @@ def option_aendern(reise_dir, wer, args, heute=None):
         neu = {f: (inhalt[f] if f in inhalt else list(knoten.get(f) or [])) for f in ("unterkuenfte", "strecken", "folge", "aufenthalte", "orte")}
         if not option_inhalt_ok(neu):
             raise Ablehnung("schreiben.option_aendern.5")
+        # Woraus eine entschiedene Option besteht, ändert nur, wer entscheiden darf: Sonst zeigte die Entscheidung
+        # einer Organisator:in danach auf andere Unterkünfte oder Strecken, ohne dass sie neu entschieden hat.
+        stand = next((x.get("status") for w in route.get("wahlstellen") or [] for x in w["optionen"] if x["id"] == oid), None)
+        if (stand in ("gewaehlt", "verworfen", "ersetzt") and not darf(wer.get("rolle"), "organisator")
+                and any(list(knoten.get(f) or []) != l for f, l in inhalt.items())):
+            raise Ablehnung("schreiben.option_aendern.9", oid=oid, w2=stand)
         for f, l in inhalt.items():
             if list(knoten.get(f) or []) != l:
                 geaendert.append(wechsel(f, list(knoten.get(f) or []), l))

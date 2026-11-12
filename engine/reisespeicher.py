@@ -71,7 +71,7 @@ AUSLAGERN = ("png", "jpg", "jpeg", "webp", "gif", "gpx", "pmtiles")   # Endungen
 NICHT_AUSLAGERN = ("medien/icon.svg", "medien/icon.png")   # klein, der Bau braucht sie: bleiben in der Datenbank
 SCHEMA_VERSION = 2
 _SUMME = re.compile(r"[0-9a-f]{64}")
-REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")   # wie schreiben.REISE_MUSTER
+REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}\Z")   # wie schreiben.REISE_MUSTER
 
 
 class VorgangVorhanden(Exception):

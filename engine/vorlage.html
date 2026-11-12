@@ -1225,6 +1225,10 @@ function el(tag, attrs, ...kinder) {
   for (const k of kinder.flat(Infinity)) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(k));
   return e;
 }
+// Text für Leaflet: Beschriftungen (bindTooltip) als Textknoten, HTML-Stellen (divIcon, Namensnennung, Ebenenwahl) maskiert.
+// Leaflet setzt jede Zeichenkette als HTML ein; Namen und Titel der Reise sind aber Text von Mitreisenden.
+const alsText = s => document.createTextNode(s == null ? "" : String(s));
+const maskiert = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => "&#" + c.charCodeAt(0) + ";");
 function norm(s) {
   return Array.from(s).map(c => (c.normalize("NFD").replace(/[̀-ͯ]/g, "") || c).toLowerCase()).join("");
 }
@@ -2851,7 +2855,7 @@ function dingMarke(karte, x, lg) {
   const alt = x.stand === "alternative";
   const mk = L.marker(x.lage, {title: x.name, alt: x.name, riseOnHover: true, zIndexOffset: alt ? 0 : 400, icon: L.divIcon({className: "rh-pw", iconSize: [22, 22],
     html: `<span class="rh-p rh-ding${alt ? " umriss" : ""}" style="--pk:${katFarbe(lg.farbe)}">${lg.symbol ? symbol(lg.symbol).outerHTML : ""}</span>`})}).addTo(karte);
-  mk.bindTooltip([x.name, lg.name].filter(Boolean).join(" · "), {direction: "top", offset: [0, -12], className: "rh-lbl"});
+  mk.bindTooltip(alsText([x.name, lg.name].filter(Boolean).join(" · ")), {direction: "top", offset: [0, -12], className: "rh-lbl"});
   mk.bindPopup(() => {
     const ding = (R.unterkuenfte || {})[x.id] || (R.aufenthalte || {})[x.id] || {};
     const kriterien = ((R.merkmale || {})[x.art] || []).filter(k => !k.auto && ["pflicht", "empfohlen"].includes(stufeVon(k)));
@@ -2869,7 +2873,7 @@ function karteZeichnen(plaene, info, box, ansicht) {
   const karte = KARTE = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: osm || !L.Browser.mobile, tap: false,
     maxZoom: osm ? 17 : 18, attributionControl: !!(K.namensnennung || K.quelle),
     maxBounds: L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]).pad(0.15)});
-  if (K.namensnennung || K.quelle) karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || K.quelle);
+  if (K.namensnennung || K.quelle) karte.attributionControl.setPrefix(false).addAttribution(maskiert(K.namensnennung || K.quelle));
   karte.on("click", () => karte.scrollWheelZoom.enable());
   box.addEventListener("mouseleave", () => karte.scrollWheelZoom.disable());
   if (osm) {
@@ -2896,10 +2900,10 @@ function karteZeichnen(plaene, info, box, ansicht) {
   const etikett = (lyr, text, label, klasse) => {
     const [dx, dy, anker] = label || [8, 4];
     const richtung = anker === "end" ? "left" : anker === "middle" ? (dy < 0 ? "top" : "bottom") : "right";
-    lyr.bindTooltip(text, {permanent: true, direction: richtung, className: "rh-lbl " + (klasse || ""), offset: [anker === "middle" ? dx : dx + (richtung === "left" ? 6 : -6), anker === "middle" ? dy : dy - 4]});
+    lyr.bindTooltip(alsText(text), {permanent: true, direction: richtung, className: "rh-lbl " + (klasse || ""), offset: [anker === "middle" ? dx : dx + (richtung === "left" ? 6 : -6), anker === "middle" ? dy : dy - 4]});
   };
   for (const g of osm ? [] : K.gipfel || []) etikett(L.marker(g.lage, {icon: L.divIcon({className: "rh-gipfel", iconSize: [12, 11]}), interactive: false, keyboard: false}).addTo(karte), g.name, g.label, "klein");
-  for (const m of osm ? [] : K.meer || []) L.marker(m.lage, {icon: L.divIcon({className: "rh-meer", html: m.name, iconSize: null}), interactive: false, keyboard: false}).addTo(karte);
+  for (const m of osm ? [] : K.meer || []) L.marker(m.lage, {icon: L.divIcon({className: "rh-meer", html: maskiert(m.name), iconSize: null}), interactive: false, keyboard: false}).addTo(karte);
 
   const lage = o => (K.orte[o] || {}).lage;
   // Weg einer Strecke: aus karte.yaml, sonst gerade Linie zwischen den Orten (Abstecher ohne Linie)
@@ -2920,7 +2924,7 @@ function karteZeichnen(plaene, info, box, ansicht) {
     : (plaene.length > 1 ? p.kurz + ", " : "") + T("seite.tag.nr_titel_doppelpunkt", {nr: d.nr, titel: d.titel || ""});
   const treffer = (w, sid, d, p) => { const z = zielVon(sid, d); if (!z) return;
     L.polyline(w, {className: "rh-treffer", weight: 22, opacity: 0, lineCap: "round"}).addTo(karte)
-      .bindTooltip(titelVon(sid, d, p), {sticky: true, className: "rh-lbl"}).on("click", () => { location.hash = z; }); };
+      .bindTooltip(alsText(titelVon(sid, d, p)), {sticky: true, className: "rh-lbl"}).on("click", () => { location.hash = z; }); };
   const segmente = {}, einmal = {}, bereich = L.latLngBounds([]);
   const merke = (d, l, b) => (segmente[d.id] = segmente[d.id] || []).push([l, b]);
   const marken = [];
@@ -3076,7 +3080,7 @@ function etappenKarte(sid) {
     if (eintrag.karte) return;
     const karte = eintrag.karte = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: !touch, tap: false, maxZoom: 17,
       maxBounds: L.latLngBounds([K.rahmen.sued, K.rahmen.west], [K.rahmen.nord, K.rahmen.ost]).pad(0.15)});
-    karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || "");
+    karte.attributionControl.setPrefix(false).addAttribution(maskiert(K.namensnennung || ""));
     box.style.background = dunkel() ? "#31353f" : "#80deea";
     protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15, attribution: ""}).addTo(karte);
     karteBedienbar(karte, box, hinweis);
@@ -3088,14 +3092,14 @@ function etappenKarte(sid) {
       const nummer = p.gpx || katDef(p.kat).nummeriert, s = nummer ? null : punktArt(p).symbol || katDef(p.kat).symbol;
       // Farbe im inneren Element: Pico setzt den Hintergrund von Leaflet-Markierungen zurück
       const icon = L.divIcon({className: "rh-pw", iconSize: nummer ? [22, 22] : [24, 24],
-        html: punktMarke(p, nummer ? p.nr : s ? symbol(s).outerHTML : "")});
+        html: punktMarke(p, nummer ? maskiert(p.nr) : s ? symbol(s).outerHTML : "")});
       const mk = L.marker(p.lage, {icon, title: punktName(p), alt: punktName(p), riseOnHover: true, zIndexOffset: nummer ? 500 : 0}).addTo(g);
       mk.bindPopup(() => punktPopup(sid, i, p), {maxWidth: 260});
       eintrag.marken[i] = mk;
     });
     const ebenen = {};
     for (const [k, d] of Object.entries(KATEGORIEN)) if (d.gruppe === "punkt" && gruppen[k])
-      ebenen[`${d.name} (${punkte.filter(p => p.kat === k).length})`] = gruppen[k];
+      ebenen[maskiert(`${d.name} (${punkte.filter(p => p.kat === k).length})`)] = gruppen[k];
     if (Object.keys(ebenen).length) L.control.layers(null, ebenen, {collapsed: true, position: "topright"}).addTo(karte);
     karte.fitBounds(linie.getBounds(), {padding: [18, 18]});
   };
@@ -3123,7 +3127,7 @@ function tagesKarte(t) {
     const karte = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: !touch, tap: false, maxZoom: 17,
       maxBounds: L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]).pad(0.15)});
     for (const e of eintraege) e.karte = karte;
-    karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || K.quelle || "");
+    karte.attributionControl.setPrefix(false).addAttribution(maskiert(K.namensnennung || K.quelle || ""));
     if (osm) {
       box.style.background = dunkel() ? "#31353f" : "#80deea";
       protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: K.grundkarte.maxzoom || 15, attribution: ""}).addTo(karte);
@@ -3145,7 +3149,7 @@ function tagesKarte(t) {
     for (const e of eintraege) ((R.punkte || {})[e.sid] || []).forEach((p, i) => {
       const nummer = p.gpx || katDef(p.kat).nummeriert, sy = nummer ? null : punktArt(p).symbol || katDef(p.kat).symbol;
       const mk = L.marker(p.lage, {title: punktName(p), alt: punktName(p), riseOnHover: true, zIndexOffset: nummer ? 500 : 0,
-        icon: L.divIcon({className: "rh-pw", iconSize: nummer ? [22, 22] : [24, 24], html: punktMarke(p, nummer ? p.nr : sy ? symbol(sy).outerHTML : "")})}).addTo(karte);
+        icon: L.divIcon({className: "rh-pw", iconSize: nummer ? [22, 22] : [24, 24], html: punktMarke(p, nummer ? maskiert(p.nr) : sy ? symbol(sy).outerHTML : "")})}).addTo(karte);
       mk.bindPopup(() => punktPopup(e.sid, i, p), {maxWidth: 260});
       e.marken[i] = mk;
     });
@@ -3215,7 +3219,7 @@ function wissenKarte(bid) {
   const zeichnen = () => {
     if (eintrag.karte) return;
     const karte = eintrag.karte = L.map(box, {zoomSnap: 0.25, scrollWheelZoom: false, dragging: !touch, tap: false, maxZoom: 17});
-    karte.attributionControl.setPrefix(false).addAttribution(WK.namensnennung || "");
+    karte.attributionControl.setPrefix(false).addAttribution(maskiert(WK.namensnennung || ""));
     box.style.background = dunkel() ? "#31353f" : "#80deea";
     karteBedienbar(karte, box, hinweis);
     punkte.forEach((p, i) => {
@@ -4211,7 +4215,7 @@ function ortKarte(m, oid) {
   const rf = K.rahmen;
   const karte = KARTE = L.map(box, {zoomSnap: 0.5, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: false, zoomControl: true,
     attributionControl: !!(K.namensnennung || K.quelle), maxBounds: L.latLngBounds([rf.sued, rf.west], [rf.nord, rf.ost]).pad(0.15)});
-  if (K.namensnennung || K.quelle) karte.attributionControl.setPrefix(false).addAttribution(K.namensnennung || K.quelle);
+  if (K.namensnennung || K.quelle) karte.attributionControl.setPrefix(false).addAttribution(maskiert(K.namensnennung || K.quelle));
   const osm = !!(K.grundkarte && window.protomapsL);
   if (osm) protomapsL.leafletLayer({url: K.grundkarte.url, flavor: dunkel() ? "dark" : "light", lang: LOCALE.split("-")[0], maxDataZoom: 15, attribution: ""}).addTo(karte);
   else for (const poly of [K.kueste, ...(K.inseln || [])]) L.polygon(poly, {className: "rh-land", weight: 1.2, fillOpacity: 1, interactive: false}).addTo(karte);
@@ -4221,7 +4225,7 @@ function ortKarte(m, oid) {
     const drin = darin.includes(id);
     if (!drin && !ortAbschnitt(id)) continue;
     const mk = L.marker(o.lage, {icon: L.divIcon({className: "rh-ort " + (drin ? "rh-darin" : "rh-punkt"), iconSize: [18, 18]}), title: ortName(id), keyboard: false}).addTo(karte);
-    mk.bindTooltip(o.name || ortName(id), {permanent: drin, direction: "right", className: "rh-lbl klein"});
+    mk.bindTooltip(alsText(o.name || ortName(id)), {permanent: drin, direction: "right", className: "rh-lbl klein"});
     if (ortSeiteZu(id) || drin) mk.on("click", () => { location.hash = id; });
     if (drin) bereich.extend(o.lage);
   }
@@ -4232,7 +4236,7 @@ function ortKarte(m, oid) {
   }
   if (hier) {
     L.marker(hier, {icon: L.divIcon({className: "rh-ort rh-hier", iconSize: [26, 26]}), interactive: false, keyboard: false}).addTo(karte)
-      .bindTooltip(K.orte[oid].name || ortName(oid), {permanent: true, direction: "right", className: "rh-lbl"});
+      .bindTooltip(alsText(K.orte[oid].name || ortName(oid)), {permanent: true, direction: "right", className: "rh-lbl"});
     bereich.extend(hier);
   }
   // Ausschnitt erst, wenn die Karte im Dokument hängt und ihre Größe hat (die Ortsseite hängt sie nach dem Bau ein)

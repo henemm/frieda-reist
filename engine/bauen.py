@@ -10,6 +10,7 @@ Eckdaten, Status, Personen und Einstellungen stehen in reisen/<reise>/reise.yaml
 die Zuordnung der Inhalte (Abschnitt -> ID, Kennzahlen) in reisen/<reise>/reise.json,
 der Plan mit allen Alternativen in reisen/<reise>/plan/routen.yaml (siehe routen.py).
 """
+import base64
 import datetime
 import hashlib
 import html as htmlmod
@@ -28,6 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
     import markdown
+    import nh3
     import yaml
     from PIL import Image, ImageOps
 except ImportError:
@@ -128,6 +130,35 @@ def fussnote_html(definition):
     return " · ".join(aus)
 
 
+def js_einbetten(js):
+    """JSON für ein <script> der Seite: „<“ als \\u003c. Sonst beendet „</script>“ in einem Reisetext das Skript, und
+    „<!--<script>“ lässt den Browser das echte Ende übersehen (die Seite bliebe leer)."""
+    return js.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+
+
+def skripte_festlegen(seite):
+    """Content-Security-Policy in den Kopf der Seite: Es laufen nur die Skripte, die der Generator selbst hineinschreibt
+    (Prüfsumme je Skript) und Dateien der eigenen Adresse. Zweite Sicherung: Gelangt doch einmal fremdes HTML in einen
+    Text, bleiben eingeschleuste Skripte, on…-Attribute und javascript:-Links wirkungslos."""
+    seite = re.sub(r'\n<meta http-equiv="Content-Security-Policy" content="[^"]*">', "", seite)   # erneut festlegen (Tests)
+    summen = [base64.b64encode(hashlib.sha256(m.encode("utf-8")).digest()).decode()
+              for m in re.findall(r"<script>(.*?)</script>", seite, flags=re.S)]
+    regel = "script-src 'self' " + " ".join(f"'sha256-{x}'" for x in summen) + "; object-src 'none'; base-uri 'none'"
+    if seite.count("<head>") != 1:
+        raise BauFehler(["vorlage.html must contain <head> exactly once."])
+    return seite.replace("<head>", f'<head>\n<meta http-equiv="Content-Security-Policy" content="{regel}">', 1)
+
+
+def text_saeubern(h):
+    """HTML eines Reisetexts säubern: nur die Tags, Attribute und Adressen, die TextPruefung erlaubt. Die Prüfung sagt
+    der schreibenden Person, was nicht geht; gesäubert wird trotzdem immer, mit einem Parser, der wie ein Browser liest
+    (nh3). Sonst genügte ein Unterschied zwischen Pythons Parser und dem Browser (CDATA, Kommentare), um Skript auf die
+    Seite zu bringen."""
+    return nh3.clean(h, tags=TextPruefung.TAGS, attributes={k: set(v) for k, v in TextPruefung.ATTRIBUTE.items()},
+                     url_schemes=TextPruefung.SCHEMATA, link_rel=None, strip_comments=True,
+                     filter_style_properties={"text-align"})
+
+
 class TextPruefung(HTMLParser):
     """Reisetexte sind Fließtext (docs/design.md, Reisetexte): nur, was Markdown selbst erzeugt. Eigenes HTML mit
     Stilen, Klassen oder Bausteinen umgeht das Designsystem. Sammelt, was nicht vorgesehen ist."""
@@ -135,14 +166,26 @@ class TextPruefung(HTMLParser):
             "blockquote", "hr", "br", "table", "thead", "tbody", "tr", "th", "td"}
     ATTRIBUTE = {"a": {"href", "title"}, "img": {"src", "alt", "title"}, "th": {"style"}, "td": {"style"}}
 
+    # Adressen in Links und Bildern: nur diese Schemata, sonst relativ (medien/…, #…). javascript:, data: und
+    # Ähnliches würden beim Antippen Code im Namen der Leser:in ausführen.
+    SCHEMATA = {"http", "https", "mailto", "tel"}
+
     def __init__(self):
         super().__init__()
         self.fremd = []
+
+    @classmethod
+    def adresse_erlaubt(cls, v):
+        # Browser überlesen Leer- und Steuerzeichen im Schema („java\tscript:“), also vor dem Vergleich entfernen
+        m = re.match(r"([a-z][a-z0-9+.-]*):", re.sub(r"[\x00-\x20\x7f]", "", v or "").lower())
+        return not m or m.group(1) in cls.SCHEMATA
 
     def handle_starttag(self, tag, attrs):
         if tag not in self.TAGS:
             self.fremd.append(f"<{tag}>")
         for k, v in attrs:
+            if k in ("href", "src") and not self.adresse_erlaubt(v):
+                self.fremd.append(f"<{tag} {k}={(v or '').split(':', 1)[0].strip()[:20]}:>")
             # Spaltenausrichtung der Tabellen-Erweiterung ist das einzige erlaubte style
             if k == "style" and re.fullmatch(r"text-align: (left|right|center);", v or ""):
                 continue
@@ -364,6 +407,7 @@ class Bauer:
         pruefung.feed(h)
         if pruefung.fremd:
             self.fehler.append(texte.satz("pruefung.bauen.5", w1=Path(quelldatei).name, w2=', '.join(dict.fromkeys(pruefung.fremd))))
+        h = text_saeubern(h)
         h = tabellen_ordnen(h)
         h = re.sub(r'<a href="(https?://)', r'<a target="_blank" rel="noopener" href="\1', h)
         h = re.sub(r'<img ', '<img loading="lazy" ', h)
@@ -1332,22 +1376,22 @@ class Bauer:
         vorlage = vorlage.replace("<!--__SYMBOLE__-->", symbole(), 1)
         vorlage = vorlage.replace('data-release="__RELEASE__"', f'data-release="{release_attribut()}"', 1)
         if self.umzug:   # Seite ist umgezogen: gleicher Pfad auf der neuen Adresse (alte Browser-Speicher räumt sw.js auf)
-            vorlage = vorlage.replace("<head>", "<head>\n<script>if (location.origin !== " + json.dumps(self.umzug) + ") location.replace(" +
-                                      json.dumps(self.umzug) + " + location.pathname + location.search + location.hash)</script>", 1)
+            vorlage = vorlage.replace("<head>", "<head>\n<script>if (location.origin !== " + js_einbetten(json.dumps(self.umzug)) + ") location.replace(" +
+                                      js_einbetten(json.dumps(self.umzug)) + " + location.pathname + location.search + location.hash)</script>", 1)
         vorlage = vorlage.replace("<!--__GRUNDKARTE__-->", "".join(
             f'<script src="{n}"></script>' for n in VENDOR_GRUNDKARTE.values()) if self.grundkarte or self.grundkarten else "", 1)
         if any(vorlage.count(p) != 1 for p in ("/*__DATEN__*/null", "/*__TEXTE__*/null", "/*__STARTFEHLER__*/null")):
             raise BauFehler(["vorlage.html must contain the placeholders /*__DATEN__*/null, /*__TEXTE__*/null and "
                              "/*__STARTFEHLER__*/null exactly once."])
         vorlage = re.sub(r'<html lang="[^"]*">', lambda _: f'<html lang="{daten["reise"]["sprache"]}" dir="{texte.sprache(daten["reise"]["sprache"]).RICHTUNG}">', vorlage, count=1)
-        katalog = json.dumps(texte_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+        katalog = js_einbetten(json.dumps(texte_fuer_seite(), ensure_ascii=False, separators=(",", ":")))
         vorlage = vorlage.replace("/*__TEXTE__*/null", katalog, 1)
-        startfehler = json.dumps(startfehler_fuer_seite(), ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+        startfehler = js_einbetten(json.dumps(startfehler_fuer_seite(), ensure_ascii=False, separators=(",", ":")))
         vorlage = vorlage.replace("/*__STARTFEHLER__*/null", startfehler, 1)
         js = json.dumps(daten, ensure_ascii=False, separators=(",", ":"))
-        js = js.replace("</", "<\\/").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+        js = js_einbetten(js)
         self.ziel_dir.mkdir(parents=True, exist_ok=True)
-        (self.ziel_dir / "index.html").write_text(vorlage.replace("/*__DATEN__*/null", js), encoding="utf-8")
+        (self.ziel_dir / "index.html").write_text(skripte_festlegen(vorlage.replace("/*__DATEN__*/null", js)), encoding="utf-8")
         (self.ziel_dir / "daten.json").write_text(json.dumps(daten, ensure_ascii=False), encoding="utf-8")
         self.bilder_schreiben()
         self.pwa_schreiben()

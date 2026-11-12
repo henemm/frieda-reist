@@ -185,6 +185,16 @@ def grenze_warteliste_tag():
     return _grenze("FR_GRENZE_WARTELISTE_TAG", VORGABE_GRENZE_WARTELISTE_TAG)
 
 
+VORGABE_GRENZE_CODES_TAG = 30
+
+
+def grenze_codes_tag():
+    """Höchstzahl der Anmeldecodes je Kalendertag (UTC) an Adressen ohne Konto und ohne offene Einladung
+    (FR_GRENZE_CODES_TAG), damit niemand über das Anmeldeformular das Mail-Kontingent der Instanz leert. Wer ein Konto
+    oder eine Einladung hat, bekommt seinen Code immer."""
+    return _grenze("FR_GRENZE_CODES_TAG", VORGABE_GRENZE_CODES_TAG)
+
+
 VORGABE_LOESCHFRIST_TAGE = 14
 
 

@@ -178,7 +178,7 @@ def schluessel_aus_name(name):
 
 
 # ---------- Neue Reise (Paket H, docs/neue-reise.md) ----------
-PFAD_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{1,39}$")   # passt in die Ablage (rueckmeldungen.REISE_MUSTER)
+PFAD_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{1,39}\Z")   # passt in die Ablage (rueckmeldungen.REISE_MUSTER)
 MAX_NOTIZ = 4000
 MAX_PERSONEN = 20
 
