@@ -367,7 +367,9 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .buchung .z.ueber{color:var(--warn)}
 .buchung details.verlauf>summary{cursor:pointer}
 .chip.nummer{display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums;letter-spacing:.03em;user-select:all}
-.chip.nummer .kopieren{border:0;background:none;color:inherit;cursor:pointer;padding:0 0 0 2px;margin:0;font:inherit;line-height:1;display:inline-flex;width:auto}
+.chip.nummer .kopieren{border:0;background:none;color:inherit;cursor:pointer;padding:0 0 0 2px;margin:0;font:inherit;line-height:1;display:inline-flex;width:auto;position:relative}
+/* Tippfläche 44 px um das kleine Zeichen, ohne den Chip zu vergrößern (#545) */
+.chip.nummer .kopieren::after{content:"";position:absolute;inset:-15px -14px}
 .chip.nummer .kopieren .sym{width:1.05em;height:1.05em}
 .chip.nummer .kopieren:focus-visible{outline:2px solid var(--acc);border-radius:4px}
 /* ---------- Einzelheiten (Stand-Leiter, 31.10.2026): das eine Aufklappen eines Dings, offen bis zur Buchung ---------- */
@@ -868,7 +870,7 @@ details.pack-klapper>summary .pack-summe{margin:0 0 0 auto}
 .pico button.pack-alle{margin:0 0 0 auto;width:auto;min-height:40px;padding:0 6px;background:none;border:0;color:var(--acc);font:600 var(--t-klein)/1.2 var(--font-text);cursor:pointer}
 .pack-fortschritt{font-size:var(--t-klein);font-weight:400;color:var(--mut)}
 .pico details.pack-weg{margin:14px 0 0;max-width:var(--lese)}
-.pico details.pack-weg>summary{color:var(--mut);font-size:var(--t-klein)}
+.pico details.pack-weg>summary{color:var(--mut);font-size:var(--t-klein);padding-block:12px}
 /* ==================== 6 Vorlagen: Teile der Ansichten ==================== */
 .zurueck{display:inline-block;margin:0 0 8px;padding:6px 0;text-decoration:none;font-weight:600}
 a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);text-decoration:none}
@@ -1170,7 +1172,7 @@ const REGEL = {
   frageZu: new RegExp("^(" + iwMuster("inhalt.frage.erledigt", "inhalt.frage.geklaert", "inhalt.frage.beantwortet", "inhalt.frage.entfaellt") + ")", "i"),
   frageAufgabe: new RegExp("^→\\s*(?:" + iwMuster("inhalt.frage.aufgabe") + ")\\s*", "i"),
   frageOffen: new RegExp("^(?:" + iwMuster("inhalt.frage.offen") + ")\\b[\\s:,–-]*", "i"),
-  tagNr: new RegExp("^(?:" + iwMuster("inhalt.tag") + ")\\s+\\d+\\s*:?\\s*"),
+  tagNr: new RegExp("^(?:" + iwMuster("inhalt.tag") + ")\\s+\\d+\\s*[:,;–-]?\\s*"),   // „Tag 3: …“, „Tag 3, …“ (#545)
   uebersicht: new RegExp("^(?:" + iwMuster("inhalt.uebersicht") + "):\\s*"),
   fristWort: new RegExp("^(?:" + iwMuster("inhalt.frist.praeposition") + ")\\b", "i"),
   nummerWort: new RegExp("\\s*\\b(?:" + iwMuster("inhalt.auftrag", "inhalt.rueckmeldung", "inhalt.anfrage") + ")\\s+[AR]-[\\w-]+(?:\\s+(?:" + iwMuster("inhalt.herkunft.aus_app") + "|(?:" + iwMuster("inhalt.herkunft.von") + ") [^;,·)]+))?", "g"),
@@ -2436,7 +2438,7 @@ function wahlVergleich(w, liste, datum) {
         auf ? el("tr", {class: "wm-mehr" + (an(o) ? " an" : "")}, el("td", {colspan: String(zeilen.length + 1)}, optionEinzelheiten(w, o, weitereMerkmale(o)))) : null].filter(Boolean); })))));
   if (nebenbei.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.weitere_merkmale", {merkmale: nebenbei.map(k => k.name).join(", ")})
     + T("seite.vergleich.spalten_hinweis")));
-  box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte" + (an(o) ? " an" : "")},
+  box.append(el("div", {class: "wm-karten"}, opts.map(o => el("div", {class: "wm-karte ziel" + (an(o) ? " an" : ""), "data-ziel-auch": o.id},
     el("div", {class: "k"}, o.titel), optionChips(w, o), (o.orte || []).length ? ortChips(o.orte) : null, heroZeile(w, werte(o), datum), merkmalListe(zeilen, werte(o), datum, true) || el("div", {class: "z klein"}, belegt.length ? T("seite.vergleich.keine_unterschiede") : T("seite.vergleich.noch_keine_merkmale")),
     (hk => hk ? el("details", {class: "wm-herkunft"}, el("summary", {}, T("seite.herkunft.titel")), hk) : null)(herkunftZeile([...zeilen, ...(heroKriterium(w) ? [heroKriterium(w)] : [])], werte(o), datum))))));
   if (belegt.length > zeilen.length) box.append(el("p", {class: "z klein"}, T("seite.vergleich.gleiche_zeilen", {n: belegt.length - zeilen.length})));
@@ -2568,7 +2570,7 @@ function optionChips(w, o) {
 // ohneMerkmale: Die Merkmale stehen schon im Wahl-Modul darüber
 // ohneId: in der aufgeklappten Zeile der Tabelle (die Zeile trägt die Kennung als Sprungziel)
 function optionBlock(w, o, ohneMerkmale, ohneId) {
-  const b = el("div", {class: "option ziel" + (o.aktiv ? " aktiv" : ""), id: ohneId ? null : o.id, "data-ziel": ohneId ? null : o.id});
+  const b = el("div", {class: "option ziel" + (o.aktiv ? " aktiv" : ""), id: ohneId ? null : o.id, "data-ziel": ohneId ? null : o.id, "data-ziel-auch": ohneId ? o.id : null});
   b.append(el("div", {class: "k"}, o.titel, zid(o.id)), optionChips(w, o));
   if (o.ausloeser) b.append(el("div", {class: "z"}, el("b", {}, T("seite.label.wann")), o.ausloeser));
   if (o.text) b.append(el("div", {class: "z"}, o.text));
@@ -3455,7 +3457,7 @@ function tagZeile(t) {
       (w.wann === "unterwegs" ? T("seite.wahl.unterwegs_label") : T("seite.label.wahl")) + w.titel.replace(REGEL.tagNr, "")))];
   return el("a", {class: "tagzeile vorschau", href: "#" + t.id, "data-tag": t.id},
     el("span", {class: "tz-punkt", "aria-hidden": "true"}),
-    el("span", {class: "tz-datum"}, el("b", {}, String(t.nr)), t.datum ? datumText(t.datum, t.wochentag) : null),
+    el("span", {class: "tz-datum"}, t.nr != null ? el("b", {}, String(t.nr)) : null, t.datum ? datumText(t.datum, t.wochentag) : null),
     el("span", {class: "tz-titel"}, el("span", {class: "tz-name"}, t.titel), marken.length ? el("span", {class: "chips tz-marken"}, marken) : null),
     el("span", {class: "tz-zeit"}, [m ? dauer(m) : ohneZeit ? T("seite.tag.angaben_fehlen") : "", km ? kmText(km) : ""].filter(Boolean).join(" · ")),
     s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null);
@@ -5920,12 +5922,15 @@ function vorgabeEltern(id) {
     return {von: a.tage.length ? a.tage : ortSeite ? [a.ort] : []};
   }
   if (R.strecken[id] && !ETAPPE_TAG.has(id)) {   // Fahrt ohne Dossier: der Tag, an dem sie gefahren wird
-    const t = PLAN_ANSICHT.tage.find(x => x.strecken.some(st => st.id === id));
-    return {von: t ? [t.id] : []};
+    const mit = x => (x.strecken || []).some(st => st.id === id);
+    const t = PLAN_ANSICHT.tage.find(mit);
+    // sonst der Tag einer anderen Möglichkeit oder eines anderen Plans, an dem sie gefahren wird (#544)
+    const sonst = t ? null : R.tage.find(mit) || Object.values(R.weitere_tage).find(mit);
+    return {von: t ? [t.id] : [], tag: sonst ? sonst.id : null};
   }
   if (R.unterkuenfte[id]) {   // Nacht am Tag; sonst die Option, in der sie steht
     const o = R.wahlstellen.flatMap(w => w.optionen).find(x => (x.unterkuenfte || []).includes(id));
-    return {von: [...R.unterkuenfte[id].naechte, ...(o ? [o.id] : [])]};
+    return {von: [...R.unterkuenfte[id].naechte, ...(o ? [o.id] : [])], ersatz: o ? o.id : null};
   }
   const w = wahlZu.get(id) || (optionZu.get(id) || [])[0];
   if (!w) return {von: []};
@@ -5937,6 +5942,10 @@ function seiteVon(x, tiefe) {
   if (PLAN_ANSICHT.tage.some(t => t.id === x)) return {tag: x};
   if (ETAPPE_TAG.has(x)) return {tag: ETAPPE_TAG.get(x)};
   if (proId.has(x) || ortSeiteZu(x)) return {abschnitt: x};
+  if (blockZu.has(x)) {   // Block eines Abschnitts (an: W-06.block): die Seite seines Abschnitts, dort der Block (#544)
+    const a = blockZu.get(x).id;
+    return ETAPPE_TAG.has(a) ? {tag: ETAPPE_TAG.get(a), bei: x} : {abschnitt: a, bei: x};
+  }
   if (R.unterkuenfte[x] || R.strecken[x] || (R.aufenthalte || {})[x] || wahlZu.has(x) || optionZu.has(x)) return heimat(x, tiefe + 1);
   return null;
 }
@@ -5948,6 +5957,7 @@ function heimat(id, tiefe = 0) {
     const h = von && seiteVon(von, tiefe);
     if (h) return {...h, ziel: id, ...(v.ersatz && von !== eltern ? {ersatz: v.ersatz} : {})};
   }
+  if (v.tag) return {tag: v.tag, ziel: id};
   return v.offen ? {offen: true, ziel: id, ersatz: v.ersatz} : null;
 }
 // Tag, an dem ein Ding vollständig steht (Etappe: der Tag, an dem sie gegangen wird); sonst undefined
@@ -5963,7 +5973,9 @@ function amElement(m, a) {
     bereich(T("seite.wahl.zur_wahl"), karten.map(w => zeigeDing(w.id, "karte")), zeilen.length ? el("div", {class: "wliste"}, zeilen.map(w => zeigeDing(w.id, "zeile"))) : null);
   }
   // Aufenthalte vollständig als Karte (#328); den Ort nennt eine Ortsseite schon
-  const auf = Object.keys(R && R.aufenthalte || {}).filter(x => dichteHier(x, id) === "karte");
+  // Kartenpunkte (Art mit gruppe) an einem Block dieses Abschnitts stehen auf der Karte ihres Blocks, nicht als Karte hier
+  const auf = Object.keys(R && R.aufenthalte || {}).filter(x => dichteHier(x, id) === "karte"
+    && ((R.eltern || {})[x] === id || !blockZu.has((R.eltern || {})[x]) || !(KATEGORIEN[R.aufenthalte[x].art] || {}).gruppe));
   if (auf.length) bereich(T("seite.aufenthalt.am_element"), ...auf.map(x => zeigeDing(x, "karte", {ohneOrt: R.aufenthalte[x].ort === id})));
   if (R && (a.uebersicht || []).length) bereich(T("seite.art_uebersicht.kopf"), artUebersicht(a.uebersicht));
   const mitnehmen = mitnehmenZeile(id);   // Gegenstände der Packliste, die an diesem Ort oder dieser Strecke hängen (ADR-0010)
@@ -5999,14 +6011,25 @@ function offenZahl() {
 }
 
 function zumZiel(id) {
-  const e = document.getElementById(id);
+  let e = document.getElementById(id);
   if (!e) return;
-  // Teil eines Reiters (Tagesseite): erst den Reiter wählen
-  if (e.matches("[role=tabpanel][hidden]")) reiterWaehlen(e.closest(".reiter"), e.dataset.teil);
-  for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
-  const kurz = e.closest(".weg-text.kurz");
-  if (kurz) wegAuf(kurz.closest(".weg-rahmen"), true);
-  if (e.tagName === "DETAILS") e.open = true;
+  const oeffnen = e => {
+    // Teil eines Reiters (Tagesseite): erst den Reiter wählen
+    if (e.matches("[role=tabpanel][hidden]")) reiterWaehlen(e.closest(".reiter"), e.dataset.teil);
+    for (let p = e.parentElement; p; p = p.parentElement) if (p.tagName === "DETAILS") p.open = true;
+    const kurz = e.closest(".weg-text.kurz");
+    if (kurz) wegAuf(kurz.closest(".weg-rahmen"), true);
+    if (e.tagName === "DETAILS") e.open = true;
+  };
+  oeffnen(e);
+  // Bleibt das Ziel ausgeblendet (Zeile der Vergleichstabelle am Handy), gilt sein sichtbares Gegenstück (Karte, #544)
+  // checkVisibility kennt auch den Inhalt eines zugeklappten Aufklappers (content-visibility), getClientRects nicht
+  const zuSehen = x => x.checkVisibility ? x.checkVisibility() : !!x.getClientRects().length;
+  if (!zuSehen(e)) {
+    const auch = [...document.querySelectorAll(`[data-ziel-auch="${CSS.escape(id)}"]`)];
+    // zuerst eines, das schon zu sehen ist; sonst das erste, das sich aufklappen lässt (Block „Alle Möglichkeiten“)
+    e = auch.find(zuSehen) || auch.find(x => { oeffnen(x); return zuSehen(x); }) || e;
+  }
   e.scrollIntoView({block: "start"});
   e.classList.remove("blitz");
   void e.offsetWidth;
@@ -6071,7 +6094,7 @@ function route(behalten) {
     else if (x.abschnitt) { const a = proId.get(x.abschnitt) || ortSeiteZu(x.abschnitt); zeigeReiter(TYP_REITER[a.typ]);
       TIEFE && a.typ === "ort" ? ansichtOrt(m, a) : ansichtAbschnitt(m, a); }
     else { zeigeReiter("zu-tun"); ansichtZuTun(m); }
-    ziel = document.getElementById(x.ziel) || !x.ersatz ? x.ziel : x.ersatz;
+    ziel = [x.ziel, x.ersatz, x.bei, (R.eltern || {})[x.ziel]].find(z => z && document.getElementById(z)) || x.ziel;
   }
   else { start(); if (document.getElementById(h)) ziel = h; }
   if (zielB && document.getElementById(zielB)) ziel = zielB;
