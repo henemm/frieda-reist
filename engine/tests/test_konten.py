@@ -333,6 +333,85 @@ def test_mail_per_smtp(umgebung, monkeypatch):
     assert gesendet[3][0] == IDA and gesendet[3][2].startswith("Frieda: dein Code")
 
 
+
+def _smtp_spion(gesendet, abgelehnt=()):
+    """smtplib.SMTP-Ersatz: zeichnet auf; Hosts in `abgelehnt` werfen beim Einliefern."""
+    class SMTP:
+        def __init__(self, host, port, timeout):
+            self.host = host
+            gesendet.append(("verbinde", host, port))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def starttls(self):
+            pass
+
+        def login(self, u, p):
+            gesendet.append(("login", self.host, u))
+
+        def send_message(self, m):
+            if self.host in abgelehnt:
+                raise konten.smtplib.SMTPDataError(450, b"daily quota exceeded")
+            gesendet.append(("gesendet", self.host, m["To"], m["From"], m["Reply-To"]))
+    return SMTP
+
+
+def _smtp_umgebung(monkeypatch, ersatz=True):
+    monkeypatch.delenv("FR_MAIL_DATEI")
+    werte = {"FR_SMTP_HOST": "erst.beispiel.invalid", "FR_SMTP_USER": "u1", "FR_SMTP_PASS": "p1",
+             "FR_ABSENDER": "Frieda <frieda@beispiel.invalid>"}
+    if ersatz:
+        werte.update({"FR_SMTP_ERSATZ_HOST": "ersatz.beispiel.invalid", "FR_SMTP_ERSATZ_USER": "u2",
+                      "FR_SMTP_ERSATZ_PASS": "p2"})
+    else:
+        monkeypatch.delenv("FR_SMTP_ERSATZ_HOST", raising=False)
+    for k, w in werte.items():
+        monkeypatch.setenv(k, w)
+
+
+def test_mail_ersatzweg_wenn_erster_ablehnt(umgebung, monkeypatch, capsys):
+    gesendet = []
+    _smtp_umgebung(monkeypatch)
+    monkeypatch.setattr(konten.smtplib, "SMTP", _smtp_spion(gesendet, abgelehnt={"erst.beispiel.invalid"}))
+    konten.mail_senden(IDA, "Betreff", "Text", antwort_an=KARL)
+    assert ("verbinde", "ersatz.beispiel.invalid", 587) in gesendet
+    assert ("login", "ersatz.beispiel.invalid", "u2") in gesendet
+    assert gesendet[-1] == ("gesendet", "ersatz.beispiel.invalid", IDA, "Frieda <frieda@beispiel.invalid>", KARL)
+    fehler = capsys.readouterr().err
+    assert "FR_SMTP_ERSATZ_HOST" in fehler and IDA not in fehler and "Text" not in fehler
+
+
+def test_mail_ersatzweg_unbenutzt_wenn_erster_annimmt(umgebung, monkeypatch, capsys):
+    gesendet = []
+    _smtp_umgebung(monkeypatch)
+    monkeypatch.setattr(konten.smtplib, "SMTP", _smtp_spion(gesendet))
+    konten.mail_senden(IDA, "Betreff", "Text")
+    assert [g[1] for g in gesendet if g[0] == "verbinde"] == ["erst.beispiel.invalid"]
+    assert capsys.readouterr().err == ""
+
+
+def test_mail_ohne_ersatzweg_fehler_wie_bisher(umgebung, monkeypatch):
+    gesendet = []
+    _smtp_umgebung(monkeypatch, ersatz=False)
+    monkeypatch.setattr(konten.smtplib, "SMTP", _smtp_spion(gesendet, abgelehnt={"erst.beispiel.invalid"}))
+    with pytest.raises(konten.KontoFehler, match="nicht verschicken"):
+        konten.mail_senden(IDA, "Betreff", "Text")
+    assert [g[1] for g in gesendet if g[0] == "verbinde"] == ["erst.beispiel.invalid"]
+
+
+def test_mail_beide_wege_scheitern(umgebung, monkeypatch):
+    gesendet = []
+    _smtp_umgebung(monkeypatch)
+    monkeypatch.setattr(konten.smtplib, "SMTP", _smtp_spion(
+        gesendet, abgelehnt={"erst.beispiel.invalid", "ersatz.beispiel.invalid"}))
+    with pytest.raises(konten.KontoFehler, match="nicht verschicken"):
+        konten.mail_senden(IDA, "Betreff", "Text")
+    assert not [g for g in gesendet if g[0] == "gesendet"]
+
 def test_befehle(umgebung, capsys):
     _, k = einloggen(umgebung, IDA, "Ida")
     konten.reisen_anlegen_anfragen(k["id"])

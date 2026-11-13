@@ -19,6 +19,7 @@ Adresse ein Konto hat. Begrenzung: je Adresse 3 Codes in 15 Minuten, je IP 10 in
 
 Ablage: <FR_KONTEN, sonst Seiten>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
 Mail: FR_SMTP_HOST, FR_SMTP_PORT (587), FR_SMTP_USER, FR_SMTP_PASS, FR_ABSENDER; Links mit FR_BASIS.
+      FR_SMTP_ERSATZ_HOST, _PORT (587), _USER, _PASS: zweiter Weg, wenn der erste ablehnt (#561).
       FR_MAIL_DATEI schreibt Mails stattdessen als JSON-Zeilen in eine Datei (Tests, Probebetrieb).
 
 Aufrufe:
@@ -278,13 +279,25 @@ def mail_senden(an, betreff, text, antwort_an=None):
         m["Reply-To"] = antwort_an
     m.set_content(text)
     try:
-        with smtplib.SMTP(host, int(os.environ.get("FR_SMTP_PORT", "587")), timeout=20) as s:
-            s.starttls()
-            if os.environ.get("FR_SMTP_USER"):
-                s.login(os.environ["FR_SMTP_USER"], os.environ.get("FR_SMTP_PASS", ""))
-            s.send_message(m)
+        _einliefern(m, "FR_SMTP")
     except (OSError, smtplib.SMTPException) as f:
-        raise KontoFehler("konto.fehler.mail_fehlgeschlagen") from f
+        if not os.environ.get("FR_SMTP_ERSATZ_HOST"):
+            raise KontoFehler("konto.fehler.mail_fehlgeschlagen") from f
+        try:
+            _einliefern(m, "FR_SMTP_ERSATZ")
+        except (OSError, smtplib.SMTPException) as f2:
+            raise KontoFehler("konto.fehler.mail_fehlgeschlagen") from f2
+        # Ohne Adresse und Inhalt; die Infrastruktur zählt den zweiten Weg selbst (#561).
+        sys.stderr.write(f"mail: first route failed ({type(f).__name__}), sent via FR_SMTP_ERSATZ_HOST\n")
+
+
+def _einliefern(m, praefix):
+    """Die Mail bei <praefix>_HOST einliefern (STARTTLS, Anmeldung nur mit <praefix>_USER)."""
+    with smtplib.SMTP(os.environ[f"{praefix}_HOST"], int(os.environ.get(f"{praefix}_PORT", "587")), timeout=20) as s:
+        s.starttls()
+        if os.environ.get(f"{praefix}_USER"):
+            s.login(os.environ[f"{praefix}_USER"], os.environ.get(f"{praefix}_PASS", ""))
+        s.send_message(m)
 
 
 def _begrenzt(v, schluessel, grenze):

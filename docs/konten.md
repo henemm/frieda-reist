@@ -169,6 +169,7 @@ Umgebung:
 |---|---|
 | `FR_BASIS` | Öffentliche Adresse von Frieda (für Links in Mails, OAuth); gleich `FR_KN_ADRESSE` der Instanz, ohne Pfad (`docs/betrieb.md`, nginx-Vorlage des Konnektors) |
 | `FR_SMTP_HOST`, `FR_SMTP_PORT` (587), `FR_SMTP_USER`, `FR_SMTP_PASS`, `FR_ABSENDER` | Mailversand mit STARTTLS |
+| `FR_SMTP_ERSATZ_HOST`, `FR_SMTP_ERSATZ_PORT` (587), `FR_SMTP_ERSATZ_USER`, `FR_SMTP_ERSATZ_PASS` | Zweiter Einlieferungsweg (#561): Lehnt `FR_SMTP_HOST` ab oder ist nicht erreichbar (etwa erschöpftes Tageskontingent), geht dieselbe Mail mit demselben Absender hier hinaus; auf stderr steht dann eine Warnzeile ohne Adresse. Nicht gesetzt: kein zweiter Versuch |
 | `FR_MAIL_DATEI` | Mails stattdessen als JSON-Zeilen in diese Datei (Tests, Probebetrieb) |
 | `FR_OAUTH_REDIRECTS` | weitere erlaubte Redirect-URIs der Claude-App (durch Komma getrennt) |
 | `FR_CIMD_HOSTS` | Hosts, von denen Client ID Metadata Documents geladen werden (Vorgabe `claude.ai`) |
