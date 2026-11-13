@@ -1,0 +1,298 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+rootdir: ~/frieda-reist/.claude/worktrees/radiant-moseying-whale
+plugins: xdist-3.8.0
+collecting ... collected 8 items
+
+engine/tests/test_bild_helfer.py::test_bild_ohne_fehler_ein_aufruf FAILED [ 12%]
+engine/tests/test_bild_helfer.py::test_bild_erfolg_im_zweiten_versuch FAILED [ 25%]
+engine/tests/test_bild_helfer.py::test_bild_nach_drei_fehlversuchen_false FAILED [ 37%]
+engine/tests/test_bild_helfer.py::test_bild_gibt_optionen_weiter FAILED  [ 50%]
+engine/tests/test_bild_helfer.py::test_stand_skript_wartet_auf_reise_stand_text FAILED [ 62%]
+engine/tests/test_bild_helfer.py::test_packliste_skript_wartet_auf_knopftext FAILED [ 75%]
+engine/tests/test_bild_helfer.py::test_vollseitenbilder_ueber_den_helfer FAILED [ 87%]
+engine/tests/test_bild_helfer.py::test_bilderfehlen_ist_warnung_nicht_rot FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_bild_ohne_fehler_ein_aufruf _______________________
+
+    @braucht_node
+    def test_bild_ohne_fehler_ein_aufruf():
+>       e = _bild(0)
+            ^^^^^^^^
+
+engine/tests/test_bild_helfer.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fehlschlaege = 0, optionen = {'path': 'x.png', 'fullPage': True}
+
+    def _bild(fehlschlaege, optionen=None):
+        """Ruft `bild` mit einer gestellten Seite auf, deren `screenshot` die ersten `fehlschlaege` Male wirft (-1: immer).
+        Ergebnis: {"ergebnis", "aufrufe", "optionen", "geworfen"}."""
+        optionen = optionen if optionen is not None else {"path": "x.png", "fullPage": True}
+        skript = f"""
+    const {{bild}} = await import({json.dumps(BILD.as_uri())});
+    const fehl = {fehlschlaege};
+    const aufrufe = [];
+    const page = {{screenshot: async o => {{ aufrufe.push(JSON.parse(JSON.stringify(o)));
+      if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }}}};
+    let ergebnis = null, geworfen = null;
+    try {{ ergebnis = await bild(page, {json.dumps(optionen)}, {{pause: 10}}); }} catch (e) {{ geworfen = String(e); }}
+    console.log(JSON.stringify({{ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}}));
+    """
+        aus = subprocess.run(["node", "--input-type=module", "-e", skript], capture_output=True, text=True, timeout=60)
+>       assert aus.returncode == 0, aus.stderr[-2000:]
+E       AssertionError: node:internal/modules/esm/resolve:275
+E             throw new ERR_MODULE_NOT_FOUND(
+E                   ^
+E         
+E         Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]
+E             at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+E             at moduleResolve (node:internal/modules/esm/resolve:861:10)
+E             at defaultResolve (node:internal/modules/esm/resolve:985:11)
+E             at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+E             at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+E             at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+E             at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)
+E             at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+E             at ModuleLoader.import (node:internal/modules/esm/loader:663:21)
+E             at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {
+E           code: 'ERR_MODULE_NOT_FOUND',
+E           url: 'file://engine/tests/bild.mjs'
+E         }
+E         
+E         Node.js v22.22.2
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '--input-type=module', '-e', '\nconst {bild} = await import("file://engine/tests/bild.mjs");\nconst fehl = 0;\nconst aufrufe = [];\nconst page = {screenshot: async o => { aufrufe.push(JSON.parse(JSON.stringify(o)));\n  if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }};\nlet ergebnis = null, geworfen = null;\ntry { ergebnis = await bild(page, {"path": "x.png", "fullPage": true}, {pause: 10}); } catch (e) { geworfen = String(e); }\nconsole.log(JSON.stringify({ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}));\n'], returncode=1, stdout='', stderr="node:internal/modules/esm/resolve:275\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]\n    at finalizeResolution (node:internal/modules/esm/resolve:275:11)\n    at moduleResolve (node:internal/modules/esm/resolve:861:10)\n    at defaultResolve (node:internal/modules/esm/resolve:985:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)\n    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)\n    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)\n    at TracingChannel.tracePromise (node:diagnostics_channel:350:14)\n    at ModuleLoader.import (node:internal/modules/esm/loader:663:21)\n    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file://engine/tests/bild.mjs'\n}\n\nNode.js v22.22.2\n").returncode
+
+engine/tests/test_bild_helfer.py:37: AssertionError
+_____________________ test_bild_erfolg_im_zweiten_versuch ______________________
+
+    @braucht_node
+    def test_bild_erfolg_im_zweiten_versuch():
+>       e = _bild(1)
+            ^^^^^^^^
+
+engine/tests/test_bild_helfer.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fehlschlaege = 1, optionen = {'path': 'x.png', 'fullPage': True}
+
+    def _bild(fehlschlaege, optionen=None):
+        """Ruft `bild` mit einer gestellten Seite auf, deren `screenshot` die ersten `fehlschlaege` Male wirft (-1: immer).
+        Ergebnis: {"ergebnis", "aufrufe", "optionen", "geworfen"}."""
+        optionen = optionen if optionen is not None else {"path": "x.png", "fullPage": True}
+        skript = f"""
+    const {{bild}} = await import({json.dumps(BILD.as_uri())});
+    const fehl = {fehlschlaege};
+    const aufrufe = [];
+    const page = {{screenshot: async o => {{ aufrufe.push(JSON.parse(JSON.stringify(o)));
+      if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }}}};
+    let ergebnis = null, geworfen = null;
+    try {{ ergebnis = await bild(page, {json.dumps(optionen)}, {{pause: 10}}); }} catch (e) {{ geworfen = String(e); }}
+    console.log(JSON.stringify({{ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}}));
+    """
+        aus = subprocess.run(["node", "--input-type=module", "-e", skript], capture_output=True, text=True, timeout=60)
+>       assert aus.returncode == 0, aus.stderr[-2000:]
+E       AssertionError: node:internal/modules/esm/resolve:275
+E             throw new ERR_MODULE_NOT_FOUND(
+E                   ^
+E         
+E         Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]
+E             at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+E             at moduleResolve (node:internal/modules/esm/resolve:861:10)
+E             at defaultResolve (node:internal/modules/esm/resolve:985:11)
+E             at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+E             at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+E             at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+E             at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)
+E             at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+E             at ModuleLoader.import (node:internal/modules/esm/loader:663:21)
+E             at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {
+E           code: 'ERR_MODULE_NOT_FOUND',
+E           url: 'file://engine/tests/bild.mjs'
+E         }
+E         
+E         Node.js v22.22.2
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '--input-type=module', '-e', '\nconst {bild} = await import("file://engine/tests/bild.mjs");\nconst fehl = 1;\nconst aufrufe = [];\nconst page = {screenshot: async o => { aufrufe.push(JSON.parse(JSON.stringify(o)));\n  if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }};\nlet ergebnis = null, geworfen = null;\ntry { ergebnis = await bild(page, {"path": "x.png", "fullPage": true}, {pause: 10}); } catch (e) { geworfen = String(e); }\nconsole.log(JSON.stringify({ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}));\n'], returncode=1, stdout='', stderr="node:internal/modules/esm/resolve:275\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]\n    at finalizeResolution (node:internal/modules/esm/resolve:275:11)\n    at moduleResolve (node:internal/modules/esm/resolve:861:10)\n    at defaultResolve (node:internal/modules/esm/resolve:985:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)\n    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)\n    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)\n    at TracingChannel.tracePromise (node:diagnostics_channel:350:14)\n    at ModuleLoader.import (node:internal/modules/esm/loader:663:21)\n    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file://engine/tests/bild.mjs'\n}\n\nNode.js v22.22.2\n").returncode
+
+engine/tests/test_bild_helfer.py:37: AssertionError
+___________________ test_bild_nach_drei_fehlversuchen_false ____________________
+
+    @braucht_node
+    def test_bild_nach_drei_fehlversuchen_false():
+>       e = _bild(-1)
+            ^^^^^^^^^
+
+engine/tests/test_bild_helfer.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fehlschlaege = -1, optionen = {'path': 'x.png', 'fullPage': True}
+
+    def _bild(fehlschlaege, optionen=None):
+        """Ruft `bild` mit einer gestellten Seite auf, deren `screenshot` die ersten `fehlschlaege` Male wirft (-1: immer).
+        Ergebnis: {"ergebnis", "aufrufe", "optionen", "geworfen"}."""
+        optionen = optionen if optionen is not None else {"path": "x.png", "fullPage": True}
+        skript = f"""
+    const {{bild}} = await import({json.dumps(BILD.as_uri())});
+    const fehl = {fehlschlaege};
+    const aufrufe = [];
+    const page = {{screenshot: async o => {{ aufrufe.push(JSON.parse(JSON.stringify(o)));
+      if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }}}};
+    let ergebnis = null, geworfen = null;
+    try {{ ergebnis = await bild(page, {json.dumps(optionen)}, {{pause: 10}}); }} catch (e) {{ geworfen = String(e); }}
+    console.log(JSON.stringify({{ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}}));
+    """
+        aus = subprocess.run(["node", "--input-type=module", "-e", skript], capture_output=True, text=True, timeout=60)
+>       assert aus.returncode == 0, aus.stderr[-2000:]
+E       AssertionError: node:internal/modules/esm/resolve:275
+E             throw new ERR_MODULE_NOT_FOUND(
+E                   ^
+E         
+E         Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]
+E             at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+E             at moduleResolve (node:internal/modules/esm/resolve:861:10)
+E             at defaultResolve (node:internal/modules/esm/resolve:985:11)
+E             at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+E             at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+E             at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+E             at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)
+E             at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+E             at ModuleLoader.import (node:internal/modules/esm/loader:663:21)
+E             at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {
+E           code: 'ERR_MODULE_NOT_FOUND',
+E           url: 'file://engine/tests/bild.mjs'
+E         }
+E         
+E         Node.js v22.22.2
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '--input-type=module', '-e', '\nconst {bild} = await import("file://engine/tests/bild.mjs");\nconst fehl = -1;\nconst aufrufe = [];\nconst page = {screenshot: async o => { aufrufe.push(JSON.parse(JSON.stringify(o)));\n  if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }};\nlet ergebnis = null, geworfen = null;\ntry { ergebnis = await bild(page, {"path": "x.png", "fullPage": true}, {pause: 10}); } catch (e) { geworfen = String(e); }\nconsole.log(JSON.stringify({ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}));\n'], returncode=1, stdout='', stderr="node:internal/modules/esm/resolve:275\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]\n    at finalizeResolution (node:internal/modules/esm/resolve:275:11)\n    at moduleResolve (node:internal/modules/esm/resolve:861:10)\n    at defaultResolve (node:internal/modules/esm/resolve:985:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)\n    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)\n    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)\n    at TracingChannel.tracePromise (node:diagnostics_channel:350:14)\n    at ModuleLoader.import (node:internal/modules/esm/loader:663:21)\n    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file://engine/tests/bild.mjs'\n}\n\nNode.js v22.22.2\n").returncode
+
+engine/tests/test_bild_helfer.py:37: AssertionError
+________________________ test_bild_gibt_optionen_weiter ________________________
+
+    @braucht_node
+    def test_bild_gibt_optionen_weiter():
+        o = {"path": "bausteine.png", "fullPage": True, "clip": {"x": 0, "y": 0, "width": 390, "height": 32000}}
+>       e = _bild(-1, o)
+            ^^^^^^^^^^^^
+
+engine/tests/test_bild_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+fehlschlaege = -1
+optionen = {'path': 'bausteine.png', 'fullPage': True, 'clip': {'x': 0, 'y': 0, 'width': 390, 'height': 32000}}
+
+    def _bild(fehlschlaege, optionen=None):
+        """Ruft `bild` mit einer gestellten Seite auf, deren `screenshot` die ersten `fehlschlaege` Male wirft (-1: immer).
+        Ergebnis: {"ergebnis", "aufrufe", "optionen", "geworfen"}."""
+        optionen = optionen if optionen is not None else {"path": "x.png", "fullPage": True}
+        skript = f"""
+    const {{bild}} = await import({json.dumps(BILD.as_uri())});
+    const fehl = {fehlschlaege};
+    const aufrufe = [];
+    const page = {{screenshot: async o => {{ aufrufe.push(JSON.parse(JSON.stringify(o)));
+      if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }}}};
+    let ergebnis = null, geworfen = null;
+    try {{ ergebnis = await bild(page, {json.dumps(optionen)}, {{pause: 10}}); }} catch (e) {{ geworfen = String(e); }}
+    console.log(JSON.stringify({{ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}}));
+    """
+        aus = subprocess.run(["node", "--input-type=module", "-e", skript], capture_output=True, text=True, timeout=60)
+>       assert aus.returncode == 0, aus.stderr[-2000:]
+E       AssertionError: node:internal/modules/esm/resolve:275
+E             throw new ERR_MODULE_NOT_FOUND(
+E                   ^
+E         
+E         Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]
+E             at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+E             at moduleResolve (node:internal/modules/esm/resolve:861:10)
+E             at defaultResolve (node:internal/modules/esm/resolve:985:11)
+E             at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+E             at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+E             at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+E             at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)
+E             at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+E             at ModuleLoader.import (node:internal/modules/esm/loader:663:21)
+E             at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {
+E           code: 'ERR_MODULE_NOT_FOUND',
+E           url: 'file://engine/tests/bild.mjs'
+E         }
+E         
+E         Node.js v22.22.2
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '--input-type=module', '-e', '\nconst {bild} = await import("file://engine/tests/bild.mjs");\nconst fehl = -1;\nconst aufrufe = [];\nconst page = {screenshot: async o => { aufrufe.push(JSON.parse(JSON.stringify(o)));\n  if (fehl < 0 || aufrufe.length <= fehl) throw new Error("Protocol error (Page.captureScreenshot): gestellt"); return Buffer.from(""); }};\nlet ergebnis = null, geworfen = null;\ntry { ergebnis = await bild(page, {"path": "bausteine.png", "fullPage": true, "clip": {"x": 0, "y": 0, "width": 390, "height": 32000}}, {pause: 10}); } catch (e) { geworfen = String(e); }\nconsole.log(JSON.stringify({ergebnis, aufrufe: aufrufe.length, optionen: aufrufe, geworfen}));\n'], returncode=1, stdout='', stderr="node:internal/modules/esm/resolve:275\n    throw new ERR_MODULE_NOT_FOUND(\n          ^\n\nError [ERR_MODULE_NOT_FOUND]: Cannot find module 'engine/tests/bild.mjs' imported from [eval1]\n    at finalizeResolution (node:internal/modules/esm/resolve:275:11)\n    at moduleResolve (node:internal/modules/esm/resolve:861:10)\n    at defaultResolve (node:internal/modules/esm/resolve:985:11)\n    at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)\n    at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)\n    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)\n    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:664:36)\n    at TracingChannel.tracePromise (node:diagnostics_channel:350:14)\n    at ModuleLoader.import (node:internal/modules/esm/loader:663:21)\n    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:222:31) {\n  code: 'ERR_MODULE_NOT_FOUND',\n  url: 'file://engine/tests/bild.mjs'\n}\n\nNode.js v22.22.2\n").returncode
+
+engine/tests/test_bild_helfer.py:37: AssertionError
+________________ test_stand_skript_wartet_auf_reise_stand_text _________________
+
+    def test_stand_skript_wartet_auf_reise_stand_text():
+        """AC-1: nach `reload` wartet das Skript auf „Neu: Reise-Stand“ in #neu (15 s), nicht nur auf das sichtbare #neu."""
+        q = (HIER / "stand_browser.mjs").read_text(encoding="utf-8")
+        nach = _nach(q, "await p.reload();")
+        vor_lesen = nach.split('ergebnis.hinweis', 1)[0]
+>       assert re.search(r"waitForFunction\([^;]*#neu[^;]*Neu: Reise-Stand[^;]*timeout:\s*15000", vor_lesen, re.S), vor_lesen
+E       AssertionError: 
+E         await p.waitForSelector("#neu:not([hidden])", {timeout: 15000});
+E         
+E       assert None
+E        +  where None = <function search at 0x7618842313a0>('waitForFunction\\([^;]*#neu[^;]*Neu: Reise-Stand[^;]*timeout:\\s*15000', '\nawait p.waitForSelector("#neu:not([hidden])", {timeout: 15000});\n', re.DOTALL)
+E        +    where <function search at 0x7618842313a0> = re.search
+E        +    and   re.DOTALL = re.S
+
+engine/tests/test_bild_helfer.py:81: AssertionError
+__________________ test_packliste_skript_wartet_auf_knopftext __________________
+
+    def test_packliste_skript_wartet_auf_knopftext():
+        """AC-2: vor dem Lesen von knopf0 und von knopf nach `reload` ein Wartepunkt auf nicht leeren Text von .pack-alle."""
+        q = (HIER / "seiten_packliste.mjs").read_text(encoding="utf-8")
+        wartepunkt = re.compile(r"warte\(p,[^;]*\.pack-alle[^;]*textContent[^;]*\)(\.catch\([^;]*\))?;")
+        vor_knopf0 = q.split("const knopf0", 1)[0].rsplit("await haken(p, \"Wanderschuhe\")", 1)[1]
+>       assert wartepunkt.search(vor_knopf0), vor_knopf0
+E       AssertionError: .click();
+E         await warte(p, s => !document.querySelector(s).open, koerper);
+E         
+E       assert None
+E        +  where None = <built-in method search of re.Pattern object at 0x1682e360>('.click();\nawait warte(p, s => !document.querySelector(s).open, koerper);\n')
+E        +    where <built-in method search of re.Pattern object at 0x1682e360> = re.compile('warte\\(p,[^;]*\\.pack-alle[^;]*textContent[^;]*\\)(\\.catch\\([^;]*\\))?;').search
+
+engine/tests/test_bild_helfer.py:90: AssertionError
+____________________ test_vollseitenbilder_ueber_den_helfer ____________________
+
+    def test_vollseitenbilder_ueber_den_helfer():
+        """AC-5: alle Vollseitenbilder gehen über `bild`; kein direkter `screenshot` mit fullPage mehr."""
+        for name in ("seiten_browser.mjs", "seiten_brett.mjs", "seiten_packliste.mjs"):
+            q = (HIER / name).read_text(encoding="utf-8")
+>           assert re.search(r"import\s*\{\s*bild\s*\}\s*from\s*[\"']\./bild\.mjs[\"']", q), name
+E           AssertionError: seiten_browser.mjs
+E           assert None
+E            +  where None = <function search at 0x7618842313a0>('import\\s*\\{\\s*bild\\s*\\}\\s*from\\s*[\\"\']\\./bild\\.mjs[\\"\']', '// Rundgang durch alle Ansichten einer gebauten Reise (Designsystem, frieda-reist#18), aufgerufen von test_seite.py.\n// Aufruf: node seiten_browser.mjs <playwright-modul> <basis-url> [dom-datei]\n// Öffnet jede Route (Reiter, Tage, Wahlstellen, Optionen, Unterkünfte, Pläne, Abschnitte, Fragen, Bausteinseite) bei 390\n// und 1200 px und meldet Skriptfehler, leere Ansichten und Ansichten, die auf dem Handy seitlich überstehen. Mit dom-datei\n// wird zusätzlich das HTML jeder Ansicht gespeichert, ohne Karteninhalt (der lädt zeitversetzt): So lässt sich vor und\n// nach einem Umbau prüfen, ob die Seite gleich bleibt. Mit RH_BILDER=<ordner> entstehen Bilder der Bausteinseite\n// (Handy und Rechner, hell und dunkel) zur Durchsicht.\nimport fs from "node:fs";\n\nconst [, , modul, basis, domDatei] = process.argv;\nconst pw = await import(modul);\nconst b = await pw[process.env.RH_BROWSER || "chromium"].launch();\nconst fehler = [], leer = [], breit = [], dom = {}, vergleich = {}, bilder = [], ohneArt = [], schrift = {};\nfor (const breite of [390, 1200]) {\n  const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block"});\n  await ctx.route("**/api/**...play : null; };\n      return {karten: w.querySelectorAll(".wm-karte").length, tabelle: an(".wm-tabelle"), umschalter: an(".wm-ansicht"), ueberstand: host.scrollWidth > host.clientWidth + 1, breite: Math.round(host.getBoundingClientRect().width)};\n    }, offen);\n    behaelter.spalte.vergleich = m;\n    for (const h of routen) {\n      await p.evaluate(h => { location.hash = h; }, h);\n      await p.waitForTimeout(15);\n      const k = await p.evaluate(() => { const e = document.querySelector("#main .kz-huelle"); if (!e) return null; const kz = e.querySelector(".kz"), vor = getComputedStyle(kz).gridTemplateColumns.split(" ").length;\n        e.style.width = "340px"; return {breiteVor: Math.round(e.parentElement.getBoundingClientRect().width), spaltenVor: vor, spaltenNach: getComputedStyle(kz).gridTemplateColumns.split(" ").length, kacheln: kz.children.length}; });\n      if (k) { behaelter.spalte.kennzahlen = k; break; }\n    }\n  }\n  await ctx.close();\n}\nawait b.close();\nif (domDatei) fs.writeFileSync(domDatei, JSON.stringify(dom));\nconsole.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste, ohneArt, schrift, behaelter}));\n')
+E            +    where <function search at 0x7618842313a0> = re.search
+
+engine/tests/test_bild_helfer.py:100: AssertionError
+___________________ test_bilderfehlen_ist_warnung_nicht_rot ____________________
+
+    def test_bilderfehlen_ist_warnung_nicht_rot():
+        """AC-6: fehlende Bilder geben eine Warnung mit den Dateinamen, der Test bleibt grün."""
+        import test_seite
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+>           test_seite.bilder_fehlen_melden({"bilderFehlen": ["bausteine-webkit-390-hell.png"]})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'test_seite' has no attribute 'bilder_fehlen_melden'
+
+engine/tests/test_bild_helfer.py:111: AttributeError
+=========================== short test summary info ============================
+FAILED engine/tests/test_bild_helfer.py::test_bild_ohne_fehler_ein_aufruf - A...
+FAILED engine/tests/test_bild_helfer.py::test_bild_erfolg_im_zweiten_versuch
+FAILED engine/tests/test_bild_helfer.py::test_bild_nach_drei_fehlversuchen_false
+FAILED engine/tests/test_bild_helfer.py::test_bild_gibt_optionen_weiter - Ass...
+FAILED engine/tests/test_bild_helfer.py::test_stand_skript_wartet_auf_reise_stand_text
+FAILED engine/tests/test_bild_helfer.py::test_packliste_skript_wartet_auf_knopftext
+FAILED engine/tests/test_bild_helfer.py::test_vollseitenbilder_ueber_den_helfer
+FAILED engine/tests/test_bild_helfer.py::test_bilderfehlen_ist_warnung_nicht_rot
+============================== 8 failed in 0.46s ===============================
