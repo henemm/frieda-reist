@@ -82,3 +82,8 @@ Playwright (chromium, webkit), Node; CI-Job mit `RH_BILDER` und Artefakt `bauste
 
 ### Open Questions
 - keine (alle Punkte technisch, vom Tech Lead entschieden)
+
+## Hinweise für die Umsetzung (Phase 5, 13.11.2026)
+
+- Schnittstelle des Helfers laut Tests: `export async function bild(page, optionen, {pause = 500} = {})` in `engine/tests/bild.mjs`; `test_seite.py` bekommt die Funktion `bilder_fehlen_melden(e)`, die der Browser-Rundgang mit seiner JSON-Ausgabe aufruft.
+- Der Arbeitsordner dieser Sitzung hat keine eigene Python-Umgebung (`engine/.venv` fehlt); die RED-Läufe nutzten die Umgebung eines anderen Arbeitsordners derselben Software. Für die Umsetzung eine eigene anlegen oder ebenso verfahren.

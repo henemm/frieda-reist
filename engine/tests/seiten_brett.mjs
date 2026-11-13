@@ -3,6 +3,8 @@
 // Die Seite spricht api/… an; die Anfragen gehen an den echten Dienst (<dienst-url>/<reise>/…), solange „netz“ an ist.
 // Mit RH_BILDER=<ordner> entstehen Bilder des Bretts (Handy und Rechner).
 // Meldet je Schritt die Spalten (Wunschtext -> Spalte), die Bilanz, überstehende Breite am Handy und Skriptfehler.
+import {bild} from "./bild.mjs";
+
 const [, , modul, basis, dienst, name] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
@@ -73,11 +75,11 @@ await p.evaluate(() => dispatchEvent(new Event("online")));
 await warte(p, r => localStorage.getItem(`rh-${r}-brett-ausgang`) === "[]", reise);
 await p.waitForTimeout(200);
 aus.nachgereicht = await stand(p);
-const bild = (x, n) => process.env.RH_BILDER ? x.screenshot({path: `${process.env.RH_BILDER}/brett-${n}.png`, fullPage: true}) : null;
-await bild(p, "390");
+const brettBild = (x, n) => process.env.RH_BILDER ? bild(x, {path: `${process.env.RH_BILDER}/brett-${n}.png`, fullPage: true}) : null;
+await brettBild(p, "390");
 // Breite Ansicht: Spalten nebeneinander
 const g = await seite(1200);
-await bild(g, "1200");
+await brettBild(g, "1200");
 aus.breit = await g.evaluate(() => new Set([...document.querySelectorAll(".brett .spalte")].map(s => Math.round(s.getBoundingClientRect().left))).size);
 await b.close();
 console.log(JSON.stringify({...aus, fehler}));

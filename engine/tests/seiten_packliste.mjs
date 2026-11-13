@@ -2,6 +2,8 @@
 // Aufruf: node seiten_packliste.mjs <playwright-modul> <basis-url> <dienst-url> <name>
 // Die Seite spricht api/… an; die Anfragen gehen an den echten Dienst (<dienst-url>/<reise>/…), solange „netz“ an ist.
 // Mit RH_BILDER=<ordner> entstehen Bilder (Handy und Rechner). Meldet je Schritt, was die Seite zeigt, und Skriptfehler.
+import {bild} from "./bild.mjs";
+
 const [, , modul, basis, dienst, name] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
@@ -111,7 +113,7 @@ aus.ohneApotheke = {g08: await p.locator("#G-08").count(), fortschritt: await te
   knopf: await p.$eval('[data-pl-aus="apotheke"]', b => b.getAttribute("aria-pressed"))};
 await p.click('[data-pl-aus="apotheke"]');
 await p.waitForSelector("#G-08");
-if (process.env.RH_BILDER) await p.screenshot({path: `${process.env.RH_BILDER}/packliste-390.png`, fullPage: true});
+if (process.env.RH_BILDER) await bild(p, {path: `${process.env.RH_BILDER}/packliste-390.png`, fullPage: true});
 // Abhaken geht sofort, bleibt beim Dienst und überlebt das Neuladen. Die Seite zeigt den Haken vor der Antwort des
 // Dienstes; neu geladen wird erst, wenn das Speichern beantwortet ist, sonst gewinnt das Neuladen den Wettlauf (#413).
 // Mit Netz zuckt nichts: kein Hinweis „ohne Netz“ und kein „wird nachgereicht“, auch nicht kurz während des Sendens (#501)
@@ -157,6 +159,8 @@ const koerper = ".pack-gruppe[data-gruppe='am Körper']";
 const vorFertig = await p.$eval(koerper, d => d.open);
 await haken(p, "Wanderschuhe").click();
 await warte(p, s => !document.querySelector(s).open, koerper);
+// Der Knopf entsteht leer, seinen Text setzt die Seite einen Takt später (#550): darauf warten, bei Zeitablauf trotzdem lesen
+await warte(p, () => document.querySelector(".pack-alle")?.textContent.trim()).catch(() => {});
 const knopf0 = (await texte(p, ".pack-alle"))[0];
 await p.click(".pack-alle");
 const alleOffen = await p.$$eval("details.pack-klapper", ds => ds.every(d => d.open));
@@ -165,6 +169,7 @@ const alleZu = await p.$$eval("details.pack-klapper", ds => ds.every(d => !d.ope
 const gemerkt = await p.evaluate(r => localStorage.getItem(`rh-${r}-pl-offen`), reise);
 await p.reload();
 await p.waitForSelector("details.pack-klapper");
+await warte(p, () => document.querySelector(".pack-alle")?.textContent.trim()).catch(() => {});
 aus.klappen = {gemerkt, nach: await p.$$eval("details.pack-klapper", ds => ds.map(d => d.dataset.klapper + "=" + d.open)), vorFertig, knopf0, alleOffen, alleZu, nachNeuladen: await p.$$eval("details.pack-klapper", ds => ds.length > 1 && ds.every(d => !d.open)),
   kopf: (await texte(p, `${koerper} > summary`))[0], knopf: (await texte(p, ".pack-alle"))[0]};
 // Mitnehmen: eine Zeile am Ding, an dem der Gegenstand hängt; sie führt zur Packliste
@@ -181,7 +186,7 @@ aus.kennung = {reiter: await g.$eval("#nav a.on", a => a.getAttribute("href")), 
 // Breite Ansicht
 const w = await seite(1200, "#packliste");
 await w.waitForSelector(".pack-tabelle");
-if (process.env.RH_BILDER) await w.screenshot({path: `${process.env.RH_BILDER}/packliste-1200.png`, fullPage: true});
+if (process.env.RH_BILDER) await bild(w, {path: `${process.env.RH_BILDER}/packliste-1200.png`, fullPage: true});
 aus.breit = await w.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
 await b.close();
 console.log(JSON.stringify({...aus, fehler}));

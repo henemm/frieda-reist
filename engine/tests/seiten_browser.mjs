@@ -6,11 +6,12 @@
 // nach einem Umbau prüfen, ob die Seite gleich bleibt. Mit RH_BILDER=<ordner> entstehen Bilder der Bausteinseite
 // (Handy und Rechner, hell und dunkel) zur Durchsicht.
 import fs from "node:fs";
+import {bild} from "./bild.mjs";
 
 const [, , modul, basis, domDatei] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
-const fehler = [], leer = [], breit = [], dom = {}, vergleich = {}, bilder = [], ohneArt = [], schrift = {};
+const fehler = [], leer = [], breit = [], dom = {}, vergleich = {}, bilder = [], bilderFehlen = [], ohneArt = [], schrift = {};
 for (const breite of [390, 1200]) {
   const ctx = await b.newContext({viewport: {width: breite, height: 900}, serviceWorkers: "block"});
   await ctx.route("**/api/**", r => r.abort());   // ohne Rückmeldedienst: Seite muss trotzdem vollständig sein
@@ -127,8 +128,9 @@ for (const [breite, schema] of [[390, "light"], [390, "dark"], [1200, "light"], 
     await p.addStyleTag({content: ".leiste,body::after{display:none!important}"});
     // Chromium nimmt nichts über 32767 Pixel auf (die Bausteinseite wächst mit jedem Baustein): dann die ersten 32000
     const hoehe = await p.evaluate(() => document.documentElement.scrollHeight);
-    await p.screenshot(hoehe > 32000 ? {path: datei, fullPage: true, clip: {x: 0, y: 0, width: breite, height: 32000}} : {path: datei, fullPage: true});
-    bilder.push(datei);
+    // Mit Wiederholung (#537); scheitert das Bild endgültig, nennt die Ausgabe die Datei in bilderFehlen (Warnung, nicht rot)
+    if (await bild(p, hoehe > 32000 ? {path: datei, fullPage: true, clip: {x: 0, y: 0, width: breite, height: 32000}} : {path: datei, fullPage: true})) bilder.push(datei);
+    else bilderFehlen.push(datei.split("/").pop());
   }
   await ctx.close();
 }
@@ -226,4 +228,4 @@ for (const breite of [320, 700, 900, 1100, 1300]) {
 }
 await b.close();
 if (domDatei) fs.writeFileSync(domDatei, JSON.stringify(dom));
-console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, leiste, ohneArt, schrift, behaelter}));
+console.log(JSON.stringify({routen: Object.keys(dom).length, leer, breit, fehler, vergleich, bilder, bilderFehlen, leiste, ohneArt, schrift, behaelter}));

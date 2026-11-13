@@ -1,0 +1,16 @@
+Lastaufbau (#550): test_reise_stand_im_browser und test_packliste_im_browser (chromium, webkit), -n 4, zwei Prozesse Dauerlast (yes > /dev/null), 11 Durchläufe
+Befehl: engine/.venv/bin/python -m pytest -q -n 4 engine/tests/test_pwa.py::test_reise_stand_im_browser engine/tests/test_packliste.py::test_packliste_im_browser
+
+Durchlauf 1: 4 passed in 31.26s
+Durchlauf 2: 4 passed in 15.14s
+Durchlauf 3: 4 passed in 15.21s
+Durchlauf 4: 4 passed in 14.84s
+Durchlauf 5: 4 passed in 14.42s
+Durchlauf 6: 4 passed in 14.31s
+Durchlauf 7: 4 passed in 16.05s
+Durchlauf 8: 4 passed in 20.45s
+Durchlauf 9: 4 passed in 19.11s
+Durchlauf 10: 4 passed in 15.48s
+Durchlauf 11: 4 passed in 15.11s
+
+Ergebnis: 11 grün, 0 rot (von 11)

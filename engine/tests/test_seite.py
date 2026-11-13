@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import warnings
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,13 @@ import bauen  # noqa: E402
 WURZEL = Path(__file__).resolve().parent.parent.parent
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
 from conftest import meldet  # noqa: E402
+
+
+def bilder_fehlen_melden(e):
+    """Vollseitenbilder, die auch nach Wiederholung scheiterten (#537): Warnung mit den Dateinamen, kein roter Lauf.
+    Die Bilder dienen nur der Durchsicht; die Warnung steht in der Warnungsübersicht des CI-Logs."""
+    if e.get("bilderFehlen"):
+        warnings.warn("Bilder der Bausteinseite fehlen: " + ", ".join(e["bilderFehlen"]))
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
@@ -44,6 +52,7 @@ def test_alle_ansichten_der_beispielreise(tmp_path, browser):
         s.shutdown()
     assert aus.returncode == 0, aus.stderr[-2000:]
     e = json.loads(aus.stdout.strip().splitlines()[-1])
+    bilder_fehlen_melden(e)
     assert e["routen"] > 100
     assert e["fehler"] == []
     assert e["leer"] == []

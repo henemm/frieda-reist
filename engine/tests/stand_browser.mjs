@@ -35,6 +35,9 @@ for (const f of fs.readdirSync(stand2)) fs.cpSync(path.join(stand2, f), path.joi
 await serverStand(2);
 await p.reload();
 await p.waitForSelector("#neu:not([hidden])", {timeout: 15000});
+// Erst zeigt der Service Worker den allgemeinen Hinweis, danach setzt api/stand (1 s verzögert) „Neu: Reise-Stand 2.“ (#550):
+// auf den Zielzustand warten; läuft die Zeit ab, trotzdem lesen, damit der Test mit seiner Meldung scheitert
+await p.waitForFunction(() => (document.querySelector("#neu")?.textContent || "").includes("Neu: Reise-Stand"), null, {timeout: 15000}).catch(() => {});
 ergebnis.hinweis = (await p.textContent("#neu")).replace(/\s+/g, " ").trim();
 ergebnis.apiStand = await p.evaluate(async () => (await (await fetch("api/stand", {cache: "no-store"})).json()).veroeffentlicht.nummer);
 ergebnis.seiteNochAlt = await p.evaluate(() => D.reise_stand.nummer);
