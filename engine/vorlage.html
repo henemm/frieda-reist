@@ -5724,7 +5724,7 @@ function ansichtPackliste(m) {
     if (teile) m.append(teile);
     for (const k of PL.kategorien) if (!k.ausgeblendet) m.append(packTabelle(k));
     const aus = PL.kategorien.filter(k => k.ausgeblendet);
-    if (aus.length) m.append(el("p", {class: "pack-hinweis"}, T("seite.packliste.ausgeblendet", {liste: aus.map(k => `${k.name} (${k.gegenstaende.length})`).join(", ")})));
+    if (aus.length) m.append(el("p", {class: "pack-hinweis", id: "pl-ausgeblendet"}, T("seite.packliste.ausgeblendet", {liste: aus.map(k => `${k.name} (${k.gegenstaende.length})`).join(", ")})));
   }
 }
 
@@ -6226,7 +6226,12 @@ function route(behalten) {
   else if ((h === "zu-entscheiden" || h === "zu-buchen") && ZU_TUN) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   else if (h === "wuensche" && WUENSCHE) { zeigeReiter("wuensche"); ansichtWuensche(m); }
   else if (h === "packliste" && PACKLISTE) { zeigeReiter("packliste"); ansichtPackliste(m); }
-  else if (PACKLISTE && PL_JE.has(h)) { zeigeReiter("packliste"); ansichtPackliste(m); ziel = h; }   // ein Gegenstand wohnt in der Packliste (ADR-0010)
+  else if (PACKLISTE && PL_JE.has(h)) {   // ein Gegenstand wohnt in der Packliste (ADR-0010)
+    // einer aus einer für die Reise ausgeblendeten Kategorie (#431): Ziel ist der Hinweis darauf unter Planen
+    const weg = !plSichtbar(PL_JE.get(h));
+    if (weg) PL_ANSICHT = "planen";
+    zeigeReiter("packliste"); ansichtPackliste(m); ziel = weg ? "pl-ausgeblendet" : h;
+  }
   else if ((h === "rueckmeldungen" || h === "aufgaben" || h === "fragen") && B(h)) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   else if (/^F-\d+$/.test(h) && zeileZu.get(h) === "fragen" && B("fragen")) { zeigeReiter("zu-tun"); ansichtZuTun(m); ziel = h; }
   // Plan-Baum (darstellung.tiefe): Plan → Tag → Ort, unter dem Reiter Reise
