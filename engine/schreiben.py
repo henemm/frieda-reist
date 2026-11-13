@@ -5114,15 +5114,9 @@ class Schreiber:
     def wer_pruefen(self, reise_dir, anfrage, werkzeug):
         """Person, Rolle und Status mit reise.yaml der Arbeitskopie prüfen -> {"name", "rolle", "person"}."""
         from reise import erlaubt, rolle_neu
-        import bauen
-        with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
-            try:
-                eck = bauen.Bauer(reise_dir, ziel).eck
-            except bauen.BauFehler as e:
-                raise Ablehnung("schreiben.bau.lesen", meldungen=texte.Satz.verbinden(e.meldungen, " "))
-        rolle = rolle_neu(anfrage.get("rolle"))
         person = anfrage.get("person")
-        p = next((x for x in eck.get("personen") or [] if person and x.get("schluessel") == person), None)
+        eck, p = rolle_im_stand(reise_dir, person)
+        rolle = rolle_neu(anfrage.get("rolle"))
         if p:
             rolle = rolle_neu(p.get("rolle"))     # reise.yaml gilt vor dem, was der Konnektor sagt
         name = (p or {}).get("name") or anfrage.get("name")
@@ -5133,6 +5127,20 @@ class Schreiber:
         if not ok:
             raise Ablehnung(grund)
         return {"name": name.strip(), "rolle": rolle, "person": person, "titel": eck.get("titel") or reise_dir.name}
+
+    def rolle_lesen(self, reise, person, name):
+        """Rolle einer Person im aktuellen Stand der Reise (#552): Lesekopie (Speicher: Export bis zur neuesten Nummer, Git: Kopie
+        der Schreibkopie, sonst der Wurzel), ausgewertet wie wer_pruefen -> {"rolle", "name", "status"}; steht die Person nicht in reise.yaml,
+        {"rolle": None}. Gesucht wird nach dem Schlüssel, ohne Schlüssel nach dem Namen (ohne Groß- und Kleinschreibung).
+        Nur lesend: keine Sperre, kein neuer Stand."""
+        from reise import rolle_neu
+        with tempfile.TemporaryDirectory(prefix="frieda-rolle-") as tmp:
+            kopie = lesekopie(self, reise, Path(tmp))
+            eck, p = rolle_im_stand(kopie, person, name)
+        if not p:
+            return {"rolle": None}
+        return {"rolle": rolle_neu(p.get("rolle")), "name": p.get("name"),
+                "status": (eck.get("status") or {}).get("wert") or "planung"}
 
     def probebau(self, reise_dir):
         """Probebau wie im Tor: nur ein Baufehler lehnt ab -> Warnungen des Baus [(bezug, text)]."""
@@ -5376,8 +5384,9 @@ def fehler_antwort(schluessel, mit_ok=True):
     return {"ok": False, **antwort} if mit_ok else antwort
 
 def sperrdatei(reise):
+    """Sperre je Reise: in FR_SPERREN, ohne Einstellung im Dienstordner der Instanz (FR_DIENST), nie im gemeinsamen /tmp (#552)."""
     name = instanz.wert("FR_INSTANZ", instanz.VORGABE_INSTANZ)
-    return Path(instanz.wert("FR_SPERREN", "/tmp")) / f"{name}-schreiben-{reise}.lock"
+    return Path(instanz.wert("FR_SPERREN") or instanz.dienst()) / f"{name}-schreiben-{reise}.lock"
 
 
 def sperre_nehmen(f, frist=None):
@@ -5457,23 +5466,54 @@ def ausgabe_lesen(r):
         return 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
 
 
+def lesekopie(s, reise, ziel):
+    """Lesekopie des aktuellen Stands einer Reise nach <ziel>/kopie/reisen/<reise> -> Pfad. Speicher-Reise: Export bis zur
+    neuesten Nummer; Git-Reise: Kopie der Schreibkopie, sonst der Wurzel, dieselbe Quelle wie wer_pruefen (Gegenprüfung #552:
+    eine Herabstufung über den Schreibweg gilt sofort, nicht erst nach dem nächsten Veröffentlichen). Ohne Sperre, ändert nichts."""
+    kopie = Path(ziel) / "kopie" / "reisen" / reise
+    if reise in instanz.speicherreisen():
+        import reisespeicher
+        reisespeicher.exportieren(reise, kopie, bis=reisespeicher.stand_nummer(reise))
+    else:
+        quelle = Path(s.arbeit) / "reisen" / reise
+        if not (quelle / "reise.yaml").is_file():
+            quelle = Path(s.wurzel) / "reisen" / reise
+        shutil.copytree(quelle, kopie, symlinks=True)
+    return kopie
+
+
+def rolle_im_stand(reise_dir, person, name=None):
+    """reise.yaml eines Stands auswerten -> (Eckdaten, Eintrag der Person oder None). Die Person wird nach ihrem Schlüssel
+    gesucht; nur ohne Schlüssel nach dem Namen (ohne Groß- und Kleinschreibung). Eine Quelle für wer_pruefen und rolle_lesen."""
+    import bauen
+    with tempfile.TemporaryDirectory(prefix="frieda-probe-") as ziel:
+        try:
+            eck = bauen.Bauer(reise_dir, ziel).eck
+        except bauen.BauFehler as e:
+            raise Ablehnung("schreiben.bau.lesen", meldungen=texte.Satz.verbinden(e.meldungen, " "))
+    personen = eck.get("personen") or []
+    if person:
+        p = next((x for x in personen if x.get("schluessel") == person), None)
+    elif isinstance(name, str) and name.strip():
+        p = next((x for x in personen if str(x.get("name") or "").casefold() == name.strip().casefold()), None)
+    else:
+        p = None
+    return eck, p
+
+
 def kartenpunkte_vorab(s, reise, anfrage, vorab):
     """Abruf bei Overpass für kartenpunkte_holen vor der Sperre (#240) -> Pfad der Antwortdatei in `vorab` oder None (dann ruft
-    der Vorgang selbst ab). Lesekopie des Stands (Speicher: Export, Git: Kopie aus der Wurzel), Rolle und Abfrage prüfen, alles in
+    der Vorgang selbst ab). Lesekopie des Stands (lesekopie: Speicher Export, Git Schreibkopie oder Wurzel), Rolle und Abfrage prüfen, alles in
     höchstens ZEIT_VORAB_VORB Sekunden; lehnt das ab, kein Abruf: der Vorgang lehnt mit demselben Grund ab. Scheitert der Abruf
     (OSM_FRIST_VORAB), wirft er die Ablehnung. Die Antwort kommt nur aus dem Netz, nie aus der Anfrage. Wird der Faden der
     Vorbereitung nicht rechtzeitig fertig, räumt er `vorab` selbst weg, sobald er endet (der Dienst hat ihn dann schon gelöscht)."""
-    kopie, ergebnis, zustand, schloss = Path(vorab) / "kopie" / "reisen" / reise, {}, {}, threading.Lock()
+    ergebnis, zustand, schloss = {}, {}, threading.Lock()
 
     def vorbereiten():
         try:
             if not REISE_MUSTER.match(reise or ""):
                 return
-            if reise in instanz.speicherreisen():
-                import reisespeicher
-                reisespeicher.exportieren(reise, kopie, bis=reisespeicher.stand_nummer(reise))
-            else:
-                shutil.copytree(Path(s.wurzel) / "reisen" / reise, kopie, symlinks=True)
+            kopie = lesekopie(s, reise, vorab)
             args = anfrage.get("args") if isinstance(anfrage.get("args"), dict) else {}
             s.wer_pruefen(kopie, anfrage, "kartenpunkte_holen")
             ergebnis["abfrage"] = kartenpunkte_abfrage(kopie, args)[0]
@@ -5772,6 +5812,28 @@ class Dienst(BaseHTTPRequestHandler):
             return 503, fehler_antwort("schreiben.dienst.repo_nicht_erreichbar", mit_ok=False)
         return None
 
+    def _rolle(self, reise):
+        """GET /<reise>/rolle?person=<schluessel>&name=<name> (#552): Rolle der Person in reise.yaml des aktuellen Stands, für
+        Einladen, Erledigen und Einplanen. Nur für Konnektor und Rückmeldedienst (X-Frieda-Dienst), nur lesend, ohne Sperre."""
+        import urllib.parse
+        if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
+            return self._senden(403, fehler_antwort("schreiben.dienst.nur_konnektor", mit_ok=False))
+        if not REISE_MUSTER.match(reise) or konten.reise_vorgemerkt(reise):
+            return self._senden(404, fehler_antwort("schreiben.dienst.unbekannt", mit_ok=False))
+        q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
+        person, name = (q.get("person") or [""])[0], (q.get("name") or [""])[0]
+        s = self.schreiber or Schreiber(wurzel())
+        try:
+            return self._senden(200, s.rolle_lesen(reise, person, name))
+        except (FileNotFoundError, KeyError):
+            return self._senden(404, fehler_antwort("schreiben.dienst.unbekannt", mit_ok=False))
+        except instanz.EinstellungenNichtLesbar as e:      # #361
+            sys.stderr.write(f"Error rolle 503: settings not readable: {_kurz(e)}\n")
+            return self._senden(503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar", mit_ok=False))
+        except (Ablehnung, sqlite3.Error, OSError) as e:
+            sys.stderr.write(f"Error rolle 503: {_kurz(e)}\n")
+            return self._senden(503, fehler_antwort("schreiben.dienst.fehlgeschlagen", mit_ok=False))
+
     def do_GET(self):
         pfad = self.path.split("?", 1)[0]
         if pfad == "/gesund":
@@ -5790,6 +5852,8 @@ class Dienst(BaseHTTPRequestHandler):
         teile = pfad.strip("/").split("/")
         if len(teile) == 2 and teile[1] == "export":    # GET /<reise>/export: die Reise als ZIP (#498)
             return self._export(teile[0])
+        if len(teile) == 2 and teile[1] == "rolle":     # GET /<reise>/rolle?person=&name=: Rolle im aktuellen Stand (#552)
+            return self._rolle(teile[0])
         if len(teile) == 3 and teile[1] == "buchung":   # GET /<reise>/buchung/<B-id>: gibt es sie schon? (Beleg vor dem Veröffentlichen)
             if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
                 return self._senden(403, fehler_antwort("schreiben.dienst.nur_konnektor", mit_ok=False))

@@ -121,7 +121,7 @@ else
 fi
 : "${FR_MELDEN:=}"
 : "${FR_UMZUG_NACH:=}"
-: "${FR_SPERREN:=/tmp}"
+: "${FR_SPERREN:=$FR_DIENST}"   # Sperren im Dienstordner, nicht im gemeinsamen Ordner für Temporäres (#552)
 : "${FR_EIGENE_ADRESSEN:=}"   # Adressen, die nicht ins Anfragekontingent zählen: die des Servers selbst, getrennt durch Leerzeichen (nginx-zone.conf, #206)
 : "${FR_ZEITZONE:=UTC}"   # Zeitzone der Zeiten in Konnektor und Diensten, wenn die der Person unbekannt ist (#227)
 : "${FR_SPEICHER:=$FR_SEITEN/_speicher}"   # Reisespeicher (engine/reisespeicher.py, ADR-0009), wie instanz.speicher()

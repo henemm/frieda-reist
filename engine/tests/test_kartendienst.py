@@ -422,3 +422,25 @@ def test_kartendienst_daten_im_zustandsordner(tmp_path):
     assert f"sudo bash {betrieb}/kartendienst-umzug.sh /srv/probe/kartendienst /var/lib/probe-kartendienst probe-karte" in aus
     assert not re.search(r"install -d [^\n]*/srv/probe/kartendienst", aus), aus
     assert "must belong to probe-karte" not in aus
+
+
+def test_kartendienst_unit_bindet_den_zustandsordner_ein(tmp_path):
+    """Gegenprüfung F001: Der Container (Docker als root) bindet den festen Zustandsordner ein, nie FR_KARTENDIENST_ORDNER.
+    Der Verweis liegt in einem Ordner des Dienstbenutzers; ersetzt er ihn (etwa durch /), bände Docker sonst das Ziel
+    beschreibbar ein."""
+    import os
+    import subprocess
+    betrieb = Path(__file__).resolve().parents[2] / "betrieb"
+    ziel = tmp_path / "soll"
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
+           "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
+           "FR_HOME": "/home/hans", "EI_ZIEL": str(ziel),
+           "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+    r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    for p in (ziel / "kartendienst").iterdir():
+        assert "/srv/probe/kartendienst" not in p.read_text(encoding="utf-8"), p.name
+    assert "/srv/probe/kartendienst" not in (ziel / "sbin" / "probe-kartendienst").read_text(encoding="utf-8")
+    unit = (ziel / "kartendienst" / "probe-kartendienst.service").read_text(encoding="utf-8")
+    assert "ExecStartPre=/usr/bin/test -f /var/lib/probe-kartendienst/daten/init_done\n" in unit, unit
+    assert " -v /var/lib/probe-kartendienst/daten:/db " in unit, unit

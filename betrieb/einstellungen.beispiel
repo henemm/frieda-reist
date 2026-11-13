@@ -102,9 +102,13 @@ FR_ADRESSE=https://reisen.example.org
 # (/usr/local/sbin/<instanz>-units-installieren, /usr/local/sbin/<instanz>-nginx-orte-installieren)
 #FR_UNITS_HELFER=/usr/local/sbin/beispiel-units-installieren
 #FR_NGINX_HELFER=/usr/local/sbin/beispiel-nginx-orte-installieren
+# Hilfsprogramm für die nginx-Bausteine der Reisen (#552): freischalten.sh legt Bausteine nur über es an
+# (/usr/local/sbin/<instanz>-nginx-reise-installieren)
+#FR_NGINX_REISE_HELFER=/usr/local/sbin/beispiel-nginx-reise-installieren
 
-# Ordner für Sperrdateien. (/tmp)
-#FR_SPERREN=/tmp
+# Ordner für Sperrdateien, nicht im gemeinsamen /tmp (#552; „neu.py nachziehen“ nimmt ein altes FR_SPERREN=/tmp heraus).
+# (FR_DIENST)
+#FR_SPERREN=/srv/beispiel/_dienst
 
 # Kennung mit Kontakt gegenüber OpenStreetMap (Werkzeuge für Inhalte, docs/werkzeuge.md) und Sprachen der Namen.
 # (Name der Software, de,en)

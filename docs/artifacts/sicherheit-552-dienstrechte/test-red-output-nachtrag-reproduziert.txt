@@ -25,9 +25,9 @@ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7672878d8e30>
         """Der Befehl aus der Meldung trägt die Gruppe des Dienstbenutzers (FR_GRUPPE, sonst die Gruppe des Aufrufers)."""
         m = nginx_modul()
         monkeypatch.setenv("FR_GRUPPE", "reisegruppe")
->       assert "FR_GRUPPE=reisegruppe" in m.befehl("probe", "/srv/probe/_dienst", "/etc/nginx/snippets")
+>       assert "FR_GRUPPE=reisegruppe" in m.befehl("probe", "<srv>/probe/_dienst", "/etc/nginx/snippets")
 E       AssertionError: assert 'FR_GRUPPE=reisegruppe' in 'sudo env FR_WURZEL=<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_befehl_nennt_die_gruppe0/keine-instanz FR_INSTANZ=p...rktrees-reflective-tinkering-marshmallow/f8b458d7-fcb5-4abd-9b9e-084c67c1c377/scratchpad/alt/betrieb/nginx.py anwenden'
-E        +  where 'sudo env FR_WURZEL=<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_befehl_nennt_die_gruppe0/keine-instanz FR_INSTANZ=p...rktrees-reflective-tinkering-marshmallow/f8b458d7-fcb5-4abd-9b9e-084c67c1c377/scratchpad/alt/betrieb/nginx.py anwenden' = <function befehl at 0x767284b5de40>('probe', '/srv/probe/_dienst', '/etc/nginx/snippets')
+E        +  where 'sudo env FR_WURZEL=<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_befehl_nennt_die_gruppe0/keine-instanz FR_INSTANZ=p...rktrees-reflective-tinkering-marshmallow/f8b458d7-fcb5-4abd-9b9e-084c67c1c377/scratchpad/alt/betrieb/nginx.py anwenden' = <function befehl at 0x767284b5de40>('probe', '<srv>/probe/_dienst', '/etc/nginx/snippets')
 E        +    where <function befehl at 0x767284b5de40> = <module 'nginx_abgleich' from '<stand-vor-umsetzung>/betrieb/nginx.py'>.befehl
 
 engine/tests/test_nginx.py:591: AssertionError
@@ -65,8 +65,8 @@ tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_kartendien
         ziel = tmp_path / "soll"
         env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
                "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
-               "FR_HOME": "/home/hans", "EI_ZIEL": str(ziel), "EI_SYSTEMD": str(tmp_path / "systemd"),
-               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+               "FR_HOME": "<home>/hans", "EI_ZIEL": str(ziel), "EI_SYSTEMD": str(tmp_path / "systemd"),
+               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "<srv>/probe/kartendienst"}
         r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
         assert r.returncode == 0, r.stdout + r.stderr
 >       karte = (ziel / "sbin" / "probe-kartendienst").read_text(encoding="utf-8")

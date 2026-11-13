@@ -18,9 +18,10 @@
 # einhalten (nur location-Blöcke mit den dort erlaubten Anweisungen, Regex nur verankert mit nicht fangender Gruppe (?:…)).
 
 # Drosseln (Zonen aus nginx-zone.conf, je Adresse; eigene Adressen zählen nicht): /mcp großzügig, weil die Claude-App von
-# gemeinsamen Adressen aus aufruft; Anmelden streng; Konto und Seiten im Browser 30/min. /token, /register und die
-# OAuth-Metadaten kommen ebenfalls von den gemeinsamen Adressen der Claude-App: kein Limit je Adresse, sonst träfe es alle
-# Nutzer zusammen; der Dienst prüft PKCE, Weiterleitungsadressen und Codes selbst.
+# gemeinsamen Adressen aus aufruft; Anmelden streng; Konto und Seiten im Browser 30/min. /token und /register kommen
+# ebenfalls von den gemeinsamen Adressen der Claude-App: dieselbe großzügige Drossel wie /mcp (#552), damit eine Flut von
+# Registrierungen oder Codes gebremst wird, ohne alle Nutzer zusammen zu treffen; der Dienst prüft PKCE,
+# Weiterleitungsadressen und Codes selbst. Die OAuth-Metadaten bleiben ohne Limit (nur lesend, statisch).
 location = /mcp {
     limit_req zone=__ZONE_MCP__ burst=40 nodelay;
     limit_req_status 429;
@@ -61,8 +62,16 @@ location = /alpha {
     limit_req_status 429;
     include __SNIPPETS__/__INSTANZ__-konnektor.inc;
 }
-location = /token                  { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
-location = /register               { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
+location = /token {
+    limit_req zone=__ZONE_MCP__ burst=40 nodelay;
+    limit_req_status 429;
+    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
+}
+location = /register {
+    limit_req zone=__ZONE_MCP__ burst=40 nodelay;
+    limit_req_status 429;
+    include __SNIPPETS__/__INSTANZ__-konnektor.inc;
+}
 location ^~ /.well-known/oauth-    { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 # Startseite (/ führt angemeldet zu Mein Konto, #41, sonst zur Infoseite, #436), Konto, Abmelden, Zustimmung, Bereitschaft (ohne Dateiendung, deshalb trifft keine Regel für Endungen)
 location ~ ^/(?:konto|abmelden|authorize|gesund)?$ {

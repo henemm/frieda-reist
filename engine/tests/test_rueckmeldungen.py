@@ -379,3 +379,48 @@ def test_wunsch_einplanen_rolle_aktuell(umgebung):
     u.rollen = {"karl": "gast"}
     assert aendern(u, a, name="Karl", erlebt=True)[0] == 200
     assert u.rollen_abfragen == []
+
+
+def test_rollenabfrage_ausserhalb_der_sperre(umgebung, monkeypatch):
+    """Gegenprüfung F003: Die Rollenabfrage (HTTP, bis 60 s) läuft, bevor der Dienst _sperre nimmt; ein langsamer Schreibweg
+    hält sonst jedes andere Schreiben auf. Ergebnis wie bisher: herabgestuft -> 403, Organisator:in -> 200; nicht prüfbar -> 503."""
+    from test_brett import aendern, wunsch
+    u = umgebung()
+    a = wunsch(u, "Ida", "Abends in Hohnstein essen (Beispielwert)")
+    gehalten = []
+    echt = rm.rolle_aktuell
+
+    def beobachtet(*args):
+        gehalten.append(rm._sperre.locked())
+        return echt(*args)
+    monkeypatch.setattr(rm, "rolle_aktuell", beobachtet)
+    u.rollen = {"ida": "gast"}
+    assert aendern(u, a, name="Ida", eingeplant=True, bezug=["T-02"])[0] == 403
+    u.rollen = {}
+    assert aendern(u, a, name="Ida", eingeplant=True, bezug=["T-02"])[0] == 200
+    assert gehalten == [False, False], gehalten
+
+    def nicht_pruefbar(*args):
+        raise rm.RolleNichtPruefbar("weg")
+    monkeypatch.setattr(rm, "rolle_aktuell", nicht_pruefbar)
+    assert aendern(u, a, name="Ida", eingeplant=False)[0] == 503
+
+
+def test_abgebrochene_antwort_ist_nicht_pruefbar(monkeypatch):
+    """Gegenprüfung F010: Bricht die Antwort des Schreibwegs mitten ab (http.client.IncompleteRead, eine HTTPException),
+    gilt die Rolle als nicht prüfbar, wie bei OSError und kaputtem JSON; nie eine unbehandelte Ausnahme."""
+    import http.client
+    monkeypatch.setenv("RM_SCHREIBDIENST", "http://127.0.0.1:9")
+
+    class Abbruch:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            raise http.client.IncompleteRead(b'{"rolle": "orga', 20)
+    monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **k: Abbruch())
+    with pytest.raises(rm.RolleNichtPruefbar):
+        rm.rolle_aktuell("beispielreise", None, "Ida")

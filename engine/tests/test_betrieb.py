@@ -3078,7 +3078,8 @@ def test_einrichten_kartendienst_nur_mit_regionen(tmp_path):
     assert "BindsTo=probe-kartendienst.service" in texte_["kartendienst-proxy.service"]
     dienst = texte_["kartendienst.service"]
     assert re.search(r"wiktorn/overpass-api(:[\w.-]+)?@sha256:[0-9a-f]{64}", dienst), dienst
-    assert "StopWhenUnneeded=yes" in dienst and "2g" in dienst and "/srv/probe/kartendienst" in dienst
+    assert "StopWhenUnneeded=yes" in dienst and "2g" in dienst and "/var/lib/probe-kartendienst/daten:/db" in dienst \
+        and "/srv/probe/kartendienst" not in dienst   # fester Zustandsordner, nie der Verweis (Gegenprüfung F001)
     assert "ExecStartPost=" in dienst and "/api/status" not in dienst
     assert "OnCalendar=" in texte_["kartendienst-aktualisieren.timer"]
     # root-eigene Kopie von kartendienst.sh in /usr/local/sbin (#552, test_kartendienst.py::test_kartendienst_ohne_dienstbenutzer)
@@ -3433,9 +3434,16 @@ def test_doku_beschreibt_dienstrechte():
     assert re.search(r"[Aa]dmin", doku)
 
 
+def git_ohne_klonen(bin_, log):
+    """git-Attrappe vor dem echten git: „git clone“ (der Software-Klon aus den Installationsbefehlen, sonst ein Abruf aus dem
+    Netz) wird nur protokolliert; alles andere geht an das echte git."""
+    ausfuehrbar(bin_ / "git", f'#!/bin/sh\ncase "$1" in clone) printf "git %s\\n" "$*" >> {log}; exit 0 ;; esac\n'
+                              f'exec {shutil.which("git")} "$@"\n')
+
+
 def test_einrichten_installieren_attrappe(tmp_path):
     """AC-20 (Installationsweg): --installieren gegen eine sudo-Attrappe installiert Reise-Helfer, Units und eine sudoers-Datei
-    nur mit Helfern; kein usermod -aG docker für den Dienstbenutzer."""
+    nur mit Helfern; kein usermod -aG docker für den Dienstbenutzer. Ohne Netz: der Klon geht an eine git-Attrappe."""
     repo = tmp_path / "repo"
     (repo / "betrieb").mkdir(parents=True)
     (repo / "betrieb/einstellungen.env").write_text("FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
@@ -3453,6 +3461,7 @@ def test_einrichten_installieren_attrappe(tmp_path):
     log = tmp_path / "sudo.log"
     ausfuehrbar(bin_ / "sudo", f'#!/bin/sh\nprintf "%s\\n" "$*" >> {log}\nexit 0\n')
     ausfuehrbar(bin_ / "gh", "#!/bin/sh\nexit 0\n")
+    git_ohne_klonen(bin_, log)
     for name in ("rsync", "flock"):
         if not shutil.which(name):
             ausfuehrbar(bin_ / name, "#!/bin/sh\nexit 0\n")
@@ -3464,6 +3473,8 @@ def test_einrichten_installieren_attrappe(tmp_path):
                        text=True, timeout=120)
     assert r.returncode == 0 and "Installed." in r.stdout, r.stdout + r.stderr
     befehle = log.read_text().splitlines()
+    assert any(b.startswith("git clone ") for b in befehle), befehle      # protokolliert, nicht ausgeführt
+    assert not (tmp_path / "srv/probe/_software").exists()
     aus = tmp_path / "aus"
     assert f"install -m 755 -o root -g root {aus}/sbin/probe-nginx-reise-installieren /usr/local/sbin/" in befehle, befehle
     assert any(b.startswith("install -m 644") and str(tmp_path / "systemd") in b for b in befehle), befehle
@@ -3474,6 +3485,62 @@ def test_einrichten_installieren_attrappe(tmp_path):
     assert "probe-nginx-reise-installieren" in text
     for zeile in (z.strip() for z in text.splitlines() if "NOPASSWD" in z):
         assert NUR_HELFER.search(zeile), zeile
+
+
+def _installieren_mit_attrappe(tmp_path, scheitern, **mehr):
+    """--installieren gegen eine sudo-Attrappe, die bei Befehlen mit <scheitern> fehlschlägt; gibt Lauf und Protokoll zurück."""
+    repo = tmp_path / "repo"
+    (repo / "betrieb").mkdir(parents=True)
+    (repo / "betrieb/einstellungen.env").write_text("FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
+    (repo / "engine").symlink_to(ENGINE)
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(origin)], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Probe", "-c", "user.email=probe@example.invalid", "commit", "-q",
+                    "--allow-empty", "-m", "Probe"], check=True)
+    subprocess.run(["git", "-C", str(repo), "push", "-q", "origin", "HEAD:main"], check=True)
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    log = tmp_path / "sudo.log"
+    ausfuehrbar(bin_ / "sudo", f'#!/bin/sh\nprintf "%s\\n" "$*" >> {log}\ncase "$*" in *{scheitern}*) exit 1 ;; esac\nexit 0\n')
+    for name in ("gh", "docker"):
+        ausfuehrbar(bin_ / name, "#!/bin/sh\nexit 0\n")
+    git_ohne_klonen(bin_, log)
+    for name in ("rsync", "flock"):
+        if not shutil.which(name):
+            ausfuehrbar(bin_ / name, "#!/bin/sh\nexit 0\n")
+    env = {**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "PATH": f"{bin_}:{SAUBER.get('PATH', '/usr/bin:/bin')}",
+           "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "EI_ZIEL": str(tmp_path / "aus"),
+           "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen",
+           "FR_PFAD": f"{bin_}:/usr/bin:/bin", "FR_PYTHON": sys.executable, "FR_NGINX_SNIPPETS": str(tmp_path / "snippets"), **mehr}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--installieren"], input="ja\n", env=env, capture_output=True,
+                       text=True, timeout=120)
+    return r, (log.read_text().splitlines() if log.exists() else [])
+
+
+def test_einrichten_installieren_bricht_bei_ungueltigen_sudoers_ab(tmp_path):
+    """Gegenprüfung F002: Scheitert visudo -c, wird die sudoers-Datei nicht installiert und nichts danach ausgeführt;
+    der Lauf endet mit einem Fehler und nennt die Zeile."""
+    r, befehle = _installieren_mit_attrappe(tmp_path, "visudo")
+    assert r.returncode != 0 and "Installed." not in r.stdout, r.stdout + r.stderr
+    assert any(b.startswith("visudo -cq") for b in befehle), befehle
+    assert not [b for b in befehle if "/etc/sudoers.d/" in b], befehle
+    assert "daemon-reload" not in "\n".join(befehle), befehle
+    assert "Failed: sudo visudo -cq" in r.stdout + r.stderr, r.stdout + r.stderr
+
+
+@pytest.mark.skipif(not os.access("/usr/lib/systemd/systemd-socket-proxyd", os.X_OK),
+                    reason="einrichten.sh verlangt systemd-socket-proxyd für den eigenen Kartendienst")
+@pytest.mark.parametrize("scheitern", ["useradd", "kartendienst-umzug.sh"])
+def test_einrichten_installieren_ohne_karte_benutzer_keine_karte(tmp_path, scheitern):
+    """Gegenprüfung F002: Scheitert das Anlegen des Karte-Benutzers oder der Umzug der Kartendaten, werden weder das
+    Karte-Skript noch die Units des Kartendienstes installiert."""
+    r, befehle = _installieren_mit_attrappe(tmp_path, scheitern, FR_KARTENDIENST_REGIONEN="europe/andorra",
+                                            FR_KARTENDIENST_ORDNER=str(tmp_path / "karte"))
+    assert r.returncode != 0 and "Installed." not in r.stdout, r.stdout + r.stderr
+    assert any(scheitern in b for b in befehle), befehle
+    assert not [b for b in befehle if "probe-kartendienst /usr/local/sbin" in b or "/kartendienst/" in b], befehle
 
 
 def test_einrichten_bausteine_lesbar_fuer_die_gruppe(tmp_path):
@@ -3487,5 +3554,27 @@ def test_einrichten_bausteine_lesbar_fuer_die_gruppe(tmp_path):
     umstellen = [z for z in zeilen if z.startswith("sudo find ")]
     assert len(umstellen) == 1, aus
     z = umstellen[0]
-    assert f"{tmp_path}/snippets /etc/nginx/conf.d" in z and "-maxdepth 1" in z and "'probe-*.conf'" in z and "'probe-*.inc'" in z
+    # Reise-Bausteine in den Snippets, erkannt an der Zone der Instanz (Gegenprüfung F007); Zonendatei und .inc-Bausteine
+    # installiert die Zeile danach ohnehin mit 0640 root:<FR_GRUPPE>
+    assert f"find {tmp_path}/snippets -maxdepth 1" in z and "'probe-*.conf'" in z and "conf.d" not in z, z
     assert "-exec chown root:reisen {} +" in z and "-exec chmod 640 {} +" in z
+
+
+def test_einrichten_bausteine_nur_der_eigenen_instanz(tmp_path):
+    """Gegenprüfung F007: Die einmalige Umstellung trifft nur Bausteine dieser Instanz. Bei gleichem Präfix (probe und
+    probe-test) bleiben die Reise-Bausteine der anderen Instanz unverändert; erkannt wird an der Zone der Instanz."""
+    snippets = tmp_path / "snippets"
+    snippets.mkdir()
+    eigen = snippets / "probe-beispielreise.conf"
+    eigen.write_text("location ^~ /beispielreise-x/api/ {\n    limit_req zone=probe_api burst=10 nodelay;\n}\n")
+    fremd = snippets / "probe-test-stadtwochenende.conf"
+    fremd.write_text("location ^~ /stadtwochenende-x/api/ {\n    limit_req zone=probe_test_api burst=10 nodelay;\n}\n")
+    for p in (eigen, fremd):
+        p.chmod(0o644)
+    r = einrichten(tmp_path, FR_NGINX_SNIPPETS=str(snippets))
+    z = next(z.strip() for z in r.stdout.splitlines() if z.strip().startswith("sudo find "))
+    # ohne sudo und ohne Besitzwechsel ausführen (der Test ist nicht root); was chmod trifft, träfe auch chown
+    befehl = z.removeprefix("sudo ").replace(" -exec chown root:reisen {} +", "")
+    subprocess.run(["bash", "-c", befehl], check=True)
+    assert oct(eigen.stat().st_mode & 0o777) == "0o640"
+    assert oct(fremd.stat().st_mode & 0o777) == "0o644"

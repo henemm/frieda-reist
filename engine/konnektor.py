@@ -2029,19 +2029,34 @@ def einladen(reise, d, wer, args):
 
 
 def person_sichern(reise, wer, text_, schluessel, eintrag, name_von):
-    """Neue Person nach reise.yaml über den Schreibweg (person_schreiben). Scheitert das, gilt die Person trotzdem schon
-    (einladungen.json); der Fehler steht im Protokoll und als Meldung an die Organisator:innen."""
+    """Neue Person nach reise.yaml über den Schreibweg (person_schreiben); er prüft die Rolle der Einladenden mit reise.yaml
+    des aktuellen Stands. -> Fehler oder None. Scheitert er, wird nicht eingeladen (#552: erst der Schreibweg, dann
+    einladungen.json und Mail). Ohne Schreibweg bei dieser Instanz gilt die Person nur über einladungen.json (None)."""
     if not schreibdienst():
         sys.stderr.write(f"person_schreiben {reise}/{schluessel}: no write path (KN_SCHREIBDIENST)\n")
-        return
+        return None
     a, fehler = schreib_anfrage(reise, "person_schreiben", {"person": wer.get("person"), "name": name_von, "rolle": wer["rolle"],
                                                             "args": {"schluessel": schluessel, "vorname": eintrag["name"], "rolle": eintrag["rolle"],
                                                                      "reist": eintrag.get("reist", True), "notiz": eintrag.get("notiz")}})
     if fehler:
         sys.stderr.write(f"person_schreiben {reise}/{schluessel}: {fehler}\n")
-        o = rm.ordner(reise)
-        if o is not None:
-            rm.meldung_anlegen(o, [name_von], "technik", "reise", tk("konnektor.person_sichern.1", w1=eintrag['name'], fehler=fehler))
+    return fehler
+
+
+def rolle_aktuell_pruefen(reise, d, person, name, aktion=None):
+    """Rolle im aktuellen Stand der Reise prüfen (#552, rueckmeldungen.rolle_aktuell) -> Fehlertext oder None. Mit aktion
+    die Regelprüfung (reise.erlaubt), ohne nur „ist Organisator:in“. Ohne Schreibweg gilt die Prüfung mit dem veröffentlichten
+    Stand, die der Aufrufer schon gemacht hat."""
+    try:
+        rolle = rm.rolle_aktuell(reise, person, name)
+    except rm.RolleNichtPruefbar as e:
+        sys.stderr.write(f"rolle {reise}/{person}: not checkable: {' '.join(str(e).split())[:200]}\n")
+        return tk("dienst.rolle_nicht_pruefbar")
+    if rolle is None:
+        return None
+    if aktion:
+        return recht(rolle, d, aktion)
+    return None if darf(rolle, "organisator") else tk("konnektor.einladen.15")
 
 
 # ---------- Konto: meine Reisen und neue Reise (Paket H) ----------
@@ -2104,25 +2119,31 @@ def person_entfernen(reise, d, wer, args):
 
 
 def einladen_per_mail(reise, d, o, wer, args, name, rolle, schluessel, neu, notiz, email):
-    """Teil von einladen für den Konnektor „Frieda“: Person (falls neu) in einladungen.json und als Auftrag, dann die
-    Einladung über engine/konten.py (Mail mit Hinweis zum Anmelden, gilt sofort, wenn die Adresse ein Konto hat)."""
+    """Teil von einladen für den Konnektor „Frieda“. Neue Person: erst nach reise.yaml über den Schreibweg (prüft die Rolle der
+    Einladenden mit dem aktuellen Stand); lehnt er ab, keine Mail, kein Eintrag in einladungen.json, keine Verknüpfung. Danach
+    einladungen.json, dann die Einladung über engine/konten.py (Mail mit Hinweis zum Anmelden, gilt sofort, wenn die Adresse ein
+    Konto hat). Vorhandene Person (Verknüpfung mit einem Konto): vorher die Rolle der Einladenden im aktuellen Stand (#552)."""
+    if neu:
+        heute = datetime.date.today().isoformat()
+        eintrag = {"name": name, "rolle": rolle, "reist": args.get("reist", True) is not False,
+                   "notiz": notiz or tkd("konnektor.einladen_per_mail.2", w1=wer['name'], w2=datum_de(heute)),
+                   "eingeladen_von": wer["name"], "datum": heute}
+        fehler = person_sichern(reise, wer, tkd("konnektor.einladen_per_mail.1", w1=wer['name'], name=name, rolle=rolle, schluessel=schluessel, w5='ja' if eintrag['reist'] else 'nein', w6=eintrag['notiz']),
+                                schluessel, eintrag, wer["name"])
+        if fehler:
+            return tk("konnektor.einladen_per_mail.abgelehnt", name=name, fehler=fehler), True
+        with _sperre:
+            alle = rm.einladungen_lesen(o)
+            alle[schluessel] = eintrag
+            rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
+    elif (nein := rolle_aktuell_pruefen(reise, d, wer.get("person"), wer["name"])):   # Verknüpfen: nur Organisator:innen
+        return nein, True
     try:
         r = konten.einladen(reise, schluessel, email, rolle, name, wer["name"],
                             titel=((d or {}).get("reise") or {}).get("titel"), seite=seitenlinks().get(reise),
                             sprache=((d or {}).get("reise") or {}).get("sprache"))   # die Mail in der Sprache der Reise
     except konten.KontoFehler as f:
         return tk("konnektor.ausgabe.einladen_per_mail.1", f=f), True
-    if neu:
-        heute = datetime.date.today().isoformat()
-        eintrag = {"name": name, "rolle": rolle, "reist": args.get("reist", True) is not False,
-                   "notiz": notiz or tkd("konnektor.einladen_per_mail.2", w1=wer['name'], w2=datum_de(heute)),
-                   "eingeladen_von": wer["name"], "datum": heute}
-        with _sperre:
-            alle = rm.einladungen_lesen(o)
-            alle[schluessel] = eintrag
-            rm.schreiben(o / "einladungen.json", json.dumps(alle, ensure_ascii=False, indent=1) + "\n")
-        person_sichern(reise, wer, tkd("konnektor.einladen_per_mail.1", w1=wer['name'], name=name, rolle=rolle, schluessel=schluessel, w5='ja' if eintrag['reist'] else 'nein', w6=eintrag['notiz']),
-                       schluessel, eintrag, wer["name"])
     return ((tk("konnektor.ausgabe.einladen_per_mail.2", name=name, rolle=rolle) if neu else tk("konnektor.einladen_per_mail.6", name=name, rolle=rolle))
             + tk("konnektor.einladen_per_mail.3", email=email)
             + (tk("konnektor.einladen_per_mail.4")
@@ -3076,6 +3097,9 @@ def werkzeug(zugang, name, args):
         kommentar = str(args.get("kommentar") or "").strip()
         if not kommentar:
             return tk("konnektor.werkzeug.9"), True
+        # Erledigen entscheidet über Rückmeldungen: Rolle im aktuellen Stand, nicht nur im veröffentlichten (#552)
+        if (nein := rolle_aktuell_pruefen(reise, d, zugang.get("person"), wer["name"], aktion)):
+            return nein, True
         a, fehler = dienst_anfrage("PATCH", f"{reise}/rueckmeldungen/{rid}", {"status": str(args.get("status") or ""), "kommentar": kommentar,
                                                                                "name": wer["name"]})
         if fehler:

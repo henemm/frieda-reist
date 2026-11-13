@@ -582,3 +582,54 @@ def test_nachziehen_sperren(tmp_path, monkeypatch, reise):
         assert env.read_text(encoding="utf-8") == erwartet, (zeile, env.read_text(encoding="utf-8"))
         neu.nachziehen(Path("reisen") / reise)       # zweiter Lauf: keine Änderung
         assert env.read_text(encoding="utf-8") == erwartet
+
+
+@pytest.mark.parametrize("zeile", ["FR_SPERREN=/tmp/\n", "export FR_SPERREN=/tmp\n", "  FR_SPERREN=/tmp\n",
+                                   "\tFR_SPERREN='/tmp/'\n", 'FR_SPERREN="/tmp"   # alte Vorgabe\n',
+                                   "export FR_SPERREN=/tmp # alt\r\n", "FR_SPERREN=/tmp",
+                                   # Gegenprüfung F012: was die Shell ebenfalls als /tmp liest
+                                   "FR_SPERREN=//tmp\n", "FR_SPERREN=/tmp/.\n", "FR_SPERREN='//tmp/./'\n",
+                                   "declare -x FR_SPERREN=/tmp\n", '  declare -x FR_SPERREN="/tmp/"\n'])
+def test_sperren_tmp_in_allen_schreibweisen(tmp_path, monkeypatch, zeile):
+    """Gegenprüfung F008: FR_SPERREN=/tmp kommt in jeder Schreibweise heraus, die die Shell als /tmp liest (Schrägstrich am
+    Ende, export, Einrückung, Anführungszeichen, Kommentar am Ende, ohne Zeilenende). Geschrieben wird atomar (temporäre
+    Datei und os.replace), Modus der Datei bleibt."""
+    import os
+    for k in list(os.environ):
+        if k.startswith("FR_"):
+            monkeypatch.delenv(k)
+    dienst = tmp_path / "_dienst"
+    env = dienst / "instanz" / "einstellungen.env"
+    env.parent.mkdir(parents=True)
+    kopf = "# Einstellungen der Instanz (erfundene Beispielwerte)\nFR_INSTANZ=beispiel\n"
+    env.write_text(kopf + zeile, encoding="utf-8")
+    env.chmod(0o600)
+    monkeypatch.setenv("FR_DIENST", str(dienst))
+    monkeypatch.setenv("FR_WURZEL", str(tmp_path / "_software"))
+    ersetzt = []
+    echt = os.replace
+    monkeypatch.setattr(os, "replace", lambda a, b: (ersetzt.append(str(b)), echt(a, b))[1])
+    assert neu.sperren_nachziehen() != []
+    assert env.read_text(encoding="utf-8") == kopf
+    assert ersetzt == [str(env)]
+    assert oct(env.stat().st_mode & 0o777) == "0o600"
+    assert list(env.parent.iterdir()) == [env]       # keine temporäre Datei zurückgelassen
+
+
+@pytest.mark.parametrize("zeile", ["FR_SPERREN=/tmpx\n", "FR_SPERREN=/tmp/frieda\n", "FR_SPERREN=/tmp#x\n",
+                                   "# FR_SPERREN=/tmp\n", "FR_SPERREN=//tmpx\n", "FR_SPERREN=/tmp/./frieda\n",
+                                   "declare -x FR_SPERREN=/tmp/frieda\n"])
+def test_sperren_anderer_ort_bleibt(tmp_path, monkeypatch, zeile):
+    """Gegenprüfung F008: Ein anderer Ort (auch unter /tmp) und eine auskommentierte Zeile bleiben unverändert."""
+    import os
+    for k in list(os.environ):
+        if k.startswith("FR_"):
+            monkeypatch.delenv(k)
+    dienst = tmp_path / "_dienst"
+    env = dienst / "instanz" / "einstellungen.env"
+    env.parent.mkdir(parents=True)
+    env.write_text(zeile, encoding="utf-8")
+    monkeypatch.setenv("FR_DIENST", str(dienst))
+    monkeypatch.setenv("FR_WURZEL", str(tmp_path / "_software"))
+    assert neu.sperren_nachziehen() == []
+    assert env.read_text(encoding="utf-8") == zeile

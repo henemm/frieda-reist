@@ -26,6 +26,7 @@ der drei Zonen der Instanz, limit_req_status 429, include des eigenen Konnektor-
 proxy_read_timeout. Alles andere lehnt die ganze Eingabe ab. Eine Erweiterung ist eine eigene, geprüfte Änderung.
 """
 import fcntl
+import grp
 import os
 import re
 import stat
@@ -37,6 +38,8 @@ import unicodedata
 
 INSTANZ = "__INSTANZ__"
 SNIPPETS = "__SNIPPETS__"
+# Gruppe des Dienstbenutzers (#552): Bausteine 0640 root:GRUPPE, damit nginx.py pruefen ohne sudo liest; eingebacken
+GRUPPE = "__GRUPPE__"
 ZONEN = ("__ZONE_MCP__", "__ZONE_ANMELDEN__", "__ZONE_KONTO__")
 NAME = INSTANZ + "-konnektor-orte.inc"
 INCLUDE = SNIPPETS + "/" + INSTANZ + "-konnektor.inc"
@@ -218,9 +221,17 @@ def sichern(daten, sicherung):
         os.close(dfd)
 
 
+def gruppe_gid():
+    """Kennung der eingebackenen Gruppe; fehlt sie auf dem Server, wird nichts installiert."""
+    try:
+        return grp.getgrnam(GRUPPE).gr_gid
+    except (KeyError, TypeError, AttributeError):
+        raise Abgelehnt(f"group {GRUPPE!r} does not exist (einrichten.sh, FR_GRUPPE)")
+
+
 def ersetzen(daten, snippets, ziel):
     """Atomar ersetzen: temporäre Datei im Snippets-Ordner (Name ohne .conf/.inc, kein Stern-Include bindet sie ein), fsync,
-    0640 root:root, os.replace. Bei jedem Fehler bleibt keine temporäre Datei zurück; der Fehler geht an den Aufrufer."""
+    0640 root:GRUPPE (#552), os.replace. Bei jedem Fehler bleibt keine temporäre Datei zurück; der Fehler geht an den Aufrufer."""
     fd, tmp = tempfile.mkstemp(dir=snippets, prefix=".nginx-orte-installieren-", suffix=".tmp")
     try:
         with os.fdopen(fd, "wb") as f:
@@ -229,7 +240,7 @@ def ersetzen(daten, snippets, ziel):
             os.fsync(f.fileno())
             os.fchmod(f.fileno(), 0o640)
             if os.geteuid() == 0:
-                os.fchown(f.fileno(), 0, 0)
+                os.fchown(f.fileno(), 0, gruppe_gid())
         os.replace(tmp, ziel)
     except BaseException:
         try:
@@ -282,6 +293,8 @@ def installieren(neu, snippets=SNIPPETS, sicherung=SICHERUNG, sperre=SPERRE, ngi
             return 2
         if not os.path.exists(nginx):
             raise Abgelehnt(f"{nginx} is missing")
+        if os.geteuid() == 0:
+            gruppe_gid()     # vor jeder Änderung: gibt es die Gruppe?
         gesichert = sichern(alt, sicherung)
         ERSETZEN_BEGONNEN.append(True)
         try:

@@ -1,5 +1,8 @@
 # Aktualisieren des eigenen Kartendienstes (#444): spielt die Regionen neu ein, wenn der Stand älter als ein Monat ist oder sich
 # die Regionenliste (FR_KARTENDIENST_REGIONEN) geändert hat; sonst tut der Lauf nichts. Erzeugt von betrieb/einrichten.sh.
+# Läuft unter dem eigenen Benutzer __KD_BENUTZER__ (Gruppe docker), nie unter dem Dienstbenutzer (#552). Das Programm ist die
+# root-eigene Kopie von betrieb/kartendienst.sh in /usr/local/sbin mit eingebackenen Werten (einrichten.sh); es liest keine
+# Umgebungsdatei und kein Skript aus Ordnern des Dienstbenutzers. Daten und Sperre liegen im Zustandsordner (StateDirectory).
 # Log: journalctl -u __INSTANZ__-kartendienst-aktualisieren -n 50
 [Unit]
 Description=__TITEL__: eigenen Kartendienst aktualisieren
@@ -7,12 +10,11 @@ After=network-online.target docker.service
 
 [Service]
 Type=oneshot
-User=__BENUTZER__
-Group=__GRUPPE__
-Environment=PATH=__PFAD__
-Environment=FR_WURZEL=__WURZEL__
-__UMGEBUNG_DIENST__
-EnvironmentFile=-__DIENST__/betrieb.env
-ExecStart=__SOFTWARE__/betrieb/kartendienst.sh aktualisieren
+User=__KD_BENUTZER__
+Group=__KD_BENUTZER__
+StateDirectory=__INSTANZ__-kartendienst
+# Daten und Sperre liegen hier (daten/, FR_KARTENDIENST_ORDNER verweist darauf); lesbar für Konnektor (abdeckung.json) und Container
+StateDirectoryMode=0755
+ExecStart=/usr/local/sbin/__INSTANZ__-kartendienst aktualisieren
 Nice=10
 TimeoutStartSec=3h

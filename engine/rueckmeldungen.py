@@ -244,6 +244,37 @@ def rolle_von(z, name):
     return "mitwirkend"
 
 
+class RolleNichtPruefbar(Exception):
+    """Der Schreibweg ist eingerichtet, beantwortet die Rollenabfrage aber nicht (nicht erreichbar, Person unbekannt)."""
+
+
+def rolle_aktuell(reise, person, name):
+    """Rolle einer Person in reise.yaml des aktuellen Stands (#552), über die Rollenabfrage des Schreibwegs
+    (GET /<reise>/rolle, RM_SCHREIBDIENST oder KN_SCHREIBDIENST). Für Einladen, Erledigen und Einplanen: Der veröffentlichte
+    Stand kann hinterherhinken, wenn jemand gerade herabgestuft wurde. -> Rolle; None, wenn bei der Instanz kein Schreibweg
+    eingerichtet ist (dann gilt wie bisher der veröffentlichte Stand). Ist er eingerichtet, aber nicht erreichbar, oder kennt er
+    die Person nicht: RolleNichtPruefbar, nie ein stiller Rückfall auf den veröffentlichten Stand."""
+    import http.client
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    adresse = os.environ.get("RM_SCHREIBDIENST") or os.environ.get("KN_SCHREIBDIENST")
+    if not adresse:
+        return None
+    abfrage = urllib.parse.urlencode({"person": person or "", "name": name or ""})
+    req = urllib.request.Request(f"{adresse.rstrip('/')}/{urllib.parse.quote(reise)}/rolle?{abfrage}",
+                                 headers={"X-Frieda-Dienst": konten.dienst_geheimnis()})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            a = json.loads(r.read())
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as e:   # auch abgebrochene Antworten
+        raise RolleNichtPruefbar(str(e)) from e
+    rolle = a.get("rolle") if isinstance(a, dict) else None
+    if rolle not in rg.ROLLEN:
+        raise RolleNichtPruefbar("unknown person")
+    return rolle
+
+
 def schreibrecht(reise, aktion, name):
     """Darf diese Person jetzt schreiben? -> Fehlertext oder None. Aufrufer: der HTTP-Dienst bei jedem Schreiben."""
     z = zustand(reise)
@@ -812,10 +843,23 @@ def wunsch_annehmen(o, z, name):
     return None
 
 
-def wunsch_aendern(o, rid, roh, z):
+_SELBST_ABFRAGEN = object()
+
+
+def rolle_vorab(reise, name):
+    """Rolle im aktuellen Stand für das Einplanen, abgefragt bevor der Dienst _sperre nimmt (HTTP bis 60 s; #552). -> Rolle,
+    None (kein Schreibweg eingerichtet) oder die Ausnahme RolleNichtPruefbar als Wert (wunsch_aendern antwortet dann 503)."""
+    try:
+        return rolle_aktuell(reise, None, name)
+    except RolleNichtPruefbar as e:
+        return e
+
+
+def wunsch_aendern(o, rid, roh, z, vorab=_SELBST_ABFRAGEN):
     """Wunsch auf dem Brett ändern: punkte (nur wer ihn eingebracht hat, im Kontingent), erlebt (alle Mitwirkenden,
     unterwegs und danach), eingeplant mit bezug (nur Organisator:innen); kommentar geht in den Verlauf.
-    z: zustand(reise) oder None (dann nur die technischen Prüfungen). -> (wunsch, fehler, code). Aufrufer hält _sperre."""
+    z: zustand(reise) oder None (dann nur die technischen Prüfungen). vorab: Ergebnis von rolle_vorab, vom Aufrufer vor
+    _sperre geholt; ohne Angabe fragt die Funktion selbst. -> (wunsch, fehler, code). Aufrufer hält _sperre."""
     if not isinstance(roh, dict):
         return None, texte.satz("dienst.pruefen.1"), 400
     name, fehler = wer(roh)
@@ -853,7 +897,14 @@ def wunsch_aendern(o, rid, roh, z):
         return None, texte.satz("dienst.wunsch_aendern.5"), 400
     if z is not None:
         for a in aktionen or ["wunsch_erlebt"]:   # nur ein Kommentar: darf, wer auch abhaken darf
-            ok, grund = rg.erlaubt(a, rolle_von(z, name), z["status"], z["bausteine"], regeln=z.get("regeln"))
+            rolle = rolle_von(z, name)
+            if a == "wunsch_einplanen":
+                # Einplanen ist eine Entscheidung: Rolle aus dem aktuellen Stand (#552); Punkte und erlebt bleiben beim veröffentlichten
+                jetzt = rolle_vorab(o.name, name) if vorab is _SELBST_ABFRAGEN else vorab
+                if isinstance(jetzt, RolleNichtPruefbar):
+                    return None, texte.satz("dienst.rolle_nicht_pruefbar"), 503
+                rolle = jetzt or rolle
+            ok, grund = rg.erlaubt(a, rolle, z["status"], z["bausteine"], regeln=z.get("regeln"))
             if not ok:
                 return None, grund, 403
     if aktionen and e.get("status") == "verworfen":
@@ -1267,10 +1318,13 @@ class Dienst(BaseHTTPRequestHandler):
             bestimmt = ident["art"] == "konto" and (ident["person"] or {}).get("rolle") == "organisator"
             if "eingeplant" in roh and ident["art"] != "dienst" and not bestimmt:
                 return self._antwort(403, {"fehler": texte.satz("dienst.do_patch.4")})
+            # Rolle für das Einplanen vor der Sperre abfragen (HTTP bis 60 s, #552): ein langsamer Schreibweg hält sonst jedes
+            # andere Schreiben auf
+            vorab = rolle_vorab(t[0].name, wer(roh)[0]) if z is not None and "eingeplant" in roh and wer(roh)[0] else None
             with _sperre:
                 if gedrosselt(t[0]):
                     return self._antwort(429, {"fehler": texte.satz("dienst.do_patch.5")})
-                w, fehler, code = wunsch_aendern(t[0], t[2], roh, z)
+                w, fehler, code = wunsch_aendern(t[0], t[2], roh, z, vorab)
             return self._antwort(code, {"fehler": fehler} if fehler else w)
         if (nein := schreibrecht(t[0].name, "aufgabe", roh.get("name"))):
             return self._antwort(403, {"fehler": nein})

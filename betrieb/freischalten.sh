@@ -4,17 +4,17 @@
 #   betrieb/freischalten.sh <reise>    geheimer Link zur Seite (falls noch keiner da ist), Prüfung, seiten.json
 #   (Links für die Claude-App je Person gibt es nicht mehr, #421: Personen kommen über ihr Konto)
 #
-# Gibt es noch kein nginx-Baustein <FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf, entsteht er aus vorlagen/nginx-reise.conf
-# mit einem neuen Zufalls-Token (root, 640). nginx wird geprüft und neu geladen; schlägt die Prüfung fehl, wird der
-# Baustein wieder entfernt. Danach müssen Seite und Rückmeldedienst unter dem Link mit 200 antworten, sonst Abbruch.
-# Gibt es den Baustein schon, bleibt der Link, wie er ist (beliebig oft aufrufbar; veroeffentlichen.sh ruft es je Reise auf);
-# hat sich nur die Vorlage geändert, wird der Baustein mit demselben Pfad erneuert (nginx geprüft, sonst alter Stand). Der
-# Pfad wird aus dem Baustein gelesen und muss nicht mit dem Ordner der Reise beginnen (von Hand angelegte Bausteine).
+# Den nginx-Baustein <FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf legt nur das Hilfsprogramm mit Root-Rechten an
+# (FR_NGINX_REISE_HELFER, Vorgabe /usr/local/sbin/<instanz>-nginx-reise-installieren, davor FR_SUDO; #552): Es bekommt den
+# Reisenamen auf stdin, legt den Baustein mit einem neuen Zufalls-Token an oder erneuert ihn mit seinem bisherigen Pfad, wenn sich
+# die Vorlage geändert hat, prüft nginx (sonst alter Stand) und lädt neu. Seine Ausgabe ist nur der Pfad des Links. Danach müssen
+# Seite und Rückmeldedienst unter dem Link mit 200 antworten, sonst Abbruch. Beliebig oft aufrufbar (veroeffentlichen.sh ruft es
+# je Reise auf); der Link bleibt, wie er ist, auch bei von Hand angelegten Bausteinen.
 # Der Link zur Seite kommt nach seiten.json im Ordner des Konnektors (für das Werkzeug meine_reisen).
 #
 # Voraussetzung (einmalig, einrichten.sh): Im server-Block von FR_ADRESSE steht  include <FR_NGINX_SNIPPETS>/<instanz>-*.conf;
 # Ausgabe: „Seite: <url>“. Links nie ins Repo, in Issues oder Nachrichten.
-# Für Tests überschreibbar: FS_SNIPPETS, FS_BASIS, FS_SUDO, FS_NGINX_TEST, FS_NGINX_LADEN, FS_ABRUF, KN_SEITENLINKS.
+# Für Tests überschreibbar: FS_BASIS, FS_SUDO, FS_ABRUF, KN_SEITENLINKS.
 set -eEuo pipefail
 # Jeder Abbruch ohne eigene Meldung bekommt eine ERROR-Zeile mit Zeile und Befehl (unaufgelöst, also ohne Link):
 # veroeffentlichen.sh zeigt aus dieser Ausgabe nur ERROR-Zeilen, sonst bliebe „not released“ ohne Grund (#465).
@@ -24,11 +24,9 @@ trap 'rc=$?; echo "ERROR: freischalten.sh stopped at line $LINENO (exit $rc): $B
 REISE="${1:?usage: freischalten.sh <trip>}"
 [ -z "${2:-}" ] || { echo "ERROR: freischalten.sh takes only the trip; links for the Claude app no longer exist (#421)."; exit 1; }
 WURZEL="$FR_WURZEL"
-SNIPPETS="${FS_SNIPPETS:-${FR_NGINX_SNIPPETS:-/etc/nginx/snippets}}"
 BASIS="${FS_BASIS:-$FR_ADRESSE}"
 SUDO="${FS_SUDO-${FR_SUDO-sudo -n}}"
-NGINX_TEST="${FS_NGINX_TEST:-$SUDO nginx -t -q}"
-NGINX_LADEN="${FS_NGINX_LADEN:-$SUDO systemctl reload nginx}"
+HELFER="${FR_NGINX_REISE_HELFER:-/usr/local/sbin/$FR_INSTANZ-nginx-reise-installieren}"
 SEITENLINKS="${KN_SEITENLINKS:-$FR_KONNEKTOR/seiten.json}"
 
 abruf() {  # <url> -> HTTP-Code
@@ -43,57 +41,35 @@ else REISENORDNER="$WURZEL/reisen"; fi
 [ -f "$REISENORDNER/$REISE/reise.yaml" ] || [ -f "$REISENORDNER/$REISE/reise.json" ] \
   || { echo "ERROR: trip “$REISE” does not exist."; exit 1; }
 [ -n "$BASIS" ] || { echo "ERROR: FR_ADRESSE is not set (settings of the instance)."; exit 1; }
-# Ohne Root-Rechte sofort abbrechen (#465): Aus einem Dienst mit NoNewPrivileges (Schreibweg) scheitert jedes sudo, auch
-# „test -e“; das las sich als „Baustein fehlt“, und die Reise hätte still einen neuen geheimen Link bekommen.
-if [ -n "$SUDO" ] && ! $SUDO true 2>/dev/null; then
-  echo "ERROR: no root rights here (“$SUDO” does not work, e.g. NoNewPrivileges in a service); nothing changed."; exit 1
+[ -x "$HELFER" ] || { echo "ERROR: helper $HELFER is missing (einrichten.sh --installieren, docs/betrieb.md); nothing changed."; exit 1; }
+# Ohne Root-Rechte sofort abbrechen (#465): Aus einem Dienst mit NoNewPrivileges (Schreibweg) scheitert jedes sudo. Geprüft
+# wird genau die Regel für das Hilfsprogramm (sudo -l), ohne es aufzurufen.
+if [ -n "$SUDO" ] && ! $SUDO -l "$HELFER" > /dev/null 2>&1; then
+  echo "ERROR: no root rights here (“$SUDO $HELFER” is not allowed, e.g. NoNewPrivileges in a service); nothing changed."; exit 1
 fi
 
-snippet="$SNIPPETS/$FR_INSTANZ-$REISE.conf"
-rendern() {  # <pfad> -> Baustein aus der Vorlage; der Pfad ist das erste Glied des geheimen Links („<reise>-<token>“)
-  # Der Pfad wird als Ganzes eingesetzt, nicht aus Reise und Token zusammengesetzt: Ein von Hand angelegter Baustein
-  # kann einen anderen Namen als den Ordner der Reise tragen (etwa „rundreise-…“ für „rundreise-2027“), und der Link muss bleiben.
-  sed -e "s|__REISE__-__TOKEN__|$1|g" -e "s|__TOKEN__|${1##*-}|g" -e "s|__REISE__|$REISE|g" -e "s|__SEITEN__|$FR_SEITEN|g" \
-    -e "s|__RM_PORT__|$FR_RM_PORT|g" -e "s|__ZONE__|${FR_INSTANZ//-/_}_api|g" -e "s|__INSTANZ__|$FR_INSTANZ|g" \
-    "$FR_BETRIEB/vorlagen/nginx-reise.conf"
-}
-pfad_aus() {  # <baustein> -> erstes Glied des Pfads aus dem ersten location-Block, leer wenn keiner da ist
-  printf '%s\n' "$1" | grep -oP '^location \^~ /\K[^/]+(?=/ \{)' | head -1 || true
-}
-tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
+# Baustein über das Hilfsprogramm: Ausgang 0 angelegt oder erneuert und geladen, 2 nichts zu tun, sonst Fehler (nichts
+# geladen); auf stdout nur der Pfad, auf stderr der Grund
+fehler_datei="$(mktemp)"; trap 'rm -f "$fehler_datei"' EXIT
+hrc=0
+pfad="$(printf '%s\n' "$REISE" | $SUDO "$HELFER" 2> "$fehler_datei")" || hrc=$?
+grund="$(tr '\n' ' ' < "$fehler_datei" | sed 's/ *$//')"
+case "$hrc" in
+  0|2) ;;
+  3) echo "ERROR: the nginx helper rejected $REISE, nothing changed: ${grund:-no reason}"; exit 1 ;;
+  4) echo "ERROR: nginx rejects the configuration for $REISE; the old state stays in force, nothing changed: ${grund:-}"; exit 1 ;;
+  5) echo "ERROR: block of $REISE installed and tested, but the nginx reload failed: ${grund:-}"; exit 1 ;;
+  6) case "$grund" in
+       *"rollback failed"*) echo "ERROR: nginx rejects the configuration for $REISE and the rollback failed, not reloaded: $grund" ;;
+       *) echo "ERROR: nginx rejects the configuration for $REISE, also with the previous state; the old state stays in force, not reloaded: ${grund:-}" ;;
+     esac; exit 1 ;;
+  *) echo "ERROR: nginx helper for $REISE ended with exit $hrc, not reloaded: ${grund:-}"; exit 1 ;;
+esac
 neu=""
-if ! $SUDO test -e "$snippet"; then
-  token="$(python3 -c 'import secrets; print(secrets.token_hex(12))')"
-  rendern "$REISE-$token" > "$tmp"
-  $SUDO install -m 640 "$tmp" "$snippet"
-  if ! $NGINX_TEST; then
-    $SUDO rm -f "$snippet"
-    echo "ERROR: nginx rejects the configuration; snippet for $REISE removed again, nothing changed."; exit 1
-  fi
-  $NGINX_LADEN
-  neu=1
-else
-  # Hat sich die Vorlage geändert (z. B. ein neuer location-Block, 29.10.2026 Belege #76), bekommt der Baustein den neuen
-  # Stand mit demselben Pfad; der Link bleibt. Lehnt nginx ab, kommt der alte Stand zurück.
-  alt="$($SUDO cat "$snippet")"
-  pfad="$(pfad_aus "$alt")"
-  [ -n "$pfad" ] || { echo "ERROR: no path in the block $snippet (location ^~ /<reise>-<token>/ is missing)."; exit 1; }
-  rendern "$pfad" > "$tmp"
-  if [ "$(cat "$tmp")" != "$alt" ]; then
-    sicher="$(mktemp)"; printf '%s\n' "$alt" > "$sicher"
-    $SUDO install -m 640 "$tmp" "$snippet"
-    if ! $NGINX_TEST; then
-      $SUDO install -m 640 "$sicher" "$snippet"; rm -f "$sicher"
-      echo "ERROR: nginx rejects the renewed block for $REISE; the old state stays in force."; exit 1
-    fi
-    rm -f "$sicher"
-    $NGINX_LADEN
-    echo "Block renewed: $REISE"
-  fi
+if [ "$hrc" = 0 ]; then
+  case "$grund" in *"block renewed"*) echo "Block renewed: $REISE" ;; *) neu=1 ;; esac
 fi
-
-pfad="$(pfad_aus "$($SUDO cat "$snippet")")"
-[ -n "$pfad" ] || { echo "ERROR: no path in the snippet $snippet."; exit 1; }
+[[ "$pfad" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "ERROR: no path in the block of $REISE (answer of the helper)."; exit 1; }
 url="$BASIS/$pfad/"
 # Nach dem Neuladen braucht nginx einen Moment, bis die neuen Pfade gelten: Ein neuer Link wird deshalb mehrmals versucht.
 versuche=1; [ -n "$neu" ] && versuche="${FS_VERSUCHE:-10}"

@@ -122,7 +122,7 @@ Befund im Code: Der Schreibweg prüft die Rolle schon richtig, `wer_pruefen` (`e
 
 **Festgelegte Stelle:** eine lesende Rollenabfrage des Schreibwegs, keine neue Rechte-Logik im Konnektor.
 
-- `Schreiber.rolle_lesen(reise, person, name)`: Lesekopie des aktuellen Stands (Speicher-Reise: `reisespeicher.exportieren` bis zur neuesten Nummer, Git-Reise: Kopie aus der Wurzel; der Code wird aus `kartenpunkte_vorab` in eine gemeinsame Funktion `lesekopie` herausgelöst), dann dieselbe Auswertung wie `wer_pruefen` (Funktion `rolle_im_stand`, gemeinsam genutzt, damit es nur eine Quelle gibt). Antwort `{"rolle", "name", "status"}`; steht die Person nicht in `reise.yaml`, `{"rolle": null}`.
+- `Schreiber.rolle_lesen(reise, person, name)`: Lesekopie des aktuellen Stands (Speicher-Reise: `reisespeicher.exportieren` bis zur neuesten Nummer, Git-Reise: Kopie der Schreibkopie, sonst der Wurzel, dieselbe Quelle wie `wer_pruefen`; der Code wird aus `kartenpunkte_vorab` in eine gemeinsame Funktion `lesekopie` herausgelöst), dann dieselbe Auswertung wie `wer_pruefen` (Funktion `rolle_im_stand`, gemeinsam genutzt, damit es nur eine Quelle gibt). Antwort `{"rolle", "name", "status"}`; steht die Person nicht in `reise.yaml`, `{"rolle": null}`.
 - Aufruf: `GET /<reise>/rolle?person=<schluessel>&name=<name>` am Schreibweg, mit Kopf `X-Frieda-Dienst` (wie `/buchung/…`), nur lesend, ohne Sperre, ohne Änderung.
 - `rueckmeldungen.rolle_aktuell(reise, person, name)` ruft das auf (Adresse aus `KN_SCHREIBDIENST`, Unit `rueckmeldungen` bekommt denselben Wert); Konnektor und Rückmeldedienst nutzen diese eine Funktion.
 - **Verhalten:** Die Rechteprüfung (`erlaubt`) läuft mit der Rolle aus dieser Antwort. Ist der Schreibweg bei der Instanz nicht eingerichtet, gilt wie bisher der veröffentlichte Stand. Ist er eingerichtet, aber nicht erreichbar oder liefert `rolle: null`, wird abgelehnt („Rolle nicht prüfbar, bitte später noch einmal“); nie still auf den veröffentlichten Stand zurückfallen.
@@ -241,3 +241,4 @@ Betrieb, nicht Kern: Das Vorhaben berührt weder Grundformen der Reise-Ontologie
 
 - 2026-11-13: Initial spec created (Sicherheitsprüfung 12.11., Issue #552)
 - 2026-11-13: Nachträge aus der Umsetzung: Entscheidungen 9 bis 11 (Lesen der nginx-Bausteine, Kartendienst-Daten, Restrisiko Bauordner, vom Product Owner angenommen, #555 geschlossen); dazu AC-21, AC-22, Tests 17 bis 19, Known Limitation und Risiko zum Bauordner
+- 2026-11-13: Gegenprüfung: Rollenabfrage einer Git-Reise liest die Schreibkopie (sonst die Wurzel), dieselbe Quelle wie `wer_pruefen`; eine Herabstufung über den Schreibweg gilt damit sofort (Entscheidung Tech Lead, Test `test_schreiben.py::test_rolle_lesen_git_aus_der_schreibkopie`)

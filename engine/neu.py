@@ -960,7 +960,7 @@ def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
     return fertig
 
 
-def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
+def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
     """Nur Schlüssel, keine Inhalte: Unterkunft und Nacht typ: → art:; Wahlstelle bereich: → art:, art: planung|unterwegs →
     wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
     Merkmal mit Schlüssel preis (Typ geld) einer Aufenthalts-Art bekommt rolle: kosten, wenn die Art noch keine Rolle hat;
@@ -971,6 +971,8 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
     (buchung_nachziehen, #215); Ort und gleichnamige Wegpunkte bekommen eine Lage (orte_lage_zusammenfuehren, ADR-0008); die entfallene Regel anmeldung
     kommt aus reise.yaml heraus (anmeldung_nachziehen, #421).
     Merkmale, die die Software für eine Rolle angelegt hat, heißen in der Sprache der Reise (rollen_namen_nachziehen, #547).
+    Mit betrieb (Vorgabe) zieht er auch die Einstellungen der Instanz nach (sperren_nachziehen, #552); nachziehen_speicher
+    läuft im Bauordner auf dem Server und lässt sie aus (dort würde die Datei sonst eine ungesicherte Änderung).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from routen import WANN, art_schluessel
@@ -1063,7 +1065,64 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True):
         meldungen += eckdaten_nachziehen(reise_dir, cfg, schreiben)
     meldungen += rollen_namen_nachziehen(reise_dir, schreiben)
     meldungen += reste_nachziehen(reise_dir, schreiben)
+    if betrieb:
+        meldungen += sperren_nachziehen(schreiben)
     return meldungen
+
+
+# Eine Zuweisung an FR_SPERREN: Einrückung, export oder declare -x, Anführungszeichen, Kommentar am Ende (nur nach Leerraum;
+# „/tmp#x“ ist ein anderer Wert). Ob der Wert /tmp ist, entscheidet _sperren_tmp nach Normalisieren des Pfads.
+SPERREN_ZEILE = re.compile(r"[ \t]*(?:(?:export|declare[ \t]+-x)[ \t]+)?FR_SPERREN="
+                           r"(?:\"([^\"\s#]*)\"|'([^'\s#]*)'|([^\s\"'#;]*))(?:[ \t]+#[^\r\n]*)?[ \t]*\r?\n?")
+
+
+def _sperren_tmp(zeile):
+    """Liest die Shell diese Zeile als FR_SPERREN=/tmp? Auch //tmp, /tmp/., /tmp/./ zählen (Schrägstriche zusammengezogen,
+    dann os.path.normpath); /tmpx oder /tmp/frieda nicht."""
+    import os
+    m = SPERREN_ZEILE.fullmatch(zeile)
+    if not m:
+        return False
+    wert = next((g for g in m.groups() if g is not None), "")
+    return bool(wert) and os.path.normpath(re.sub(r"/+", "/", wert)) == "/tmp"
+
+
+def sperren_nachziehen(schreiben=True):
+    """Sperren liegen seit #552 ohne Einstellung im Dienstordner (FR_DIENST), nicht im gemeinsamen /tmp. Steht in der
+    Einstellungsdatei der Instanz (instanz._datei(): <FR_DIENST>/instanz/einstellungen.env, alte Anordnung
+    betrieb/einstellungen.env des Reisen-Repos) ausdrücklich FR_SPERREN=/tmp (_sperren_tmp), kommt genau diese Zeile heraus;
+    ein anderer Ort für die Sperren bleibt. Geschrieben wird atomar (temporäre Datei daneben, os.replace), Modus und, soweit
+    erlaubt, Besitz der Datei bleiben. -> Meldungen."""
+    import os
+    import instanz
+    datei = instanz._datei()
+    try:
+        text = datei.read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError):
+        return []
+    zeilen = text.splitlines(keepends=True)
+    rest = [z for z in zeilen if not _sperren_tmp(z)]
+    if len(rest) == len(zeilen):
+        return []
+    if schreiben:
+        st = os.stat(datei)
+        fd, tmp = tempfile.mkstemp(prefix=f".{datei.name}.", dir=datei.parent)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write("".join(rest).encode("utf-8"))
+                f.flush()
+                os.fsync(f.fileno())
+            os.chmod(tmp, st.st_mode & 0o7777)
+            try:
+                os.chown(tmp, st.st_uid, st.st_gid)
+            except OSError:
+                pass      # ohne Root-Rechte: Besitz ist ohnehin der des Aufrufers
+            os.replace(tmp, datei)
+        except BaseException:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
+    return [f"{datei.name}: FR_SPERREN=/tmp removed, locks are in FR_DIENST now (#552)"]
 
 
 def probebau(ordner):
@@ -1097,7 +1156,7 @@ def nachziehen_speicher(reise, ordner):
     for _ in range(NACHZIEHEN_VERSUCHE):
         basis = rs.materialisieren(reise, ordner)
         try:
-            meldungen = nachziehen(ordner)
+            meldungen = nachziehen(ordner, betrieb=False)
         except (OSError, sqlite3.Error):   # Ordner oder Speicher nicht erreichbar: Störung, der nächste Lauf wiederholt
             raise
         except Exception as e:   # die Reise selbst lässt sich nicht umstellen (etwa kaputte reise.yaml): wie ein roter Bau
@@ -1517,6 +1576,12 @@ def main(argv):
                 rc, zeilen = 2, rs.ablage_ausgabe(e, x.reise)
             except (OSError, sqlite3.Error) as e:   # Datenbank gesperrt oder nicht lesbar: der nächste Lauf wiederholt
                 rc, zeilen = 1, [f"ERROR: {e}"]
+            # Im Software-Klon (#454) läuft „neu.py nachziehen“ des Workflows nicht mehr; die Einstellung der Instanz
+            # (<FR_DIENST>/instanz/einstellungen.env) stellt dieser Lauf nach einem Software-Wechsel um (#552, AC-12)
+            try:
+                zeilen = zeilen + sperren_nachziehen()
+            except OSError as e:
+                zeilen = zeilen + [f"Warning: FR_SPERREN=/tmp not removed from the settings: {e}"]
             print("\n".join(zeilen))
             return rc
         if x.befehl == "nachziehen":

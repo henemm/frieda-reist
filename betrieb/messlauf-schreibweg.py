@@ -19,6 +19,11 @@ Probebauzeit einzeln. Der Git-Weg läuft gegen einen lokalen Origin und ist nur 
 
 Belastbar ist erst ein Lauf auf dem Server der Instanz mit einer erfundenen Testreise, die mit Fotos auf die Größe der
 größten echten Reise aufgefüllt ist (Fotos liegen bis Stufe 4 in der Datenbank und treiben den Export).
+
+Schreibziele unter der Sandbox (#552, docs/specs/betrieb/dienstrechte-552.md, AC-3): SCHREIBZIELE ist genau die Liste
+ReadWritePaths= in vorlagen/schreiben.service (mit Platzhaltern wie dort; ein Test hält beide gleich). Läuft der Messlauf auf
+der Instanz unter der Unit (ProtectSystem=strict, ProtectHome=read-only) samt Hochladen und Veröffentlichen ohne verweigerten
+Schreibzugriff durch, reichen diese Ziele; braucht er ein weiteres, kommt es in beide Listen, mit Begründung in der Vorlage.
 """
 import argparse
 import concurrent.futures
@@ -35,6 +40,8 @@ from pathlib import Path
 WURZEL = Path(__file__).resolve().parent.parent
 ENGINE = WURZEL / "engine"
 BEISPIEL = WURZEL / "beispiel" / "reisen"
+# Schreibziele des Schreibwegs unter der Sandbox, wie ReadWritePaths= in vorlagen/schreiben.service (#552)
+SCHREIBZIELE = ("-__WURZEL__-schreiben", "__WURZEL__", "__DIENST__", "__KONTEN__", "__SEITEN__", "__ABLAGE__")
 REISEN = {"beispielreise": {"person": "ida", "name": "Ida", "rolle": "organisator"},          # Beispielwerte
           "stadtwochenende": {"person": "tom", "name": "Tom", "rolle": "organisator"}}
 

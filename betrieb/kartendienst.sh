@@ -14,11 +14,16 @@
 # Sekunden: KD_SPERRE_WARTEN (3600). Arbeitsdateien liegen unter TMPDIR.
 # Scheitert ein Schritt, bleibt der bisherige Stand unverändert, der Nebenordner wird gelöscht, Ausgang ungleich 0.
 # Läuft nie gleichzeitig mit einem Lauf des Veröffentlichens (dessen Prüfläufe brauchen selbst viel Speicher) und nie doppelt.
+# Auf dem Server läuft eine root-eigene Kopie dieses Skripts (/usr/local/sbin/<instanz>-kartendienst, von einrichten.sh mit
+# eingebackenen Werten erzeugt, KD_EINGEBACKEN) unter dem eigenen Benutzer <instanz>-karte (#552); sie liest weder die
+# Einstellungen der Instanz noch Dateien aus dem Repo. Die Sperre des Veröffentlichens öffnet sie nur lesend.
 set -euo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
+[ -n "${KD_EINGEBACKEN:-}" ] || . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 
 ORDNER="${FR_KARTENDIENST_ORDNER:-}"
 ORDNER="${ORDNER%/}"
+# Ein Verweis (Umzug in den Zustandsordner des Karte-Benutzers, #552): Umgeschaltet wird am Ziel, nicht neben dem Verweis
+if [ -L "$ORDNER" ]; then ORDNER="$(readlink -f "$ORDNER")"; fi
 REGIONEN="${FR_KARTENDIENST_REGIONEN:-}"
 SPEICHER="${FR_KARTENDIENST_SPEICHER:-2g}"
 SPEICHER_MIN_MB="${KD_SPEICHER_MIN_MB:-1700}"
@@ -67,8 +72,11 @@ sperren() {  # nie doppelt, nie neben dem Veröffentlichen (Sperre wie veroeffen
   # KD_SPERRE_WARTEN Sekunden (eine Stunde)
   exec 8>"$FR_SPERREN/$FR_INSTANZ-kartendienst.lock"
   flock -w "$SPERRE_WARTEN" 8 || fehler "another import is still running."
-  if [ -d "$FR_DIENST" ]; then
-    exec 9>"$FR_DIENST/veroeffentlichen.lock"
+  # Die Sperre des Veröffentlichens gehört dem Dienstbenutzer: nur lesend öffnen (flock genügt ein lesender Deskriptor);
+  # fehlt sie, lief noch nie ein Veröffentlichen
+  if [ -f "$FR_DIENST/veroeffentlichen.lock" ]; then
+    { exec 9<"$FR_DIENST/veroeffentlichen.lock"; } 2>/dev/null \
+      || fehler "the lock of publishing ($FR_DIENST/veroeffentlichen.lock) is not readable for the map user; make it readable (chmod 644) or publish once with the current software."
     flock -w "$SPERRE_WARTEN" 9 || fehler "publishing (with its checks) is still running; try again later."
   fi
 }
@@ -101,7 +109,8 @@ aufraeumen() {  # bei jedem Ende: Probe-Container, Arbeitsdateien, Nebenordner; 
 
 herunterladen() {  # Auszüge mit Prüfsumme nach ARBEIT; ihre Dateinamen nach DATEIEN
   local quelle r datei
-  quelle="$(cd "$FR_BETRIEB/../engine" && "$PY" -c 'import kartendienst; print(kartendienst.AUSZUEGE)')"
+  quelle="${KD_AUSZUEGE:-}"   # eingebacken (einrichten.sh), sonst aus der Software
+  [ -n "$quelle" ] || quelle="$(cd "$FR_BETRIEB/../engine" && "$PY" -c 'import kartendienst; print(kartendienst.AUSZUEGE)')"
   set -f
   for r in $REGIONEN; do
     datei="${r//\//_}.osm.pbf"

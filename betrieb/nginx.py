@@ -27,8 +27,10 @@ mit derselben Sicherung und demselben „nginx -t“ (#316): nginx verbietet dop
 nicht eindeutig (doppelt, mit weiteren Direktiven in der Zeile), ändert „anwenden“ nichts und endet mit 1.
 
 Orte (Vorgaben, Tests und Instanzen lenken sie um): conf.d aus EI_NGINX_CONFD (/etc/nginx/conf.d), Snippets aus FR_NGINX_SNIPPETS
-(/etc/nginx/snippets); Bausteine mit Rechten 640 root liest FR_SUDO (Vorgabe „sudo -n“) mit cat. Prüfung und Neuladen von nginx:
-EI_NGINX_TEST (nginx -t) und EI_NGINX_LADEN (systemctl reload nginx), jeweils hinter FR_SUDO. Nur Standardbibliothek.
+(/etc/nginx/snippets). Gelesen wird ohne sudo (#552: keine sudo-Regel mehr für cat); die Bausteine der Reisen liest nur ihr
+Hilfsprogramm (nginx-reise-installieren). Eine Datei, die der Aufrufer nicht lesen darf, ist ein Fehler (Ausgang 1), nie „fehlt“.
+„anwenden“ läuft mit Root-Rechten und installiert ohne sudo, die Bausteine der Instanz mit 0640 root:<FR_GRUPPE>. Prüfung und Neuladen von nginx: EI_NGINX_TEST (nginx -t) und
+EI_NGINX_LADEN (systemctl reload nginx), jeweils hinter FR_SUDO. Nur Standardbibliothek.
 """
 import difflib
 import os
@@ -41,21 +43,16 @@ import tempfile
 import time
 
 
-def lies(pfad, sudo):
-    """Inhalt der installierten Datei, None wenn es sie nicht gibt; ohne Leserecht über „sudo cat“."""
+def lies(pfad, sudo=None):
+    """Inhalt der installierten Datei, None wenn es sie nicht gibt. Ohne sudo (#552); nicht lesbar ist kein Beweis, dass sie
+    fehlt: Fehler statt „fehlt“."""
     try:
         with open(pfad, encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
         return None
     except PermissionError:
-        if not sudo:
-            raise
-    r = subprocess.run(sudo + ["cat", pfad], capture_output=True, text=True, timeout=30)
-    if r.returncode != 0:
-        # nicht lesbar und kein Beweis, dass sie fehlt: Fehler statt „fehlt“
-        raise RuntimeError(f"{pfad} cannot be read ({(r.stderr or 'no access').strip()[:120]})")
-    return r.stdout
+        raise RuntimeError(f"{pfad} cannot be read without root rights (no access)")
 
 
 def erzeugen(ziel):
@@ -85,7 +82,12 @@ def fremde_zone(instanz, confd, sudo):
         pfad = os.path.join(confd, name)
         if not name.endswith(".conf") or name == f"{instanz}-zone.conf" or not os.path.isfile(pfad):
             continue
-        text = lies(pfad, sudo)
+        try:
+            text = lies(pfad, sudo)
+        except RuntimeError:
+            # Fremde Datei, die der Dienstbenutzer nicht lesen darf (#552: kein sudo cat mehr): kein Abgleich möglich.
+            # Definierte sie die Zone der Instanz doppelt, fiele das bei nginx -t auf; „anwenden“ (Root) liest sie.
+            continue
         zeilen = text.splitlines(keepends=True)
         treffer = [i for i, z in enumerate(zeilen) if not z.lstrip().startswith("#") and "limit_req_zone" in z and nennt.search(z)]
         if not treffer:
@@ -133,11 +135,41 @@ def pruefen(ziel, instanz, confd, snippets, sudo):
     return abweichungen(ziel, instanz, confd, snippets, sudo)[0]
 
 
-MODI = {"zone": "644", "orte": "640"}
+# Bausteine der Instanz: 0640 root:<Gruppe des Dienstbenutzers> (#552), damit pruefen sie ohne sudo lesen kann
+MODI = {"zone": "640", "orte": "640"}
 
 
 def modus(name):
     return MODI["zone"] if name.endswith("-zone.conf") else MODI["orte"]
+
+
+def gruppe_des_dienstes():
+    """Gruppe des Dienstbenutzers: FR_GRUPPE, sonst die eigene Gruppe des Aufrufers (veroeffentlichen.sh läuft als er). Mit
+    Root-Rechten nur FR_GRUPPE: die Gruppe von root ist nie die des Dienstbenutzers; leer heißt unbekannt."""
+    import grp
+    if os.environ.get("FR_GRUPPE"):
+        return os.environ["FR_GRUPPE"]
+    if os.geteuid() == 0:
+        return ""
+    try:
+        return grp.getgrgid(os.getgid()).gr_name
+    except KeyError:
+        return ""
+
+
+def meldung(schluessel, **werte):
+    """Text aus dem Katalog der Software (engine/texte_<sprache>.py, ADR-0006) in der Sprache der Software."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
+    import texte
+    return texte.t(texte.VORGABE_REISE, schluessel, **werte)
+
+
+def install_befehl(mod, quelle, ordner, gruppe, root, besitzer="root"):
+    """install-Aufruf für eine Datei. Mit Root-Rechten und Gruppe: Besitz <besitzer>:<gruppe>, für die Bausteine der Instanz
+    root:<FR_GRUPPE> (#552), für fremde Dateien ihr bisheriger Besitz (Nummern aus stat; install legte sie sonst als root:root
+    an). Läufe ohne Root (Tests) behalten den Besitz."""
+    besitz = ["-o", besitzer, "-g", gruppe] if root and gruppe else []
+    return ["install", "-m", mod, *besitz, quelle, ordner.rstrip("/") + "/"]
 
 
 def anwenden(ziel, dienst, instanz, confd, snippets, sudo):
@@ -146,21 +178,27 @@ def anwenden(ziel, dienst, instanz, confd, snippets, sudo):
     if erg == []:
         print("nothing to do: installed blocks equal the templates.")
         return 0
-    # (Pfad der installierten Datei, Ordner, Quelle des Solls, Pfad in der Sicherung, Modus)
-    liste = [(os.path.join(ordner, n), ordner, os.path.join(ziel, "nginx", n), n, modus(n)) for n, ordner in dateien(instanz, confd, snippets)]
+    gruppe = gruppe_des_dienstes()
+    root = os.geteuid() == 0
+    if root and not gruppe:
+        raise RuntimeError(meldung("dienst.nginx.gruppe_fehlt"))
+    # (Pfad der installierten Datei, Ordner, Quelle des Solls, Pfad in der Sicherung, Modus, (Besitzer, Gruppe))
+    liste = [(os.path.join(ordner, n), ordner, os.path.join(ziel, "nginx", n), n, modus(n), ("root", gruppe))
+             for n, ordner in dateien(instanz, confd, snippets)]
     for pfad, (_, neu, mod) in fremde_zone(instanz, confd, sudo).items():
         name = os.path.basename(pfad)
         quelle = os.path.join(ziel, "fremd", name)
         os.makedirs(os.path.dirname(quelle), exist_ok=True)
         with open(quelle, "w", encoding="utf-8") as f:
             f.write(neu)
-        liste.append((pfad, confd, quelle, os.path.join("fremd", name), mod))
+        st = os.stat(pfad)      # fremde Datei: Modus und Besitz bleiben (AC-21)
+        liste.append((pfad, confd, quelle, os.path.join("fremd", name), mod, (str(st.st_uid), str(st.st_gid))))
     sicherung = os.path.join(dienst, "nginx-sicherung", time.strftime("%Y%m%dT%H%M%S"))
     if os.path.islink(os.path.join(dienst, "nginx-sicherung")):
         raise RuntimeError(f"{dienst}/nginx-sicherung is a symlink, refusing to write the backup through it")
     os.makedirs(sicherung, exist_ok=False)
     alt = {}
-    for pfad, _, _, rel, _ in liste:
+    for pfad, _, _, rel, _, _ in liste:
         inhalt = lies(pfad, sudo)
         alt[pfad] = inhalt
         if inhalt is not None:
@@ -171,27 +209,30 @@ def anwenden(ziel, dienst, instanz, confd, snippets, sudo):
     if erg is None:
         print("first installation: none of the blocks is installed yet.")
 
-    def installiere(quelle, pfad, ordner, mod):
+    def installiere(quelle, pfad, ordner, mod, besitz):
         # unter dem Namen der Zieldatei installieren (die Quelle der Sicherung heißt gleich, liegt aber in einem Unterordner)
-        r = subprocess.run(sudo + ["install", "-m", mod, quelle, ordner.rstrip("/") + "/"], capture_output=True, text=True, timeout=60)
+        # anwenden läuft mit Root-Rechten (sudo env … nginx.py anwenden): install ohne sudo davor (#552)
+        r = subprocess.run(install_befehl(mod, quelle, ordner, besitz[1], root, besitzer=besitz[0]),
+                           capture_output=True, text=True, timeout=60)
         if r.returncode != 0:
             raise RuntimeError(f"install {os.path.basename(pfad)} failed: {(r.stderr or r.stdout).strip()[:200]}")
 
     def zurueck():
-        for pfad, ordner, _, rel, mod in liste:
+        for pfad, ordner, _, rel, mod, besitz in liste:
             try:
                 if alt[pfad] is None:
-                    subprocess.run(sudo + ["rm", "-f", pfad], capture_output=True, timeout=60)
+                    if os.path.lexists(pfad):
+                        os.remove(pfad)
                 else:
-                    installiere(os.path.join(sicherung, rel), pfad, ordner, mod)
+                    installiere(os.path.join(sicherung, rel), pfad, ordner, mod, besitz)
             except (RuntimeError, OSError, subprocess.SubprocessError) as e:
                 print(f"ROLLBACK PROBLEM for {os.path.basename(pfad)}: {e} (backup in {sicherung})", file=sys.stderr)
     pruef = shlex.split(os.environ.get("EI_NGINX_TEST", "nginx -t"))
     laden = shlex.split(os.environ.get("EI_NGINX_LADEN", "systemctl reload nginx"))
     try:
         # erst die eigene Zonendatei, dann die fremde: beide vor dem einen „nginx -t“, geladen wird erst danach
-        for pfad, ordner, quelle, _, mod in liste:
-            installiere(quelle, pfad, ordner, mod)
+        for pfad, ordner, quelle, _, mod, besitz in liste:
+            installiere(quelle, pfad, ordner, mod, besitz)
         t = subprocess.run(sudo + pruef, capture_output=True, text=True, timeout=60)
     except BaseException as e:      # auch Abbruch von Hand (Strg-C): ungeprüfte Dateien dürfen nicht liegen bleiben
         print(f"ERROR: {e}; restoring the backup.", file=sys.stderr)
@@ -213,7 +254,8 @@ def anwenden(ziel, dienst, instanz, confd, snippets, sudo):
 
 def befehl(instanz, dienst, snippets):
     """Der eine Befehl aus der Meldung: mit Root-Rechten (nginx.py ändert /etc/nginx) und der Umgebung der Instanz."""
-    env = [("FR_WURZEL", os.environ.get("FR_WURZEL", "")), ("FR_INSTANZ", instanz), ("FR_DIENST", dienst), ("FR_NGINX_SNIPPETS", snippets)]
+    env = [("FR_WURZEL", os.environ.get("FR_WURZEL", "")), ("FR_INSTANZ", instanz), ("FR_DIENST", dienst), ("FR_NGINX_SNIPPETS", snippets),
+           ("FR_GRUPPE", gruppe_des_dienstes())]
     gesetzt = " ".join(f"{k}={shlex.quote(v)}" for k, v in env if v)
     return f"sudo env {gesetzt} {shlex.quote(os.path.abspath(__file__))} anwenden"
 

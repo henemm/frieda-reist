@@ -3135,6 +3135,24 @@ def test_rolle_lesen(repo, request, weg):
         assert {r: rs.stand_nummer(r) for r in ROLLEN_REISEN} == vorher
 
 
+def test_rolle_lesen_git_aus_der_schreibkopie(repo):
+    """Gegenprüfung F004: Bei einer Git-Reise liest die Rollenabfrage dieselbe Quelle wie wer_pruefen, die Schreibkopie. Eine
+    über den Schreibweg vorgenommene Herabstufung (Schreibkopie und origin, die Wurzel noch nicht nachgezogen) gilt sofort."""
+    wurzel, origin, arbeit, _ = repo
+    s = sb.Schreiber(wurzel, arbeit)
+    s.vorbereiten()
+    p = arbeit / "reisen" / "beispielreise" / "reise.yaml"
+    p.write_text(_herabstufen(p.read_text(encoding="utf-8")), encoding="utf-8")
+    git(arbeit, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qam", "Herabgestuft (Test)")
+    git(arbeit, "push", "-q", "origin", "HEAD:main")
+    assert "rolle: organisator" in (wurzel / "reisen" / "beispielreise" / "reise.yaml").read_text(encoding="utf-8")
+    assert s.rolle_lesen("beispielreise", "ida", "Ida")["rolle"] == "gast"
+    assert s.rolle_lesen("beispielreise", "karl", "Karl")["rolle"] == "mitwirkend"
+    # ohne Schreibkopie (Schreibweg noch nie gelaufen): die Wurzel
+    s2 = sb.Schreiber(wurzel, arbeit.parent / "gibt-es-nicht")
+    assert s2.rolle_lesen("beispielreise", "ida", "Ida")["rolle"] == "organisator"
+
+
 def test_sperrdatei_in_dienstordner(tmp_path, monkeypatch):
     """AC-12: Ohne ausdrückliche Einstellung FR_SPERREN liegt die Sperre des Schreibwegs im Dienstordner der Instanz (FR_DIENST,
     sonst dessen Vorgabe), nie in /tmp; eine ausdrückliche Einstellung gilt weiter."""

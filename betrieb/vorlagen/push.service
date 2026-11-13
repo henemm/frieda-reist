@@ -20,6 +20,8 @@ ExecStart=__PYTHON__ __DIENST__/push.py dienst
 Restart=on-failure
 RestartSec=10
 NoNewPrivileges=yes
+# Kein Weg zu Root über Docker (#552): der Socket ist im Dienst unsichtbar; „-“: kein Fehler, wo es ihn nicht gibt
+InaccessiblePaths=-/run/docker.sock
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=read-only

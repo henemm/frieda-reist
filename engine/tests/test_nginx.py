@@ -605,3 +605,65 @@ def test_pruefen_liest_ohne_sudo_und_ueberspringt_unlesbare_fremde_dateien(abgle
         assert r.returncode == 0 and r.stdout.strip() == "", r.stdout + r.stderr
     finally:
         fremd.chmod(0o600)
+
+
+def _anwenden_als_root(abgleich, tmp_path, monkeypatch):
+    """nginx.py anwenden im Testprozess, als liefe es mit Root-Rechten: install wird protokolliert und ohne Besitzwechsel
+    ausgeführt, nginx -t und Neuladen gelingen. Gibt (Ausgang, install-Aufrufe) zurück."""
+    m = nginx_modul()
+    erzeugen(tmp_path, FR_NGINX_SNIPPETS=str(abgleich["snippets"]), FR_DIENST=str(abgleich["dienst"]))
+    aufrufe = []
+    echt = subprocess.run
+
+    def run(cmd, *a, **k):
+        if cmd and cmd[0] == "install":
+            aufrufe.append(cmd)
+            ohne = [c for i, c in enumerate(cmd) if c not in ("-o", "-g") and cmd[i - 1] not in ("-o", "-g")]
+            return echt(ohne, *a, **k)
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+    monkeypatch.setattr(m.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(m.subprocess, "run", run)
+    rc = m.anwenden(str(tmp_path / "soll"), str(abgleich["dienst"]), "probe", str(abgleich["confd"]), str(abgleich["snippets"]), [])
+    return m, rc, aufrufe
+
+
+def test_anwenden_als_root_fremde_datei_behaelt_den_besitz(abgleich, tmp_path, monkeypatch):
+    """Gegenprüfung F006 (AC-21): Mit Root-Rechten bekommt eine fremde conf.d-Datei, aus der die Zone entfernt wird, ihren
+    bisherigen Besitzer und ihre Gruppe ausdrücklich mit (install legte sie sonst als root:root neu an); die Bausteine der
+    Instanz bekommen root:<FR_GRUPPE>."""
+    monkeypatch.setenv("FR_GRUPPE", "reisegruppe")
+    abgleich["installieren"]()
+    geteilt = abgleich["confd"] / "limit-req.conf"
+    geteilt.write_text(GETEILT)
+    geteilt.chmod(0o640)
+    st = geteilt.stat()
+    _, rc, aufrufe = _anwenden_als_root(abgleich, tmp_path, monkeypatch)
+    assert rc == 0, aufrufe
+    fremd = [c for c in aufrufe if c[-2].endswith("limit-req.conf")]
+    assert fremd and all(c[:7] == ["install", "-m", "640", "-o", str(st.st_uid), "-g", str(st.st_gid)] for c in fremd), fremd
+    eigen = [c for c in aufrufe if os.path.basename(c[-2]).startswith("probe-")]
+    assert eigen and all(c[3:7] == ["-o", "root", "-g", "reisegruppe"] for c in eigen), eigen
+    assert geteilt.read_text() == GETEILT_NACHHER
+
+
+def test_anwenden_als_root_ohne_fr_gruppe_bricht_ab(abgleich, tmp_path, monkeypatch):
+    """Gegenprüfung F006: Als root ohne FR_GRUPPE fällt die Gruppe nicht still auf die von root zurück (die Bausteine wären
+    für den Dienstbenutzer unlesbar); anwenden bricht mit der Meldung aus dem Katalog ab und installiert nichts."""
+    import sys
+    sys.path.insert(0, str(BETRIEB.parent / "engine"))
+    import texte
+    monkeypatch.delenv("FR_GRUPPE", raising=False)
+    monkeypatch.setattr(os, "geteuid", lambda: 0)
+    m = nginx_modul()
+    assert m.gruppe_des_dienstes() == ""
+    monkeypatch.undo()
+    monkeypatch.delenv("FR_GRUPPE", raising=False)
+    abgleich["installieren"]()
+    zone = abgleich["confd"] / "probe-zone.conf"
+    zone.write_text(zone.read_text().replace("rate=10r/s", "rate=99r/s"))
+    with pytest.raises(RuntimeError) as e:
+        _anwenden_als_root(abgleich, tmp_path, monkeypatch)
+    assert str(e.value) == texte.t(texte.VORGABE_REISE, "dienst.nginx.gruppe_fehlt")
+    for k in ("de", "en"):
+        assert "FR_GRUPPE" in texte.t(k, "dienst.nginx.gruppe_fehlt")
+    assert "rate=99r/s" in zone.read_text()

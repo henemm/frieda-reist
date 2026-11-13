@@ -1,8 +1,10 @@
 # Container des eigenen Kartendienstes (#444): Overpass-Image, per Digest gepinnt (ein Update des Images ändert nichts ungeprüft),
-# Daten aus __KD_ORDNER__ (betrieb/kartendienst.sh einspielen). Startet nur über den Proxy und endet mit ihm
+# Daten aus dem Zustandsordner __KD_DATEN__ (betrieb/kartendienst.sh einspielen). Startet nur über den Proxy und endet mit ihm
 # (StopWhenUnneeded). Bereit ist er erst, wenn eine echte Mini-Abfrage gültig antwortet (ExecStartPost; der Statusaufruf des
 # Images taugt dafür nicht). Lizenzen: Overpass AGPL, Daten ODbL (docs/betrieb.md, THIRD_PARTY.md).
-# Erzeugt von betrieb/einrichten.sh. __BENUTZER__ braucht die Gruppe docker.
+# Erzeugt von betrieb/einrichten.sh. Läuft unter dem eigenen Benutzer __KD_BENUTZER__ (Gruppe docker), nie unter dem
+# Dienstbenutzer (#552): Wer Docker bedienen darf, hat Root-Rechte. Eingebunden wird der feste Zustandsordner, nie der Verweis
+# FR_KARTENDIENST_ORDNER: der liegt in einem Ordner des Dienstbenutzers, und Docker bindet als root ein, worauf er zeigt.
 [Unit]
 Description=__TITEL__: eigener Kartendienst (Overpass-Container)
 StopWhenUnneeded=yes
@@ -10,11 +12,11 @@ Requires=docker.service
 After=docker.service
 
 [Service]
-User=__BENUTZER__
-Group=__GRUPPE__
-ExecStartPre=/usr/bin/test -f __KD_ORDNER__/init_done
+User=__KD_BENUTZER__
+Group=__KD_BENUTZER__
+ExecStartPre=/usr/bin/test -f __KD_DATEN__/init_done
 ExecStartPre=-/usr/bin/docker rm -f __INSTANZ__-kartendienst
-ExecStart=/usr/bin/docker run --rm --name __INSTANZ__-kartendienst --memory __KD_SPEICHER__ -p 127.0.0.1:__KD_PORT_INNEN__:80 -e OVERPASS_MODE=init -e OVERPASS_META=no -e OVERPASS_USE_AREAS=false -v __KD_ORDNER__:/db __KD_BILD__
+ExecStart=/usr/bin/docker run --rm --name __INSTANZ__-kartendienst --memory __KD_SPEICHER__ -p 127.0.0.1:__KD_PORT_INNEN__:80 -e OVERPASS_MODE=init -e OVERPASS_META=no -e OVERPASS_USE_AREAS=false -v __KD_DATEN__:/db __KD_BILD__
 ExecStartPost=/usr/bin/curl -fsS -o /dev/null --retry 30 --retry-delay 1 --retry-all-errors --retry-max-time 60 --max-time 10 --data-urlencode "data=[out:json];node(1);out ids;" http://127.0.0.1:__KD_PORT_INNEN__/api/interpreter
 ExecStop=/usr/bin/docker stop __INSTANZ__-kartendienst
 TimeoutStartSec=90

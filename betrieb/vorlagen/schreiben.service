@@ -3,7 +3,23 @@
 # sichert es als Commit nach main und stößt das Veröffentlichen an. Nur für den Konnektor erreichbar (127.0.0.1, Dienst-Geheimnis).
 # Erzeugt von betrieb/einrichten.sh. Code aus __DIENST__ (legt deploy.sh an); den Schreibvorgang selbst führt er mit dem
 # Code der Arbeitskopie __WURZEL__-schreiben aus (ein Git-Worktree auf main, legt der Dienst an).
-# git pusht mit der Anmeldung von __BENUTZER__ (gh als Credential-Helfer), darum kein ProtectHome.
+# git pusht mit der Anmeldung von __BENUTZER__ (gh als Credential-Helfer); sie wird nur gelesen (ProtectHome=read-only).
+#
+# Sandbox (#552): Der Schreibweg darf keine Dateien ändern, die später mit höheren Rechten laufen (Shell-Profile, Skripte im
+# Home, die der Timer des Veröffentlichens ohne NoNewPrivileges ausführt). Schreiben darf er nur in diese Ziele, gemessen mit
+# betrieb/messlauf-schreibweg.py (SCHREIBZIELE dort ist dieselbe Liste; nach jeder Änderung der Liste neu messen):
+#   __WURZEL__-schreiben  Schreibkopie des Git-Wegs (Git-Worktree auf main), legt der Dienst an; „-“: darf fehlen (im
+#                         Software-Klon, #454, gibt es keine Git-Reisen mehr, der Ordner entsteht dann nie)
+#   __WURZEL__            Bauordner mit .git (alte Anordnung: Reisen-Repo; ab #454 der Software-Klon): Commits der Schreibkopie,
+#                         Holen von main beim Veröffentlichen.
+#                         Restrisiko, Nachfolger #555: darin liegen auch Skripte, die der Timer ohne NoNewPrivileges ausführt
+#   __DIENST__            Dienstordner: Bau-Ordner der Speicher-Reisen, Sperren (FR_SPERREN), Protokolle des Veröffentlichens.
+#                         Restrisiko, Nachfolger #555: ab #454 liegen hier auch Python-Umgebung (python/), Einstellungen und
+#                         Meldeweg (instanz/), die der Timer ohne NoNewPrivileges ausführt
+#   __KONTEN__            Konten-Datenbank (Einladungen, Personen der Reisen)
+#   __SEITEN__            Seiten und Reisespeicher (FR_SPEICHER, Vorgabe dort): das angestoßene Veröffentlichen kopiert Seiten
+#   __ABLAGE__            Rückmelde-Ablage: das Veröffentlichen legt die Ablage einer neuen Reise an
+# Die Anmeldung von gh wird beim Hochladen nur gelesen; braucht ein Messlauf sie schreibend, kommt sie hier dazu.
 [Unit]
 Description=__TITEL__: Schreibweg (Claude-App schreibt direkt in die Reise)
 After=network-online.target
@@ -25,6 +41,10 @@ Restart=on-failure
 RestartSec=5
 NoNewPrivileges=yes
 PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+InaccessiblePaths=-/run/docker.sock
+ReadWritePaths=-__WURZEL__-schreiben __WURZEL__ __DIENST__ __KONTEN__ __SEITEN__ __ABLAGE__
 
 [Install]
 WantedBy=multi-user.target

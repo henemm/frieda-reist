@@ -14,12 +14,16 @@ Environment=FR_ZEITZONE=__ZEITZONE__
 Environment=RM_SEITEN=__SEITEN__
 Environment=RM_HOST=127.0.0.1
 Environment=RM_PORT=__RM_PORT__
+# Schreibweg (__INSTANZ__-schreiben.service): Rolle beim Einplanen eines Wunschs aus dem aktuellen Stand (#552)
+Environment=KN_SCHREIBDIENST=http://127.0.0.1:__SB_PORT__
 # Konten: FR_BASIS und Mailweg, Datei 600, nicht im Repo (docs/konten.md)
 EnvironmentFile=-__DIENST__/konten.env
 ExecStart=/usr/bin/python3 __DIENST__/rueckmeldungen.py dienst
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=yes
+# Kein Weg zu Root über Docker (#552): der Socket ist im Dienst unsichtbar; „-“: kein Fehler, wo es ihn nicht gibt
+InaccessiblePaths=-/run/docker.sock
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes

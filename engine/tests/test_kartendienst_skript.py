@@ -192,6 +192,20 @@ def test_aktualisieren_wartet_auf_die_sperre(kd, tmp_path):
     assert r.returncode == 0 and (kd["ordner"] / "abdeckung.json").exists(), (r.stdout, r.stderr)
 
 
+def test_unlesbare_sperre_des_veroeffentlichens_klare_meldung(kd, tmp_path):
+    """Gegenprüfung F013: Ist die Sperre des Veröffentlichens für den Karte-Benutzer nicht lesbar, endet der Lauf mit einer
+    klaren Meldung statt einem rohen Fehler der Shell."""
+    if os.geteuid() == 0:
+        pytest.skip("als root ist jede Datei lesbar")
+    sperre = tmp_path / "dienst" / "veroeffentlichen.lock"
+    sperre.write_text("")
+    sperre.chmod(0o200)
+    r = kd["lauf"]("einspielen", umgebung={"FR_SPERREN": str(tmp_path / "tmp"), "KD_SPERRE_WARTEN": "1"})
+    assert r.returncode != 0, (r.stdout, r.stderr)
+    assert "lock of publishing" in r.stderr and "not readable for the map user" in r.stderr, r.stderr
+    assert "Permission denied" not in r.stderr, r.stderr
+
+
 # ---------- #552, Entscheidung 10: Daten im Zustandsordner des Karte-Benutzers, Umzug ohne Handschritt ----------
 UMZUG = WURZEL / "betrieb" / "kartendienst-umzug.sh"
 
@@ -221,6 +235,22 @@ def test_umzug_verschiebt_daten_und_legt_verweis_an(tmp_path):
     assert oct(ziel.stat().st_mode & 0o777) == "0o755"
     r = _umzug(ordner, ziel)
     assert r.returncode == 0 and _baum(ziel / "daten") == vorher and ordner.is_symlink(), r.stdout + r.stderr
+
+
+def test_umzug_entfernt_setuid_und_setgid(tmp_path):
+    """Gegenprüfung F011: Nach dem Umzug gehören die Daten dem Karte-Benutzer (Gruppe docker); keine Datei und kein Ordner
+    behält ein setuid- oder setgid-Bit, auch wenn chown es nicht von selbst löscht (Ordner)."""
+    ordner, ziel = tmp_path / "instanz" / "kartendienst", tmp_path / "varlib" / "probe-kartendienst"
+    (ordner / "sgid").mkdir(parents=True)
+    (ordner / "sgid").chmod(0o2755)
+    (ordner / "suid.bin").write_text("x")
+    (ordner / "suid.bin").chmod(0o4755)
+    if not (ordner / "sgid").stat().st_mode & 0o2000 or not (ordner / "suid.bin").stat().st_mode & 0o4000:
+        pytest.skip("setuid/setgid lässt sich hier nicht setzen")
+    r = _umzug(ordner, ziel)
+    assert r.returncode == 0, r.stdout + r.stderr
+    for p in [ziel / "daten", *(ziel / "daten").rglob("*")]:
+        assert not p.stat().st_mode & 0o6000, (p, oct(p.stat().st_mode))
 
 
 def test_umzug_ohne_daten_und_nach_abbruch(tmp_path):

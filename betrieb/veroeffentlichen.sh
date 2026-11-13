@@ -98,7 +98,10 @@ erfolg_melden() {
 # Geprüft wird erst, wenn es etwas freizuschalten gibt (sudo schreibt jeden Aufruf ins Journal), einmal je Lauf.
 root_geht() {
   if [ -z "$root_ok" ]; then
-    if ${FR_SUDO-sudo -n} true 2>/dev/null; then root_ok=1; else root_ok=0; fi
+    # sudo -l statt „sudo true“: Die sudoers-Datei der Instanz erlaubt nur die Hilfsprogramme und Neustarts (#552); in einem
+    # Dienst mit NoNewPrivileges scheitert auch sudo -l
+    local s="${FR_SUDO-sudo -n}"
+    if [ -z "$s" ] || $s -l > /dev/null 2>&1; then root_ok=1; else root_ok=0; fi
   fi
   [ "$root_ok" = 1 ]
 }
@@ -1093,10 +1096,11 @@ main() {
   neustart_ausstehend="$FR_DIENST/neustart-ausstehend"   # Neustarts eines Laufs ohne Root-Rechte, deploy.sh merkt sie vor (#494)
   [ "${1:-}" = "--immer" ] && immer=1
 
-  # Sperre in FR_DIENST, nicht in FR_SPERREN (Vorgabe /tmp): Der Schreibweg startet diesen Lauf aus einem Dienst mit
+  # Sperre in FR_DIENST, nicht in FR_SPERREN (bis #552 mit der Vorgabe /tmp): Der Schreibweg startet diesen Lauf aus einem Dienst mit
   # PrivateTmp, sein /tmp ist nicht das des Timers, und die Sperre griff nicht (zwei Läufe gleichzeitig, #211)
   mkdir -p "$FR_DIENST"
   exec 9>"${VF_SPERRE:-$FR_DIENST/veroeffentlichen.lock}"
+  chmod 644 "${VF_SPERRE:-$FR_DIENST/veroeffentlichen.lock}" 2>/dev/null || true   # der Kartendienst liest sie als anderer Benutzer
   if ! flock -n 9; then
     # Der laufende Lauf startet danach noch einmal (nachlauf), damit ein neuer Stand nicht bis zum Timer wartet (#230)
     touch "$FR_DIENST/veroeffentlichen-nochmal"
