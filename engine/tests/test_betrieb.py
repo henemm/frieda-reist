@@ -1648,7 +1648,7 @@ def test_arbeitskopie_sh_entfaellt():
 
 def test_handaufrufe_nennen_den_bauordner():
     """AC-6: Jede dokumentierte Handzeile, die deploy.sh oder veroeffentlichen.sh aufruft, setzt FR_WURZEL."""
-    aufruf = re.compile(r"(?:frieda/)?betrieb/(?:deploy|veroeffentlichen)\.sh(?: --immer| <[^>]+>| \$\w+)")
+    aufruf = re.compile(r"(?:\S*/)?betrieb/(?:deploy|veroeffentlichen)\.sh(?: --immer| <[^>]+>| \$\w+)")
     quellen = [*(WURZEL / "docs").glob("*.md"), BETRIEB / "einrichten.sh", WURZEL / "werkzeuge" / "karte-holen.sh"]
     gefunden = 0
     for pfad in quellen:
