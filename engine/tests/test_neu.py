@@ -528,3 +528,33 @@ def test_nachziehen_nimmt_die_entfallene_regel_anmeldung_heraus(tmp_path):
     y.write_text(text + "regeln:\n  anmeldung: noetig\n", encoding="utf-8")
     neu.anmeldung_nachziehen(r)
     assert y.read_text(encoding="utf-8") == text
+
+
+@pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
+def test_nachziehen_sperren(tmp_path, monkeypatch, reise):
+    """#552, AC-12: Sperren liegen ohne Einstellung im Dienstordner (FR_DIENST). Steht in der Einstellung der Instanz
+    (betrieb/einstellungen.env des Reisen-Repos) ausdrücklich FR_SPERREN=/tmp, nimmt neu.py nachziehen genau diese Zeile
+    heraus (auch in Anführungszeichen); andere Zeilen und ein anderer Ort für die Sperren bleiben. Ein zweiter Lauf ändert nichts."""
+    import os
+    import shutil
+    for k in list(os.environ):
+        if k.startswith("FR_"):
+            monkeypatch.delenv(k)
+    beispiel = Path(__file__).resolve().parents[2] / "beispiel" / "reisen" / reise
+    kopf = "# Einstellungen der Instanz (erfundene Beispielwerte)\nFR_INSTANZ=beispiel\n"
+    fuss = "FR_DIENST=/srv/beispiel/_dienst\nFR_SB_PORT=8773\n"
+    for i, (zeile, bleibt) in enumerate((("FR_SPERREN=/tmp\n", False), ('FR_SPERREN="/tmp"\n', False),
+                                         ("FR_SPERREN=/srv/beispiel/sperren\n", True))):
+        wurzel = tmp_path / f"instanz{i}"
+        r = wurzel / "reisen" / reise
+        shutil.copytree(beispiel, r)
+        env = wurzel / "betrieb" / "einstellungen.env"
+        env.parent.mkdir(parents=True)
+        env.write_text(kopf + zeile + fuss, encoding="utf-8")
+        monkeypatch.setenv("FR_WURZEL", str(wurzel))
+        monkeypatch.chdir(wurzel)                    # wie der Workflow „Software nachziehen“: im Reisen-Repo
+        neu.nachziehen(Path("reisen") / reise)
+        erwartet = kopf + (zeile if bleibt else "") + fuss
+        assert env.read_text(encoding="utf-8") == erwartet, (zeile, env.read_text(encoding="utf-8"))
+        neu.nachziehen(Path("reisen") / reise)       # zweiter Lauf: keine Änderung
+        assert env.read_text(encoding="utf-8") == erwartet

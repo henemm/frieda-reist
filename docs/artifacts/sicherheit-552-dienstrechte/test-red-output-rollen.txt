@@ -1,0 +1,335 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFF                                                                [100%]
+=================================== FAILURES ===================================
+_______________________ test_sperrdatei_in_dienstordner ________________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7e6c3c0d5610>
+
+    def test_sperrdatei_in_dienstordner(tmp_path, monkeypatch):
+        """AC-12: Ohne ausdrückliche Einstellung FR_SPERREN liegt die Sperre des Schreibwegs im Dienstordner der Instanz (FR_DIENST,
+        sonst dessen Vorgabe), nie in /tmp; eine ausdrückliche Einstellung gilt weiter."""
+        import instanz
+        for k in list(os.environ):
+            if k.startswith(("FR_", "SB_", "KN_", "RM_")):
+                monkeypatch.delenv(k)
+        monkeypatch.setenv("FR_WURZEL", str(tmp_path / "instanz"))       # ohne Einstellungsdatei
+        dienst = tmp_path / "_dienst"
+        monkeypatch.setenv("FR_DIENST", str(dienst))
+        pfad = sb.sperrdatei("beispielreise")
+>       assert pfad.parent == dienst and pfad.name.endswith("-schreiben-beispielreise.lock"), pfad
+E       AssertionError: PosixPath('/tmp/frieda-schreiben-beispielreise.lock')
+E       assert (PosixPath('/tmp') == PosixPath('<tmp>'))
+E        +  where PosixPath('/tmp') = PosixPath('/tmp/frieda-schreiben-beispielreise.lock').parent
+
+engine/tests/test_schreiben.py:3149: AssertionError
+____________________________ test_rolle_lesen[git] _____________________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+repo = (PosixPath('<tmp>'), PosixPath('<tmp>'), PosixPath('<tmp>'))
+request = <FixtureRequest for <Function test_rolle_lesen[git]>>, weg = 'git'
+
+    @pytest.mark.parametrize("weg", ["git", "speicher"])
+    def test_rolle_lesen(repo, request, weg):
+        """AC-14: Die Rollenabfrage des Schreibwegs liest reise.yaml des aktuellen Stands: Wer dort Gast ist, ist Gast, auch wenn der
+        veröffentlichte Stand (und der jeweils andere Weg) sie noch als Organisator:in führt. Unbekannte Person: rolle None. Die
+        Abfrage ändert keinen Stand und nimmt keine Sperre. Beide Wege, beide Beispielreisen; ohne Kopf X-Frieda-Dienst 403."""
+        import konten
+        wurzel, origin, arbeit, _ = repo
+        shutil.copytree(BEISPIEL.parent / "stadtwochenende", wurzel / "reisen" / "stadtwochenende")
+        git(wurzel, "add", "-A")
+        git(wurzel, "commit", "-q", "-m", "Stadtwochenende")
+        git(wurzel, "push", "-q", "origin", "main")
+        if weg == "speicher":
+            rs = request.getfixturevalue("speicherweg")
+            for r in ROLLEN_REISEN:     # nur im Speicher herabgestuft; Git führt die Person weiter als Organisator:in
+                yaml_text = rs.aktueller_stand(r)["reise.yaml"].decode("utf-8")
+                rs.vorgang_schreiben(r, {"reise.yaml": _herabstufen(yaml_text).encode("utf-8")}, wer="Test", werkzeug="person_schreiben",
+                                     titel="Herabgestuft (Test)")
+            vorher = {r: rs.stand_nummer(r) for r in ROLLEN_REISEN}
+        else:
+            for r in ROLLEN_REISEN:
+                p = wurzel / "reisen" / r / "reise.yaml"
+                p.write_text(_herabstufen(p.read_text(encoding="utf-8")), encoding="utf-8")
+            git(wurzel, "commit", "-qam", "Herabgestuft (Test)")
+            git(wurzel, "push", "-q", "origin", "main")
+        main_vorher = git(origin, "rev-parse", "main")
+        s = sb.Schreiber(wurzel, arbeit)
+        for r, ((org, org_name), (mit, mit_name, mit_rolle), status) in ROLLEN_REISEN.items():
+>           a = s.rolle_lesen(r, org, org_name)
+                ^^^^^^^^^^^^^
+E           AttributeError: 'Schreiber' object has no attribute 'rolle_lesen'
+
+engine/tests/test_schreiben.py:3093: AttributeError
+____________________ test_nachziehen_sperren[beispielreise] ____________________
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b40d505b8c0>
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
+    def test_nachziehen_sperren(tmp_path, monkeypatch, reise):
+        """#552, AC-12: Sperren liegen ohne Einstellung im Dienstordner (FR_DIENST). Steht in der Einstellung der Instanz
+        (betrieb/einstellungen.env des Reisen-Repos) ausdrücklich FR_SPERREN=/tmp, nimmt neu.py nachziehen genau diese Zeile
+        heraus (auch in Anführungszeichen); andere Zeilen und ein anderer Ort für die Sperren bleiben. Ein zweiter Lauf ändert nichts."""
+        import os
+        import shutil
+        for k in list(os.environ):
+            if k.startswith("FR_"):
+                monkeypatch.delenv(k)
+        beispiel = Path(__file__).resolve().parents[2] / "beispiel" / "reisen" / reise
+        kopf = "# Einstellungen der Instanz (erfundene Beispielwerte)\nFR_INSTANZ=beispiel\n"
+        fuss = "FR_DIENST=/srv/beispiel/_dienst\nFR_SB_PORT=8773\n"
+        for i, (zeile, bleibt) in enumerate((("FR_SPERREN=/tmp\n", False), ('FR_SPERREN="/tmp"\n', False),
+                                             ("FR_SPERREN=/srv/beispiel/sperren\n", True))):
+            wurzel = tmp_path / f"instanz{i}"
+            r = wurzel / "reisen" / reise
+            shutil.copytree(beispiel, r)
+            env = wurzel / "betrieb" / "einstellungen.env"
+            env.parent.mkdir(parents=True)
+            env.write_text(kopf + zeile + fuss, encoding="utf-8")
+            monkeypatch.setenv("FR_WURZEL", str(wurzel))
+            monkeypatch.chdir(wurzel)                    # wie der Workflow „Software nachziehen“: im Reisen-Repo
+            neu.nachziehen(Path("reisen") / reise)
+            erwartet = kopf + (zeile if bleibt else "") + fuss
+>           assert env.read_text(encoding="utf-8") == erwartet, (zeile, env.read_text(encoding="utf-8"))
+E           AssertionError: ('FR_SPERREN=/tmp
+E             ', '# Einstellungen der Instanz (erfundene Beispielwerte)
+E             FR_INSTANZ=beispiel
+E             FR_SPERREN=/tmp
+E             FR_DIENST=/srv/beispiel/_dienst
+E             FR_SB_PORT=8773
+E             ')
+E           assert '# Einstellun...B_PORT=8773\n' == '# Einstellun...B_PORT=8773\n'
+E             
+E             Skipping 67 identical leading characters in diff, use -v to show
+E               ispiel
+E             + FR_SPERREN=/tmp
+E               FR_DIENST=/srv/beispiel/_dienst
+E               FR_SB_PORT=8773
+
+engine/tests/test_neu.py:558: AssertionError
+___________________ test_nachziehen_sperren[stadtwochenende] ___________________
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b40d4d1cb00>
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
+    def test_nachziehen_sperren(tmp_path, monkeypatch, reise):
+        """#552, AC-12: Sperren liegen ohne Einstellung im Dienstordner (FR_DIENST). Steht in der Einstellung der Instanz
+        (betrieb/einstellungen.env des Reisen-Repos) ausdrücklich FR_SPERREN=/tmp, nimmt neu.py nachziehen genau diese Zeile
+        heraus (auch in Anführungszeichen); andere Zeilen und ein anderer Ort für die Sperren bleiben. Ein zweiter Lauf ändert nichts."""
+        import os
+        import shutil
+        for k in list(os.environ):
+            if k.startswith("FR_"):
+                monkeypatch.delenv(k)
+        beispiel = Path(__file__).resolve().parents[2] / "beispiel" / "reisen" / reise
+        kopf = "# Einstellungen der Instanz (erfundene Beispielwerte)\nFR_INSTANZ=beispiel\n"
+        fuss = "FR_DIENST=/srv/beispiel/_dienst\nFR_SB_PORT=8773\n"
+        for i, (zeile, bleibt) in enumerate((("FR_SPERREN=/tmp\n", False), ('FR_SPERREN="/tmp"\n', False),
+                                             ("FR_SPERREN=/srv/beispiel/sperren\n", True))):
+            wurzel = tmp_path / f"instanz{i}"
+            r = wurzel / "reisen" / reise
+            shutil.copytree(beispiel, r)
+            env = wurzel / "betrieb" / "einstellungen.env"
+            env.parent.mkdir(parents=True)
+            env.write_text(kopf + zeile + fuss, encoding="utf-8")
+            monkeypatch.setenv("FR_WURZEL", str(wurzel))
+            monkeypatch.chdir(wurzel)                    # wie der Workflow „Software nachziehen“: im Reisen-Repo
+            neu.nachziehen(Path("reisen") / reise)
+            erwartet = kopf + (zeile if bleibt else "") + fuss
+>           assert env.read_text(encoding="utf-8") == erwartet, (zeile, env.read_text(encoding="utf-8"))
+E           AssertionError: ('FR_SPERREN=/tmp
+E             ', '# Einstellungen der Instanz (erfundene Beispielwerte)
+E             FR_INSTANZ=beispiel
+E             FR_SPERREN=/tmp
+E             FR_DIENST=/srv/beispiel/_dienst
+E             FR_SB_PORT=8773
+E             ')
+E           assert '# Einstellun...B_PORT=8773\n' == '# Einstellun...B_PORT=8773\n'
+E             
+E             Skipping 67 identical leading characters in diff, use -v to show
+E               ispiel
+E             + FR_SPERREN=/tmp
+E               FR_DIENST=/srv/beispiel/_dienst
+E               FR_SB_PORT=8773
+
+engine/tests/test_neu.py:558: AssertionError
+__________________________ test_rolle_lesen[speicher] __________________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+repo = (PosixPath('<tmp>'), PosixPath('/tmp/pytest-of-...reisen-schreiben'), PosixPath('<tmp>'))
+request = <FixtureRequest for <Function test_rolle_lesen[speicher]>>
+weg = 'speicher'
+
+    @pytest.mark.parametrize("weg", ["git", "speicher"])
+    def test_rolle_lesen(repo, request, weg):
+        """AC-14: Die Rollenabfrage des Schreibwegs liest reise.yaml des aktuellen Stands: Wer dort Gast ist, ist Gast, auch wenn der
+        veröffentlichte Stand (und der jeweils andere Weg) sie noch als Organisator:in führt. Unbekannte Person: rolle None. Die
+        Abfrage ändert keinen Stand und nimmt keine Sperre. Beide Wege, beide Beispielreisen; ohne Kopf X-Frieda-Dienst 403."""
+        import konten
+        wurzel, origin, arbeit, _ = repo
+        shutil.copytree(BEISPIEL.parent / "stadtwochenende", wurzel / "reisen" / "stadtwochenende")
+        git(wurzel, "add", "-A")
+        git(wurzel, "commit", "-q", "-m", "Stadtwochenende")
+        git(wurzel, "push", "-q", "origin", "main")
+        if weg == "speicher":
+            rs = request.getfixturevalue("speicherweg")
+            for r in ROLLEN_REISEN:     # nur im Speicher herabgestuft; Git führt die Person weiter als Organisator:in
+                yaml_text = rs.aktueller_stand(r)["reise.yaml"].decode("utf-8")
+                rs.vorgang_schreiben(r, {"reise.yaml": _herabstufen(yaml_text).encode("utf-8")}, wer="Test", werkzeug="person_schreiben",
+                                     titel="Herabgestuft (Test)")
+            vorher = {r: rs.stand_nummer(r) for r in ROLLEN_REISEN}
+        else:
+            for r in ROLLEN_REISEN:
+                p = wurzel / "reisen" / r / "reise.yaml"
+                p.write_text(_herabstufen(p.read_text(encoding="utf-8")), encoding="utf-8")
+            git(wurzel, "commit", "-qam", "Herabgestuft (Test)")
+            git(wurzel, "push", "-q", "origin", "main")
+        main_vorher = git(origin, "rev-parse", "main")
+        s = sb.Schreiber(wurzel, arbeit)
+        for r, ((org, org_name), (mit, mit_name, mit_rolle), status) in ROLLEN_REISEN.items():
+>           a = s.rolle_lesen(r, org, org_name)
+                ^^^^^^^^^^^^^
+E           AttributeError: 'Schreiber' object has no attribute 'rolle_lesen'
+
+engine/tests/test_schreiben.py:3093: AttributeError
+_________________________ test_erledigen_rolle_aktuell _________________________
+[gw2] linux -- Python 3.12.3 ~/…
+
+schreibweg = ('http://127.0.0.1:39139', PosixPath('<tmp>'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fda44b94170>
+
+    def test_erledigen_rolle_aktuell(schreibweg, monkeypatch):
+        """AC-16: rueckmeldung_erledigen prüft die Rolle im aktuellen Stand, bevor der PATCH an den Rückmeldedienst geht: herabgestuft
+        -> abgelehnt; Schreibweg eingerichtet, aber nicht erreichbar -> „Rolle nicht prüfbar“; beides ohne PATCH. Ist der
+        Schreibweg nicht eingerichtet, gilt wie bisher der veröffentlichte Stand."""
+        basis, ablage = schreibweg
+        o = ablage / "beispielreise"
+        t, f = werkzeug(basis, KARL, "rueckmeldung_geben", art="Korrektur", ziel="U-02", text="Frühstück kostet extra (Beispielwert)")
+        assert not f, t
+        rid = rm.eintraege(o)[0]["id"]
+        # herabgestuft: Ida ist in reise.yaml nur noch Gast, die Seite führt sie als Organisatorin
+        Schreibweg.rollen = {"ida": ("Ida", "gast")}
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id=rid, status="uebernommen", kommentar="steht drin")
+>       assert f, t
+E       AssertionError: R-20261113-085034-44ea ist jetzt uebernommen („steht drin“). Die Seite zeigt es der Person nach dem nächsten Laden; nichts weiter zu tun, wenn der Inhalt schon eingetragen ist.
+E       assert False
+
+engine/tests/test_konnektor.py:1363: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+PATCH 200
+________________________ test_einladen_erst_schreibweg _________________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+schreibweg = ('http://127.0.0.1:46309', PosixPath('<tmp>'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7e6c37a873e0>
+tmp_path = PosixPath('<tmp>')
+
+    def test_einladen_erst_schreibweg(schreibweg, monkeypatch, tmp_path):
+        """AC-15: Neue Person: erst person_schreiben über den Schreibweg (prüft die Rolle der Einladenden mit reise.yaml); lehnt er ab,
+        keine Mail, keine Zeile in einladungen.json, keine Einladung bei den Konten. Gelingt er: erst einladungen.json, dann Mail.
+        Vorhandene Person (Verknüpfung mit einem Konto): ist die Einladende im aktuellen Stand nur Gast, abgelehnt, kein konten.einladen."""
+        import konten
+        from contextlib import closing
+        basis, ablage = schreibweg
+        o = ablage / "beispielreise"
+        mails = tmp_path / "mails.jsonl"
+        monkeypatch.setenv("FR_MAIL_DATEI", str(mails))
+        aufrufe = _einladen_beobachten(monkeypatch, o, mails)
+    
+        def einladungen_bei_konten(schluessel):
+            with closing(konten.db()) as v:
+                return v.execute("SELECT COUNT(*) FROM einladungen WHERE reise = 'beispielreise' AND schluessel = ?",
+                                 (schluessel,)).fetchone()[0]
+        # neue Person, der Schreibweg lehnt ab (Ida ist in reise.yaml nur noch Gast)
+        Schreibweg.antwort = (422, {"ok": False, "fehler": "Personen einladen dürfen nur Organisator:innen (Beispielwert)."})
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Anna", rolle="mitwirkend", email="anna@beispiel.invalid")
+>       assert f, t
+E       AssertionError: Anna ist eingeladen (Rolle mitwirkend). Eine Mail ist an anna@beispiel.invalid unterwegs. Sobald sie sich mit dieser Adresse bei Frieda anmeldet (oder über den Link in der Mail), ist sie dabei.
+E       assert False
+
+engine/tests/test_konnektor.py:1320: AssertionError
+----------------------------- Captured stderr call -----------------------------
+person_schreiben beispielreise/anna: Personen einladen dürfen nur Organisator:innen (Beispielwert).
+_____________________ test_wunsch_einplanen_rolle_aktuell ______________________
+[gw2] linux -- Python 3.12.3 ~/…
+
+umgebung = <function umgebung.<locals>.neu at 0x7fda4482a160>
+
+    def test_wunsch_einplanen_rolle_aktuell(umgebung):
+        """AC-17: Einplanen ist eine Entscheidung; der Rückmeldedienst nimmt die Rolle dafür aus dem aktuellen Stand
+        (rueckmeldungen.rolle_aktuell über GET /<reise>/rolle des Schreibwegs), nicht aus der veröffentlichten Seite. Herabgestuft
+        -> 403, Brett unverändert; Organisator:in -> geht durch. Punkte und erlebt bleiben beim veröffentlichten Stand (ohne Abfrage)."""
+        from test_brett import aendern, brett, wunsch
+        u = umgebung()
+        a = wunsch(u, "Ida", "Abends in Hohnstein essen (Beispielwert)")
+        vorher = brett(u)
+        # Ida ist in reise.yaml des aktuellen Stands nur noch Gast, die Seite führt sie als Organisatorin
+        u.rollen = {"ida": "gast"}
+        code, f = aendern(u, a, name="Ida", eingeplant=True, bezug=["T-02"])
+>       assert code == 403, (code, f)
+E       AssertionError: (200, {'id': 'R-20261113-085036-039b', 'punkte': 0, 'eingeplant': {'wer': 'Ida', 'datum': '2026-11-13', 'bezug': ['T-02']}, 'erlebt': None, ...})
+E       assert 200 == 403
+
+engine/tests/test_rueckmeldungen.py:363: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+GET 200
+PATCH 200
+_______________________ test_reise_baustein_ueber_helfer _______________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_reise_baustein_ueber_helfer(tmp_path):
+        """freischalten.sh legt den Baustein nicht mehr selbst an (kein install/test/cat/rm, kein nginx -t, kein Reload), sondern
+        ruft den Reise-Helfer (FR_NGINX_REISE_HELFER, davor FR_SUDO) mit dem Reisenamen auf stdin; dessen Ausgabe ist der Pfad.
+        Link und seiten.json entstehen wie bisher."""
+        ENGINE = BETRIEB.parent / "engine"
+        snippets = tmp_path / "snippets"
+        snippets.mkdir()
+        aufrufe = tmp_path / "helfer.log"
+        helfer = tmp_path / "helfer.sh"
+        helfer.write_text(f'#!/bin/sh\nread -r reise\necho "$# $* $reise" >> {aufrufe}\necho "$reise-0123456789abcdef01234567"\n'
+                          f'[ -e {tmp_path}/schon-da ] && exit 2\ntouch {tmp_path}/schon-da\nexit 0\n')
+        helfer.chmod(0o755)
+        abruf = tmp_path / "abruf.sh"
+        abruf.write_text("#!/bin/sh\necho 200\n")
+        abruf.chmod(0o755)
+        repo = tmp_path / "repo"
+        (repo / "reisen/beispielreise").mkdir(parents=True)
+        (repo / "reisen/beispielreise/reise.yaml").write_text("titel: x\n")
+        (repo / "engine").symlink_to(ENGINE)
+        env = {**SAUBER, "FR_WURZEL": str(repo), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+               "FR_ABLAGE": str(tmp_path / "ablage"), "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_RM_PORT": "8871",
+               "FR_ADRESSE": "https://example.invalid", "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
+               "FR_NGINX_REISE_HELFER": str(helfer), "FS_ABRUF": str(abruf), "FS_NGINX_TEST": "false", "FS_NGINX_LADEN": "false", "FS_WARTEN": "0", "FS_429_WARTEN": "0"}
+        for _ in range(2):
+            r = subprocess.run([str(BETRIEB / "freischalten.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+>           assert r.returncode == 0, r.stdout + r.stderr
+E           AssertionError: ERROR: nginx rejects the configuration; snippet for beispielreise removed again, nothing changed.
+E             
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['betrieb/freischalten...tdout='ERROR: nginx rejects the configuration; snippet for beispielreise removed again, nothing changed.\n', stderr='').returncode
+
+engine/tests/test_nginx.py:557: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_schreiben.py::test_sperrdatei_in_dienstordner - Asse...
+FAILED engine/tests/test_schreiben.py::test_rolle_lesen[git] - AttributeError...
+FAILED engine/tests/test_neu.py::test_nachziehen_sperren[beispielreise] - Ass...
+FAILED engine/tests/test_neu.py::test_nachziehen_sperren[stadtwochenende] - A...
+FAILED engine/tests/test_schreiben.py::test_rolle_lesen[speicher] - Attribute...
+FAILED engine/tests/test_konnektor.py::test_erledigen_rolle_aktuell - Asserti...
+FAILED engine/tests/test_konnektor.py::test_einladen_erst_schreibweg - Assert...
+FAILED engine/tests/test_rueckmeldungen.py::test_wunsch_einplanen_rolle_aktuell
+FAILED engine/tests/test_nginx.py::test_reise_baustein_ueber_helfer - Asserti...
+9 failed in 3.48s

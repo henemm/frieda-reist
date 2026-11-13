@@ -615,3 +615,23 @@ def test_ac12_scheitern_der_unterprozesse_ist_false_ohne_traceback(h, monkeypatc
     _aufzeichnen(monkeypatch, ergebnis)
     assert h["m"].nginx_testen() is False
     assert h["m"].nginx_neu_laden() is False
+
+
+# ---------- #552, AC-11: Drossel für /token und /register ----------
+
+def test_echte_vorlage_mit_drossel(tmp_path):
+    """Die echte Orte-Vorlage besteht die Grammatik des Orte-Helfers, und /token und /register tragen die großzügige Drossel
+    der Zone _mcp (die Claude-App ruft von gemeinsamen Adressen)."""
+    ziel = tmp_path / "soll"
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "EI_ZIEL": str(ziel)}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    modul = lade(ziel / "sbin" / "probe-nginx-orte-installieren", "nginx_helfer_drossel")
+    soll = (ziel / "nginx" / NAME).read_bytes()
+    assert modul.pruefe(soll) > 0
+    text = soll.decode("utf-8")
+    for ort in ("/token", "/register"):
+        block = re.search(r"location = " + re.escape(ort) + r"\s*\{(.*?)\}", text, re.S)
+        assert block, ort
+        assert "limit_req zone=probe_mcp burst=40 nodelay;" in block.group(1), (ort, block.group(1))
+        assert "limit_req_status 429;" in block.group(1), ort

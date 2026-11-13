@@ -213,3 +213,22 @@ def test_installieren_ohne_abweichung_tut_nichts(tmp_path):
     protokoll = _attrappen(tmp_path, env, systemd)
     assert _installieren(env).returncode == 0
     assert not protokoll.exists()
+
+
+# ---------- #552, AC-13: Sandbox-Zeilen gehen nie automatisch ----------
+
+def test_sandbox_nicht_in_erlaubnisliste(tmp_path):
+    """Sandbox- und Benutzerzeilen stehen in keiner Erlaubnisliste; fehlen sie in einer installierten Unit, ist das eine
+    gesperrte Abweichung (Einmalschritt einrichten.sh --installieren), die units.py pruefen meldet."""
+    helfer = (BETRIEB / "vorlagen" / "units-installieren.py").read_text(encoding="utf-8")
+    for schluessel in ("ReadWritePaths", "ProtectSystem", "ProtectHome", "InaccessiblePaths", "User", "NoNewPrivileges"):
+        assert not [k for k in units().ERLAUBT if schluessel in k[1]], schluessel
+        assert f'"{schluessel}"' not in helfer, schluessel
+    systemd, env = _installierte_einheiten(tmp_path)
+    for name in ("probe-konnektor.service", "probe-schreiben.service"):
+        datei = systemd / name
+        datei.write_text("".join(z for z in datei.read_text().splitlines(keepends=True)
+                                 if not z.startswith(("InaccessiblePaths=", "ReadWritePaths=", "ProtectHome=read-only"))))
+    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 4, r.stdout + r.stderr
+    assert "probe-konnektor.service" in r.stdout and "probe-schreiben.service" in r.stdout, r.stdout

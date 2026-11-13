@@ -365,3 +365,33 @@ def test_umkreis_geht_an_oeffentlichen_dienst(dienste):
     e, o = dienste()
     assert sb.overpass_holen(umkreis, 20)["dienst"] == "oeffentlich"
     assert e.anfragen == [] and len(o.anfragen) == 1
+
+
+# ---------- #552, AC-10: Kartendienst unter eigenem Benutzer ----------
+
+def test_kartendienst_ohne_dienstbenutzer(tmp_path):
+    """Docker läuft nur unter <instanz>-karte; ExecStart und EnvironmentFile liegen weder im Repo noch in Ordnern des
+    Dienstbenutzers; das Aktualisieren führt ein root-eigenes, beim Einrichten erzeugtes Skript aus."""
+    import os
+    import subprocess
+    betrieb = Path(__file__).resolve().parents[2] / "betrieb"
+    ziel = tmp_path / "soll"
+    dienst = tmp_path / "dienst"
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
+           "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
+           "FR_HOME": "/home/hans", "FR_DIENST": str(dienst), "EI_ZIEL": str(ziel),
+           "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+    r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    einheiten = {p.name: p.read_text(encoding="utf-8") for p in (ziel / "kartendienst").iterdir()}
+    dienstbenutzer_ordner = (str(tmp_path), "/home/hans", str(dienst))
+    for name, text in einheiten.items():
+        assert "User=hans" not in text, name
+        for zeile in text.splitlines():
+            if zeile.startswith(("ExecStart=", "ExecStartPre=", "ExecStartPost=", "ExecStop=", "EnvironmentFile=")):
+                programm = zeile.split("=", 1)[1].lstrip("-").split()[0]
+                assert not any(o in programm for o in dienstbenutzer_ordner), (name, zeile)
+    assert "User=probe-karte" in einheiten["probe-kartendienst.service"]
+    akt = einheiten["probe-kartendienst-aktualisieren.service"]
+    assert re.search(r"^ExecStart=/usr/local/sbin/probe-kartendienst aktualisieren$", akt, re.M), akt
+    assert "EnvironmentFile" not in akt

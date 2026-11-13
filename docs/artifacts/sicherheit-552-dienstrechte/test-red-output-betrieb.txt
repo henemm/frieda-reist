@@ -1,0 +1,1073 @@
+bringing up nodes...
+bringing up nodes...
+
+EEEFEEEEEEEEEEEEEEEEEEEEEEEFFFFFFFFFFF.F                                 [100%]
+==================================== ERRORS ====================================
+___________ ERROR at setup of test_eingabe_grammatik[Beispielreise] ____________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7ac7ba8b93d0>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___________ ERROR at setup of test_eingabe_grammatik[beispiel/reise] ___________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x764e0814fd10>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_________________ ERROR at setup of test_eingabe_grammatik[a] __________________
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7e4a0b3004d0>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+__________ ERROR at setup of test_eingabe_grammatik[../beispielreise] __________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def erzeugt(tmp_path):
+        ziel = tmp_path / "soll"
+        env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans",
+               "FR_SEITEN": SEITEN, "FR_RM_PORT": "8781", "EI_ZIEL": str(ziel)}
+        r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+>       assert r.returncode == 0, r.stdout + r.stderr
+E       AssertionError:   MISSING placeholder not replaced: ____ 
+E         id: ‘hans’: no such user
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['bash', 'betrieb/einr...'--erzeugen'], returncode=1, stdout='  MISSING placeholder not replaced: ____ \n', stderr='id: ‘hans’: no such user\n').returncode
+
+engine/tests/test_nginx_reise_helfer.py:60: AssertionError
+___________ ERROR at setup of test_eingabe_grammatik[beispiel reise] ___________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x764e03c86420>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_ ERROR at setup of test_eingabe_grammatik[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx] _
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7e4a0ad72210>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+__________________ ERROR at setup of test_eingabe_grammatik[] __________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7d5518a58980>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_______ ERROR at setup of test_eingabe_grammatik[beispielreise\nzweite] ________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7ac7bae64740>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+________ ERROR at setup of test_eingabe_grammatik[beispielreis\xc3\xa9] ________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x764e03cabc20>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_________ ERROR at setup of test_eingabe_grammatik[beispielreise.conf] _________
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7e4a0adc5c10>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv1] ___
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7d5518ad1d00>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___________ ERROR at setup of test_eingabe_grammatik[-beispielreise] ___________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7ac7ba90bd70>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv2] ___
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7d5518ad1760>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___________ ERROR at setup of test_eingabe_grammatik[beispielreise;] ___________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x764e03c9f500>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv0] ___
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7e4a0adaf590>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+________ ERROR at setup of test_zwei_reisen_bekommen_verschiedene_token ________
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7d5518ad9c10>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_________ ERROR at setup of test_eingabe_grammatik[beispiel\x00reise] __________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7ac7ba8a7bf0>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv3] ___
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x764e03ca5eb0>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_____________________ ERROR at setup of test_token_bleibt ______________________
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7e4a0adca450>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+____________ ERROR at setup of test_von_hand_angelegter_pfad_bleibt ____________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7ac7ba907d40>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+____________________ ERROR at setup of test_belegte_sperre _____________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x764e03cb1700>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+________________ ERROR at setup of test_rueckweg_und_ausgaenge _________________
+[gw3] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7e4a0adb1ca0>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_________ ERROR at setup of test_symlink_statt_baustein_wird_abgelehnt _________
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7d5518ad2840>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_____________________ ERROR at setup of test_umgebung_fest _____________________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7ac7ba9112e0>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_______________________ ERROR at setup of test_entfernen _______________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x7d5518ad9730>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+_______________________ ERROR at setup of test_lesemodus _______________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+erzeugt = PosixPath('<tmp>')
+
+    @pytest.fixture
+    def h(tmp_path, erzeugt):
+>       modul = lade(erzeugt, "nginx_reise_helfer")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_nginx_reise_helfer.py:42: in lade
+    spec.loader.exec_module(modul)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x764e03c87500>
+path = '<tmp>'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+=================================== FAILURES ===================================
+________________ test_erzeugt_ohne_platzhalter_mit_festem_start ________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+erzeugt = PosixPath('<tmp>')
+
+    def test_erzeugt_ohne_platzhalter_mit_festem_start(erzeugt):
+>       text = erzeugt.read_text(encoding="utf-8")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_nginx_reise_helfer.py:95: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('<tmp>')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '<tmp>'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+____________________ test_netzdienste_ohne_docker_und_sudo _____________________
+[gw2] linux -- Python 3.12.3 ~/…
+
+    def test_netzdienste_ohne_docker_und_sudo():
+        """AC-1: Die drei aus dem Netz erreichbaren Dienste kommen weder über sudo noch über den Docker-Socket an Root-Rechte."""
+        for name in ("konnektor.service", "rueckmeldungen.service", "push.service"):
+            zeilen = _unit_zeilen(name)
+            assert "NoNewPrivileges=yes" in zeilen, name
+>           assert "InaccessiblePaths=-/run/docker.sock" in zeilen, name
+E           AssertionError: konnektor.service
+E           assert 'InaccessiblePaths=-/run/docker.sock' in ['[Unit]', 'Description=__TITEL__: Konnektor (Claude-App)', 'After=network.target __INSTANZ__-rueckmeldungen.service', '[Service]', 'User=__BENUTZER__', 'Group=__GRUPPE__', ...]
+
+engine/tests/test_betrieb.py:3279: AssertionError
+_________________________ test_schreiben_unit_sandbox __________________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+    def test_schreiben_unit_sandbox():
+        """AC-2: Der Schreibweg kann keine Dateien im Home ändern, die später mit höheren Rechten laufen."""
+        zeilen = _unit_zeilen("schreiben.service")
+        for soll in ("ProtectSystem=strict", "ProtectHome=read-only", "InaccessiblePaths=-/run/docker.sock", "NoNewPrivileges=yes"):
+>           assert soll in zeilen, soll
+E           AssertionError: ProtectSystem=strict
+E           assert 'ProtectSystem=strict' in ['[Unit]', 'Description=__TITEL__: Schreibweg (Claude-App schreibt direkt in die Reise)', 'After=network-online.target', 'Wants=network-online.target', '[Service]', 'User=__BENUTZER__', ...]
+
+engine/tests/test_betrieb.py:3292: AssertionError
+___________________________ test_nur_helfer_mit_sudo ___________________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+    def test_nur_helfer_mit_sudo():
+        """AC-8: In den Skripten des Betriebs (außer den Anleitungen von einrichten.sh) und in nginx.py ruft sudo nur die Helfer
+        oder „systemctl restart“ der eigenen Dienste auf; freischalten.sh nutzt den Reise-Helfer."""
+        for datei in sorted(BETRIEB.glob("*.sh")):
+            if datei.name == "einrichten.sh":
+                continue
+            code = "\n".join(z for z in datei.read_text(encoding="utf-8").splitlines() if not z.lstrip().startswith("#"))
+            treffer = ROOT_BEFEHLE.search(code)
+>           assert not treffer, (datei.name, treffer and treffer.group(0))
+E           AssertionError: ('freischalten.sh', '$SUDO nginx')
+E           assert not <re.Match object; span=(530, 541), match='$SUDO nginx'>
+
+engine/tests/test_betrieb.py:3330: AssertionError
+__________________________ test_sperren_nicht_in_tmp ___________________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_sperren_nicht_in_tmp(tmp_path):
+        """AC-12: Ohne Einstellung liegen die Sperren in FR_DIENST, nie im gemeinsamen /tmp."""
+        dienst = tmp_path / "dienst"
+        r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo "$FR_SPERREN"'], capture_output=True, text=True,
+                           env={**SAUBER, "FR_WURZEL": str(tmp_path), "FR_DIENST": str(dienst)})
+        assert r.returncode == 0, r.stderr
+>       assert r.stdout.strip() == str(dienst)
+E       AssertionError: assert '/tmp' == '/tmp/pytest-...n_tmp0/dienst'
+E         
+E         - <tmp>
+E         + /tmp
+
+engine/tests/test_betrieb.py:3381: AssertionError
+_______________________ test_einrichten_helfer_und_karte _______________________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_einrichten_helfer_und_karte(tmp_path):
+        """AC-9: Helfer und Karte-Skript ohne offene Platzhalter; sudoers nur für Helfer; kein Docker für den Dienstbenutzer,
+        aber ein eigener Benutzer probe-karte mit Gruppe docker."""
+        env = _ei_env(tmp_path)
+        r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        sbin = tmp_path / "soll" / "sbin"
+        for name in ("probe-nginx-reise-installieren", "probe-kartendienst"):
+>           assert (sbin / name).is_file(), name
+E           AssertionError: probe-nginx-reise-installieren
+E           assert False
+E            +  where False = is_file()
+E            +    where is_file = (PosixPath('<tmp>') / 'probe-nginx-reise-installieren').is_file
+
+engine/tests/test_betrieb.py:3358: AssertionError
+______________________ test_doku_beschreibt_dienstrechte _______________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+    def test_doku_beschreibt_dienstrechte():
+        """AC-19: docs/betrieb.md beschreibt Reise-Helfer, Kartendienst-Benutzer, Sandbox, Einmalschritt und die Warnung zum
+        Admin-Benutzer und empfiehlt keine sudoers-Zeile für install, cat, rm oder nginx."""
+        doku = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+        for soll in ("nginx-reise-installieren", "<instanz>-karte", "InaccessiblePaths", "ProtectHome=read-only",
+                     "einrichten.sh --installieren"):
+>           assert soll in doku, soll
+E           AssertionError: nginx-reise-installieren
+E           assert 'nginx-reise-installieren' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+
+engine/tests/test_betrieb.py:3396: AssertionError
+_____________________ test_sandbox_nicht_in_erlaubnisliste _____________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_sandbox_nicht_in_erlaubnisliste(tmp_path):
+        """Sandbox- und Benutzerzeilen stehen in keiner Erlaubnisliste; fehlen sie in einer installierten Unit, ist das eine
+        gesperrte Abweichung (Einmalschritt einrichten.sh --installieren), die units.py pruefen meldet."""
+        helfer = (BETRIEB / "vorlagen" / "units-installieren.py").read_text(encoding="utf-8")
+        for schluessel in ("ReadWritePaths", "ProtectSystem", "ProtectHome", "InaccessiblePaths", "User", "NoNewPrivileges"):
+            assert not [k for k in units().ERLAUBT if schluessel in k[1]], schluessel
+>           assert f'"{schluessel}"' not in helfer, schluessel
+E           AssertionError: User
+E           assert '"User"' not in '#!/usr/bin/...sys.argv))\n'
+E             
+E             '"User"' is contained here:
+E               f z[1] == "User"]
+E             ?           ++++++
+E                   if len(users) != 1 or users[0][0] != "Service" or users[0][2] != BENUTZER:
+E                       raise Abgelehnt(f"{was}: User= is not {BENUTZER}")
+E               ...
+E             
+E             ...Full output truncated (91 lines hidden), use '-vv' to show
+
+engine/tests/test_units.py:226: AssertionError
+________________________ test_echte_vorlage_mit_drossel ________________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_echte_vorlage_mit_drossel(tmp_path):
+        """Die echte Orte-Vorlage besteht die Grammatik des Orte-Helfers, und /token und /register tragen die großzügige Drossel
+        der Zone _mcp (die Claude-App ruft von gemeinsamen Adressen)."""
+        ziel = tmp_path / "soll"
+        env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "EI_ZIEL": str(ziel)}
+        r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        modul = lade(ziel / "sbin" / "probe-nginx-orte-installieren", "nginx_helfer_drossel")
+        soll = (ziel / "nginx" / NAME).read_bytes()
+        assert modul.pruefe(soll) > 0
+        text = soll.decode("utf-8")
+        for ort in ("/token", "/register"):
+            block = re.search(r"location = " + re.escape(ort) + r"\s*\{(.*?)\}", text, re.S)
+            assert block, ort
+>           assert "limit_req zone=probe_mcp burst=40 nodelay;" in block.group(1), (ort, block.group(1))
+E           AssertionError: ('/token', ' include /etc/nginx/snippets/probe-konnektor.inc; ')
+E           assert 'limit_req zone=probe_mcp burst=40 nodelay;' in ' include /etc/nginx/snippets/probe-konnektor.inc; '
+E            +  where ' include /etc/nginx/snippets/probe-konnektor.inc; ' = <built-in method group of re.Match object at 0x764e026c9750>(1)
+E            +    where <built-in method group of re.Match object at 0x764e026c9750> = <re.Match object; span=(3696, 3783), match='location = /token                  { include /etc>.group
+
+engine/tests/test_nginx_helfer.py:636: AssertionError
+____________________ test_kartendienst_ohne_dienstbenutzer _____________________
+[gw0] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_kartendienst_ohne_dienstbenutzer(tmp_path):
+        """Docker läuft nur unter <instanz>-karte; ExecStart und EnvironmentFile liegen weder im Repo noch in Ordnern des
+        Dienstbenutzers; das Aktualisieren führt ein root-eigenes, beim Einrichten erzeugtes Skript aus."""
+        import os
+        import subprocess
+        betrieb = Path(__file__).resolve().parents[2] / "betrieb"
+        ziel = tmp_path / "soll"
+        dienst = tmp_path / "dienst"
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
+               "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
+               "FR_HOME": "/home/hans", "FR_DIENST": str(dienst), "EI_ZIEL": str(ziel),
+               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+        r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        einheiten = {p.name: p.read_text(encoding="utf-8") for p in (ziel / "kartendienst").iterdir()}
+        dienstbenutzer_ordner = (str(tmp_path), "/home/hans", str(dienst))
+        for name, text in einheiten.items():
+>           assert "User=hans" not in text, name
+E           AssertionError: probe-kartendienst-aktualisieren.service
+E           assert 'User=hans' not in '# Aktualisi...tartSec=3h\n'
+E             
+E             'User=hans' is contained here:
+E               e=oneshot
+E               User=hans
+E               Group=hans
+E               Environment=PATH=/home/hans/.local/bin:/home/hans/.local/share/fnm/aliases/default/bin:/usr/local/bin:/usr/bin:/bin
+E               Environment=FR_WURZEL=<tmp>
+E             
+E             ...Full output truncated (4 lines hidden), use '-vv' to show
+
+engine/tests/test_kartendienst.py:389: AssertionError
+_______________________ test_reise_baustein_ueber_helfer _______________________
+[gw1] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_reise_baustein_ueber_helfer(tmp_path):
+        """freischalten.sh legt den Baustein nicht mehr selbst an (kein install/test/cat/rm, kein nginx -t, kein Reload), sondern
+        ruft den Reise-Helfer (FR_NGINX_REISE_HELFER, davor FR_SUDO) mit dem Reisenamen auf stdin; dessen Ausgabe ist der Pfad.
+        Link und seiten.json entstehen wie bisher."""
+        ENGINE = BETRIEB.parent / "engine"
+        snippets = tmp_path / "snippets"
+        snippets.mkdir()
+        aufrufe = tmp_path / "helfer.log"
+        helfer = tmp_path / "helfer.sh"
+        helfer.write_text(f'#!/bin/sh\nread -r reise\necho "$# $* $reise" >> {aufrufe}\necho "$reise-0123456789abcdef01234567"\n'
+                          f'[ -e {tmp_path}/schon-da ] && exit 2\ntouch {tmp_path}/schon-da\nexit 0\n')
+        helfer.chmod(0o755)
+        abruf = tmp_path / "abruf.sh"
+        abruf.write_text("#!/bin/sh\necho 200\n")
+        abruf.chmod(0o755)
+        repo = tmp_path / "repo"
+        (repo / "reisen/beispielreise").mkdir(parents=True)
+        (repo / "reisen/beispielreise/reise.yaml").write_text("titel: x\n")
+        (repo / "engine").symlink_to(ENGINE)
+        env = {**SAUBER, "FR_WURZEL": str(repo), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+               "FR_ABLAGE": str(tmp_path / "ablage"), "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_RM_PORT": "8871",
+               "FR_ADRESSE": "https://example.invalid", "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
+               "FR_NGINX_REISE_HELFER": str(helfer), "FS_ABRUF": str(abruf), "FS_WARTEN": "0", "FS_429_WARTEN": "0"}
+        for _ in range(2):
+            r = subprocess.run([str(BETRIEB / "freischalten.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+>           assert r.returncode == 0, r.stdout + r.stderr
+E           AssertionError: ERROR: nginx rejects the configuration; snippet for beispielreise removed again, nothing changed.
+E             2026/11/13 08:45:54 [warn] 756512#756512: the "user" directive makes sense only if the master process runs with super-user privileges, ignored in /etc/nginx/nginx.conf:1
+E             2026/11/13 08:45:54 [emerg] 756512#756512: open() "/etc/nginx/conf.d/fotos-logging.conf" failed (13: Permission denied) in /etc/nginx/nginx.conf:59
+E             nginx: configuration file /etc/nginx/nginx.conf test failed
+E             
+E           assert 1 == 0
+E            +  where 1 = CompletedProcess(args=['betrieb/freischalten...ed (13: Permission denied) in /etc/nginx/nginx.conf:59\nnginx: configuration file /etc/nginx/nginx.conf test failed\n').returncode
+
+engine/tests/test_nginx.py:557: AssertionError
+____________________ test_einrichten_installieren_attrappe _____________________
+[gw2] linux -- Python 3.12.3 ~/…
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_einrichten_installieren_attrappe(tmp_path):
+        """AC-20 (Installationsweg): --installieren gegen eine sudo-Attrappe installiert Reise-Helfer, Units und eine sudoers-Datei
+        nur mit Helfern; kein usermod -aG docker für den Dienstbenutzer."""
+        repo = tmp_path / "repo"
+        (repo / "betrieb").mkdir(parents=True)
+        (repo / "betrieb/einstellungen.env").write_text("FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
+        (repo / "engine").symlink_to(ENGINE)
+        origin = tmp_path / "origin.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(origin)], check=True)
+        bin_ = tmp_path / "bin"
+        bin_.mkdir()
+        log = tmp_path / "sudo.log"
+        ausfuehrbar(bin_ / "sudo", f'#!/bin/sh\nprintf "%s\\n" "$*" >> {log}\nexit 0\n')
+        ausfuehrbar(bin_ / "gh", "#!/bin/sh\nexit 0\n")
+        for name in ("rsync", "flock"):
+            if not shutil.which(name):
+                ausfuehrbar(bin_ / name, "#!/bin/sh\nexit 0\n")
+        env = {**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "PATH": f"{bin_}:{SAUBER.get('PATH', '/usr/bin:/bin')}",
+               "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "EI_ZIEL": str(tmp_path / "aus"),
+               "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen",
+               "FR_PFAD": f"{bin_}:/usr/bin:/bin", "FR_PYTHON": sys.executable, "FR_NGINX_SNIPPETS": str(tmp_path / "snippets")}
+        r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--installieren"], input="ja\n", env=env, capture_output=True,
+                           text=True, timeout=120)
+        assert r.returncode == 0 and "Installed." in r.stdout, r.stdout + r.stderr
+        befehle = log.read_text().splitlines()
+        aus = tmp_path / "aus"
+>       assert f"install -m 755 -o root -g root {aus}/sbin/probe-nginx-reise-installieren /usr/local/sbin/" in befehle, befehle
+E       AssertionError: ['install -d -o reisen -g reisen -m 755 <tmp> <tmp>', ...]
+E       assert 'install -m 755 -o root -g root <tmp> /usr/local/sbin/' in ['install -d -o reisen -g reisen -m 755 <tmp> <tmp>', ...]
+
+engine/tests/test_betrieb.py:3431: AssertionError
+______________________ test_messlauf_deckt_readwritepaths ______________________
+[gw3] linux -- Python 3.12.3 ~/…
+
+    def test_messlauf_deckt_readwritepaths():
+        """AC-3: Die Schreibziele, die messlauf-schreibweg.py unter der Sandbox prüft, sind genau die ReadWritePaths der Vorlage."""
+        import importlib.machinery
+        import importlib.util
+        datei = BETRIEB / "messlauf-schreibweg.py"
+        spec = importlib.util.spec_from_file_location("messlauf_schreibweg", datei,
+                                                      loader=importlib.machinery.SourceFileLoader("messlauf_schreibweg", str(datei)))
+        messlauf = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(messlauf)
+>       assert sorted(messlauf.SCHREIBZIELE) == sorted(_readwritepaths(_unit_zeilen("schreiben.service")))
+                      ^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'messlauf_schreibweg' has no attribute 'SCHREIBZIELE'
+
+engine/tests/test_betrieb.py:3316: AttributeError
+=========================== short test summary info ============================
+FAILED engine/tests/test_nginx_reise_helfer.py::test_erzeugt_ohne_platzhalter_mit_festem_start
+FAILED engine/tests/test_betrieb.py::test_netzdienste_ohne_docker_und_sudo - ...
+FAILED engine/tests/test_betrieb.py::test_schreiben_unit_sandbox - AssertionE...
+FAILED engine/tests/test_betrieb.py::test_nur_helfer_mit_sudo - AssertionErro...
+FAILED engine/tests/test_betrieb.py::test_sperren_nicht_in_tmp - AssertionErr...
+FAILED engine/tests/test_betrieb.py::test_einrichten_helfer_und_karte - Asser...
+FAILED engine/tests/test_betrieb.py::test_doku_beschreibt_dienstrechte - Asse...
+FAILED engine/tests/test_units.py::test_sandbox_nicht_in_erlaubnisliste - Ass...
+FAILED engine/tests/test_nginx_helfer.py::test_echte_vorlage_mit_drossel - As...
+FAILED engine/tests/test_kartendienst.py::test_kartendienst_ohne_dienstbenutzer
+FAILED engine/tests/test_nginx.py::test_reise_baustein_ueber_helfer - Asserti...
+FAILED engine/tests/test_betrieb.py::test_einrichten_installieren_attrappe - ...
+FAILED engine/tests/test_betrieb.py::test_messlauf_deckt_readwritepaths - Att...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[Beispielreise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispiel/reise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[a] - Fi...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[../beispielreise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispiel reise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[] - Fil...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreise\nzweite]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreis\xc3\xa9]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreise.conf]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv1]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[-beispielreise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv2]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreise;]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv0]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_zwei_reisen_bekommen_verschiedene_token
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispiel\x00reise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv3]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_token_bleibt - FileNotFou...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_von_hand_angelegter_pfad_bleibt
+ERROR engine/tests/test_nginx_reise_helfer.py::test_belegte_sperre - FileNotF...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_rueckweg_und_ausgaenge - ...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_symlink_statt_baustein_wird_abgelehnt
+ERROR engine/tests/test_nginx_reise_helfer.py::test_umgebung_fest - FileNotFo...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_entfernen - FileNotFoundE...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_lesemodus - FileNotFoundE...
+13 failed, 1 passed, 26 errors in 6.67s

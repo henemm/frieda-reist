@@ -343,3 +343,39 @@ def test_aufgabentext_in_der_sprache_der_person():
     assert rm.aufgaben_text([a], {"T-01": "Tag 1"}, sprache="en").splitlines() == [
         "AG-01 [open] · priority high · deadline 2000-01-01 OVERDUE · assigned to Ida: Fähre buchen", "  for: T-01 (Tag 1)",
         "  Note: früh anrufen", "  last: 2027-05-01 Ida – angelegt"]
+
+
+# ---------- Wunsch einplanen: Rolle gegen den aktuellen Stand (#552, K3-Rest) ----------
+from test_regeln import umgebung  # noqa: E402,F401  (Fixture: Rückmeldedienst, Konnektor und nachgestellter Schreibweg)
+
+
+def test_wunsch_einplanen_rolle_aktuell(umgebung):
+    """AC-17: Einplanen ist eine Entscheidung; der Rückmeldedienst nimmt die Rolle dafür aus dem aktuellen Stand
+    (rueckmeldungen.rolle_aktuell über GET /<reise>/rolle des Schreibwegs), nicht aus der veröffentlichten Seite. Herabgestuft
+    -> 403, Brett unverändert; Organisator:in -> geht durch. Punkte und erlebt bleiben beim veröffentlichten Stand (ohne Abfrage)."""
+    from test_brett import aendern, brett, wunsch
+    u = umgebung()
+    a = wunsch(u, "Ida", "Abends in Hohnstein essen (Beispielwert)")
+    vorher = brett(u)
+    # Ida ist in reise.yaml des aktuellen Stands nur noch Gast, die Seite führt sie als Organisatorin
+    u.rollen = {"ida": "gast"}
+    code, f = aendern(u, a, name="Ida", eingeplant=True, bezug=["T-02"])
+    assert code == 403, (code, f)
+    assert brett(u) == vorher
+    assert [(r, n) for r, _, n in u.rollen_abfragen] == [("beispielreise", "Ida")]
+    # Punkte auf den eigenen Wunsch: wie bisher nach dem veröffentlichten Stand, ohne Abfrage
+    u.rollen_abfragen.clear()
+    assert aendern(u, a, name="Ida", punkte=2)[0] == 200
+    assert u.rollen_abfragen == []
+    # Organisatorin im aktuellen Stand: einplanen geht durch
+    u.rollen = {}
+    code, w = aendern(u, a, name="Ida", eingeplant=True, bezug=["T-02"])
+    assert code == 200, (code, w)
+    assert w["eingeplant"]["wer"] == "Ida" and w["eingeplant"]["bezug"] == ["T-02"]
+    assert u.rollen_abfragen and u.rollen_abfragen[-1][0] == "beispielreise"
+    # erlebt (unterwegs): wie bisher, auch wenn der aktuelle Stand die Person herabgestuft hat
+    u = umgebung("unterwegs")
+    a = wunsch(u, "Karl", "Kirnitzschtalbahn (Beispielwert)")
+    u.rollen = {"karl": "gast"}
+    assert aendern(u, a, name="Karl", erlebt=True)[0] == 200
+    assert u.rollen_abfragen == []

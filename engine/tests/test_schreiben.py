@@ -3044,3 +3044,111 @@ def test_abgeschaltetes_merkmal_nimmt_festem_feld_den_namen_nicht(repo):
     r, _ = routen_auf_main(origin)
     m = r["strecken"]["E-20"]["merkmale"]["ankunft"]
     assert m["typ"] == "zeitpunkt" and m["wert"] == "09:40", m
+
+
+# ---------- Rolle gegen den aktuellen Stand (#552, K3-Rest) ----------
+# Schnittstelle (Spec docs/specs/betrieb/dienstrechte-552.md): Schreiber.rolle_lesen(reise, person, name) liest eine Lesekopie des
+# aktuellen Stands (Speicher-Reise: Export bis zur neuesten Nummer, Git-Reise: Kopie aus der Wurzel) und wertet reise.yaml so aus
+# wie wer_pruefen -> {"rolle", "name", "status"} (status: Wert des Reise-Status); unbekannte Person -> {"rolle": None}. Gesucht
+# wird nach dem Schlüssel der Person, ohne Schlüssel nach dem Namen (der Rückmeldedienst kennt beim Einplanen nur den Namen).
+# HTTP: GET /<reise>/rolle?person=<schluessel>&name=<name> am Dienst, nur mit Kopf X-Frieda-Dienst, nur lesend, ohne Sperre.
+
+ROLLEN_REISEN = {"beispielreise": (("ida", "Ida"), ("karl", "Karl", "mitwirkend"), "planung"),
+                 "stadtwochenende": (("tom", "Tom"), ("lea", "Lea", "mitwirkend"), "idee")}
+
+
+def _herabstufen(text):
+    """reise.yaml-Text: die erste Organisator:in (Ida bzw. Tom) wird Gast (erfundener Testfall)."""
+    assert "rolle: organisator" in text
+    return text.replace("rolle: organisator", "rolle: gast", 1)
+
+
+@pytest.mark.parametrize("weg", ["git", "speicher"])
+def test_rolle_lesen(repo, request, weg):
+    """AC-14: Die Rollenabfrage des Schreibwegs liest reise.yaml des aktuellen Stands: Wer dort Gast ist, ist Gast, auch wenn der
+    veröffentlichte Stand (und der jeweils andere Weg) sie noch als Organisator:in führt. Unbekannte Person: rolle None. Die
+    Abfrage ändert keinen Stand und nimmt keine Sperre. Beide Wege, beide Beispielreisen; ohne Kopf X-Frieda-Dienst 403."""
+    import konten
+    wurzel, origin, arbeit, _ = repo
+    shutil.copytree(BEISPIEL.parent / "stadtwochenende", wurzel / "reisen" / "stadtwochenende")
+    git(wurzel, "add", "-A")
+    git(wurzel, "commit", "-q", "-m", "Stadtwochenende")
+    git(wurzel, "push", "-q", "origin", "main")
+    if weg == "speicher":
+        rs = request.getfixturevalue("speicherweg")
+        for r in ROLLEN_REISEN:     # nur im Speicher herabgestuft; Git führt die Person weiter als Organisator:in
+            yaml_text = rs.aktueller_stand(r)["reise.yaml"].decode("utf-8")
+            rs.vorgang_schreiben(r, {"reise.yaml": _herabstufen(yaml_text).encode("utf-8")}, wer="Test", werkzeug="person_schreiben",
+                                 titel="Herabgestuft (Test)")
+        vorher = {r: rs.stand_nummer(r) for r in ROLLEN_REISEN}
+    else:
+        for r in ROLLEN_REISEN:
+            p = wurzel / "reisen" / r / "reise.yaml"
+            p.write_text(_herabstufen(p.read_text(encoding="utf-8")), encoding="utf-8")
+        git(wurzel, "commit", "-qam", "Herabgestuft (Test)")
+        git(wurzel, "push", "-q", "origin", "main")
+    main_vorher = git(origin, "rev-parse", "main")
+    s = sb.Schreiber(wurzel, arbeit)
+    for r, ((org, org_name), (mit, mit_name, mit_rolle), status) in ROLLEN_REISEN.items():
+        a = s.rolle_lesen(r, org, org_name)
+        assert a["rolle"] == "gast" and a["name"] == org_name and a["status"] == status, (weg, r, a)
+        assert s.rolle_lesen(r, "", org_name)["rolle"] == "gast"        # ohne Schlüssel: nach dem Namen
+        a = s.rolle_lesen(r, mit, mit_name)
+        assert a["rolle"] == mit_rolle and a["name"] == mit_name, (weg, r, a)
+        assert s.rolle_lesen(r, "niemand", "Niemand")["rolle"] is None
+        assert not sb.sperrdatei(r).exists()                            # ohne Sperre
+    # nichts geändert
+    assert git(origin, "rev-parse", "main") == main_vorher
+    assert git(wurzel, "status", "--porcelain") == ""
+    if weg == "speicher":
+        assert {r: rs.stand_nummer(r) for r in ROLLEN_REISEN} == vorher
+    # HTTP am Dienst: nur mit dem Kopf des Konnektors
+    sb.Dienst.schreiber = s
+    server = ThreadingHTTPServer(("127.0.0.1", 0), sb.Dienst)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    basis = f"http://127.0.0.1:{server.server_address[1]}"
+
+    def get(pfad, geheim):
+        req = urllib.request.Request(f"{basis}/{pfad}", headers={"X-Frieda-Dienst": geheim} if geheim else {})
+        try:
+            with urllib.request.urlopen(req) as antwort:
+                return antwort.status, json.loads(antwort.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+    try:
+        geheim = konten.dienst_geheimnis()
+        for r, ((org, org_name), (mit, mit_name, mit_rolle), status) in ROLLEN_REISEN.items():
+            assert get(f"{r}/rolle?person={org}&name={org_name}", None)[0] == 403
+            assert get(f"{r}/rolle?person={org}&name={org_name}", "falsch")[0] == 403
+            code, a = get(f"{r}/rolle?person={org}&name={org_name}", geheim)
+            assert code == 200 and a["rolle"] == "gast" and a["name"] == org_name and a["status"] == status, (weg, r, code, a)
+            code, a = get(f"{r}/rolle?person={mit}&name={mit_name}", geheim)
+            assert code == 200 and a["rolle"] == mit_rolle, (weg, r, code, a)
+            code, a = get(f"{r}/rolle?person=niemand&name=Niemand", geheim)
+            assert code == 200 and a["rolle"] is None, (weg, r, code, a)
+        assert get("Reise_X/rolle?person=ida&name=Ida", geheim)[0] == 404
+    finally:
+        server.shutdown()
+        sb.Dienst.schreiber = None
+    assert git(origin, "rev-parse", "main") == main_vorher
+    if weg == "speicher":
+        assert {r: rs.stand_nummer(r) for r in ROLLEN_REISEN} == vorher
+
+
+def test_sperrdatei_in_dienstordner(tmp_path, monkeypatch):
+    """AC-12: Ohne ausdrückliche Einstellung FR_SPERREN liegt die Sperre des Schreibwegs im Dienstordner der Instanz (FR_DIENST,
+    sonst dessen Vorgabe), nie in /tmp; eine ausdrückliche Einstellung gilt weiter."""
+    import instanz
+    for k in list(os.environ):
+        if k.startswith(("FR_", "SB_", "KN_", "RM_")):
+            monkeypatch.delenv(k)
+    monkeypatch.setenv("FR_WURZEL", str(tmp_path / "instanz"))       # ohne Einstellungsdatei
+    dienst = tmp_path / "_dienst"
+    monkeypatch.setenv("FR_DIENST", str(dienst))
+    pfad = sb.sperrdatei("beispielreise")
+    assert pfad.parent == dienst and pfad.name.endswith("-schreiben-beispielreise.lock"), pfad
+    assert pfad.parent != Path("/tmp")
+    monkeypatch.delenv("FR_DIENST")                                     # Vorgabe des Dienstordners
+    assert sb.sperrdatei("stadtwochenende").parent == instanz.dienst() != Path("/tmp")
+    monkeypatch.setenv("FR_SPERREN", str(tmp_path / "sperren"))          # ausdrücklich gesetzt: gilt
+    assert sb.sperrdatei("beispielreise").parent == tmp_path / "sperren"
