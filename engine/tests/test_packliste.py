@@ -712,3 +712,21 @@ def test_konnektor_markiert_ausgeblendete_kategorie_und_englischer_name(dienst):
     assert "Gesamt: Gewicht 2810 g" in t                                    # die Kamera zählt nicht zur ganzen Liste
     assert schnittstelle.parameter_zu_englisch("art_definieren")["ausgeblendet"] == "hidden"
     assert schnittstelle.parameter_zu_intern("art_definieren")["hidden"] == "ausgeblendet"
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+def test_aufteilung_nimmt_ohne_wahl_das_erste_auswahl_merkmal_mit_wert(tmp_path):
+    """#431: Steht vor „Getragen“ ein Auswahl-Merkmal, das kein Gegenstand ausgefüllt hat (eine echte Reise: „Raum“ zu Hause, leer),
+    teilt Planen die Summe ohne gemerkte Wahl nach „Getragen“ auf, nicht nach dem leeren Merkmal (sonst stünde alles unter „ohne Angabe“)."""
+    from test_seite_sprachen import ausdruecke
+    reise = tmp_path / "reise"
+    shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", reise)
+    arten = reise / "plan/arten.yaml"
+    zeilen = arten.read_text(encoding="utf-8").splitlines(keepends=True)
+    i = next(n for n, z in enumerate(zeilen) if z.strip().startswith("getragen: {name: Getragen"))
+    zeilen.insert(i, zeilen[i].split("getragen:")[0] + "tasche: {name: Tasche, typ: auswahl, werte: [rot, blau]}   # Testwert, von keinem Gegenstand ausgefüllt\n")
+    arten.write_text("".join(zeilen), encoding="utf-8")
+    bauen.bauen(reise, tmp_path / "web" / "reise")
+    werte = ausdruecke(tmp_path / "web", ['new Promise(ok => { location.hash = "packliste"; setTimeout(() => ok('
+                                         '[...document.querySelectorAll("#plAufteilen option")].map(o => o.value + (o.selected ? "*" : ""))), 300); })'])
+    assert werte[0][:2] == ["tasche", "getragen*"], werte

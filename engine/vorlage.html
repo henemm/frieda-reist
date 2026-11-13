@@ -5452,7 +5452,7 @@ let PS_AUSGANG = lies("packstand-ausgang", []);   // ohne Netz geändert: [{gid,
 let PS_SENDET = 0;   // so viele Haken sind gerade unterwegs: „wird nachgereicht“ erst zeigen, wenn er danach noch aussteht (sonst zuckt die Liste, #501)
 let PL_ANSICHT = lies("packliste-ansicht", "planen");
 let PL_GRUPPE = lies("packliste-gruppe", "_kategorie");
-let PL_AUFTEILEN = lies("packliste-aufteilen", null);   // Merkmal, nach dem die Summe aufgeteilt wird; null: das erste Auswahl-Merkmal, "": nicht (#431)
+let PL_AUFTEILEN = lies("packliste-aufteilen", null);   // Merkmal, nach dem die Summe aufgeteilt wird; null: das erste Auswahl-Merkmal mit einem Wert, "": nicht (#431)
 let PL_SORT = lies("packliste-sort", null);             // {spalte, richtung} für alle Tabellen; null: Reihenfolge der Liste (#431)
 let PL_WER = lies("packliste-wer", "meins");            // Packen: nur meine Sachen oder alle (#431)
 let PL_AUS = lies("packliste-aus", []);                 // Kategorien, die diese Person beim Packen nicht sehen will, nur dieses Gerät (#431)
@@ -5690,7 +5690,9 @@ function ansichtPackliste(m) {
     [{"data-pl-ansicht": "packen"}, ansicht === "packen", T("seite.packliste.packen")]]));
   const auswahl = plMerkmale(["auswahl"]), gruppierbar = plMerkmale(["auswahl", "text"]);
   const sichtbar = PL.gegenstaende.filter(g => plAktiv(g) && plSichtbar(g));
-  const teilen = PL.summen.length && auswahl.size ? (PL_AUFTEILEN === "" ? null : auswahl.get(PL_AUFTEILEN) || auswahl.values().next().value) : null;
+  // ohne Wahl: das erste Auswahl-Merkmal, das ein Gegenstand der Liste auch ausgefüllt hat (sonst stünde alles unter „ohne Angabe“)
+  const erstesMitWert = [...auswahl.values()].find(mk => sichtbar.some(g => plWert(g, mk.id))) || auswahl.values().next().value;
+  const teilen = PL.summen.length && auswahl.size ? (PL_AUFTEILEN === "" ? null : auswahl.get(PL_AUFTEILEN) || erstesMitWert) : null;
   const mitWer = !!ich && sichtbar.some(g => g.wer), nurMeins = mitWer && PL_WER !== "alle";
   if (ansicht === "planen" && PL.summen.length && auswahl.size) kopf.append(el("label", {for: "plAufteilen"}, T("seite.packliste.aufteilen"),
     el("select", {id: "plAufteilen"}, [...auswahl.values()].map(mk => el("option", {value: mk.id, selected: teilen === mk}, mk.name)),
