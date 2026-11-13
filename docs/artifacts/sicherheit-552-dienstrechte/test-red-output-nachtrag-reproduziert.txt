@@ -4,7 +4,7 @@ bringing up nodes...
 FFFFFFFFFFFF                                                             [100%]
 =================================== FAILURES ===================================
 _______________ test_anwenden_installiert_mit_gruppe_der_instanz _______________
-[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
     def test_anwenden_installiert_mit_gruppe_der_instanz():
         """nginx.py anwenden (mit Root-Rechten) installiert die Bausteine der Instanz mit 0640 root:<Gruppe>; eine fremde
@@ -17,7 +17,7 @@ E       AttributeError: module 'nginx_abgleich' has no attribute 'install_befehl
 
 engine/tests/test_nginx.py:578: AttributeError
 _________________________ test_befehl_nennt_die_gruppe _________________________
-[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7672878d8e30>
 
@@ -26,15 +26,15 @@ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7672878d8e30>
         m = nginx_modul()
         monkeypatch.setenv("FR_GRUPPE", "reisegruppe")
 >       assert "FR_GRUPPE=reisegruppe" in m.befehl("probe", "<srv>/probe/_dienst", "/etc/nginx/snippets")
-E       AssertionError: assert 'FR_GRUPPE=reisegruppe' in 'sudo env FR_WURZEL=<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_befehl_nennt_die_gruppe0/keine-instanz FR_INSTANZ=p...rktrees-reflective-tinkering-marshmallow/f8b458d7-fcb5-4abd-9b9e-084c67c1c377/scratchpad/alt/betrieb/nginx.py anwenden'
-E        +  where 'sudo env FR_WURZEL=<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_befehl_nennt_die_gruppe0/keine-instanz FR_INSTANZ=p...rktrees-reflective-tinkering-marshmallow/f8b458d7-fcb5-4abd-9b9e-084c67c1c377/scratchpad/alt/betrieb/nginx.py anwenden' = <function befehl at 0x767284b5de40>('probe', '<srv>/probe/_dienst', '/etc/nginx/snippets')
+E       AssertionError: assert 'FR_GRUPPE=reisegruppe' in 'sudo env FR_WURZEL=<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_befehl_nennt_die_gruppe0/keine-instanz FR_INSTANZ=p...rktrees-reflective-tinkering-marshmallow/f8b458d7-fcb5-4abd-9b9e-084c67c1c377/scratchpad/alt/betrieb/nginx.py anwenden'
+E        +  where 'sudo env FR_WURZEL=<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_befehl_nennt_die_gruppe0/keine-instanz FR_INSTANZ=p...rktrees-reflective-tinkering-marshmallow/f8b458d7-fcb5-4abd-9b9e-084c67c1c377/scratchpad/alt/betrieb/nginx.py anwenden' = <function befehl at 0x767284b5de40>('probe', '<srv>/probe/_dienst', '/etc/nginx/snippets')
 E        +    where <function befehl at 0x767284b5de40> = <module 'nginx_abgleich' from '<stand-vor-umsetzung>/betrieb/nginx.py'>.befehl
 
 engine/tests/test_nginx.py:591: AssertionError
 _____________ test_orte_helfer_installiert_mit_gruppe_der_instanz ______________
-[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw2/test_orte_helfer_installiert_m0')
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw2/test_orte_helfer_installiert_m0')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75679fec14f0>
 
     def test_orte_helfer_installiert_mit_gruppe_der_instanz(tmp_path, monkeypatch):
@@ -52,9 +52,9 @@ E       AttributeError: module 'nginx_helfer_gruppe' has no attribute 'GRUPPE'
 
 engine/tests/test_nginx_helfer.py:653: AttributeError
 __________________ test_kartendienst_daten_im_zustandsordner ___________________
-[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_kartendienst_daten_im_zus0')
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_kartendienst_daten_im_zus0')
 
     def test_kartendienst_daten_im_zustandsordner(tmp_path):
         """Das Karte-Skript arbeitet in /var/lib/<instanz>-kartendienst/daten; der Zustandsordner ist für Konnektor und Docker
@@ -79,7 +79,7 @@ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-self = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_kartendienst_daten_im_zus0/soll/sbin/probe-kartendienst')
+self = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_kartendienst_daten_im_zus0/soll/sbin/probe-kartendienst')
 mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
 
     def open(self, mode='r', buffering=-1, encoding=None,
@@ -92,13 +92,13 @@ mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
             encoding = io.text_encoding(encoding)
 >       return io.open(self, mode, buffering, encoding, errors, newline)
                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E       FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_kartendienst_daten_im_zus0/soll/sbin/probe-kartendienst'
+E       FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_kartendienst_daten_im_zus0/soll/sbin/probe-kartendienst'
 
 /usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
 _______________ test_umzug_verschiebt_daten_und_legt_verweis_an ________________
-[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_umzug_verschiebt_daten_un0')
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_umzug_verschiebt_daten_un0')
 
     def test_umzug_verschiebt_daten_und_legt_verweis_an(tmp_path):
         """Vorhandene Daten (FR_KARTENDIENST_ORDNER als Ordner) ziehen nach <ziel>/daten um, an ihrer Stelle steht ein Verweis
@@ -117,9 +117,9 @@ E        +  where 127 = CompletedProcess(args=['bash', '<stand-vor-umsetzung>…
 
 engine/tests/test_kartendienst_skript.py:218: AssertionError
 __________________ test_umzug_fremder_verweis_aendert_nichts ___________________
-[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_umzug_fremder_verweis_aen0')
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_umzug_fremder_verweis_aen0')
 
     def test_umzug_fremder_verweis_aendert_nichts(tmp_path):
         ordner, ziel = tmp_path / "instanz" / "kartendienst", tmp_path / "varlib" / "probe-kartendienst"
@@ -135,9 +135,9 @@ E        +  and   'bash: <stand-vor-umsetzung>/betrieb/kartendienst-umzug.sh: No
 
 engine/tests/test_kartendienst_skript.py:251: AssertionError
 _____________________ test_baustein_mit_gruppe_der_instanz _____________________
-[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw2/test_baustein_mit_gruppe_der_i0')
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw2/test_baustein_mit_gruppe_der_i0')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75679fa6a8d0>
 
     def test_baustein_mit_gruppe_der_instanz(tmp_path, monkeypatch):
@@ -161,16 +161,16 @@ engine/tests/test_nginx_reise_helfer.py:42: in lade
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
 self = <_frozen_importlib_external.SourceFileLoader object at 0x75679fa68080>
-path = '<tmp>/pytest-of-hem/pytest-15600/popen-gw2/test_baustein_mit_gruppe_der_i0/soll/sbin/probe-nginx-reise-installieren'
+path = '<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw2/test_baustein_mit_gruppe_der_i0/soll/sbin/probe-nginx-reise-installieren'
 
 >   ???
-E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-of-hem/pytest-15600/popen-gw2/test_baustein_mit_gruppe_der_i0/soll/sbin/probe-nginx-reise-installieren'
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw2/test_baustein_mit_gruppe_der_i0/soll/sbin/probe-nginx-reise-installieren'
 
 <frozen importlib._bootstrap_external>:1186: FileNotFoundError
 ____ test_pruefen_liest_ohne_sudo_und_ueberspringt_unlesbare_fremde_dateien ____
-[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x743772778540>, 'installieren': <function abgleich.<locals>.installieren...fd'), 'snippets': PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw1/test_pruefen_liest_ohne_sudo_u0/snippets'), ...}
+abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x743772778540>, 'installieren': <function abgleich.<locals>.installieren...fd'), 'snippets': PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw1/test_pruefen_liest_ohne_sudo_u0/snippets'), ...}
 
     def test_pruefen_liest_ohne_sudo_und_ueberspringt_unlesbare_fremde_dateien(abgleich):
         """pruefen liest die Bausteine der Instanz ohne sudo (lesbar über die Gruppe); eine fremde conf.d-Datei, die der
@@ -184,16 +184,16 @@ abgleich = {'lauf': <function abgleich.<locals>.lauf at 0x743772778540>, 'instal
         try:
             r = abgleich["lauf"](FR_SUDO="false")
 >           assert r.returncode == 0 and r.stdout.strip() == "", r.stdout + r.stderr
-E           AssertionError: ERROR: <tmp>/pytest-of-hem/pytest-15600/popen-gw1/test_pruefen_liest_ohne_sudo_u0/confd/fremd-logging.conf cannot be read (no access)
+E           AssertionError: ERROR: <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw1/test_pruefen_liest_ohne_sudo_u0/confd/fremd-logging.conf cannot be read (no access)
 E             
 E           assert (1 == 0)
 E            +  where 1 = CompletedProcess(args=['<stand-vor-umsetzung>… cannot be read (no access)\n').returncode
 
 engine/tests/test_nginx.py:605: AssertionError
 ____________________ test_umzug_ohne_daten_und_nach_abbruch ____________________
-[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw2/test_umzug_ohne_daten_und_nach0')
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw2/test_umzug_ohne_daten_und_nach0')
 
     def test_umzug_ohne_daten_und_nach_abbruch(tmp_path):
         """Ohne vorhandene Daten entsteht nur der Verweis; nach einem Abbruch zwischen Kopie und Löschen (Daten schon am Ziel,
@@ -209,9 +209,9 @@ E        +  where 127 = CompletedProcess(args=['bash', '<stand-vor-umsetzung>…
 
 engine/tests/test_kartendienst_skript.py:232: AssertionError
 __________ test_ac7_als_root_mit_root_eigentum_setzt_root_und_gruppe ___________
-[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-h = {'m': <module 'nginx_helfer' from '<tmp>/pytest-of-hem/pytest-15600/popen-gw1/test_ac7_als_root_mit_root_eig0/helfer.py...ot_eig0/sperre', 'nginx': '<tmp>/pytest-of-hem/pytest-15600/popen-gw1/test_ac7_als_root_mit_root_eig0/nginx', ...}, ...}
+h = {'m': <module 'nginx_helfer' from '<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw1/test_ac7_als_root_mit_root_eig0/helfer.py...ot_eig0/sperre', 'nginx': '<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw1/test_ac7_als_root_mit_root_eig0/nginx', ...}, ...}
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x743779a940b0>
 
     def test_ac7_als_root_mit_root_eigentum_setzt_root_und_gruppe(h, monkeypatch):
@@ -232,10 +232,10 @@ E       AttributeError: module 'nginx_helfer' has no attribute 'grp'
 
 engine/tests/test_nginx_helfer.py:353: AttributeError
 ________________ test_einspielen_schaltet_hinter_dem_verweis_um ________________
-[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-kd = {'lauf': <function kd.<locals>.lauf at 0x767284b928e0>, 'ordner': PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0...ten'), 'protokoll': PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0/aufrufe.log')}
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0')
+kd = {'lauf': <function kd.<locals>.lauf at 0x767284b928e0>, 'ordner': PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0...ten'), 'protokoll': PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0/aufrufe.log')}
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0')
 
     def test_einspielen_schaltet_hinter_dem_verweis_um(kd, tmp_path):
         """Ist FR_KARTENDIENST_ORDNER ein Verweis (Umzug), schaltet das Skript im Zustandsordner um, nicht im Elternordner des
@@ -248,16 +248,16 @@ tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einspielen
 >       assert r.returncode == 0, (r.stdout, r.stderr)
 E       AssertionError: ('Downloading europe/andorra …
 E         Downloading europe/monaco …
-E         ', "mv: cannot overwrite non-directory '<tmp>/… with directory '<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0/daten/.kartendienst.neu'
+E         ', "mv: cannot overwrite non-directory '<tmp>/… with directory '<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0/daten/.kartendienst.neu'
 E         ")
 E       assert 1 == 0
-E        +  where 1 = CompletedProcess(args=['bash', '<stand-vor-umsetzung>… with directory '<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0/daten/.kartendienst.neu'\n").returncode
+E        +  where 1 = CompletedProcess(args=['bash', '<stand-vor-umsetzung>… with directory '<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einspielen_schaltet_hinte0/daten/.kartendienst.neu'\n").returncode
 
 engine/tests/test_kartendienst_skript.py:263: AssertionError
 _______________ test_einrichten_bausteine_lesbar_fuer_die_gruppe _______________
-[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 <repo>/engine/.venv/bin/python
 
-tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0')
+tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0')
 
     def test_einrichten_bausteine_lesbar_fuer_die_gruppe(tmp_path):
         """#552, Entscheidung 9: Die Bausteine der Instanz kommen mit 0640 root:<FR_GRUPPE>, und --installieren stellt vorhandene
@@ -266,19 +266,19 @@ tmp_path = PosixPath('<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten
         aus = r.stdout
         zeilen = [z.strip() for z in aus.splitlines()]
 >       assert f"sudo install -m 640 -o root -g reisen {tmp_path}/aus/nginx/probe-zone.conf /etc/nginx/conf.d/" in zeilen, aus
-E       AssertionError: Instance probe (Probe), software clone <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo
+E       AssertionError: Instance probe (Probe), software clone <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo
 E         Prerequisites:
-E           MISSING engine/ is missing: FR_WURZEL is the software clone (git clone --branch main <software repo> <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_software, docs/betrieb.md)
-E           MISSING Python with yaml and ruamel.yaml: <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/python/bin/python (python3 -m venv <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/python && <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/python/bin/pip install -r <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo/engine/requirements.txt)
+E           MISSING engine/ is missing: FR_WURZEL is the software clone (git clone --branch main <software repo> <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_software, docs/betrieb.md)
+E           MISSING Python with yaml and ruamel.yaml: <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/python/bin/python (python3 -m venv <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/python && <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/python/bin/pip install -r <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo/engine/requirements.txt)
 E           ok      address https://example.invalid
-E           MISSING git -C <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo fetch origin main does not work without a prompt (clone of the public software repo?)
-E           NOTE    settings of the instance: copy betrieb/einstellungen.beispiel to <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/instanz/einstellungen.env
+E           MISSING git -C <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo fetch origin main does not work without a prompt (clone of the public software repo?)
+E           NOTE    settings of the instance: copy betrieb/einstellungen.beispiel to <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/instanz/einstellungen.env
 E           ok      connector at https://example.invalid/mcp
 E           ok      flock
 E           ok      rsync
-E           NOTE    <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe will be created (sudo install -d -o reisen -g reisen <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe)
+E           NOTE    <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe will be created (sudo install -d -o reisen -g reisen <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe)
 E           NOTE    no reporting channel (FR_MELDEN): errors appear only in the journal
-E         Generated in <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus:
+E         Generated in <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus:
 E           nginx/probe-konnektor-orte.inc
 E           nginx/probe-konnektor.inc
 E           nginx/probe-zone.conf
@@ -293,34 +293,34 @@ E           systemd/probe-veroeffentlichen.timer
 E           systemd/probe-waechter.service
 E           systemd/probe-waechter.timer
 E         
-E         Activate (once the server block of https://example.invalid contains  include <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/snippets/probe-*.conf;
+E         Activate (once the server block of https://example.invalid contains  include <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/snippets/probe-*.conf;
 E         the connector stands at the root of https://example.invalid, whose server block includes probe-konnektor-orte.inc):
-E           sudo install -d -o reisen -g reisen -m 755 <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst
-E           sudo install -d -o reisen -g reisen -m 700 <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/instanz
-E           git clone -q --branch main --single-branch <software repo> <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_software
-E           sudo install -d -o reisen -g reisen -m 750 <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_rueckmeldungen
-E           sudo install -d -o reisen -g reisen -m 700 <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_konnektor <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_konten
-E           sudo install -m 644 <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/systemd/* <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/systemd/
-E           sudo install -m 644 <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-zone.conf /etc/nginx/conf.d/
-E           sudo install -m 640 <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-konnektor-orte.inc <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-konnektor.inc <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/snippets/
+E           sudo install -d -o reisen -g reisen -m 755 <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst
+E           sudo install -d -o reisen -g reisen -m 700 <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_dienst/instanz
+E           git clone -q --branch main --single-branch <software repo> <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_software
+E           sudo install -d -o reisen -g reisen -m 750 <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_rueckmeldungen
+E           sudo install -d -o reisen -g reisen -m 700 <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_konnektor <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/srv/probe/_konten
+E           sudo install -m 644 <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/systemd/* <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/systemd/
+E           sudo install -m 644 <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-zone.conf /etc/nginx/conf.d/
+E           sudo install -m 640 <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-konnektor-orte.inc <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-konnektor.inc <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/snippets/
 E           sudo systemctl daemon-reload
-E           cd <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo && FR_WURZEL=<tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo betrieb/deploy.sh --dienste   (installs the code of the services; the check fails before the start)
+E           cd <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo && FR_WURZEL=<tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/repo betrieb/deploy.sh --dienste   (installs the code of the services; the check fails before the start)
 E           sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben probe-push
 E           sudo nginx -t && sudo systemctl reload nginx
 E           sudo systemctl enable --now probe-veroeffentlichen.timer probe-waechter.timer
 E         Check:  curl -s 127.0.0.1:8773/gesund  answers {"gesund": true};  journalctl -u probe-veroeffentlichen -n 20
 E         deploy.sh needs for reisen: sudo -n systemctl restart probe-rueckmeldungen probe-konnektor probe-schreiben probe-push;
-E         freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/snippets (sudoers, docs/betrieb.md).
+E         freischalten.sh needs: sudo -n nginx -t, systemctl reload nginx, install/test/cat/rm in <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/snippets (sudoers, docs/betrieb.md).
 E         Units helper (#260, once, deliberately; without it only differences are reported, nothing is installed):
-E           sudo install -m 755 -o root -g root <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/sbin/probe-units-installieren /usr/local/sbin/
+E           sudo install -m 755 -o root -g root <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/sbin/probe-units-installieren /usr/local/sbin/
 E           sudoers for reisen: NOPASSWD: /usr/local/sbin/probe-units-installieren
 E         nginx locations helper (#445, once, deliberately; installs only probe-konnektor-orte.inc, without it only differences are reported):
-E           sudo install -m 755 -o root -g root <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/sbin/probe-nginx-orte-installieren /usr/local/sbin/
+E           sudo install -m 755 -o root -g root <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/sbin/probe-nginx-orte-installieren /usr/local/sbin/
 E           sudoers for reisen: NOPASSWD: /usr/local/sbin/probe-nginx-orte-installieren
 E         
 E         3 prerequisite(s) missing.
 E         
-E       assert 'sudo install -m 640 -o root -g reisen <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-zone.conf /etc/nginx/conf.d/' in ['Instance probe (Probe), software clone <tmp>/pytest-of-hem/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/rep...chten_bausteine_lesb0/repo fetch origin main does not work without a prompt (clone of the public software repo?)', ...]
+E       assert 'sudo install -m 640 -o root -g reisen <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/aus/nginx/probe-zone.conf /etc/nginx/conf.d/' in ['Instance probe (Probe), software clone <tmp>/pytest-of-<benutzer>/pytest-15600/popen-gw0/test_einrichten_bausteine_lesb0/rep...chten_bausteine_lesb0/repo fetch origin main does not work without a prompt (clone of the public software repo?)', ...]
 
 engine/tests/test_betrieb.py:3485: AssertionError
 12 failed in 2.67s

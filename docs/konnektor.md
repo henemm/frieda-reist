@@ -104,9 +104,11 @@ Name und Farbe eines Punkts kommen aus seiner Art (`plan/arten.yaml`); eine Kart
 **`frage_beantworten`** (Mitwirkende und Organisator:innen, Bausteine `fragen` und `rueckmeldungen`): Die Antwort wird eine Rückmeldung der Art `Antwort` an die Frage und steht danach unter `zeige F-…`. Die Frage muss es geben und noch offen sein. Geklärt ist sie damit nicht: Das entscheidet ein:e Organisator:in.
 
 **`person_einladen`** (`regeln.einladen`: `organisator` oder `mitwirkend`): Eingaben `vorname`, `email` (Pflicht), `rolle` (Standard `mitwirkend`), `reist`, `notiz`. Man kann höchstens die eigene Rolle vergeben. Der Dienst
-1. schickt die Einladung an die Adresse (`konten.einladen`, Mail in der Sprache der Reise); hat die Adresse schon ein Konto, gilt sie sofort, sonst beim ersten Anmelden,
-2. legt die Person live in `<ablage>/<reise>/einladungen.json` an, damit Rolle und Zugang sofort gelten (Konnektor und Rückmeldedienst kennen sie),
-3. schreibt sie über den Schreibweg sofort nach `reise.yaml` (`personen`). Steht sie dort, gilt `reise.yaml`.
+1. schreibt die Person über den Schreibweg sofort nach `reise.yaml` (`personen`); lehnt er ab (die Rolle der Einladenden ist dort inzwischen zu klein), geht keine Mail hinaus, und `einladungen.json` und Konten bleiben unverändert (#552). Steht die Person dort, gilt `reise.yaml`,
+2. legt sie live in `<ablage>/<reise>/einladungen.json` an, damit Rolle und Zugang sofort gelten (Konnektor und Rückmeldedienst kennen sie),
+3. schickt die Einladung an die Adresse (`konten.einladen`, Mail in der Sprache der Reise); hat die Adresse schon ein Konto, gilt sie sofort, sonst beim ersten Anmelden.
+
+Die Rolle der Einladenden prüft der Konnektor dabei gegen die **aktuelle** `reise.yaml` (Rollenabfrage am Schreibweg), nicht gegen den veröffentlichten Stand: Wer dort herabgestuft wurde, kann weder einladen noch `rueckmeldung_erledigen` aufrufen, und die Seite kann für sie keinen Wunsch einplanen (403). Ist der Schreibweg eingerichtet, aber nicht erreichbar, lehnt der Konnektor mit „Rolle nicht prüfbar“ ab; ohne Schreibweg gilt der veröffentlichte Stand.
 
 Gibt es die Person schon, verknüpft die Einladung sie mit dem Konto der Adresse (nur Organisator:innen; Organisator:innen selbst verknüpft nur der Betreiber, Prüfung J3); ihre Rolle ändert `person_einladen` mit anderer Rolle (nur Organisator:innen, sofort in `reise.yaml`). Herausnehmen geht mit `person_entfernen`. Links für die Claude-App gibt es nicht mehr (#421).
 

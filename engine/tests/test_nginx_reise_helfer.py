@@ -209,6 +209,33 @@ def test_rueckweg_und_ausgaenge(h, capsys):
     assert pfad.startswith("beispielreise-")
 
 
+def test_rueckweg_zurueckschreiben_scheitert(h, monkeypatch, capsys):
+    """AC-6, zweiter Fall von Ausgang 6: nginx -t scheitert und das Zurückschreiben des alten Stands scheitert ebenfalls.
+    Dann bleibt die Sicherung, es wird nicht geladen, und die Meldung nennt den ungeprüften Stand."""
+    assert h["main"](b"beispielreise") == 0
+    capsys.readouterr()
+    veraltet = h["ziel"].read_text(encoding="utf-8").replace("no-cache", "no-store")
+    h["ziel"].write_text(veraltet, encoding="utf-8")
+    laden = len(h["z"]["laden"])
+    echt = h["m"].ersetzen
+    aufrufe = []
+
+    def ersetzen(daten, snippets, ziel):
+        aufrufe.append(daten)
+        if len(aufrufe) > 1:
+            raise OSError("Platte voll (Beispielwert)")
+        return echt(daten, snippets, ziel)
+
+    monkeypatch.setattr(h["m"], "ersetzen", ersetzen)
+    h["z"]["test_ergebnisse"] = [False]
+    assert h["main"](b"beispielreise") == 6
+    fehler = capsys.readouterr().err
+    assert "rollback failed" in fehler and "not reloaded" in fehler
+    assert len(aufrufe) == 2 and len(h["z"]["laden"]) == laden
+    assert any(p.read_text(encoding="utf-8") == veraltet for p in h["sicherung"].iterdir())
+    assert not [p for p in h["snippets"].iterdir() if p.name.endswith(".tmp")]
+
+
 def test_entfernen(h, capsys):
     assert h["main"](b"beispielreise", "--entfernen") == 2
     assert h["main"](b"beispielreise") == 0
