@@ -52,6 +52,10 @@ Runde 2: Alle ACs einzeln gegen den aktuellen Stand geprüft, Zeilennummern neu 
 **Implementierer:** (keine weitere Rückmeldung.)
 
 
+### Runde 3
+
+Runde 3 (Validierung, 13.11.2026): Prüfling ist die Änderung an docs/betrieb.md, „Neue Instanz einrichten“ beschreibt den Software-Klon (AC-2.19, AC-2.24), die alte Anordnung bleibt wörtlich als Unterabschnitt. Ein unabhängiger Prüfer hat zwölf Aussagen gegen den Code gehalten: elf bestätigt (einrichten.sh:150-163 befehle() mit Klon und <FR_DIENST>/instanz, gemeinsam.sh:120 FR_PYTHON, veroeffentlichen.sh:599-605 und :713-768 Neubau der Umgebung, deploy.sh --dienste, schreiben.py:17 neue Reise im Speicher, docs/konten.md:30 Anlegen nur mit Freischaltung). Befund F1 (MEDIUM, „Anstoß über gh im Code“) ist widerlegt: main() springt im Klon in main_klon (veroeffentlichen.sh:1110 `if software_klon; then main_klon "$@"; return; fi`), main_klon ruft nur anstoss_lauf (:848, :668, kein gh); anstoss_weitergeben (:1116) und software_anstossen (:1151) laufen nur in der alten Anordnung, die der Text als solche benennt. F2 (LOW, curl fehlt in den Voraussetzungen) behoben. F3 (LOW, Abschnitt Software-Wechsel nennt das Submodul) betrifft die alte Anordnung und ist dort richtig. Doku-Tests grün (test_software_nachziehen doku, test_software_weg_454 doku/betrieb_md/einrichten/rueckweg/infra: 7 passed). Keine offenen Befunde MEDIUM oder höher.
+
 ## Findings
 
 Finding:
@@ -340,6 +344,41 @@ Checklist: alle ACs belegt
 - blob:678b6d4e6b5c246ece0f243bc25e3de84ff66c26  betrieb/pruefsitzung.py
 - blob:c78dc32652d54e83be32ac60daebcc90a868b590  betrieb/veroeffentlichen.sh
 - blob:de17e4bc3e19a24e23980f4992cd5cbc0ee10f75  docs/betrieb.md
+- blob:d47e057ebeb89f9e0e17cedba2cd34b40bdcf8fe  engine/instanz.py
+- blob:151ca69f03094ddd161079b77339587e342343ba  engine/reisespeicher.py
+- blob:05e909338c2a8d07660ae747a4707e501a188757  engine/rueckmeldungen.py
+- blob:144faeb33a50f95665a404ff9f39ab65442343ac  engine/schreiben.py
+- blob:e88146a0a60aa07c6ec6cc71bdd58a208eadd0be  engine/stand.py
+- blob:6fc580fee227048d5532d110b64815099cbb9442  engine/stand_git.py
+- blob:af5b756c705b69e2f472fd87f1af167f09dff31b  werkzeuge/adressen_holen.py
+- blob:60a02e310da610273db0a4a268d6617248e8868c  werkzeuge/grundkarte_auto.py
+- blob:89803fc80b4d20cbfeacd34ea20a6656a2ef9dd5  werkzeuge/punkte_holen.py
+- blob:86ae622a4ada48b5bd12c7e2edaa00a71577916b  werkzeuge/wasser_pruefen.py
+- blob:757498314856f7276125f9681ce622f8dedf9104  werkzeuge/wissen_punkte_holen.py
+
+## Geprüfte Dateien
+
+- sha256:b85689deb5f759f3aa11762178ea19b602ec1b29118a2f0602a1775156fdc027  betrieb/pruefsitzung.py
+- sha256:29925fb7efa05777b76ef53d4779792d4f3ae2e9856aa1097bb4af4d1a68ad27  betrieb/veroeffentlichen.sh
+- sha256:d4c55a0d611523f5deaeb3b8c563570a9868b433b324bb68d8b674fdf847cffb  docs/betrieb.md
+- sha256:3de1aa8ed6b87d955ca3c1b828ed09d848d889134f1b98a4c7194f16e1381758  engine/instanz.py
+- sha256:3343b6ef764520e4c968366aae121e421bda5f27684faa2946030b3498c0916d  engine/reisespeicher.py
+- sha256:7f7b161ab388a81e209e434ff48c9f868d265c115c42e47d44c074423c7890a1  engine/rueckmeldungen.py
+- sha256:a2e7bf10b3089d5aaf27f2569a9c0805d4a0429419e7aa6d813b0534ef1271df  engine/schreiben.py
+- sha256:c14ab51e5925f65e4d6652e8dae64592d1c505697277dadb3213897ecf72ee0a  engine/stand.py
+- sha256:d7e92ac1b2890fdf0966bab647d4f375d753655034d6ee4791a0b41ad3cd193d  engine/stand_git.py
+- sha256:575278e8f1c2d52ff9685b62e9c54924a054112fea0747f67011abed5fa9cb91  werkzeuge/adressen_holen.py
+- sha256:cdb57bf08d485eaa945fa1b6254e765b41286eda2d4461d81b76852de0092cf5  werkzeuge/grundkarte_auto.py
+- sha256:9b700b53081e0452db01a64ae0a422cc7a42bd55dc860c7a38eed0413697289e  werkzeuge/punkte_holen.py
+- sha256:d3593ac158de2987d5d4d0b63513be5693a1c9903b397027306ea5d599cdc1c2  werkzeuge/wasser_pruefen.py
+- sha256:855a7ff6543bc716a01eda692e8caf5127a57bfddd4a54c7246122fd21b84637  werkzeuge/wissen_punkte_holen.py
+
+## Prüfbasis
+
+- base: 3b9f9085648b0936e5e73004da98fe49c30509da
+- blob:678b6d4e6b5c246ece0f243bc25e3de84ff66c26  betrieb/pruefsitzung.py
+- blob:c78dc32652d54e83be32ac60daebcc90a868b590  betrieb/veroeffentlichen.sh
+- blob:4e4f7897c1746b2e1ab9a59e6967d60a4c8bd660  docs/betrieb.md
 - blob:d47e057ebeb89f9e0e17cedba2cd34b40bdcf8fe  engine/instanz.py
 - blob:151ca69f03094ddd161079b77339587e342343ba  engine/reisespeicher.py
 - blob:05e909338c2a8d07660ae747a4707e501a188757  engine/rueckmeldungen.py
