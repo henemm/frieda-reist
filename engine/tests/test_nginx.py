@@ -525,3 +525,42 @@ def test_doku_nennt_nginx_orte_hilfsprogramm():
     assert not falsch, falsch
     doc = nginx_modul().__doc__
     assert "installieren" in doc and "#445" in doc
+
+
+# ---------- #552, AC-8: Reise-Bausteine nur über den Helfer ----------
+
+def test_reise_baustein_ueber_helfer(tmp_path):
+    """freischalten.sh legt den Baustein nicht mehr selbst an (kein install/test/cat/rm, kein nginx -t, kein Reload), sondern
+    ruft den Reise-Helfer (FR_NGINX_REISE_HELFER, davor FR_SUDO) mit dem Reisenamen auf stdin; dessen Ausgabe ist der Pfad.
+    Link und seiten.json entstehen wie bisher."""
+    ENGINE = BETRIEB.parent / "engine"
+    snippets = tmp_path / "snippets"
+    snippets.mkdir()
+    aufrufe = tmp_path / "helfer.log"
+    helfer = tmp_path / "helfer.sh"
+    helfer.write_text(f'#!/bin/sh\nread -r reise\necho "$# $* $reise" >> {aufrufe}\necho "$reise-0123456789abcdef01234567"\n'
+                      f'[ -e {tmp_path}/schon-da ] && exit 2\ntouch {tmp_path}/schon-da\nexit 0\n')
+    helfer.chmod(0o755)
+    abruf = tmp_path / "abruf.sh"
+    abruf.write_text("#!/bin/sh\necho 200\n")
+    abruf.chmod(0o755)
+    repo = tmp_path / "repo"
+    (repo / "reisen/beispielreise").mkdir(parents=True)
+    (repo / "reisen/beispielreise/reise.yaml").write_text("titel: x\n")
+    (repo / "engine").symlink_to(ENGINE)
+    env = {**SAUBER, "FR_WURZEL": str(repo), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+           "FR_ABLAGE": str(tmp_path / "ablage"), "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_RM_PORT": "8871",
+           "FR_ADRESSE": "https://example.invalid", "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
+           "FR_NGINX_REISE_HELFER": str(helfer), "FS_ABRUF": str(abruf), "FS_NGINX_TEST": "false", "FS_NGINX_LADEN": "false", "FS_WARTEN": "0", "FS_429_WARTEN": "0"}
+    for _ in range(2):
+        r = subprocess.run([str(BETRIEB / "freischalten.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert "Seite: https://example.invalid/beispielreise-0123456789abcdef01234567/" in r.stdout
+    assert aufrufe.read_text().splitlines() == ["0  beispielreise", "0  beispielreise"]
+    assert list(snippets.iterdir()) == []
+    links = (tmp_path / "konnektor" / "seiten.json").read_text()
+    assert "https://example.invalid/beispielreise-0123456789abcdef01234567/" in links
+    # Scheitert der Helfer, bleibt die Reise ohne Link und der Grund steht als ERROR-Zeile da
+    helfer.write_text("#!/bin/sh\necho 'nginx -t failed' >&2\nexit 4\n")
+    r = subprocess.run([str(BETRIEB / "freischalten.sh"), "beispielreise"], env=env, capture_output=True, text=True)
+    assert r.returncode != 0 and "ERROR" in r.stdout and "Seite:" not in r.stdout, r.stdout

@@ -484,9 +484,30 @@ class Schreibweg(kn.BaseHTTPRequestHandler):
     anfragen = []
     antwort = (200, {"ok": True, "text": "Art „Refugi“ angelegt: Schlüssel refugi, Grundform Aufenthalt, Farbe gruen."})
     im_repo = set()   # Buchungen, die der nachgestellte Schreibweg auf main kennt (GET /<reise>/buchung/<B-id>)
+    # Rollen im aktuellen Stand (GET /<reise>/rolle?person=…&name=…, #552); Vorgabe wie die Seiten der Testvorbereitung
+    ROLLEN_VORGABE = {"ida": ("Ida", "organisator"), "karl": ("Karl", "mitwirkend"), "kim": ("Kim", "gast")}
+    rollen = {}       # Abweichungen je Schlüssel: {schluessel: (name, rolle)}
+    rollen_abfragen = []
 
     def do_GET(self):
-        teile = self.path.strip("/").split("/")
+        import urllib.parse
+        pfad, _, abfrage = self.path.partition("?")
+        teile = pfad.strip("/").split("/")
+        if len(teile) == 2 and teile[1] == "rolle":
+            q = urllib.parse.parse_qs(abfrage)
+            person, name = (q.get("person") or [""])[0], (q.get("name") or [""])[0]
+            Schreibweg.rollen_abfragen.append((teile[0], person, name, self.headers.get("X-Frieda-Dienst")))
+            alle = {**Schreibweg.ROLLEN_VORGABE, **Schreibweg.rollen}
+            treffer = alle.get(person) or next((v for v in alle.values() if v[0].casefold() == name.casefold()), None)
+            obj = {"rolle": treffer[1], "name": treffer[0], "status": "planung"} if treffer else {"rolle": None}
+            code = 200 if self.headers.get("X-Frieda-Dienst") == konten_geheimnis() else 403
+            daten = json.dumps(obj if code == 200 else {"fehler": "nur Konnektor"}).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(daten)))
+            self.end_headers()
+            self.wfile.write(daten)
+            return
         gibt_es = len(teile) == 3 and teile[1] == "buchung" and teile[2] in Schreibweg.im_repo \
             and self.headers.get("X-Frieda-Dienst") == konten_geheimnis()
         daten = json.dumps({"gibt_es": gibt_es}).encode()
@@ -521,6 +542,8 @@ def schreibweg(dienst, monkeypatch, tmp_path):
     monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
     Schreibweg.anfragen = []
     Schreibweg.im_repo = set()
+    Schreibweg.rollen = {}
+    Schreibweg.rollen_abfragen = []
     s, url = starten(Schreibweg)
     monkeypatch.setenv("KN_SCHREIBDIENST", url)
     yield dienst
@@ -1250,3 +1273,110 @@ def test_symbol_lesen_ohne_eigenes_symbol(schreibweg, tmp_path, monkeypatch):
     (seite / "icon-192.png").unlink()
     t, f = werkzeug(basis, ALT_ORGANISATOR, "icon_set")
     assert f and meldet(t, "konnektor.symbol.keine_seite")
+
+
+# ---------- Rolle gegen den aktuellen Stand (#552, K3-Rest) ----------
+# Einladen, Rückmeldung erledigen und Wunsch einplanen prüfen die Rolle mit reise.yaml des aktuellen Stands über den Schreibweg
+# (GET /<reise>/rolle, rueckmeldungen.rolle_aktuell), nicht mit dem veröffentlichten Stand. Hier: der nachgestellte Schreibweg
+# (Schreibweg.rollen) stuft Ida herab, die veröffentlichte Seite führt sie weiter als Organisatorin.
+
+def _einladen_beobachten(monkeypatch, o, mails):
+    """konten.einladen mitschreiben: je Aufruf (schluessel, steht schon in einladungen.json, Zahl der Mails davor, Zahl der
+    Anfragen an den Schreibweg davor)."""
+    import konten
+    aufrufe, original = [], konten.einladen
+
+    def einladen(reise, schluessel, *a, **kw):
+        aufrufe.append((schluessel, schluessel in rm.einladungen_lesen(o),
+                        len(mails.read_text(encoding="utf-8").splitlines()) if mails.exists() else 0, len(Schreibweg.anfragen)))
+        return original(reise, schluessel, *a, **kw)
+    monkeypatch.setattr(konten, "einladen", einladen)
+    return aufrufe
+
+
+def _mails(mails):
+    return mails.read_text(encoding="utf-8") if mails.exists() else ""
+
+
+def test_einladen_erst_schreibweg(schreibweg, monkeypatch, tmp_path):
+    """AC-15: Neue Person: erst person_schreiben über den Schreibweg (prüft die Rolle der Einladenden mit reise.yaml); lehnt er ab,
+    keine Mail, keine Zeile in einladungen.json, keine Einladung bei den Konten. Gelingt er: erst einladungen.json, dann Mail.
+    Vorhandene Person (Verknüpfung mit einem Konto): ist die Einladende im aktuellen Stand nur Gast, abgelehnt, kein konten.einladen."""
+    import konten
+    from contextlib import closing
+    basis, ablage = schreibweg
+    o = ablage / "beispielreise"
+    mails = tmp_path / "mails.jsonl"
+    monkeypatch.setenv("FR_MAIL_DATEI", str(mails))
+    aufrufe = _einladen_beobachten(monkeypatch, o, mails)
+
+    def einladungen_bei_konten(schluessel):
+        with closing(konten.db()) as v:
+            return v.execute("SELECT COUNT(*) FROM einladungen WHERE reise = 'beispielreise' AND schluessel = ?",
+                             (schluessel,)).fetchone()[0]
+    # neue Person, der Schreibweg lehnt ab (Ida ist in reise.yaml nur noch Gast)
+    Schreibweg.antwort = (422, {"ok": False, "fehler": "Personen einladen dürfen nur Organisator:innen (Beispielwert)."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Anna", rolle="mitwirkend", email="anna@beispiel.invalid")
+    assert f, t
+    assert Schreibweg.anfragen and Schreibweg.anfragen[-1][0] == "/beispielreise/person_schreiben"
+    assert "anna@beispiel.invalid" not in _mails(mails)
+    assert "anna" not in rm.einladungen_lesen(o)
+    assert aufrufe == [] and einladungen_bei_konten("anna") == 0
+    # neue Person, der Schreibweg nimmt an: erst Schreibweg, dann einladungen.json, dann Mail
+    Schreibweg.anfragen = []
+    Schreibweg.antwort = (200, {"ok": True, "text": "Anna steht jetzt in der Reise (anna, Rolle mitwirkend, reist mit)."})
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Anna", rolle="mitwirkend", email="anna@beispiel.invalid")
+    assert not f, t
+    assert [a[0] for a in Schreibweg.anfragen] == ["/beispielreise/person_schreiben"]
+    assert len(aufrufe) == 1
+    schluessel, schon_eingeladen, mails_davor, schreibweg_davor = aufrufe[0]
+    assert schluessel == "anna" and schon_eingeladen and schreibweg_davor == 1 and mails_davor == 0, aufrufe
+    assert "anna@beispiel.invalid" in _mails(mails) and "anna" in rm.einladungen_lesen(o)
+    # vorhandene Person mit Konto verknüpfen: Ida ist im aktuellen Stand nur Gast -> abgelehnt, ohne konten.einladen und Mail
+    aufrufe.clear()
+    Schreibweg.rollen = {"ida": ("Ida", "gast")}
+    Schreibweg.rollen_abfragen = []
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Karl", email="karl@beispiel.invalid")
+    assert f, t
+    assert aufrufe == [] and einladungen_bei_konten("karl") == 0 and "karl@beispiel.invalid" not in _mails(mails)
+    assert [(r, p) for r, p, _, _ in Schreibweg.rollen_abfragen] == [("beispielreise", "ida")]
+    assert Schreibweg.rollen_abfragen[0][3] == konten_geheimnis()
+    # Gegenprobe: Ida ist im aktuellen Stand Organisatorin -> Karl wird eingeladen
+    Schreibweg.rollen = {}
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "person_einladen", vorname="Karl", email="karl@beispiel.invalid")
+    assert not f, t
+    assert [a[0] for a in aufrufe] == ["karl"] and "karl@beispiel.invalid" in _mails(mails)
+
+
+def test_erledigen_rolle_aktuell(schreibweg, monkeypatch):
+    """AC-16: rueckmeldung_erledigen prüft die Rolle im aktuellen Stand, bevor der PATCH an den Rückmeldedienst geht: herabgestuft
+    -> abgelehnt; Schreibweg eingerichtet, aber nicht erreichbar -> „Rolle nicht prüfbar“; beides ohne PATCH. Ist der
+    Schreibweg nicht eingerichtet, gilt wie bisher der veröffentlichte Stand."""
+    basis, ablage = schreibweg
+    o = ablage / "beispielreise"
+    t, f = werkzeug(basis, KARL, "rueckmeldung_geben", art="Korrektur", ziel="U-02", text="Frühstück kostet extra (Beispielwert)")
+    assert not f, t
+    rid = rm.eintraege(o)[0]["id"]
+    # herabgestuft: Ida ist in reise.yaml nur noch Gast, die Seite führt sie als Organisatorin
+    Schreibweg.rollen = {"ida": ("Ida", "gast")}
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id=rid, status="uebernommen", kommentar="steht drin")
+    assert f, t
+    assert rid not in rm.status_lesen(o)                                   # kein PATCH
+    assert [(r, p) for r, p, _, _ in Schreibweg.rollen_abfragen] == [("beispielreise", "ida")]
+    # eingerichtet, aber nicht erreichbar
+    tot, url = starten(Schreibweg)
+    tot.shutdown()
+    tot.server_close()
+    monkeypatch.setenv("KN_SCHREIBDIENST", url)
+    Schreibweg.rollen = {}
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id=rid, status="uebernommen", kommentar="steht drin")
+    assert f and "nicht prüfbar" in t, t
+    assert rid not in rm.status_lesen(o)
+    # nicht eingerichtet: der veröffentlichte Stand gilt wie bisher
+    monkeypatch.delenv("KN_SCHREIBDIENST")
+    monkeypatch.delenv("RM_SCHREIBDIENST", raising=False)
+    t, f = werkzeug(basis, KARL, "rueckmeldung_erledigen", id=rid, status="uebernommen", kommentar="x")
+    assert f and rid not in rm.status_lesen(o)
+    t, f = werkzeug(basis, ALT_ORGANISATOR, "rueckmeldung_erledigen", id=rid, status="uebernommen", kommentar="steht drin")
+    assert not f, t
+    assert rm.status_lesen(o)[rid]["status"] == "uebernommen"

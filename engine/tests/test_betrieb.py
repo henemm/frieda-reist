@@ -3262,3 +3262,178 @@ def test_veroeffentlichen_holt_vorgemerkte_neustarts_mit_root_rechten_nach(vf):
     neustarts.unlink()
     r = vf["lauf"]()
     assert r.returncode == 0 and neustarts.read_text().split() == ["probe-push"] and not vorgemerkt.exists(), r.stdout
+
+
+# ---------- #552: Rechte des Dienstbenutzers (Spec docs/specs/betrieb/dienstrechte-552.md) ----------
+
+def _unit_zeilen(name):
+    return [z.strip() for z in (BETRIEB / "vorlagen" / name).read_text(encoding="utf-8").splitlines()
+            if z.strip() and not z.strip().startswith("#")]
+
+
+def test_netzdienste_ohne_docker_und_sudo():
+    """AC-1: Die drei aus dem Netz erreichbaren Dienste kommen weder über sudo noch über den Docker-Socket an Root-Rechte."""
+    for name in ("konnektor.service", "rueckmeldungen.service", "push.service"):
+        zeilen = _unit_zeilen(name)
+        assert "NoNewPrivileges=yes" in zeilen, name
+        assert "InaccessiblePaths=-/run/docker.sock" in zeilen, name
+    # Der Rückmeldedienst fragt die Rolle beim Schreibweg ab (AC-17): er kennt dessen Adresse
+    assert "Environment=KN_SCHREIBDIENST=http://127.0.0.1:__SB_PORT__" in _unit_zeilen("rueckmeldungen.service")
+
+
+def _readwritepaths(zeilen):
+    return [p for z in zeilen if z.startswith("ReadWritePaths=") for p in z.split("=", 1)[1].split()]
+
+
+def test_schreiben_unit_sandbox():
+    """AC-2: Der Schreibweg kann keine Dateien im Home ändern, die später mit höheren Rechten laufen."""
+    zeilen = _unit_zeilen("schreiben.service")
+    for soll in ("ProtectSystem=strict", "ProtectHome=read-only", "InaccessiblePaths=-/run/docker.sock", "NoNewPrivileges=yes"):
+        assert soll in zeilen, soll
+    assert not [z for z in zeilen if z in ("ProtectSystem=no", "ProtectHome=no")]
+    ziele = _readwritepaths(zeilen)
+    assert ziele and len(ziele) == len(set(ziele))
+    for platzhalter in ("__DIENST__", "__KONTEN__"):
+        assert any(p.lstrip("-").startswith(platzhalter) for p in ziele), (platzhalter, ziele)
+    # Kein Ziel öffnet das ganze Home oder die Wurzel des Systems
+    assert not [p for p in ziele if p.lstrip("-") in ("/", "/home", "/root", "/etc", "/usr", "__HOME__")]
+    # Jedes Ziel steht mit Begründung als Kommentar in der Vorlage
+    text = (BETRIEB / "vorlagen" / "schreiben.service").read_text(encoding="utf-8")
+    kommentare = "\n".join(z for z in text.splitlines() if z.lstrip().startswith("#"))
+    for p in ziele:
+        assert p.lstrip("-") in kommentare, p
+
+
+def test_messlauf_deckt_readwritepaths():
+    """AC-3: Die Schreibziele, die messlauf-schreibweg.py unter der Sandbox prüft, sind genau die ReadWritePaths der Vorlage."""
+    import importlib.machinery
+    import importlib.util
+    datei = BETRIEB / "messlauf-schreibweg.py"
+    spec = importlib.util.spec_from_file_location("messlauf_schreibweg", datei,
+                                                  loader=importlib.machinery.SourceFileLoader("messlauf_schreibweg", str(datei)))
+    messlauf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(messlauf)
+    assert sorted(messlauf.SCHREIBZIELE) == sorted(_readwritepaths(_unit_zeilen("schreiben.service")))
+
+
+ROOT_BEFEHLE = re.compile(r"(?:\$\{?(?:SUDO|FR_SUDO)\b[^ ]*|\bsudo(?:\s+-n)?)\s+(?:install|test|cat|rm|nginx|systemctl\s+reload)\b")
+
+
+def test_nur_helfer_mit_sudo():
+    """AC-8: In den Skripten des Betriebs (außer den Anleitungen von einrichten.sh) und in nginx.py ruft sudo nur die Helfer
+    oder „systemctl restart“ der eigenen Dienste auf; freischalten.sh nutzt den Reise-Helfer."""
+    for datei in sorted(BETRIEB.glob("*.sh")):
+        if datei.name == "einrichten.sh":
+            continue
+        code = "\n".join(z for z in datei.read_text(encoding="utf-8").splitlines() if not z.lstrip().startswith("#"))
+        treffer = ROOT_BEFEHLE.search(code)
+        assert not treffer, (datei.name, treffer and treffer.group(0))
+        assert "NGINX_TEST" not in code and "NGINX_LADEN" not in code, datei.name
+    nginx_py = (BETRIEB / "nginx.py").read_text(encoding="utf-8")
+    for verboten in ('sudo + ["cat"', 'sudo + ["install"', 'sudo + ["rm"'):
+        assert verboten not in nginx_py, verboten
+    frei = (BETRIEB / "freischalten.sh").read_text(encoding="utf-8")
+    assert "nginx-reise-installieren" in frei and "FR_NGINX_REISE_HELFER" in frei
+
+
+def _ei_env(tmp_path, **extra):
+    return {**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe",
+            "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans", "FR_HOME": "/home/hans",
+            "EI_ZIEL": str(tmp_path / "soll"), "EI_SYSTEMD": str(tmp_path / "systemd"),
+            "FR_NGINX_SNIPPETS": str(tmp_path / "snippets"), "FR_KARTENDIENST_REGIONEN": "europe/andorra",
+            "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst", **extra}
+
+
+NUR_HELFER = re.compile(r"NOPASSWD: (?:/usr/local/sbin/probe-[a-z-]+|/usr/bin/systemctl restart [a-z0-9 -]+)$")
+
+
+def test_einrichten_helfer_und_karte(tmp_path):
+    """AC-9: Helfer und Karte-Skript ohne offene Platzhalter; sudoers nur für Helfer; kein Docker für den Dienstbenutzer,
+    aber ein eigener Benutzer probe-karte mit Gruppe docker."""
+    env = _ei_env(tmp_path)
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    sbin = tmp_path / "soll" / "sbin"
+    for name in ("probe-nginx-reise-installieren", "probe-kartendienst"):
+        assert (sbin / name).is_file(), name
+        assert not re.search(r"__[A-Z_]+__", (sbin / name).read_text(encoding="utf-8")), name
+    karte = (sbin / "probe-kartendienst").read_text(encoding="utf-8")
+    # Das Karte-Skript liest weder betrieb.env noch etwas aus Ordnern des Dienstbenutzers oder dem Repo
+    assert "betrieb.env" not in karte and str(tmp_path) not in karte and "/home/hans" not in karte
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh")], env=env, capture_output=True, text=True)
+    aus = r.stdout + r.stderr
+    assert "NOPASSWD: /usr/local/sbin/probe-nginx-reise-installieren" in aus, aus
+    assert f"sudo install -m 755 -o root -g root {sbin}/probe-nginx-reise-installieren /usr/local/sbin/" in aus
+    assert f"{sbin}/probe-kartendienst" in aus
+    assert not re.search(r"usermod -aG docker hans\b", aus), aus
+    assert re.search(r"useradd\b.*probe-karte", aus), aus
+    assert not re.search(r"sudo -n nginx -t|install/test/cat/rm", aus), aus
+    for zeile in (z.strip() for z in aus.splitlines() if "NOPASSWD" in z):
+        assert NUR_HELFER.search(zeile), zeile
+
+
+def test_sperren_nicht_in_tmp(tmp_path):
+    """AC-12: Ohne Einstellung liegen die Sperren in FR_DIENST, nie im gemeinsamen /tmp."""
+    dienst = tmp_path / "dienst"
+    r = subprocess.run(["bash", "-c", f'. "{BETRIEB}/gemeinsam.sh"; echo "$FR_SPERREN"'], capture_output=True, text=True,
+                       env={**SAUBER, "FR_WURZEL": str(tmp_path), "FR_DIENST": str(dienst)})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == str(dienst)
+    for datei in ("gemeinsam.sh", "kartendienst.sh"):
+        assert not re.search(r"SPERREN[^\n]*/tmp", (BETRIEB / datei).read_text(encoding="utf-8")), datei
+    assert not re.search(r'"FR_SPERREN",\s*"/tmp"', (ENGINE / "schreiben.py").read_text(encoding="utf-8"))
+    # Der Kartendienst öffnet die Sperre des Veröffentlichens nur lesend (er läuft unter eigenem Benutzer)
+    karte = (BETRIEB / "kartendienst.sh").read_text(encoding="utf-8")
+    assert re.search(r'exec 9<\s*"\$FR_DIENST/veroeffentlichen\.lock"', karte), "veroeffentlichen.lock nur lesend öffnen"
+
+
+def test_doku_beschreibt_dienstrechte():
+    """AC-19: docs/betrieb.md beschreibt Reise-Helfer, Kartendienst-Benutzer, Sandbox, Einmalschritt und die Warnung zum
+    Admin-Benutzer und empfiehlt keine sudoers-Zeile für install, cat, rm oder nginx."""
+    doku = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    for soll in ("nginx-reise-installieren", "<instanz>-karte", "InaccessiblePaths", "ProtectHome=read-only",
+                 "einrichten.sh --installieren"):
+        assert soll in doku, soll
+    for zeile in (z for z in doku.splitlines() if "NOPASSWD" in z):
+        rest = zeile.split("NOPASSWD", 1)[1].replace("nginx-orte-installieren", "").replace("nginx-reise-installieren", "")
+        assert not re.search(r"\b(?:install|cat|rm|nginx|test)\b", rest), zeile
+    assert re.search(r"[Aa]dmin", doku)
+
+
+def test_einrichten_installieren_attrappe(tmp_path):
+    """AC-20 (Installationsweg): --installieren gegen eine sudo-Attrappe installiert Reise-Helfer, Units und eine sudoers-Datei
+    nur mit Helfern; kein usermod -aG docker für den Dienstbenutzer."""
+    repo = tmp_path / "repo"
+    (repo / "betrieb").mkdir(parents=True)
+    (repo / "betrieb/einstellungen.env").write_text("FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
+    (repo / "engine").symlink_to(ENGINE)
+    origin = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(origin)], check=True)
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    log = tmp_path / "sudo.log"
+    ausfuehrbar(bin_ / "sudo", f'#!/bin/sh\nprintf "%s\\n" "$*" >> {log}\nexit 0\n')
+    ausfuehrbar(bin_ / "gh", "#!/bin/sh\nexit 0\n")
+    for name in ("rsync", "flock"):
+        if not shutil.which(name):
+            ausfuehrbar(bin_ / name, "#!/bin/sh\nexit 0\n")
+    env = {**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "PATH": f"{bin_}:{SAUBER.get('PATH', '/usr/bin:/bin')}",
+           "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "EI_ZIEL": str(tmp_path / "aus"),
+           "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen",
+           "FR_PFAD": f"{bin_}:/usr/bin:/bin", "FR_PYTHON": sys.executable, "FR_NGINX_SNIPPETS": str(tmp_path / "snippets")}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--installieren"], input="ja\n", env=env, capture_output=True,
+                       text=True, timeout=120)
+    assert r.returncode == 0 and "Installed." in r.stdout, r.stdout + r.stderr
+    befehle = log.read_text().splitlines()
+    aus = tmp_path / "aus"
+    assert f"install -m 755 -o root -g root {aus}/sbin/probe-nginx-reise-installieren /usr/local/sbin/" in befehle, befehle
+    assert any(b.startswith("install -m 644") and str(tmp_path / "systemd") in b for b in befehle), befehle
+    assert not [b for b in befehle if re.search(r"usermod -aG docker reisen\b", b)], befehle
+    sudoers = next((Path(b.split()[-2]) for b in befehle if b.startswith("install") and "/etc/sudoers.d/" in b), None)
+    assert sudoers is not None and sudoers.is_file(), befehle
+    text = sudoers.read_text()
+    assert "probe-nginx-reise-installieren" in text
+    for zeile in (z.strip() for z in text.splitlines() if "NOPASSWD" in z):
+        assert NUR_HELFER.search(zeile), zeile

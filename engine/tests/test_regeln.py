@@ -106,9 +106,38 @@ class Umgebung:
         # Nachgestellter Schreibweg (engine/schreiben.py dienst): merkt sich, was der Konnektor schreiben will
         monkeypatch.setenv("FR_KONTEN", str(tmp / "konten"))
         self.schreibweg = []
+        self.quelle = tmp / "quelle"     # reise.yaml des „aktuellen Stands“ (reise_bauen)
+        self.rollen = {}                 # Abweichungen im aktuellen Stand {schluessel: rolle} (#552)
+        self.rollen_abfragen = []
         umgebung = self
 
         class Schreibweg(kn.BaseHTTPRequestHandler):
+            def do_GET(self):
+                """GET /<reise>/rolle?person=…&name=… (#552): Rolle aus reise.yaml des aktuellen Stands."""
+                import urllib.parse
+                pfad, _, abfrage = self.path.partition("?")
+                teile = pfad.strip("/").split("/")
+                q = urllib.parse.parse_qs(abfrage)
+                person, name = (q.get("person") or [""])[0], (q.get("name") or [""])[0]
+                if len(teile) != 2 or teile[1] != "rolle" or self.headers.get("X-Frieda-Dienst") != konten.dienst_geheimnis():
+                    code, obj = 404 if len(teile) != 2 or teile[1] != "rolle" else 403, {"fehler": "nein"}
+                else:
+                    umgebung.rollen_abfragen.append((teile[0], person, name))
+                    y = yaml.safe_load((umgebung.quelle / "reise.yaml").read_text(encoding="utf-8"))
+                    personen = {k: dict(v) for k, v in (y.get("personen") or {}).items()}
+                    for k, rolle in umgebung.rollen.items():
+                        personen.setdefault(k, {"name": k.capitalize()})["rolle"] = rolle
+                    k = person if person in personen else next(
+                        (k for k, v in personen.items() if str(v.get("name", "")).casefold() == name.casefold()), None)
+                    code, obj = 200, ({"rolle": personen[k]["rolle"], "name": personen[k]["name"],
+                                       "status": (y.get("status") or {}).get("wert")} if k else {"rolle": None})
+                daten = json.dumps(obj).encode()
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(daten)))
+                self.end_headers()
+                self.wfile.write(daten)
+
             def do_POST(self):
                 body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
                 umgebung.schreibweg.append((self.path, body))
