@@ -61,6 +61,14 @@ Bekannte Einschränkungen (nicht als Defekt gewertet): F005 (Messlauf-Protokoll)
 - Gezielter Lauf: 312 passed (test_kartendienst_skript, test_neu, test_kartendienst, test_betrieb, test_protokolle_ohne_pfade).
 **Implementierer:** (nicht beteiligt)
 
+### Runde 4 (Nachtrag 13.11.2026, Kommentar-Änderung)
+**Adversary:** Unabhängiger Prüfer (implementation-validator), nur lesend. Gegenstand: `betrieb/vorlagen/schreiben.service`, zwei Kommentarzeilen („Nachfolger #555“ wird „Restrisiko angenommen (PO, 13.11.2026)“).
+- Nur Kommentar: bewiesen. Beide Zeilen beginnen mit `#`, enthalten weder `__X__`-Platzhalter noch Zeilenfortsetzung; `units.py` (`zeilen()`, `abgleich()`) überspringt Kommentarzeilen, kein Code wertet Kommentare dieser Vorlage aus. Die erzeugte Unit bleibt gleich.
+- Verweise auf #555 als offenen Nachfolger: keine mehr in `betrieb/`, `engine/`, `docs/`; übrig nur Nennungen als geschlossen (Spec, Briefing).
+- Wortlaut passt zu Spec (Entscheidung 11, Known Limitation, Risiko).
+- Läufe: `test_units.py` und `test_betrieb.py` 215 passed; Vollsuite 2712 passed.
+**Implementierer:** (nicht beteiligt)
+
 ## Findings
 
 Finding:
@@ -251,6 +259,12 @@ Confirmation:
   Evidence: F012 behoben: _sperren_tmp normalisiert den Wert (//tmp, /tmp/., declare -x); andere Orte bleiben.
   Status: CONFIRMED
 
+Confirmation:
+  AC: AC-2
+  Code reference: betrieb/vorlagen/schreiben.service:15
+  Evidence: Runde 4: nur Kommentarzeilen geändert (Restrisiko angenommen, PO 13.11.2026); Unit-Inhalt und Abgleich unverändert, 215 Tests und Vollsuite grün.
+  Status: CONFIRMED
+
 ## Herkunft der Vorbedingungen
 
 kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
@@ -293,6 +307,45 @@ F011, F012 und F013 sind behoben und halten gegen Umgehungsversuche; nichts Neue
 - blob:e41baa7664c43a09a27b4bf7c451f77ff5b374e6  betrieb/vorlagen/nginx-reise-installieren.py
 - blob:0ac1e2fded2d7bd36a12ce48e5f94d928227d641  betrieb/vorlagen/rueckmeldungen.service
 - blob:9651fc9ecf63cf24543e825dd43559c574296cfc  betrieb/vorlagen/schreiben.service
+- blob:5b24c7a09cc5a7d04c82466c6ff6b878ad13f7cf  engine/konnektor.py
+- blob:2fcc624f96a5217f25da8444050735ed02ad1fb8  engine/neu.py
+- blob:d6520a707234378de873a61d8885f57aedf8e860  engine/rueckmeldungen.py
+- blob:9196d54c57f485f1ea084ca21c3ddf5cb654732b  engine/schreiben.py
+- blob:c3cab23b8c45fc964516a08a98e652ec586e9fe0  engine/texte_de.py
+- blob:b9c8ba4ed112ba09fd8636be15baaa1d1b0f82e7  engine/texte_en.py
+
+## Geprüfte Dateien
+
+- sha256:6d018eddbffe37a3cf28bca7f60236ff64ee217fc714aa3325404eb0ca62e4d9  betrieb/einrichten.sh
+- sha256:6554dc400e906f6bc65cea8f96c923c8bfd44f63cd24c06879e6d8bd80d9ec69  betrieb/kartendienst-umzug.sh
+- sha256:b62b4aac0c027f5bc75e409a688d273e578b99e1396353c876f27e449fdafae6  betrieb/kartendienst.sh
+- sha256:9fd377fcdee8fff712dcc52e1f48cdc3898f4e250e7565cbe350337fae2e879c  betrieb/messlauf-schreibweg.py
+- sha256:ab8a57bb11c2ee7f70b5093672e8c72905cc36e26a083a50d032963b1bf4dcfe  betrieb/nginx.py
+- sha256:869f4b4a21d7d2a32c939ba049bd06737fc78985d4f7fb20b6a7256026612c5b  betrieb/vorlagen/kartendienst/kartendienst.service
+- sha256:dad84dad47474e8cbde00849a9ed3976ff2d78664639b1769e09c10cf789ca4a  betrieb/vorlagen/nginx-orte-installieren.py
+- sha256:435a8625fb2aca1438f813e1b2406f5474e810d8307084888faeda94de79b1fc  betrieb/vorlagen/nginx-reise-installieren.py
+- sha256:11d5055c4dde9de985af5b412ad8716d1b4e91e87cb7098f6f8c84d4257c5f03  betrieb/vorlagen/rueckmeldungen.service
+- sha256:1b0954eef33b4294ade2cf21abb94ae1552b600de307c9022b40aaf9e29c1428  betrieb/vorlagen/schreiben.service
+- sha256:5bc32f326105de5d54841061b178e082b2a1ee854b2edba2e9e35c232e5cdbc9  engine/konnektor.py
+- sha256:a69c58116e7c808d4d1d9cc1768f9456f7196eaf0adb6c52d7c0913d838a0ab0  engine/neu.py
+- sha256:7681f15447c7626a512663f3260cb193a68629ec6a574a11f2b84af7fa1a8486  engine/rueckmeldungen.py
+- sha256:6747bcd5a46a0952349775487ac4dc6a19d0393b81b01f706b3faf36f3a8c5f2  engine/schreiben.py
+- sha256:38349565afe03dacb75d6b212f2b14f7d5148c14dc9d1e6baf1a22920650c461  engine/texte_de.py
+- sha256:c3a5113fd6dbca12a3ae782f3d587250968c8230cbc8807aa2c0397543dd6927  engine/texte_en.py
+
+## Prüfbasis
+
+- base: c0bbdcb020a0a1a68f75376b8c3db81c96fe8a2e
+- blob:f0a12b58dabf918a59936cd0f6bd3bf8fe33ea20  betrieb/einrichten.sh
+- blob:69d2b826fc391a5d0dd5ff1d916c34c17085b201  betrieb/kartendienst-umzug.sh
+- blob:e9acaf3d067ff374a14e854896ac5e839471bee0  betrieb/kartendienst.sh
+- blob:2703c460802620527f2ce14a61a386f1f57bd478  betrieb/messlauf-schreibweg.py
+- blob:c95eeb9085c353a2a766acf551c5e7265dbae101  betrieb/nginx.py
+- blob:ed132625d845516c5f1c759d3d5f2cb11e56c1bf  betrieb/vorlagen/kartendienst/kartendienst.service
+- blob:1eef7063690147be49bb7f4e5979636cf040076d  betrieb/vorlagen/nginx-orte-installieren.py
+- blob:e41baa7664c43a09a27b4bf7c451f77ff5b374e6  betrieb/vorlagen/nginx-reise-installieren.py
+- blob:0ac1e2fded2d7bd36a12ce48e5f94d928227d641  betrieb/vorlagen/rueckmeldungen.service
+- blob:a49878faad0374ccadd8c75fbe86d3a3bbb28fbd  betrieb/vorlagen/schreiben.service
 - blob:5b24c7a09cc5a7d04c82466c6ff6b878ad13f7cf  engine/konnektor.py
 - blob:2fcc624f96a5217f25da8444050735ed02ad1fb8  engine/neu.py
 - blob:d6520a707234378de873a61d8885f57aedf8e860  engine/rueckmeldungen.py

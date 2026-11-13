@@ -12,9 +12,9 @@
 #                         Software-Klon, #454, gibt es keine Git-Reisen mehr, der Ordner entsteht dann nie)
 #   __WURZEL__            Bauordner mit .git (alte Anordnung: Reisen-Repo; ab #454 der Software-Klon): Commits der Schreibkopie,
 #                         Holen von main beim Veröffentlichen.
-#                         Restrisiko, Nachfolger #555: darin liegen auch Skripte, die der Timer ohne NoNewPrivileges ausführt
+#                         Restrisiko angenommen (PO, 13.11.2026): darin liegen auch Skripte, die der Timer ohne NoNewPrivileges ausführt
 #   __DIENST__            Dienstordner: Bau-Ordner der Speicher-Reisen, Sperren (FR_SPERREN), Protokolle des Veröffentlichens.
-#                         Restrisiko, Nachfolger #555: ab #454 liegen hier auch Python-Umgebung (python/), Einstellungen und
+#                         Restrisiko angenommen (PO, 13.11.2026): ab #454 liegen hier auch Python-Umgebung (python/), Einstellungen und
 #                         Meldeweg (instanz/), die der Timer ohne NoNewPrivileges ausführt
 #   __KONTEN__            Konten-Datenbank (Einladungen, Personen der Reisen)
 #   __SEITEN__            Seiten und Reisespeicher (FR_SPEICHER, Vorgabe dort): das angestoßene Veröffentlichen kopiert Seiten
