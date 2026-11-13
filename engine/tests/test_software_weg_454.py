@@ -683,7 +683,7 @@ esac
 
 def _units_umstellen(alt):
     """Die einmalige Umstellung der Units bei der Auslieferung (Entscheidung 10, Schritt 4; einrichten.sh --installieren
-    aus dem Klon, als Root): in der Attrappe zeigen die Units danach auf den Klon. Kein Aufruf über den Lauf."""
+    aus dem Klon, als Betriebsbenutzer mit sudo): in der Attrappe zeigen die Units danach auf den Klon. Kein Aufruf über den Lauf."""
     (alt["tmp"] / "units-ziel").write_text(str(alt["klon"]) + "\n")
 
 
@@ -844,13 +844,19 @@ def test_klon_lauf_vor_der_umstellung_wird_nicht_fertig(alt):
 
 def test_rueckweg_und_einmalige_umstellung_in_betrieb_md():
     """AC-2.15 und Entscheidung 10, Schritt 4: docs/betrieb.md nennt für Umstellung und Rückweg einrichten.sh --installieren
-    (bewusst, als Root) und den Zustand alt; die Erlaubnisliste wird nicht als Weg genannt."""
+    (bewusst, als Betriebsbenutzer, der sich Root-Rechte mit sudo holt, und mit FR_DIENST, sonst findet das Skript die
+    Einstellungen der Instanz nicht; Befund der Auslieferung) und den Zustand alt; die Erlaubnisliste wird nicht als Weg
+    genannt."""
     text = _abschnitt((WURZEL / "docs" / "betrieb.md").read_text(), "Umzug auf den Software-Klon")
     rueckweg = text[text.index("**Rückweg:**"):]
     assert "einrichten.sh --installieren" in rueckweg, rueckweg
     assert "`alt`" in rueckweg
     assert "einmalig" in text and "Auslieferung" in text
     assert "bis die Erlaubnisliste das zulässt" not in text
+    assert "FR_DIENST=<FR_SEITEN>/_dienst" in text and "als Root" not in text
+    assert "Betriebsbenutzer" in rueckweg
+    einrichten = (WURZEL / "docs" / "betrieb.md").read_text()
+    assert "FR_DIENST=<FR_SEITEN>/_dienst <FR_SEITEN>/_software/betrieb/einrichten.sh`" in einrichten
 
 
 def test_umzugsfehler_und_nachweis_sind_keine_high_meldung(sw):
