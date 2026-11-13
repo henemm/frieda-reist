@@ -3,10 +3,11 @@ docs/specs/betrieb/schreibweg-speicher-347.md). Nur mit den beiden erfundenen Be
 stadtwochenende: Tom, Lea) und erfundenen Testdaten, alles unter tmp_path.
 
 Aufbau der Fixture `speicher`: eine Instanz ohne Git (FR_WURZEL ohne .git, keine Arbeitskopie), der Speicher unter
-tmp_path mit beiden Beispielreisen (importieren) und FR_SPEICHERREISEN mit beiden Namen. Veröffentlichen ist ein Stummel.
+tmp_path mit beiden Beispielreisen (importieren); seit #454 sind sie damit Speicherreisen (FR_SPEICHERREISEN ist wirkungslos,
+bleibt hier aber gesetzt). Veröffentlichen ist ein Stummel.
 
 Was diese Tests als Schnittstelle festlegen (die Spec lässt es offen):
-  instanz.speicherreisen()      -> list[str] aus FR_SPEICHERREISEN (kommagetrennt, Leerzeichen und leere Teile fallen weg)
+  instanz.speicherreisen()      -> list[str]: Reisen mit Eintrag im Speicher, deren Umschaltung nicht offen ist (#454)
   schreiben.anwenden_extern(s, reise, werkzeug, anfrage)   bleibt der Eingang des Dienstes für beide Wege; s =
                                 schreiben.Schreiber(wurzel). Der Weg richtet sich nach instanz.speicherreisen().
   schreiben_git.vorgang(s, reise, werkzeug, anfrage, start)   der bisherige Git-Weg (vorher schreiben.vorgang), bis Stufe 5
@@ -137,19 +138,19 @@ class Dienst:
 # ---------- AC-5: Schalter je Reise ----------
 
 def test_schalter_vorgabe_ist_git(repo, monkeypatch, tmp_path):
+    """Seit #454 ist im Speicher, was im Speicher steht: FR_SPEICHERREISEN (Umgebung oder Datei) ist wirkungslos; eine Reise
+    ohne Eintrag im Speicher schreibt über Git wie vor Stufe 2, der Speicher bleibt unberührt."""
     import instanz
     import reisespeicher
     monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
     assert instanz.speicherreisen() == []
-    monkeypatch.setenv("FR_SPEICHERREISEN", "")
-    assert instanz.speicherreisen() == []
     monkeypatch.setenv("FR_SPEICHERREISEN", " beispielreise, ,stadtwochenende ,")
-    assert instanz.speicherreisen() == ["beispielreise", "stadtwochenende"]
+    assert instanz.speicherreisen() == []
     monkeypatch.delenv("FR_SPEICHERREISEN")
     datei = tmp_path / "einstellungen.env"
     datei.write_text("FR_SPEICHERREISEN=stadtwochenende\n", encoding="utf-8")
     monkeypatch.setenv("FR_EINSTELLUNGEN", str(datei))
-    assert instanz.speicherreisen() == ["stadtwochenende"]
+    assert instanz.speicherreisen() == []
     monkeypatch.delenv("FR_EINSTELLUNGEN")
     assert "FR_SPEICHERREISEN" in instanz.__doc__
     assert re.search(r"^#?FR_SPEICHERREISEN=", (WURZEL / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8"), re.M)
@@ -285,10 +286,12 @@ def test_abgelehnte_vorgaenge_lassen_den_stand_unveraendert(speicher, monkeypatc
 # ---------- AC-8: Reise der Liste ohne Eintrag; Speicher nicht erreichbar ----------
 
 def test_reise_der_liste_ohne_eintrag_gibt_503_ohne_wirkung(speicher, monkeypatch, tmp_path):
+    """Seit #454 macht FR_SPEICHERREISEN keine Reise zur Speicherreise: eine Reise ohne Eintrag geht den Git-Weg (hier ohne
+    Repo: 503), der Speicher bleibt ohne sie."""
     rs = speicher.rs
     monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende,dritte-reise")
     code, a = schreib(speicher, "dritte-reise", "art_definieren", {**IDA, "args": ART})
-    assert code == 503 and a["ok"] is False and a["fehler_code"] == "schreiben.dienst.reise_nicht_im_speicher", a
+    assert code == 503 and a["ok"] is False and a["fehler_code"] != "schreiben.dienst.reise_im_speicher", a
     assert rs.reisen() == ["beispielreise", "stadtwochenende"] and rs.stand_nummer("dritte-reise") is None
     assert not (speicher.wurzel / "reisen").exists() and not list(speicher.tmp.iterdir())
     kaputter_speicher(tmp_path, monkeypatch)
@@ -324,10 +327,23 @@ def test_ablagefehler_gibt_saubere_antwort_ohne_wirkung(speicher, art):
 
 # ---------- AC-9: der Git-Weg lehnt eine Reise der Liste ab ----------
 
-def test_git_weg_lehnt_reise_der_liste_ab(repo, monkeypatch):
+def _als_speicherreise(reise):
+    """Reise im Speicher und schon aus ihm veröffentlicht (Stempel .gebaut): eine Speicherreise (#454)."""
+    import instanz
+    import reisespeicher
+    reisespeicher.importieren(BEISPIEL / reise, reise, wer="Ida", grund="Beispiel")
+    datei = instanz.dienst() / "reise-stand" / f"{reise}.gebaut"
+    datei.parent.mkdir(parents=True, exist_ok=True)
+    datei.write_text(f"{reisespeicher.stand_nummer(reise)} alt-kennung\n")
+
+
+def test_git_weg_lehnt_reise_der_liste_ab(repo, monkeypatch, tmp_path):
+    """Der Git-Weg lehnt eine Speicherreise ab (seit #454: eine Reise im Speicher, nicht eine Reise der Liste)."""
     import schreiben_git
     wurzel, origin, arbeit, _ = repo
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))
+    monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))
+    _als_speicherreise("beispielreise")
     vorher = git(origin, "rev-parse", "main")
     git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # ein fetch fiele auf (503 Repo)
     s = sb.Schreiber(wurzel, arbeit)
@@ -336,9 +352,13 @@ def test_git_weg_lehnt_reise_der_liste_ab(repo, monkeypatch):
     assert not Path(f"{arbeit}-beispielreise").exists()
     git(wurzel, "remote", "set-url", "origin", str(origin))
     assert git(origin, "rev-parse", "main") == vorher
-    # über den Eingang des Dienstes: Liste gesetzt, Speicher leer -> Speicherweg, 503, kein Commit
-    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", {**IDA, "args": ART})
-    assert code == 503 and a["fehler_code"] == "schreiben.dienst.reise_nicht_im_speicher", (code, a)
+    # über den Eingang des Dienstes: die Reise liegt im Speicher -> Speicherweg, kein Commit in Git
+    import schreiben_git as sg
+
+    def kein_git(*a, **k):
+        raise AssertionError("Git-Weg für eine Speicherreise")
+    monkeypatch.setattr(sg, "vorgang", kein_git)
+    sb.anwenden_extern(s, "beispielreise", "art_definieren", {**IDA, "args": ART})
     assert git(origin, "rev-parse", "main") == vorher
 
 
@@ -482,7 +502,8 @@ def test_buchung_wird_aus_dem_speicher_gelesen(speicher, monkeypatch, tmp_path):
         assert d.get("beispielreise/buchung/B-77") == (200, {"gibt_es": False})
         assert d.get("beispielreise/buchung/U-01") == (200, {"gibt_es": False})
         monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende,dritte-reise")
-        assert d.get("dritte-reise/buchung/B-01") == (200, {"gibt_es": False})
+        code, b = d.get("dritte-reise/buchung/B-01")                   # #454: nicht im Speicher -> Git-Weg (hier ohne Repo)
+        assert code == 503 and b["fehler_code"] == "schreiben.dienst.repo_nicht_erreichbar", (code, b)
         kaputter_speicher(tmp_path, monkeypatch)
         code, b = d.get("beispielreise/buchung/B-01")
         assert code == 503 and b["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", b

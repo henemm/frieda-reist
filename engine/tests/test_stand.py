@@ -119,7 +119,7 @@ def test_bau_ohne_git_hat_keinen_reise_stand(tmp_path):
 # ---------- Stufe 2 (#347): Stand je Weg ----------
 
 def test_fuer_seite_je_weg(reisen_repo, tmp_path, monkeypatch):
-    """AC-17: Eine Reise in FR_SPEICHERREISEN mit Speichereintrag bekommt Nummer, Zeit und Änderungsliste aus dem Speicher
+    """AC-17: Eine Reise mit Speichereintrag (#454: im Speicher ist, was im Speicher steht) bekommt Nummer, Zeit und Änderungsliste aus dem Speicher
     (der Bau kennt nur den Ordner; die Reise ist sein Name). Eine Git-Reise liefert dasselbe wie vor der Verschiebung
     (stand_git). Ohne Eintrag und ohne Git bleibt es bei None."""
     import shutil
@@ -147,12 +147,13 @@ def test_fuer_seite_je_weg(reisen_repo, tmp_path, monkeypatch):
     assert [a["nummer"] for a in s["aenderungen"]] == [2, 1] and s["aenderungen"][1]["wer"] == "Tom"
     bauen.bauen(ordner, tmp_path / "seite")
     assert json.loads((tmp_path / "seite" / "daten.json").read_text())["reise_stand"]["nummer"] == 2
-    # Reise der Liste ohne Eintrag und ohne Git; Reise im Speicher, aber nicht in der Liste: kein Stand
+    # Reise der Liste ohne Eintrag und ohne Git: kein Stand. Seit #454 ist im Speicher, was im Speicher steht: eine leere
+    # FR_SPEICHERREISEN ändert am Stand der Speicherreise nichts
     monkeypatch.setenv("FR_SPEICHERREISEN", "stadtwochenende,beispielreise")
     shutil.copytree(BEISPIEL, tmp_path / "ohne" / "beispielreise")
     assert stand.fuer_seite(tmp_path / "ohne" / "beispielreise", {}) is None
     monkeypatch.setenv("FR_SPEICHERREISEN", "")
-    assert stand.fuer_seite(ordner, daten) is None
+    assert stand.fuer_seite(ordner, daten)["nummer"] == 2
 
 
 def test_fuer_seite_unlesbare_einstellungen_bricht_ab(reisen_repo, tmp_path, monkeypatch):

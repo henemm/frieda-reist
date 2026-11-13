@@ -1,5 +1,5 @@
 # Eigener Kartendienst der Instanz __INSTANZ__ (Overpass bei Bedarf, #444, docs/betrieb.md „Eigener Kartendienst“).
-# Lauscht nur auf 127.0.0.1; der erste Aufruf startet den Proxy und mit ihm den Container. Erzeugt von frieda/betrieb/einrichten.sh.
+# Lauscht nur auf 127.0.0.1; der erste Aufruf startet den Proxy und mit ihm den Container. Erzeugt von betrieb/einrichten.sh.
 [Unit]
 Description=__TITEL__: eigener Kartendienst (Socket)
 

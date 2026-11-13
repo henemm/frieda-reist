@@ -59,3 +59,43 @@ def aenderungen(ordner, namen=None, n=AENDERUNGEN):
         liste.append({"nummer": gesamt - i, "zeit": zeit_iso(zeit), "was": ohne_kennungen(was, namen or {}),
                       "wer": _person(nachricht, autor)})
     return liste
+
+
+def reise_aus_head(wurzel, reise, ziel):
+    """Dateistand von reisen/<reise> im Commit HEAD des Bauordners nach ziel (neuer Ordner), wie betrieb/vergleichslauf.sh:
+    git archive, dazu die von Git ignorierten Dateien der Reise aus dem Bauordner (Offline-Grundkarten, #479). Der Bauordner
+    bleibt unberührt, ungesicherte, nicht ignorierte Dateien zählen nicht. Symlinks bleiben Symlinks (der Vergleich lehnt sie
+    ab). -> Zahl der ignorierten Dateien. Fehler von git: RuntimeError (#454, automatische Umschaltung)."""
+    import io
+    import shutil
+    import tarfile
+    ziel = Path(ziel)
+    ziel.mkdir(parents=True)
+    try:
+        r = subprocess.run(["git", "-C", str(wurzel), "archive", "--format=tar", "HEAD", f"reisen/{reise}"],
+                           capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise RuntimeError(f"git archive: {e}") from e
+    if r.returncode != 0:
+        raise RuntimeError(f"git archive: {r.stderr.decode(errors='replace').strip()[:200]}")
+    vorne = f"reisen/{reise}/"
+    with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tar:
+        for m in tar.getmembers():
+            if not m.name.startswith(vorne):
+                continue
+            m.name = m.name[len(vorne):]
+            if m.name:
+                tar.extract(m, ziel, filter="tar")
+    roh = git(wurzel, "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--", f"reisen/{reise}")
+    if roh is None:
+        raise RuntimeError("git ls-files failed")
+    ignoriert = [x for x in roh.split("\0") if x]
+    for rel in ignoriert:
+        quelle = Path(wurzel) / rel
+        aus = ziel / rel[len(vorne):]
+        aus.parent.mkdir(parents=True, exist_ok=True)
+        if quelle.is_symlink():
+            aus.symlink_to(Path(quelle).readlink())
+        else:
+            shutil.copyfile(quelle, aus)
+    return len(ignoriert)

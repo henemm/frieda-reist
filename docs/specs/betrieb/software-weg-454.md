@@ -287,7 +287,12 @@ Weitere Prüfungen:
 | Meldungen werden zu laut | nur `high` bei Rot-Phase; alles andere Warnzeile oder `normal`, entprellt (#446, AC-2.20) |
 | Halber Wechsel legt Veröffentlichen still | Zustand wird bei jedem Lauf neu gelesen; Fortsetzen oder Zurücknehmen (Entscheidung 14) |
 
+## Known Limitations
+
+- Zu AC-1.7 und AC-1.9 (Adversary F005/F008): Ist die Umschaltung offen und liegen im Speicher nur Import-Vorgänge, hängt der Lauf den aktuellen Git-Stand als weiteren Import-Vorgang an (nur anhängen, ADR-0009; nichts wird gelöscht) und vergleicht erneut; bei „gleich“ wird gestempelt. Sonst bliebe die Reise nach einer Änderung in Git dauerhaft offen (Handschritt, #250). Gibt es andere Vorgänge, gilt AC-1.7 unverändert.
+
 ## Changelog
 
+- 2026-11-13: AC-1.7 um die Ausnahme der offenen Umschaltung mit nur Importen ergänzt (Adversary F005/F008); Prüfung vor dem Umschalten mit eigener Python-Umgebung, Rückfall nur bei rotem Dienst-Deploy (F002, F003).
 - 2026-11-12: Affected Files, ADR, Definition of Done ergänzt; offene Umschaltung (AC-1.9) eindeutig festgelegt.
 - 2026-11-12: Erstfassung (Spec zu #454, zwei Lieferungen, Folge-Issue für den Rückbau des Git-Wegs).

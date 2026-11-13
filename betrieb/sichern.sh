@@ -6,7 +6,7 @@
 # engine/reisespeicher.py sichern); scheitert ein Schnappschuss, bleibt der vorige stehen.
 # Versucht immer beide. Exit 0: beide geschrieben; Exit 1: mindestens einer gescheitert. Keine Nachricht über den
 # Meldeweg: Den Fehler meldet das aufrufende Backup (kein Heartbeat).
-# Aufruf (als Betriebsbenutzer der Instanz):  FR_WURZEL=<Bauordner> <Bauordner>/frieda/betrieb/sichern.sh
+# Aufruf (als Betriebsbenutzer der Instanz):  FR_WURZEL=<Bauordner> <Bauordner>/betrieb/sichern.sh (Bauordner = Software-Klon <FR_SEITEN>/_software, #454; vor dem Umzug <Reisen-Repo>/frieda/betrieb/sichern.sh)
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 

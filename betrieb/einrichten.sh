@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Richtet eine Instanz auf dem Server ein (docs/betrieb.md, Neue Instanz).
 #
-#   frieda/betrieb/einrichten.sh                 prüft Voraussetzungen, erzeugt systemd-Einheiten und nginx-Bausteine aus
-#                                                vorlagen/ in einen Ordner und zeigt die Befehle zum Aktivieren
-#   frieda/betrieb/einrichten.sh --installieren  dasselbe, dann nach Rückfrage installieren (sudo, ändert /etc)
+#   betrieb/einrichten.sh                 prüft Voraussetzungen, erzeugt systemd-Einheiten und nginx-Bausteine aus
+#                                         vorlagen/ in einen Ordner und zeigt die Befehle zum Aktivieren
+#   betrieb/einrichten.sh --installieren  dasselbe, dann nach Rückfrage installieren (sudo, ändert /etc)
 #
-# Werte aus den Einstellungen der Instanz (einstellungen.beispiel); dazu FR_BENUTZER, FR_GRUPPE, FR_HOME (Vorgabe: wer das
-# Skript aufruft) und FR_PFAD (PATH der Dienste; git, gh und node müssen darin liegen). Als Dienstbenutzer aufrufen,
-# damit die Anmeldung von gh (Credential-Helfer für git push des Schreibwegs) geprüft wird. Ohne --installieren ändert
-# das Skript nichts außerhalb des
-# Ausgabeordners (EI_ZIEL, Vorgabe /tmp/<instanz>-einrichten).
+# Aufruf im Software-Klon (#454): FR_WURZEL=<FR_SEITEN>/_software, ein Klon dieses öffentlichen Repos auf main (ohne
+# Anmeldung, ohne Reisen-Repo, ohne gh). Einstellungen der Instanz liegen in <FR_DIENST>/instanz/einstellungen.env
+# (Vorlage einstellungen.beispiel), dazu optional <FR_DIENST>/instanz/melden.sh (Meldeweg) und tests/. Dazu FR_BENUTZER,
+# FR_GRUPPE, FR_HOME (Vorgabe: wer das Skript aufruft) und FR_PFAD (PATH der Dienste; git und node müssen darin liegen).
+# Ohne --installieren ändert das Skript nichts außerhalb des Ausgabeordners (EI_ZIEL, Vorgabe /tmp/<instanz>-einrichten).
 # Zwei Instanzen auf einem Server: verschiedene FR_INSTANZ, FR_SEITEN und Ports; das Skript bricht ab, wenn eine andere
 # installierte Instanz dieselben Ports nutzt.
 set -euo pipefail
@@ -36,6 +36,14 @@ KD_ORDNER="${FR_KARTENDIENST_ORDNER:-}"
 KD_PORT="${FR_KARTENDIENST_PORT:-12345}"
 KD_SPEICHER="${FR_KARTENDIENST_SPEICHER:-2g}"
 KD_RUHE="${FR_KARTENDIENST_RUHE:-15min}"
+# Ordner der Software, aus dem die Units die Skripte starten (#454): in der alten Anordnung das Submodul <FR_WURZEL>/frieda,
+# im Software-Klon der Bauordner selbst. FR_DIENST als Umgebungswert der Unit nur im Klon (dort liegen die Einstellungen
+# unter <FR_DIENST>/instanz/); in der alten Anordnung ein Kommentar, damit die Soll-Units den installierten gleichen
+if fr_alte_anordnung; then
+  SOFTWARE="$FR_WURZEL/frieda"; UMGEBUNG_DIENST="# FR_DIENST aus den Einstellungen (alte Anordnung, #454)"
+else
+  SOFTWARE="$FR_WURZEL"; UMGEBUNG_DIENST="Environment=FR_DIENST=$FR_DIENST"
+fi
 
 probleme=0
 ok()      { echo "  ok      $*"; }
@@ -67,19 +75,20 @@ fi
 KD_PORT_INNEN=$((${KD_PORT//[!0-9]/0} + 1))
 
 if [ -z "$NUR_ERZEUGEN" ]; then
-echo "Instance $FR_INSTANZ ($FR_TITEL), trips repo $FR_WURZEL"
+echo "Instance $FR_INSTANZ ($FR_TITEL), software clone $FR_WURZEL"
 echo "Prerequisites:"
-[ -f "$FR_WURZEL/engine/bauen.py" ] && ok "software under engine/" || problem "engine/ is missing (submodule frieda and link engine -> frieda/engine, docs/betrieb.md)"
-if "$FR_PYTHON" -c 'import yaml, ruamel.yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python with yaml and ruamel.yaml: $FR_PYTHON (python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt)"; fi
+[ -f "$FR_WURZEL/engine/bauen.py" ] && ok "software under engine/" \
+  || problem "engine/ is missing: FR_WURZEL is the software clone (git clone --branch main <software repo> $FR_SEITEN/_software, docs/betrieb.md)"
+if "$FR_PYTHON" -c 'import yaml, ruamel.yaml' 2> /dev/null; then ok "Python $FR_PYTHON"; else problem "Python with yaml and ruamel.yaml: $FR_PYTHON (python3 -m venv $FR_DIENST/python && $FR_DIENST/python/bin/pip install -r $FR_WURZEL/engine/requirements.txt)"; fi
 [ -n "$FR_ADRESSE" ] && ok "address $FR_ADRESSE" || problem "FR_ADRESSE (public address of the pages) in the settings"
-git -C "$FR_WURZEL" ls-remote -q origin > /dev/null 2>&1 && ok "git reaches origin" || problem "git -C $FR_WURZEL ls-remote origin does not work without a prompt"
+# Die Software kommt öffentlich und ohne Anmeldung (#454): ein Probeabruf von main ohne Rückfrage
+GIT_TERMINAL_PROMPT=0 git -C "$FR_WURZEL" fetch -q --dry-run origin main > /dev/null 2>&1 && ok "software clone fetches main without sign-in" \
+  || problem "git -C $FR_WURZEL fetch origin main does not work without a prompt (clone of the public software repo?)"
+[ -f "$FR_DIENST/instanz/einstellungen.env" ] && ok "settings of the instance $FR_DIENST/instanz/einstellungen.env" \
+  || hinweis "settings of the instance: copy betrieb/einstellungen.beispiel to $FR_DIENST/instanz/einstellungen.env"
 # The connector stands at the root of its address: pages link to /anmelden, OAuth expects /.well-known/ (#163)
 if [ -z "$FR_KN_ADRESSE" ] || [[ "$FR_KN_ADRESSE" =~ ^https://[^/]+$ ]]; then [ -z "$FR_KN_ADRESSE" ] || ok "connector at $FR_KN_ADRESSE/mcp"
 else problem "FR_KN_ADRESSE “$FR_KN_ADRESSE”: only https://<host>, without path and without trailing / (the connector stands at the root)"; fi
-if PATH="$FR_PFAD" command -v gh > /dev/null; then
-  # Der Schreibweg pusht nach main mit gh als Credential-Helfer; ohne Anmeldung scheitert jeder Schreibvorgang
-  PATH="$FR_PFAD" gh auth status > /dev/null 2>&1 && ok "gh signed in" || problem "gh is not signed in (gh auth login as $FR_BENUTZER)"
-else problem "gh not in FR_PFAD"; fi
 command -v flock > /dev/null && ok "flock" || problem "flock (util-linux)"
 command -v rsync > /dev/null && ok "rsync" || problem "rsync"
 if [ -n "$KD_REGIONEN" ]; then   # eigener Kartendienst (#444)
@@ -103,7 +112,7 @@ fi   # NUR_ERZEUGEN
 # Einheiten und Bausteine erzeugen
 rm -rf "$ZIEL"; mkdir -p "$ZIEL/systemd" "$ZIEL/nginx"
 ersetze() {  # <vorlage> <ziel>
-  sed -e "s|__INSTANZ__|$FR_INSTANZ|g" -e "s|__TITEL__|$FR_TITEL|g" -e "s|__WURZEL__|$FR_WURZEL|g" \
+  sed -e "s|__INSTANZ__|$FR_INSTANZ|g" -e "s|__TITEL__|$FR_TITEL|g" -e "s|__SOFTWARE__|$SOFTWARE|g" -e "s|__UMGEBUNG_DIENST__|$UMGEBUNG_DIENST|g" -e "s|__WURZEL__|$FR_WURZEL|g" \
       -e "s|__BENUTZER__|$FR_BENUTZER|g" -e "s|__GRUPPE__|$FR_GRUPPE|g" -e "s|__PFAD__|$FR_PFAD|g" \
       -e "s|__SEITEN__|$FR_SEITEN|g" -e "s|__ABLAGE__|$FR_ABLAGE|g" -e "s|__DIENST__|$FR_DIENST|g" \
       -e "s|__KONNEKTOR__|$FR_KONNEKTOR|g" -e "s|__KONTEN__|$FR_KONTEN|g" -e "s|__RM_PORT__|$FR_RM_PORT|g" -e "s|__KN_PORT__|$FR_KN_PORT|g" \
@@ -141,6 +150,11 @@ echo "Generated in $ZIEL:"; (cd "$ZIEL" && find . -type f | sort | sed 's|^\./| 
 befehle() {
   cat <<TEXT
 sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 755 $FR_SEITEN $FR_DIENST
+sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 700 $FR_DIENST/instanz
+TEXT
+  # Software-Klon (#454): der Bauordner, öffentlich und ohne Anmeldung, nur main
+  [ -d "$FR_SEITEN/_software/.git" ] || echo "git clone -q --branch main --single-branch $(git -C "$FR_BETRIEB/.." config --get remote.origin.url 2>/dev/null || echo '<software repo>') $FR_SEITEN/_software"
+  cat <<TEXT
 sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 750 $FR_ABLAGE
 sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 700 $FR_KONNEKTOR $FR_KONTEN
 sudo install -m 644 $ZIEL/systemd/* $SYSTEMD/
@@ -159,7 +173,7 @@ echo "Activate (once the server block of $FR_ADRESSE contains  include $SNIPPETS
 echo "the connector stands at the root of $FR_KN_ADRESSE, whose server block includes $FR_INSTANZ-konnektor-orte.inc):"
 befehle | sed 's/^/  /'
 cat <<TEXT
-  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/deploy.sh <first trip>   (installs the code of the services; the check fails before the start)
+  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL betrieb/deploy.sh --dienste   (installs the code of the services; the check fails before the start)
   sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben $FR_INSTANZ-push
   sudo nginx -t && sudo systemctl reload nginx
   sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-waechter.timer
@@ -172,7 +186,7 @@ Units helper (#260, once, deliberately; without it only differences are reported
 TEXT
 [ -z "$KD_REGIONEN" ] || cat <<TEXT
 Own map service (#444; regions: $KD_REGIONEN): first import as $FR_BENUTZER, then enable socket and timer:
-  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL frieda/betrieb/kartendienst.sh einspielen
+  cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL betrieb/kartendienst.sh einspielen
   sudo systemctl enable --now $FR_INSTANZ-kartendienst.socket
   sudo systemctl enable --now $FR_INSTANZ-kartendienst-aktualisieren.timer
   Settings: FR_KARTENDIENST=http://127.0.0.1:$KD_PORT/api/interpreter  (map_points_fetch asks it first inside its coverage, FR_KARTENDIENST_ORDNER tells it which)

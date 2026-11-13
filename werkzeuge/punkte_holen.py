@@ -16,7 +16,9 @@ Namen aus dem Dossier (fett in der Wegpunkt-Kurzliste, erste Spalte der Unterkun
 weder als GPX-Wegpunkt noch in OSM gefunden werden, listet das Skript am Ende auf: keine
 geschätzten Koordinaten.
 
-Aufruf (in der Wurzel des Reisen-Repos):  engine/.venv/bin/python frieda/werkzeuge/punkte_holen.py <reise>
+Aufruf im Bauordner (FR_WURZEL, sonst der aktuelle Ordner) mit dem Python der Software, FR_PYTHON (auf dem Server
+<FR_DIENST>/python/bin/python, im Entwicklungs-Checkout engine/.venv/bin/python; #454):
+  "$FR_PYTHON" werkzeuge/punkte_holen.py <reise>
 Braucht Internet. Kennung gegenüber OpenStreetMap: FR_KENNUNG der Instanz (engine/instanz.py).
 """
 import datetime
@@ -259,5 +261,5 @@ def main(reise):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Usage: engine/.venv/bin/python frieda/werkzeuge/punkte_holen.py <trip>")
+        sys.exit("Usage: $FR_PYTHON werkzeuge/punkte_holen.py <trip>")
     sys.exit(main(sys.argv[1]) or 0)

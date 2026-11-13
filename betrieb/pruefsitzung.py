@@ -9,7 +9,7 @@ Das Prüfkonto ist kein Mitglied irgendeiner Reise und sieht nur, was eine fremd
 (Vorgabe 2 Stunden) und wird bei jedem Aufruf neu ausgestellt; ältere Prüfsitzungen werden dabei gelöscht.
 
 Aufruf (als Dienstbenutzer, mit den Werten der Instanz, FR_KONTEN bzw. RM_SEITEN und FR_KN_ADRESSE):
-  python3 frieda/betrieb/pruefsitzung.py <storage-state.json> [--stunden 2]
+  python3 betrieb/pruefsitzung.py <storage-state.json> [--stunden 2]
 Die Datei ist ein Playwright-storageState (Rechte 600, nie ins Repo): browser.newContext({storageState: "<datei>"}).
 """
 import argparse

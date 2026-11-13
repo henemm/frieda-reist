@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Vergleichslauf (Stufe 3, #348, ADR-0009): hält je Reise den Dateistand aus Git gegen den Export aus dem Reisespeicher
 # (engine/reisespeicher.py vergleichen, nur Prüfsummen). Läuft von Hand, kein Timer.
-# Aufruf:  FR_WURZEL=<Bauordner> frieda/betrieb/vergleichslauf.sh [--bis N] [<reise>…]
+# Aufruf:  FR_WURZEL=<Bauordner> betrieb/vergleichslauf.sh [--bis N] [<reise>…]
 #          Ohne Reise: jede Reise, die in Git (reisen/<reise>) liegt und einen Eintrag im Speicher hat; eine Reise nur in Git
 #          oder nur im Speicher hat nichts zu vergleichen und wird mit einem Hinweis übersprungen.
 #          --bis N vergleicht mit Stand N des Speichers (etwa dem, den der Anfangsvorgang übernommen hat), sonst dem neuesten.

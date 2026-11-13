@@ -1,8 +1,8 @@
 # Container des eigenen Kartendienstes (#444): Overpass-Image, per Digest gepinnt (ein Update des Images ändert nichts ungeprüft),
-# Daten aus __KD_ORDNER__ (frieda/betrieb/kartendienst.sh einspielen). Startet nur über den Proxy und endet mit ihm
+# Daten aus __KD_ORDNER__ (betrieb/kartendienst.sh einspielen). Startet nur über den Proxy und endet mit ihm
 # (StopWhenUnneeded). Bereit ist er erst, wenn eine echte Mini-Abfrage gültig antwortet (ExecStartPost; der Statusaufruf des
 # Images taugt dafür nicht). Lizenzen: Overpass AGPL, Daten ODbL (docs/betrieb.md, THIRD_PARTY.md).
-# Erzeugt von frieda/betrieb/einrichten.sh. __BENUTZER__ braucht die Gruppe docker.
+# Erzeugt von betrieb/einrichten.sh. __BENUTZER__ braucht die Gruppe docker.
 [Unit]
 Description=__TITEL__: eigener Kartendienst (Overpass-Container)
 StopWhenUnneeded=yes

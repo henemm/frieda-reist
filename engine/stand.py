@@ -150,8 +150,7 @@ def _aus_dem_speicher(reise, namen, bis=None):
 
 def fuer_seite(ordner, daten):
     """Reise-Stand für die Seite (daten.reise_stand): {nummer, zeit, aenderungen} oder None ohne Quelle. Der Bau kennt nur
-    den Ordner; die Reise ist sein Name. Steht sie in FR_SPEICHERREISEN, kommt alles aus dem Reisespeicher (ohne Eintrag:
-    None), mit dem Stand aus <ordner>.stand, wenn materialisieren ihn festhielt, sonst aus Git (engine/stand_git.py, bis Stufe 5). zeit ist der Zeitpunkt der letzten Änderung. Keine Bauzeit:
+    den Ordner; die Reise ist sein Name. Liegt sie im Reisespeicher (instanz.speicherreisen, #454), kommt alles aus ihm, mit dem Stand aus <ordner>.stand, wenn materialisieren ihn festhielt, sonst aus Git (engine/stand_git.py, bis Stufe 5). zeit ist der Zeitpunkt der letzten Änderung. Keine Bauzeit:
     gleicher Inhalt ergibt dieselbe Seite (Service Worker, bauen.py)."""
     if Path(ordner).name in instanz.speicherreisen():
         # Stand des gebauten Inhalts (veroeffentlichen.sh materialisiert ihn, #348); fehlt die Datei, der neueste

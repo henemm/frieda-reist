@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Baut eine Reise-Seite und legt sie in <FR_SEITEN>/<reise>/ ab (nginx liefert von dort aus), bringt Rückmeldedienst
 # und Konnektor auf den Stand der Software und prüft, dass alles antwortet (docs/betrieb.md, Veröffentlichen).
-# Aufruf:  FR_WURZEL=<Bauordner> frieda/betrieb/deploy.sh <reise>   (sonst ruft veroeffentlichen.sh es auf)
+# Aufruf:  FR_WURZEL=<Bauordner> betrieb/deploy.sh <reise>   (sonst ruft veroeffentlichen.sh es auf)
 # Exit:    0 gelungen, 2 Bau dieser Reise gescheitert, 1 alles andere (FR_WURZEL fehlt, Ordner nicht auf main, Reise
 #          oder Ordner fehlt, ungesicherte Änderungen, Prüfungen rot, Dienste nicht bereit, Kopieren gescheitert)
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 nur_bauordner --main
 
+# deploy.sh --dienste: nur den Code der Dienste auf den Stand des Bauordners bringen und neu starten, ohne eine Reise zu bauen
+# (Rückfall auf den letzten guten Software-Stand, veroeffentlichen.sh, #454); die Seiten bleiben, wie sie sind.
+NUR_DIENSTE=""
+if [ "${1:-}" = --dienste ]; then NUR_DIENSTE=1; fi
 REISE="${1:?Aufruf: deploy.sh <reise>}"
 WURZEL="$FR_WURZEL"
 ZIEL="$FR_SEITEN/$REISE"
@@ -21,7 +25,7 @@ SPRACHDATEIEN=""
 for f in "$WURZEL"/engine/texte_??.py "$WURZEL"/engine/texte_???.py; do [ -e "$f" ] && SPRACHDATEIEN="$SPRACHDATEIEN $(basename "$f")"; done
 RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py $SPRACHDATEIEN"
 KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py packliste.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py texte.py $SPRACHDATEIEN"
-# Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): Für eine Reise aus FR_SPEICHERREISEN (Stufe 2, #347) läuft auch der
+# Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): Für eine Reise im Speicher (Stufe 2, #347; #454) läuft auch der
 # Schreibvorgang (`anwenden`: Werkzeuge, Probebau, Reisespeicher) mit dem Code aus <FR_DIENST>, deshalb steht hier jedes
 # Modul, das schreiben.py auch in Funktionen lädt (engine/tests/test_betrieb.py prüft es gegen die Importe), dazu unten
 # Vorlage, vendor/ und reisevorlage/. Für Git-Reisen kommt der Code des Schreibvorgangs bis Stufe 5 aus der Arbeitskopie.
@@ -30,14 +34,16 @@ SB_MODULE="schreiben.py schreiben_git.py kartendienst.py reisespeicher.py bauen.
 # Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
 PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py $SPRACHDATEIEN"
 
-# Quelle der Reise (Stufe 3, #348): Eine Reise aus FR_SPEICHERREISEN baut aus dem Ordner, in den veroeffentlichen.sh sie aus
+# Quelle der Reise (Stufe 3, #348): Eine Reise im Speicher baut aus dem Ordner, in den veroeffentlichen.sh sie aus
 # dem Reisespeicher materialisiert hat (<FR_DIENST>/bau/reisen/<reise>, außerhalb des Git-Bauordners); jede andere aus Git.
-if ist_speicherreise "$REISE"; then
+if [ -n "$NUR_DIENSTE" ]; then
+  REISEN=""; GIT_PFADE="engine"; GIT_TEXT="engine/"
+elif ist_speicherreise "$REISE"; then
   REISEN="$DIENST/bau/reisen"; GIT_PFADE="engine"; GIT_TEXT="engine/"
 else
   REISEN="$WURZEL/reisen"; GIT_PFADE="engine reisen/$REISE"; GIT_TEXT="engine/ or reisen/$REISE"
 fi
-[ -d "$REISEN/$REISE" ] || { echo "Trip '$REISE' does not exist."; exit 1; }
+[ -n "$NUR_DIENSTE" ] || [ -d "$REISEN/$REISE" ] || { echo "Trip '$REISE' does not exist."; exit 1; }
 [ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN is missing or not writable (einrichten.sh, docs/betrieb.md)."; exit 1; }
 
 # Nur gesicherten Stand veröffentlichen: ungesicherte Änderungen an Software oder Reise brechen ab
@@ -48,8 +54,10 @@ fi
 # Bau: der erste Schritt mit Wirkung. Scheitert er (Baufehler dieser Reise, deterministisch), endet deploy.sh mit 2;
 # veroeffentlichen.sh macht dann mit den anderen Reisen weiter, die Seite bleibt auf ihrem letzten guten Stand.
 # Warnungen im Plan sperren nie (bauen.py endet dann mit 0).
+if [ -z "$NUR_DIENSTE" ]; then
 "$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$REISEN" --ziel "$WURZEL/dist" "$REISE" \
   || { echo "ERROR: build of $REISE failed, the page stays at the last good state."; exit 2; }
+fi
 # Prüfungen nur der Software (engine/tests); tests/ des Reisen-Repos prüft Inhalt und sperrt nie (docs/betrieb.md).
 # veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
 if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then
@@ -67,18 +75,21 @@ PW_MODUL="${PLAYWRIGHT_MODUL:-}"
 for pw in "$DIENST/playwright/node_modules/playwright/index.mjs" "$WURZEL/engine/tests/playwright/node_modules/playwright/index.mjs"; do
   if [ -z "$PW_MODUL" ] && [ -e "$pw" ]; then PW_MODUL="$pw"; fi
 done
-if [ -e "$PW_MODUL" ] && command -v node > /dev/null; then
+if [ -n "$NUR_DIENSTE" ]; then
+  :   # ohne gebaute Seite keine Startprobe
+elif [ -e "$PW_MODUL" ] && command -v node > /dev/null; then
   probe_aus="$(node "$FR_BETRIEB/startprobe.mjs" "$PW_MODUL" "$WURZEL/dist/$REISE" 2>&1)" \
     || { echo "$probe_aus" | head -10; echo "ERROR: start probe of $REISE failed (page error or empty page), the page stays at the last good state."; exit 2; }
 else
   echo "Warning: start probe skipped (Playwright or node missing, PLAYWRIGHT_MODUL)."
 fi
 
-mkdir -p "$ZIEL"
-
 # Rückmelde-Ablage der Reise (außerhalb Repo und Web-Ordner) und Code der Dienste
-mkdir -p "$FR_ABLAGE/$REISE" "$DIENST"
-chmod 750 "$FR_ABLAGE" "$FR_ABLAGE/$REISE"
+if [ -z "$NUR_DIENSTE" ]; then
+  mkdir -p "$ZIEL" "$FR_ABLAGE/$REISE"
+  chmod 750 "$FR_ABLAGE" "$FR_ABLAGE/$REISE"
+fi
+mkdir -p "$DIENST"
 NEU_RM=""; NEU_KN=""; NEU_SB=""; NEU_PS=""
 for m in $RM_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_RM=1; done
 for m in $KN_MODULE; do cmp -s "$WURZEL/engine/$m" "$DIENST/$m" || NEU_KN=1; done
@@ -124,13 +135,17 @@ fi
 if [ -n "$NEU_PS" ] && systemctl is-enabled --quiet "$FR_INSTANZ-push" 2>/dev/null; then
   neustart "$FR_INSTANZ-push" "Push-Dienst"
 fi
+bereit() { for _ in 1 2 3 4 5 6 7 8 9 10; do curl -fsS -o /dev/null "$1" && return 0; sleep 0.5; done; return 1; }
+if [ -n "$NUR_DIENSTE" ]; then
+  echo "Done: code of the services at $(git -C "$WURZEL" rev-parse --short HEAD)."
+  exit 0
+fi
 rsync -a --delete --chmod=D755,F644 "$WURZEL/dist/$REISE/" "$ZIEL/"
 
 # Prüfung: Seite samt PWA-Hülle liegt da, die Dienste antworten (nach einem Neustart kurz warten)
 for f in index.html sw.js manifest.json; do
   [ -s "$ZIEL/$f" ] || { echo "ERROR: $ZIEL/$f is missing or empty."; exit 1; }
 done
-bereit() { for _ in 1 2 3 4 5 6 7 8 9 10; do curl -fsS -o /dev/null "$1" && return 0; sleep 0.5; done; return 1; }
 bereit "http://127.0.0.1:$FR_RM_PORT/$REISE/gesund" || { echo "ERROR: feedback service does not respond (systemctl status $FR_INSTANZ-rueckmeldungen)."; exit 1; }
 if systemctl is-enabled --quiet "$FR_INSTANZ-konnektor" 2>/dev/null; then
   bereit "http://127.0.0.1:$FR_KN_PORT/gesund" || { echo "ERROR: connector not ready (systemctl status $FR_INSTANZ-konnektor)."; exit 1; }

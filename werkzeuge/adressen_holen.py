@@ -12,8 +12,9 @@ Für jede Unterkunft in plan/routen.yaml ohne Adresse:
 Was nichts liefert, bleibt ohne Adresse und wird am Ende aufgelistet: keine geschätzten Adressen. Vorhandene Adressen bleiben.
 Das Ergebnis ist ein Vorschlag mit Quelle; die Datei durchsehen, dann einchecken (Rest im Gespräch mit Frieda: lage_eintragen).
 
-Aufruf (in der Wurzel des Reisen-Repos):
-  engine/.venv/bin/python frieda/werkzeuge/adressen_holen.py <reise> [--suchen] [--trocken]
+Aufruf im Bauordner (FR_WURZEL, sonst der aktuelle Ordner) mit dem Python der Software, FR_PYTHON (auf dem Server
+<FR_DIENST>/python/bin/python, im Entwicklungs-Checkout engine/.venv/bin/python; #454):
+  "$FR_PYTHON" werkzeuge/adressen_holen.py <reise> [--suchen] [--trocken]
   --suchen  zusätzlich Nominatim-Suche nach Name und Ort für Unterkünfte ohne OSM-Punkt
   --trocken nur anzeigen, nichts schreiben
 Braucht Internet. Nominatim erlaubt eine Anfrage pro Sekunde. Kennung: FR_KENNUNG der Instanz (engine/instanz.py).
@@ -157,7 +158,7 @@ def vorschlaege(roh, punkte, karte, suchen=False, heute=None, abfragen=holen, di
 
 
 AUFRUF = """Usage (in the root of the trips repository):
-  engine/.venv/bin/python frieda/werkzeuge/adressen_holen.py <trip> [--suchen] [--trocken]
+  $FR_PYTHON werkzeuge/adressen_holen.py <trip> [--suchen] [--trocken]
   --suchen   additionally search Nominatim by name and place for accommodations without an OSM point
   --trocken  only show, write nothing"""
 

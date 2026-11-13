@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Eigener Kartendienst der Instanz (Overpass bei Bedarf, #444, docs/betrieb.md „Eigener Kartendienst“): Daten einspielen.
 #
-#   frieda/betrieb/kartendienst.sh einspielen     lädt die Auszüge aus FR_KARTENDIENST_REGIONEN (mit Prüfsumme), spielt sie im
+#   betrieb/kartendienst.sh einspielen     lädt die Auszüge aus FR_KARTENDIENST_REGIONEN (mit Prüfsumme), spielt sie im
 #                                                 Container (Modus init) in einen Nebenordner ein, schreibt abdeckung.json
 #                                                 (Rahmen je Region, Prüfsumme der Regionenliste, Zeitpunkt, Stand der Daten),
 #                                                 prüft mit einer echten Abfrage und schaltet erst dann auf den neuen Stand um
-#   frieda/betrieb/kartendienst.sh aktualisieren  dasselbe, aber nur, wenn der Stand älter als ein Monat ist oder sich die
+#   betrieb/kartendienst.sh aktualisieren  dasselbe, aber nur, wenn der Stand älter als ein Monat ist oder sich die
 #                                                 Regionenliste geändert hat (täglich vom Timer <instanz>-kartendienst-aktualisieren)
 #
 # Werte aus den Einstellungen der Instanz: FR_KARTENDIENST_ORDNER (Datenordner, wird als Ganzes umgeschaltet; sein Elternordner

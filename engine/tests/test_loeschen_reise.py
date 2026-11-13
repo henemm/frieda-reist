@@ -196,6 +196,15 @@ def test_befehl_vorgemerkt_fuer_skripte(kdb):
     assert r.stdout.split() == ["stadtwochenende"]
 
 
+def _im_speicher(monkeypatch, u, *reisen):
+    """Seit #454 ist eine Reise Speicherreise, wenn sie im Reisespeicher steht (FR_SPEICHERREISEN zählt nicht): eigener
+    Speicher dieser Umgebung mit genau diesen Reisen (keine: Reisen auf dem alten Weg)."""
+    import reisespeicher
+    monkeypatch.setenv("FR_SPEICHER", str(u.seiten.parent / ("_speicher-" + ("-".join(reisen) or "leer"))))
+    for r in reisen:
+        reisespeicher.importieren(BEISPIEL / r, r, "Ida" if r == "beispielreise" else "Tom", grund="Beispiel")
+
+
 # ---------- A: Mein Konto (Link, zwei Bestätigungen, Block, Zurückholen, Benachrichtigung) ----------
 
 def _seite(u, keks):
@@ -217,19 +226,19 @@ def _mails_an(u, an):
 
 def test_link_nur_fuer_organisatorin_einer_speicherreise(zwei, monkeypatch):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise")
     assert "reise_loeschen=beispielreise" in _seite(u, u.a_keks)
     from test_anmeldung import anmelden
     karl_keks, _ = anmelden(u, KARL)
     assert "reise_loeschen=" not in _seite(u, karl_keks), "Mitwirkende sehen den Link nicht"
-    monkeypatch.setenv("FR_SPEICHERREISEN", "")
+    _im_speicher(monkeypatch, u)
     t = _seite(u, u.a_keks)
     assert "reise_loeschen=" not in t, "Reisen auf dem alten Weg: kein Link"
 
 
 def test_zwei_bestaetigungen(zwei, monkeypatch):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise")
     s, _, t = abruf(f"{u.kurl}/konto?reise_loeschen=beispielreise", cookie=u.a_keks)
     assert s == 200 and 'name="verstanden"' in t and not konten.reise_vorgemerkt("beispielreise")
     # ohne Haken: nichts
@@ -253,7 +262,7 @@ def test_zwei_bestaetigungen(zwei, monkeypatch):
 
 def test_get_aendert_nie_etwas(zwei, monkeypatch):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise")
     import urllib.parse
     abruf(f"{u.kurl}/konto?aktion=reise_loeschen&reise=beispielreise&verstanden=ja&titel="
           + urllib.parse.quote(_titel("beispielreise")), cookie=u.a_keks)
@@ -262,7 +271,7 @@ def test_get_aendert_nie_etwas(zwei, monkeypatch):
 
 def test_mitwirkender_kann_nicht_vormerken(zwei, monkeypatch):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise")
     from test_anmeldung import anmelden
     karl_keks, _ = anmelden(u, KARL)
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_loeschen", "reise": "beispielreise", "verstanden": "ja",
@@ -272,7 +281,7 @@ def test_mitwirkender_kann_nicht_vormerken(zwei, monkeypatch):
 
 def test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypatch):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise")
     from test_anmeldung import anmelden
     karl_keks, _ = anmelden(u, KARL)   # Mitglied vor dem Vormerken: danach löst eine Einladung keine Mitgliedschaft mehr aus
     konten.loeschung_vormerken("beispielreise", u.a["id"])
@@ -293,7 +302,7 @@ def test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypa
 @pytest.mark.parametrize("reise,ausloeser,andere", [("beispielreise", IDA, KARL), ("stadtwochenende", TOM, None)])
 def test_benachrichtigung_nur_an_die_anderen(zwei, monkeypatch, reise, ausloeser, andere):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", ",".join(REISEN))
+    _im_speicher(monkeypatch, u, *REISEN)
     if andere is None:   # Lea im Stadtwochenende
         andere = "lea@beispiel.invalid"
         konten.einladen("stadtwochenende", "lea", andere, "mitwirkend", "Lea", "Tom")
@@ -326,7 +335,7 @@ def test_benachrichtigung_nur_an_die_anderen(zwei, monkeypatch, reise, ausloeser
 
 def test_benachrichtigung_in_der_sprache_des_empfaengers(zwei, monkeypatch):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise")
     from test_anmeldung import anmelden
     anmelden(u, KARL)
     karl = konten.konto_per_email(KARL)
@@ -342,7 +351,7 @@ def test_benachrichtigung_in_der_sprache_des_empfaengers(zwei, monkeypatch):
 
 def test_mailfehler_vormerken_bleibt_gueltig(zwei, monkeypatch):
     u = zwei()
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise")
     from test_anmeldung import anmelden
     anmelden(u, KARL)   # vor dem kaputten Mailversand: der Anmeldecode braucht ihn
 

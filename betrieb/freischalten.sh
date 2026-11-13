@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Schaltet eine veröffentlichte Reise frei, ohne Handarbeit (docs/neue-reise.md, docs/betrieb.md).
 #
-#   frieda/betrieb/freischalten.sh <reise>    geheimer Link zur Seite (falls noch keiner da ist), Prüfung, seiten.json
+#   betrieb/freischalten.sh <reise>    geheimer Link zur Seite (falls noch keiner da ist), Prüfung, seiten.json
 #   (Links für die Claude-App je Person gibt es nicht mehr, #421: Personen kommen über ihr Konto)
 #
 # Gibt es noch kein nginx-Baustein <FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf, entsteht er aus vorlagen/nginx-reise.conf

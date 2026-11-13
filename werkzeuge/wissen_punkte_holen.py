@@ -10,7 +10,9 @@ aus der Liste. Was nicht gefunden wird, bleibt in der Liste und wird am Ende auf
 markiert Orte, die sich nicht sicher verorten lassen; sie werden nicht gesucht. Vorhandene Dinge bleiben unverändert (auch von Hand
 korrigierte).
 
-Aufruf (in der Wurzel des Reisen-Repos):  engine/.venv/bin/python frieda/werkzeuge/wissen_punkte_holen.py <reise> [--neu] [--rahmen]
+Aufruf im Bauordner (FR_WURZEL, sonst der aktuelle Ordner) mit dem Python der Software, FR_PYTHON (auf dem Server
+<FR_DIENST>/python/bin/python, im Entwicklungs-Checkout engine/.venv/bin/python; #454):
+  "$FR_PYTHON" werkzeuge/wissen_punkte_holen.py <reise> [--neu] [--rahmen]
          --neu: Dinge, deren Lage dieses Werkzeug gesetzt hat (Quelle „via Nominatim“), mit ihrem Namen neu suchen, im nächsten Gebiet
          --rahmen: je Grundkarte den Ausschnitt vorschlagen, der alle Punkte ihres Gebiets enthält
          Sprachen der Namen: FR_SPRACHEN (Vorgabe de,en; z. B. de,en,ja)
@@ -51,7 +53,7 @@ def suchen(begriff, mitte, radius_km):
 
 
 AUFRUF = """Usage (in the root of the trips repository):
-  engine/.venv/bin/python frieda/werkzeuge/wissen_punkte_holen.py <trip> [--neu] [--rahmen]
+  $FR_PYTHON werkzeuge/wissen_punkte_holen.py <trip> [--neu] [--rahmen]
   --neu      search again the things whose position this tool set (source "via Nominatim"), by their name, in the nearest area
   --rahmen   propose the extract per base map that contains all points of its area
 Names in languages: FR_SPRACHEN (default de,en; e.g. de,en,ja)"""

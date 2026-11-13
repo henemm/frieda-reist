@@ -179,9 +179,13 @@ def test_git_reise_wird_bei_gleich_umgeschaltet(l1, reise):
 
 
 def test_git_reise_bleibt_bei_unterschied_in_git(l1):
-    """AC-1.7: Vergleich „unterschiedlich“: die Reise bleibt in Git, nichts gelöscht oder geändert, kein zweiter Vorgang."""
+    """AC-1.7: Vergleich „unterschiedlich“: die Reise bleibt in Git, nichts gelöscht oder geändert, kein zweiter Vorgang.
+    Seit F005 gilt das, wenn im Speicher auch geschrieben wurde (ein Vorgang außer Importen); nur Importe: siehe
+    test_offene_umschaltung_nur_importe_traegt_git_stand_nach."""
     r = "beispielreise"
     l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Ida", grund="Beispiel")          # offene Umschaltung
+    l1.rs.vorgang_schreiben(r, {"speicher-notiz.md": b"Im Speicher geschrieben (Beispielwert)\n"}, "Ida", "item_update",
+                            "Notiz im Speicher")
     (l1.bau / "reisen" / r / "git-nachtrag.md").write_text("Änderung in Git (Beispielwert)\n")
     _commit(l1.bau, "Nachtrag in Git")
     kopf, stand = git(l1.bau, "rev-parse", "HEAD"), l1.rs.stand_nummer(r)
@@ -266,6 +270,7 @@ def test_lauf_laesst_ungleiche_git_reise_mit_warnung_in_git(sp):
     (ordner).mkdir()
     (ordner / "reise.json").write_text('{"anders": true}')
     sp["speicher"].importieren(ordner, "zweitreise", "Test", grund="Anfang")       # Anfangsvorgang weicht von Git ab
+    sp["speicher"].vorgang_schreiben("zweitreise", {"notiz.md": b"1"}, "Test", "item_update", "im Speicher geschrieben")
     stand = sp["speicher"].stand_nummer("zweitreise")
     r = sp["lauf"](FR_SPEICHERREISEN="")
     assert r.returncode == 0, r.stdout + r.stderr
@@ -577,7 +582,7 @@ def test_lauf_ohne_reisen_repo_und_ohne_gh(sw):
     """AC-2.18: Neuer Zustand ohne Reisen-Repo und ohne gh: grüner Lauf, Reisen aus dem Speicher, Stempel und Heartbeat."""
     r = _ok(sw.lauf())
     assert sw.zeilen("gh.log") == [], sw.zeilen("gh.log")
-    gebaut = sorted({z.split()[0] for z in sw.zeilen("deploy.log")})
+    gebaut = sorted({z.split()[0] for z in sw.zeilen("deploy.log") if not z.startswith("--dienste")})   # F002: Dienste zuerst
     assert gebaut == REISEN, r.stdout
     assert sw.lesen("veroeffentlicht") == sw.a and sw.lesen("software-gut") == sw.a
     assert sw.zeilen("pings.log") == ["ping"]
@@ -799,3 +804,258 @@ def test_betrieb_md_beschreibt_neuen_weg():
         assert wort in text, wort
     assert "gh workflow run" not in _abschnitt(text, "Anstoß")
     assert "#454" in (WURZEL / "docs" / "adr" / "0009-reisespeicher.md").read_text()
+
+
+# ======================================================================================================================
+# Befunde des Adversary (F001 bis F007) und Entscheidungen des Tech Leads dazu
+# ======================================================================================================================
+
+def _nicht_als_root():
+    if os.geteuid() == 0:
+        pytest.skip("als root sind Ordner ohne Rechte durchsuchbar")
+
+
+def test_f001_shell_unlesbarer_speicher_ist_fehler_nie_leere_liste(tmp_path):
+    """F001 (#361): Ist der Speicherordner nicht durchsuchbar, endet speicherreisen_lesen mit einem Fehler wie
+    instanz.speicherreisen, nie mit einer leeren Liste. Fehlt die Datenbank sicher, ist die Liste leer, ohne Python."""
+    _nicht_als_root()
+    speicher = tmp_path / "_speicher"
+    speicher.mkdir()
+    (speicher / "reisen.db").write_bytes(b"")
+    falle = ausfuehrbar(tmp_path / "python-falle", f'#!/bin/sh\necho "$@" >> {tmp_path}/py.log\nexec {sys.executable} "$@"\n')
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_SPEICHER": str(speicher), "FR_PYTHON": str(falle),
+           "FR_DIENST": str(tmp_path / "_dienst")}
+    skript = f'. "{BETRIEB}/gemeinsam.sh"; speicherreisen_lesen; echo "rc=$? liste=[$fr_speicherreisen_liste]"'
+    os.chmod(speicher, 0)
+    try:
+        r = subprocess.run(["bash", "-c", skript], capture_output=True, text=True, env=env)
+        db = subprocess.run([sys.executable, str(ENGINE / "reisespeicher.py"), "datenbank"], capture_output=True, text=True,
+                            env={**env, "FR_PYTHON": sys.executable})
+    finally:
+        os.chmod(speicher, 0o700)
+    assert "rc=1" in r.stdout and "cannot be read" in r.stderr, r.stdout + r.stderr
+    assert db.returncode == 2, db.stdout + db.stderr
+    # sicher keine Datenbank: leer, ohne Python
+    (speicher / "reisen.db").unlink()
+    (tmp_path / "py.log").unlink(missing_ok=True)
+    r = subprocess.run(["bash", "-c", skript], capture_output=True, text=True, env=env)
+    assert "rc=0 liste=[]" in r.stdout, r.stdout + r.stderr
+    assert not (tmp_path / "py.log").exists()
+    db = subprocess.run([sys.executable, str(ENGINE / "reisespeicher.py"), "datenbank"], capture_output=True, text=True,
+                        env={**env, "FR_PYTHON": sys.executable})
+    assert db.returncode == 1 and db.stdout.strip() == "nein"
+
+
+def test_f001_lauf_mit_unlesbarem_speicher_ist_rot(sp):
+    """F001 im Lauf: Speicherordner nicht durchsuchbar -> der Lauf endet rot, baut keine Reise und schaltet nichts um."""
+    _nicht_als_root()
+    speicher = Path(sp["env"]["FR_SPEICHER"])
+    os.chmod(speicher, 0)
+    try:
+        r = sp["lauf"]()
+    finally:
+        os.chmod(speicher, 0o700)
+    assert r.returncode != 0, r.stdout + r.stderr
+    assert "cannot be read" in r.stdout + r.stderr
+    assert sp["deploys"]() == []
+    assert not (sp["tmp"] / "dienst" / "veroeffentlichen-erfolg").exists()
+
+
+def _dienste_mit(sw, c):
+    return [z for z in sw.zeilen("deploy.log") if z.split() == ["--dienste", c]]
+
+
+def _nachgezogen(sw):
+    import sqlite3
+    from contextlib import closing
+    with closing(sqlite3.connect(Path(sw.env["FR_SPEICHER"]) / "reisen.db")) as v:
+        return v.execute("SELECT COUNT(*) FROM vorgaenge WHERE werkzeug = 'nachziehen'").fetchone()[0]
+
+
+def test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen(sw):
+    """F002: Scheitert der Deploy der Dienste mit C, fällt die Software auf software-gut zurück, die Rot-Datei nennt C, und
+    der nächste Takt rollt C nicht erneut aus. Die Reisen wurden nicht auf die Kennung von C umgestellt."""
+    _ok(sw.lauf())
+    sw.nachweis_gruen()
+    c = sw.neuer_commit()
+    (sw.t / "infra-neu").write_text(c)
+    r = sw.lauf(VF_JETZT=str(T0))
+    assert r.returncode != 0, r.stdout
+    assert sw.kopf() == sw.a and sw.lesen("software-gut") == sw.a
+    rot = dict(z.split("=", 1) for z in (sw.dienst / "veroeffentlichen-rot").read_text().splitlines() if "=" in z)
+    assert rot["commit"] == c and rot["art"] == "software"
+    assert len(_dienste_mit(sw, c)) == 1
+    assert "converting" not in r.stdout and _nachgezogen(sw) == 0
+    for reise in REISEN:
+        assert sw.gebaut(reise)[1] == sw.a
+    r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+    assert "Known red state" in r.stdout, r.stdout
+    assert len(_dienste_mit(sw, c)) == 1 and sw.kopf() == sw.a
+
+
+def test_f002_andere_stoerung_ohne_rueckfall(sw):
+    """F002: Scheitert nach grünem Deploy der Dienste etwas anderes (hier der Deploy einer Reise), gibt es keinen Rückfall
+    und keine Rot-Datei am Commit: der Lauf ist rot, der nächste versucht es wieder."""
+    _ok(sw.lauf())
+    (sw.t / "deploy.log").unlink()
+    sw.nachweis_gruen()
+    c = sw.neuer_commit()
+    reise_kaputt = ausfuehrbar(sw.t / "deploy-reise-kaputt.sh",
+                               f'#!/bin/sh\n[ "$1" = --dienste ] || exit 1\nexec {sw.t}/deploy.sh "$@"\n')
+    r = sw.lauf(VF_DEPLOY=str(reise_kaputt))
+    assert r.returncode != 0, r.stdout
+    assert sw.kopf() == c and sw.lesen("software-gut") == sw.a
+    assert len(_dienste_mit(sw, c)) == 1
+    assert not _dienste_mit(sw, sw.a), "kein Rückfall"
+    rot = sw.dienst / "veroeffentlichen-rot"
+    assert not rot.exists() or f"commit={c}" not in rot.read_text()
+    _ok(sw.lauf())
+    assert sw.kopf() == c and sw.lesen("software-gut") == c
+
+
+def _venv_attrappe(sw):
+    return ausfuehrbar(sw.t / "venv-echt.sh", f'#!/bin/sh\necho "$1" >> {sw.t}/venv.log\n'
+                                              f'mkdir -p "$1/bin" && ln -sf {sys.executable} "$1/bin/python"\n')
+
+
+def _python_vorbereiten(sw):
+    """Live-Umgebung gebaut, dann deren Merker auf eine andere Liste: der nächste Commit bringt „neue Abhängigkeiten“."""
+    venv = _venv_attrappe(sw)
+    _ok(sw.lauf(VF_VENV=str(venv)))
+    live = sw.dienst / "python"
+    (live / ".requirements.sha256").write_text("alte-liste\n")
+    (live / "marke").write_text("laufende Umgebung\n")
+    pruefen = ausfuehrbar(sw.t / "pruefen-python.sh",
+                          f'#!/bin/sh\necho "$FR_PYTHON" >> {sw.t}/pruef-python.log\nexec {sw.t}/pruefen.sh "$@"\n')
+    return {"VF_VENV": str(venv), "VF_PRUEFEN": str(pruefen)}, live
+
+
+def test_f003_rote_pruefung_laesst_die_laufende_umgebung_unveraendert(sw):
+    """F003: Neue Abhängigkeiten werden in einer eigenen Umgebung neben der laufenden gebaut und geprüft; rot verwirft sie,
+    die laufende bleibt, wie sie war."""
+    extra, live = _python_vorbereiten(sw)
+    sw.neuer_commit()
+    (sw.t / "rot").touch()
+    r = sw.lauf(**extra)
+    assert r.returncode != 0, r.stdout
+    assert (live / ".requirements.sha256").read_text() == "alte-liste\n" and (live / "marke").exists()
+    assert not (sw.dienst / "python.neu").exists()
+    assert str(sw.dienst / "python.neu") in sw.zeilen("venv.log")
+    assert sw.zeilen("pruef-python.log")[-1] == str(sw.dienst / "python.neu" / "bin" / "python")
+
+
+def test_f003_gruene_pruefung_tauscht_die_umgebung_und_rueckfall_setzt_sie_zurueck(sw):
+    """F003: Grün -> die neue Umgebung steht an der Stelle der laufenden, die vorige als python.alt. Scheitert danach der
+    Deploy der Dienste, setzt der Rückfall auch die vorige Umgebung wieder ein."""
+    extra, live = _python_vorbereiten(sw)
+    c = sw.neuer_commit()
+    _ok(sw.lauf(**extra))
+    assert sw.kopf() == c
+    assert (live / ".requirements.sha256").read_text() != "alte-liste\n" and not (live / "marke").exists()
+    assert (sw.dienst / "python.alt" / "marke").exists() and not (sw.dienst / "python.neu").exists()
+    # Rückfall: wieder eine „alte“ Liste, neuer Commit mit grünem Nachweis, dessen Deploy der Dienste scheitert
+    (live / ".requirements.sha256").write_text("alte-liste\n")
+    (live / "marke").write_text("laufende Umgebung\n")
+    sw.nachweis_gruen()
+    d = sw.neuer_commit()
+    (sw.t / "infra-neu").write_text(d)
+    r = sw.lauf(**extra)
+    assert r.returncode != 0 and sw.kopf() == c, r.stdout
+    assert (live / ".requirements.sha256").read_text() == "alte-liste\n" and (live / "marke").exists()
+
+
+def test_f004_umzug_prueft_je_commit_einmal_und_warnt_einmal(alt):
+    """F004: Bleiben die Units gesperrt, wiederholen die folgenden Läufe Python-Umgebung und Prüfung für denselben Commit
+    nicht; die Warnzeile zu den Units steht einmal je Commit und Befund im Protokoll."""
+    t = alt["tmp"]
+    nachweis = ausfuehrbar(t / "nachweis-log.sh", f'#!/bin/sh\necho "$2" >> {t}/nachweis.log\necho true\n')
+    units = ausfuehrbar(t / "units-gesperrt.sh", f'#!/bin/sh\necho "$1" >> {t}/units.log\n'
+                                                 'echo "probe-veroeffentlichen.service: BLOCKED, ExecStart wanted"\nexit 4\n')
+    sub = git(alt["software"], "rev-parse", "HEAD").strip()
+    laeufe = [alt["lauf_alt"](VF_CINACHWEIS=str(nachweis), VF_UNITS=str(units))]
+    nach_dem_ersten = alt["zeilen"]("nachweis.log").count(sub)
+    laeufe += [alt["lauf_alt"](VF_CINACHWEIS=str(nachweis), VF_UNITS=str(units)) for _ in range(2)]
+    for r in laeufe:
+        assert r.returncode == 0, r.stdout + r.stderr
+    assert (t / "dienst" / "umzug-454.geprueft").read_text().strip() == sub
+    assert nach_dem_ersten >= 1 and alt["zeilen"]("nachweis.log").count(sub) == nach_dem_ersten, alt["zeilen"]("nachweis.log")
+    assert len(alt["zeilen"]("venv.log")) == 1
+    warnungen = [sum("units cannot be switched" in z for z in r.stdout.splitlines()) for r in laeufe]
+    assert warnungen == [1, 0, 0], warnungen
+    assert alt["umzug"]() != "fertig"
+
+
+def test_f005_offene_umschaltung_nur_importe_traegt_git_stand_nach(l1):
+    """F005: Offene Umschaltung, Git hat sich seitdem geändert, im Speicher stehen nur Importe: der Git-Stand wird als
+    weiterer Import angehängt (nichts gelöscht), erneut verglichen und gestempelt; die Reise ist Speicherreise."""
+    r = "beispielreise"
+    l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Ida", grund="Beispiel")          # offene Umschaltung
+    (l1.bau / "reisen" / r / "git-nachtrag.md").write_text("Änderung in Git (Beispielwert)\n")
+    _commit(l1.bau, "Nachtrag in Git")
+    stand = l1.rs.stand_nummer(r)
+    assert l1.rs.umschalten_automatisch(r) == "gleich"
+    assert l1.rs.stand_nummer(r) == stand + 1
+    assert l1.rs.datei(r, "git-nachtrag.md") == "Änderung in Git (Beispielwert)\n".encode()
+    assert l1.rs.stand_nummer(r) is not None and stand >= 1                         # der Anfangsvorgang bleibt im Verlauf
+    assert _stempel(l1, r)["ergebnis"] == "gleich" and r in l1.instanz.speicherreisen()
+
+
+def test_f005_offene_umschaltung_mit_schreibvorgang_bleibt_in_git(l1):
+    """F005: Stehen im Speicher auch andere Vorgänge als Importe, wird nichts nachgetragen: die Reise bleibt in Git."""
+    r = "stadtwochenende"
+    l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Tom", grund="Beispiel")
+    l1.rs.vorgang_schreiben(r, {"notiz.md": b"Im Speicher (Beispielwert)\n"}, "Tom", "item_update", "Notiz")
+    (l1.bau / "reisen" / r / "git-nachtrag.md").write_text("Änderung in Git (Beispielwert)\n")
+    _commit(l1.bau, "Nachtrag in Git")
+    stand = l1.rs.stand_nummer(r)
+    assert l1.rs.umschalten_automatisch(r) == "unterschied"
+    assert l1.rs.stand_nummer(r) == stand and r not in l1.instanz.speicherreisen()
+
+
+def _units_erzeugen(tmp_path, alte_anordnung):
+    repo = tmp_path / "repo"
+    (repo / "betrieb").mkdir(parents=True, exist_ok=True)
+    (repo / "betrieb" / "einstellungen.env").write_text("FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
+    (repo / ".gitmodules").unlink(missing_ok=True)
+    if alte_anordnung:
+        (repo / ".gitmodules").write_text("")
+    aus = tmp_path / ("aus-alt" if alte_anordnung else "aus-neu")
+    env = {**SAUBER, "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "EI_ZIEL": str(aus),
+           "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen"}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    return repo, env, {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
+
+
+def test_f006_units_der_alten_anordnung_gleichen_den_installierten(tmp_path):
+    """F006: In der alten Anordnung starten die Units die Skripte aus dem Submodul frieda/ und nennen FR_DIENST nicht als
+    Umgebungswert, wie die heute installierten; units.py pruefen meldet nichts (Exit 0). Im Klon: Pfade im Klon."""
+    repo, _, neu = _units_erzeugen(tmp_path, False)
+    assert f"ExecStart={repo}/betrieb/veroeffentlichen.sh" in neu["probe-veroeffentlichen.service"]
+    assert "Environment=FR_DIENST=" in neu["probe-veroeffentlichen.service"]
+    # heute installiert (vor #454): Skripte unter <Bauordner>/frieda/betrieb; FR_DIENST als Umgebungswert nur in den Units,
+    # die ihn schon vorher hatten (Rückmeldedienst, Konnektor, Push), nicht in denen, die #454 ihn im Klon gibt
+    durch_454 = {"probe-veroeffentlichen.service", "probe-waechter.service", "probe-schreiben.service"}
+    installiert = tmp_path / "systemd"
+    installiert.mkdir()
+    for name, text in neu.items():
+        text = text.replace(f"{repo}/betrieb/", f"{repo}/frieda/betrieb/")
+        text = text.replace(f"{tmp_path}/srv/probe/_dienst/python/bin/python", f"{repo}/engine/.venv/bin/python")   # Python vorher
+        if name in durch_454:
+            assert "Environment=FR_DIENST=" in text, name
+            text = "\n".join(z for z in text.split("\n") if not z.startswith("Environment=FR_DIENST="))
+        (installiert / name).write_text(text)
+    _, env, alt_ = _units_erzeugen(tmp_path, True)
+    assert f"ExecStart={repo}/frieda/betrieb/veroeffentlichen.sh" in alt_["probe-veroeffentlichen.service"]
+    assert f"ExecStart={repo}/frieda/betrieb/waechter.sh" in alt_["probe-waechter.service"]
+    assert not any("Environment=FR_DIENST=" in alt_[n] for n in durch_454)
+    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], capture_output=True, text=True,
+                       env={**env, "EI_SYSTEMD": str(installiert)})
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_f007_aufrufhilfen_der_werkzeuge_nennen_den_neuen_weg():
+    """F007: Die Aufrufhilfen der Werkzeuge nennen weder das Reisen-Repo noch engine/.venv als einzigen Weg."""
+    for p in sorted((WURZEL / "werkzeuge").glob("*.py")):
+        text = p.read_text(encoding="utf-8")
+        assert "Reisen-Repo" not in text and "engine/.venv/bin/python werkzeuge/" not in text, p.name

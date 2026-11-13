@@ -14,11 +14,12 @@ Zwei Teile:
   Arbeit   `schreiben.py anwenden` liest die Anfrage als JSON von stdin, prüft Rolle und Status, ändert die Dateien,
            baut zur Probe, sichert, stößt das Veröffentlichen an und antwortet auf stdout als JSON.
 
-Zwei Wege, gewählt je Reise (FR_SPEICHERREISEN, engine/instanz.py; Stufe 2, #347, ADR-0009):
-  Speicherweg  Reise in der Liste: Die Arbeitskopie ist ein Export des Reisespeichers (engine/reisespeicher.py) in einen
+Zwei Wege, gewählt je Reise (instanz.speicherreisen(); Stufe 2, #347, ADR-0009; ab #454 ist im Speicher, was im Speicher
+steht, und eine neue Reise entsteht immer dort):
+  Speicherweg  Reise im Speicher: Die Arbeitskopie ist ein Export des Reisespeichers (engine/reisespeicher.py) in einen
            temporären Ordner; `anwenden` läuft mit dem Code dieses Dienstes und trägt das Ergebnis als genau einen Vorgang
            ein (erwartet = Stand des Exports). Nach einem Abbruch wird lokal im Speicher nachgesehen. Kein git.
-  Git-Weg  jede andere Reise, bis Stufe 5 (engine/schreiben_git.py): Arbeitskopie <Wurzel>-schreiben-<reise>
+  Git-Weg  jede andere Reise, bis zum Umzug (#454, engine/schreiben_git.py): Arbeitskopie <Wurzel>-schreiben-<reise>
            (FR_SCHREIBKOPIE) auf origin/main, `anwenden` mit dem Code dieser Arbeitskopie, Commit und Push nach main.
 Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh (im Hintergrund; bis Stufe 3, #348, baut es nur
 aus Git, eine Speicher-Reise wartet so lange).
@@ -5508,8 +5509,9 @@ def kartenpunkte_vorab(s, reise, anfrage, vorab):
 
 
 def anwenden_extern(s, reise, werkzeug, anfrage):
-    """Ein Schreibvorgang des Dienstes -> (Code, Antwort). Der Weg richtet sich nach der Reise: steht sie in
-    FR_SPEICHERREISEN, über den Reisespeicher (vorgang_speicher), sonst bis Stufe 5 über Git (schreiben_git.vorgang).
+    """Ein Schreibvorgang des Dienstes -> (Code, Antwort). Der Weg richtet sich nach der Reise: liegt sie im Reisespeicher
+    (instanz.speicherreisen, #454), über ihn (vorgang_speicher), sonst bis zum Umzug über Git (schreiben_git.vorgang). Eine
+    neue Reise (reise_anlegen) entsteht immer im Speicher.
     Sperre und Arbeitskopie gibt es je Reise: Was bei einer Reise hängt, hält die anderen nicht auf (flock gilt auch zwischen
     Threads, jeder öffnet die Datei selbst). Alles zusammen dauert höchstens ZEIT_GESAMT + ZEIT_PRUEFUNG Sekunden, bei
     kartenpunkte_holen davor noch das Vorab-Fenster ZEIT_VORAB ohne Sperre (#240); die Dauer jedes Vorgangs steht im
@@ -5524,13 +5526,16 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
             osm_vorab = kartenpunkte_vorab(s, reise, anfrage, vorab)
         if konten.reise_vorgemerkt(reise):   # #381: zur Löschung vorgemerkt oder entfernt, nichts wird mehr geschrieben
             code, antwort = 410, fehler_antwort("schreiben.dienst.reise_geloescht")
-        elif reise in instanz.speicherreisen():
+        elif werkzeug in REPO_WERKZEUGE or reise in instanz.speicherreisen():
+            # Eine neue Reise entsteht immer im Speicher (#454), nie mehr in Git
             code, antwort = vorgang_speicher(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab)
         else:
             import schreiben_git
             code, antwort = schreiben_git.vorgang(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab)
     except Ablehnung as e:     # Vorab-Abruf gescheitert: ohne Sperre, ohne Vorgang
         code, antwort = abgelehnt(werkzeug, e)
+    except instanz.SpeicherNichtLesbar as e:           # #454: Speicher nicht lesbar, nie auf den Git-Weg ausweichen
+        code, antwort = speicher_fehler(werkzeug, e)
     except instanz.EinstellungenNichtLesbar as e:      # #361: nie auf den Git-Weg ausweichen, wenn die Liste unbekannt ist
         sys.stderr.write(f"Error {werkzeug} 503: settings not readable: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
         code, antwort = 503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar")
@@ -5627,7 +5632,7 @@ def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None):
                 raise ergebnis["fehler"]
             basis = ergebnis.get("basis")
             if basis is None and "gesperrt" not in ergebnis:
-                sys.stderr.write(f"Store {werkzeug} 503: trip {reise} is in FR_SPEICHERREISEN but not in the store\n")
+                sys.stderr.write(f"Store {werkzeug} 503: trip {reise} is not in the store\n")
                 return 503, fehler_antwort("schreiben.dienst.reise_nicht_im_speicher")
             if "gesperrt" in ergebnis:
                 sys.stderr.write(f"Store {werkzeug} 503: trip {reise} is not cleared for the switch ({ergebnis['gesperrt']})\n")
@@ -5722,6 +5727,9 @@ class Dienst(BaseHTTPRequestHandler):
             return self._senden(*unbekannt)
         try:
             liste = instanz.speicherreisen()
+        except instanz.SpeicherNichtLesbar as e:           # #454
+            sys.stderr.write(f"Error export 503: {_kurz(e)}\n")
+            return self._senden(503, fehler_antwort("schreiben.dienst.speicher_nicht_erreichbar", mit_ok=False))
         except instanz.EinstellungenNichtLesbar as e:      # #361
             sys.stderr.write(f"Error export 503: settings not readable: {_kurz(e)}\n")
             return self._senden(503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar", mit_ok=False))
@@ -5788,6 +5796,9 @@ class Dienst(BaseHTTPRequestHandler):
             s = self.schreiber or Schreiber(wurzel())
             try:
                 im_speicher = teile[0] in instanz.speicherreisen()
+            except instanz.SpeicherNichtLesbar as e:           # #454
+                sys.stderr.write(f"Error buchung 503: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
+                return self._senden(503, fehler_antwort("schreiben.dienst.speicher_nicht_erreichbar", mit_ok=False))
             except instanz.EinstellungenNichtLesbar as e:      # #361
                 sys.stderr.write(f"Error buchung 503: settings not readable: {' '.join(str(e).split())[:LOG_LAENGE]}\n")
                 return self._senden(503, fehler_antwort("schreiben.dienst.einstellungen_nicht_lesbar", mit_ok=False))

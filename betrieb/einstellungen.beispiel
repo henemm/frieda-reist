@@ -29,15 +29,13 @@ FR_ADRESSE=https://reisen.example.org
 #FR_KONTEN=/srv/beispiel/_konten
 #FR_SPEICHER=/srv/beispiel/_speicher
 
-# Reisen (Ordnernamen, kommagetrennt), die der Schreibweg über den Reisespeicher schreibt statt über Git (Stufe 2, #347).
-# Das Veröffentlichen baut sie aus dem Speicher (Stufe 3, #348): materialisiert nach <FR_DIENST>/bau/reisen/<reise>, ohne
-# GitHub, und stellt sie nach einem Software-Wechsel selbst um (neu.py nachziehen-speicher); ihre Git-Kopie wird nicht mehr
-# gebaut. Jede andere Reise schreibt und baut weiter über Git. Erst umschalten, wenn das Server-Backup
-# <FR_SPEICHER>/sicherung/ außer Haus sichert, ein Rückspielversuch gelungen ist und der Vergleichslauf
-# (betrieb/vergleichslauf.sh) für die Reise „gleich“ meldet. (leer)
+# Nur noch Übergang (#454), gelesen und wirkungslos: Im Speicher ist, was im Speicher steht. Jede Reise mit Eintrag im
+# Reisespeicher wird über ihn geschrieben und gebaut (materialisiert nach <FR_DIENST>/bau/reisen/<reise>), neue Reisen
+# entstehen dort, und übrige Reisen aus reisen/ eines alten Bauordners schaltet das Veröffentlichen selbst um, wenn sie
+# gleich sind (docs/betrieb.md, „Umschaltung einer Reise“). Die Zeile kann weg. (leer)
 #FR_SPEICHERREISEN=beispielreise,stadtwochenende
 # Ordner, in dem freischalten.sh die Reise sucht. Nur für Aufrufe von Hand; sonst wählt das Skript selbst Git (reisen/) oder
-# für eine Reise aus FR_SPEICHERREISEN den Bau-Ordner. (<Wurzel>/reisen bzw. <FR_DIENST>/bau/reisen)
+# für eine Reise im Speicher den Bau-Ordner. (<Wurzel>/reisen bzw. <FR_DIENST>/bau/reisen)
 #FR_REISENORDNER=/srv/beispiel/_dienst/bau/reisen
 
 # Adressen, die nicht ins Anfragekontingent von nginx zählen (die des Servers selbst, getrennt durch Leerzeichen; die Schleife

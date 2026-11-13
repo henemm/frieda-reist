@@ -1,5 +1,5 @@
 # Aktualisieren des eigenen Kartendienstes (#444): spielt die Regionen neu ein, wenn der Stand älter als ein Monat ist oder sich
-# die Regionenliste (FR_KARTENDIENST_REGIONEN) geändert hat; sonst tut der Lauf nichts. Erzeugt von frieda/betrieb/einrichten.sh.
+# die Regionenliste (FR_KARTENDIENST_REGIONEN) geändert hat; sonst tut der Lauf nichts. Erzeugt von betrieb/einrichten.sh.
 # Log: journalctl -u __INSTANZ__-kartendienst-aktualisieren -n 50
 [Unit]
 Description=__TITEL__: eigenen Kartendienst aktualisieren
@@ -11,7 +11,8 @@ User=__BENUTZER__
 Group=__GRUPPE__
 Environment=PATH=__PFAD__
 Environment=FR_WURZEL=__WURZEL__
+__UMGEBUNG_DIENST__
 EnvironmentFile=-__DIENST__/betrieb.env
-ExecStart=__WURZEL__/frieda/betrieb/kartendienst.sh aktualisieren
+ExecStart=__SOFTWARE__/betrieb/kartendienst.sh aktualisieren
 Nice=10
 TimeoutStartSec=3h

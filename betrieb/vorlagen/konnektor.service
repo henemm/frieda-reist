@@ -1,5 +1,5 @@
 # Konnektor der Instanz __INSTANZ__ (engine/konnektor.py): Reisen in der Claude-App, ein Prozess für alle Reisen.
-# Erzeugt von frieda/betrieb/einrichten.sh. Code aus __DIENST__ (legt deploy.sh an). Liest die veröffentlichten
+# Erzeugt von betrieb/einrichten.sh. Code aus __DIENST__ (legt deploy.sh an). Liest die veröffentlichten
 # Seiten, schreibt in die Rückmelde-Ablage und vorgemerkte neue Reisen nach __KONNEKTOR__.
 [Unit]
 Description=__TITEL__: Konnektor (Claude-App)

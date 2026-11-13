@@ -9,7 +9,7 @@ nach reisen/<reise>/medien/karte/ (nicht im Repo, .gitignore) und merkt sich den
 Reisen mit handgepflegter Karte (plan/karte.yaml) und ohne Baustein Karte bleiben unberührt.
 
 Ohne Netz scheitert nichts: Das Skript endet mit 1, das Veröffentlichen baut trotzdem (die Karte bleibt schematisch oder alt,
-der Kartenstatus nennt es nicht als Fehler). Aufruf: FR_WURZEL=<Bauordner> frieda/werkzeuge/grundkarte_auto.py <reise>
+der Kartenstatus nennt es nicht als Fehler). Aufruf: FR_WURZEL=<Bauordner> werkzeuge/grundkarte_auto.py <reise>
 """
 import json
 import os

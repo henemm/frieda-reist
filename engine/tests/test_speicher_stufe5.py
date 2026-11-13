@@ -197,9 +197,9 @@ def test_ausnahmen_der_sperre_und_git_nicht_lesbar_sperrt(s5, monkeypatch, tmp_p
     gebaut(s5, "beispielreise")
     assert s5.rs.umschaltung_frei("beispielreise") == (True, "")
     (s5.dienst / "reise-stand" / "beispielreise.gebaut").unlink()
-    # (c) nicht in der Liste
+    # (c) seit #454 zählt FR_SPEICHERREISEN nicht: eine Reise außerhalb der Liste ist nicht deshalb frei
     monkeypatch.setenv("FR_SPEICHERREISEN", "stadtwochenende")
-    assert s5.rs.umschaltung_frei("beispielreise") == (True, "")
+    assert s5.rs.umschaltung_frei("beispielreise") == (False, "kein_stempel")
     monkeypatch.setenv("FR_SPEICHERREISEN", ",".join(REISEN))
     # (e) git nicht startbar bei einem Git-Bauordner: gesperrt, nie frei
     leer = tmp_path / "leerer-pfad"
@@ -255,27 +255,42 @@ def unterprozesse(monkeypatch):
     return aufrufe
 
 
+@pytest.fixture
+def git_weg(monkeypatch):
+    """Hält fest, welche Reisen der Schreibweg über Git schreiben würde (schreiben_git.vorgang), ohne Git anzufassen."""
+    import schreiben_git
+    aufrufe = []
+
+    def attrappe(s, reise, werkzeug, anfrage, start, osm_vorab=None):
+        aufrufe.append(reise)
+        return 503, {"ok": False, "fehler_code": "git-weg (Attrappe)"}
+    monkeypatch.setattr(schreiben_git, "vorgang", attrappe)
+    return aufrufe
+
+
 @pytest.mark.parametrize("reise", REISEN)
-def test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts(s5, unterprozesse, reise):
+def test_schreibweg_lehnt_gesperrte_reise_ab_und_schreibt_nichts(s5, unterprozesse, git_weg, reise):
+    """Seit #454: Eine Reise mit offener Umschaltung (Anfangsvorgang ohne Stempel „gleich“) ist keine Speicherreise. Der
+    Schreibweg schreibt sie nie in den Speicher (weiter über Git), der Speicher bleibt unverändert."""
     vorher = s5.rs.stand_nummer(reise)
     code, a = schreib(reise)
     assert code == 503 and a["ok"] is False, (code, a)
-    assert a["fehler_code"] == "schreiben.dienst.umschaltung_nicht_freigegeben", a
+    assert git_weg == [reise]
     assert s5.rs.stand_nummer(reise) == vorher
     assert not list(s5.tmp.iterdir()), "temporärer Ordner nicht gelöscht"
     assert not [x for x in unterprozesse if "anwenden" in x], unterprozesse
 
 
-def test_schreibweg_schreibt_nach_freigabe(s5):
+def test_schreibweg_schreibt_nach_freigabe(s5, git_weg):
     r = "beispielreise"
     stempel(s5, r)
     vorher = s5.rs.stand_nummer(r)
     code, a = schreib(r)
     assert code == 200 and a["ok"], a
     assert s5.rs.stand_nummer(r) == vorher + 1
-    aendern_in_git(s5, r)                                         # Stempel veraltet, kein .gebaut
+    aendern_in_git(s5, r)                                         # Stempel veraltet, kein .gebaut: Umschaltung offen
     code, a = schreib(r, "Zweite Frage (Beispielwert)")
-    assert code == 503 and a["fehler_code"] == "schreiben.dienst.umschaltung_nicht_freigegeben", a
+    assert git_weg == [r]                                         # nicht in den Speicher (#454: weiter Git-Reise)
     assert s5.rs.stand_nummer(r) == vorher + 1
 
 
@@ -289,12 +304,15 @@ def test_schreibweg_sperrt_weder_umgeschaltete_noch_neue_reisen(s5):
     assert code == 200 and a["ok"], a
 
 
-def test_reise_nicht_im_speicher_behaelt_ihren_fehler(s5, monkeypatch):
+def test_reise_nicht_im_speicher_behaelt_ihren_fehler(s5, monkeypatch, git_weg):
+    """Seit #454 macht FR_SPEICHERREISEN keine Reise zur Speicherreise: eine Reise nur in Git geht den Git-Weg, und der
+    Speicher bekommt keinen Eintrag für sie."""
     _kopie("stadtwochenende", s5.bau / "reisen" / "zweitreise")
     _commit(s5.bau, "zweitreise nur in Git")
     monkeypatch.setenv("FR_SPEICHERREISEN", ",".join(REISEN + ["zweitreise"]))
-    code, a = sb.anwenden_extern(sb.Schreiber(s5.bau), "zweitreise", "frage_anlegen", {**TOM, "args": {"text": "x"}})
-    assert code == 503 and a["fehler_code"] == "schreiben.dienst.reise_nicht_im_speicher", a
+    sb.anwenden_extern(sb.Schreiber(s5.bau), "zweitreise", "frage_anlegen", {**TOM, "args": {"text": "x"}})
+    assert git_weg == ["zweitreise"]
+    assert "zweitreise" not in s5.rs.reisen(mit_vorgemerkten=True)
 
 
 def test_umschaltung_text_steht_in_allen_sprachen(monkeypatch):
@@ -391,32 +409,64 @@ def nicht_gebaut(sp, reise):
     assert sp["lauf_stand"](reise) is None
 
 
+def nicht_aus_dem_speicher(sp, reise):
+    """#454: Eine Reise mit offener Umschaltung bleibt Git-Reise; der Speicher-Teil baut sie nicht (der Git-Teil darf)."""
+    assert not (sp["tmp"] / "dienst" / "bau" / "reisen" / reise).exists()
+    assert not (sp["tmp"] / "dienst" / "reise-stand" / f"{reise}.gebaut").exists()
+
+
+def anders_in_git(sp, reise):
+    """Die Git-Kopie der Reise weicht vom Speicher ab (Datei nur in Git), und im Speicher wurde geschrieben: Die automatische
+    Umschaltung bleibt aus (#454; mit nur Importen trüge sie den Git-Stand nach, F005)."""
+    sp["speicher"].vorgang_schreiben(reise, {"speicher-notiz.md": b"1"}, "Test", "item_update", "im Speicher geschrieben")
+    quelle = sp["tmp"] / "quelle"
+    (quelle / "reisen" / reise / "git-nachtrag.md").write_text("Nur in Git (Beispielwert)\n")
+    _commit(quelle, f"{reise}: nur in Git")
+    git(sp["arbeit"], "pull", "-q", "--ff-only")
+
+
+def anders_im_speicher(sp, reise):
+    """Anfangsvorgang einer Git-Reise im Speicher, der vom Git-Stand abweicht: die Reise bleibt in Git (#454)."""
+    ordner = sp["tmp"] / f"anders-{reise}"
+    ordner.mkdir()
+    (ordner / "reise.json").write_text('{"anders": true}')
+    sp["speicher"].importieren(ordner, reise, "Test", grund="Anfang")
+    sp["speicher"].vorgang_schreiben(reise, {"notiz.md": b"1"}, "Test", "item_update", "im Speicher geschrieben")   # F005
+
+
 @pytest.mark.parametrize("gesperrt,frei", [("beispielreise", "stadtwochenende"), ("stadtwochenende", "beispielreise")])
 def test_veroeffentlichen_baut_gesperrte_reise_nicht(sp, gesperrt, frei):
+    """Seit #454: Eine Reise mit offener Umschaltung, deren Git-Kopie abweicht, baut der Speicher-Teil nicht; die
+    automatische Umschaltung bleibt aus, mit einer Warnzeile (sie bleibt in Git)."""
     git_reisen(sp, rein=[gesperrt], raus=[frei] if frei == "beispielreise" else [])
+    anders_in_git(sp, gesperrt)
     sperren(sp, gesperrt)
     sperren(sp, frei)
     r = sp["lauf"]()
     assert r.returncode == 0, r.stdout + r.stderr
-    nicht_gebaut(sp, gesperrt)
-    assert any(gesperrt in z and "kein_stempel" in z for z in r.stdout.splitlines()), r.stdout
+    nicht_aus_dem_speicher(sp, gesperrt)
+    assert any(gesperrt in z and "stays in git" in z for z in r.stdout.splitlines()), r.stdout
     assert frei in sp["zeilen"]("deploy.log") and frei in sp["zeilen"]("frei.log")
     assert sp["rot"]() is None and sp["pings"]() == 1
 
 
 def test_veroeffentlichen_baut_nur_mit_gueltigem_stempel(sp):
+    """Die Git-Kopie von beispielreise im Test-Bauordner (reise.json „{}“) weicht vom Speicher ab: Ohne gültigen Stempel
+    baut der Speicher-Teil sie nicht, auch die automatische Umschaltung nicht (#454; im Speicher wurde geschrieben, sonst
+    trüge sie den Git-Stand nach, F005); mit gültigem Stempel schon."""
     r = "beispielreise"
+    sp["speicher"].vorgang_schreiben(r, {"speicher-notiz.md": b"1"}, "Test", "item_update", "im Speicher geschrieben")
     handstempel(sp, r, ergebnis="unterschied")
     sp["lauf"]()
-    nicht_gebaut(sp, r)
+    nicht_aus_dem_speicher(sp, r)
     handstempel(sp, r)                                             # gleich, dann ändert sich Git: veraltet
     sp["inhalt"](r)
     git(sp["arbeit"], "pull", "-q", "--ff-only")
     sp["deploys"]()
     sp["lauf"]()
-    assert r not in sp["deploys"]()
-    assert not (sp["tmp"] / "dienst" / "reise-stand" / f"{r}.gebaut").exists()
+    nicht_aus_dem_speicher(sp, r)
     handstempel(sp, r)                                             # gültig
+    sp["deploys"]()
     sp["lauf"]()
     assert r in sp["deploys"]()
     nummer, kennung = (sp["tmp"] / "dienst" / "reise-stand" / f"{r}.gebaut").read_text().split()[:2]
@@ -427,15 +477,17 @@ def test_veroeffentlichen_baut_nur_mit_gueltigem_stempel(sp):
 
 @pytest.mark.parametrize("reise", SPEICHER_REISEN)
 def test_umschaltung_ende_zu_ende_mit_dem_echten_vergleichslauf(sp, reise, monkeypatch):
+    """Seit #454 schaltet der Lauf selbst um, sobald Git und Speicher gleich sind; der echte Vergleichslauf bestätigt
+    danach dasselbe Ergebnis (gleich, mit baum)."""
     git_reisen(sp, rein=[reise])
     sperren(sp, reise)
-    sp["lauf"]()
-    nicht_gebaut(sp, reise)                                        # ohne Vergleich keine Umschaltung
+    r = sp["lauf"]()
+    assert reise in sp["deploys"](), r.stdout + r.stderr          # automatisch umgeschaltet und aus dem Speicher gebaut
+    assert (sp["tmp"] / "dienst" / "reise-stand" / f"{reise}.gebaut").exists()
     v = subprocess.run([str(BETRIEB / "vergleichslauf.sh"), reise], env=sp["env"], capture_output=True, text=True)
     assert v.returncode == 0, v.stdout + v.stderr
-    assert "baum" in json.loads((sp["tmp"] / "dienst" / "vergleich" / f"{reise}.json").read_text())
-    sp["lauf"]()
-    assert reise in sp["deploys"]()
+    stempel_ = json.loads((sp["tmp"] / "dienst" / "vergleich" / f"{reise}.json").read_text())
+    assert stempel_["ergebnis"] == "gleich" and "baum" in stempel_
     # anschließend über den Schreibweg
     for k in ("FR_WURZEL", "FR_DIENST", "FR_SPEICHER", "FR_SPEICHERREISEN", "FR_SPERREN", "FR_INSTANZ"):
         monkeypatch.setenv(k, sp["env"][k])
@@ -474,14 +526,15 @@ def test_umgeschaltete_reise_wird_nach_dem_deploy_weiter_gebaut_ohne_handschritt
 
 
 def test_nur_im_speicher_baut_und_leere_liste_aendert_nichts(sp):
+    """Eine Reise nur im Speicher baut ohne Stempel; seit #454 ändert eine leere FR_SPEICHERREISEN daran nichts."""
     sperren(sp, "stadtwochenende")
     _py_falle(sp)
     sp["lauf"]()
     assert "stadtwochenende" in sp["deploys"]()
-    (sp["tmp"] / "py5.log").unlink(missing_ok=True)
     sp["env"]["FR_SPEICHERREISEN"] = ""
+    sp["speicher"].vorgang_schreiben("stadtwochenende", {"neu.md": b"1"}, "Test", "test", "neu")
     sp["lauf"]()
-    assert "reisespeicher" not in " ".join(sp["zeilen"]("py5.log"))
+    assert "stadtwochenende" in sp["deploys"]()
     # Schutz: Der Befehl, der hier nicht gerufen werden darf, existiert
     assert befehl("umschaltung", "gibtesnicht", FR_SPEICHERREISEN="").stdout.strip() == "frei"
 
@@ -545,6 +598,7 @@ def test_ohne_github_ist_der_lauf_gruen_wenn_keine_git_reise_uebrig_ist(sp):
 
 def test_ohne_github_mit_git_reise_gruen_aber_ohne_heartbeat(sp):
     sp["speicher"].vorgang_schreiben("stadtwochenende", {"z.md": b"1"}, "Test", "test", "z")
+    anders_im_speicher(sp, "zweitreise")                           # bleibt Git-Reise (#454: keine Umschaltung bei Unterschied)
     ohne_github(sp)
     r = sp["lauf"](VF_JETZT=str(T0))
     assert r.returncode == 0, r.stdout + r.stderr
@@ -556,7 +610,8 @@ def test_ohne_github_mit_git_reise_gruen_aber_ohne_heartbeat(sp):
 
 
 def test_ohne_speicherreisen_scheitert_git_fetch_wie_bisher(sp):
-    sp["env"]["FR_SPEICHERREISEN"] = ""
+    """Ohne Reisen im Speicher (seit #454: ohne Datenbank, FR_SPEICHERREISEN zählt nicht) ist git fetch ein Fehler."""
+    sp["env"]["FR_SPEICHER"] = str(sp["tmp"] / "kein-speicher")
     ohne_github(sp)
     r = sp["lauf"](VF_JETZT=str(T0))
     assert r.returncode != 0, r.stdout + r.stderr                     # wie bisher (heute Exit 128 aus git fetch)

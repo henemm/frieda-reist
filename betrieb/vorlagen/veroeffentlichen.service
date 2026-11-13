@@ -1,5 +1,5 @@
-# Automatisch veröffentlichen (frieda/betrieb/veroeffentlichen.sh), gestartet vom Timer daneben.
-# Erzeugt von frieda/betrieb/einrichten.sh. Log: journalctl -u __INSTANZ__-veroeffentlichen -n 50
+# Automatisch veröffentlichen (betrieb/veroeffentlichen.sh), gestartet vom Timer daneben.
+# Erzeugt von betrieb/einrichten.sh. Log: journalctl -u __INSTANZ__-veroeffentlichen -n 50
 # Kein NoNewPrivileges: deploy.sh startet geänderte Dienste mit sudo -n neu, freischalten.sh lädt nginx neu.
 [Unit]
 Description=__TITEL__: automatisch veröffentlichen
@@ -12,10 +12,11 @@ User=__BENUTZER__
 Group=__GRUPPE__
 Environment=PATH=__PFAD__
 Environment=FR_WURZEL=__WURZEL__
+__UMGEBUNG_DIENST__
 # Geheime Werte (Heartbeat, Meldeweg) und Konten, Dateien 600, nicht im Repo
 EnvironmentFile=-__DIENST__/betrieb.env
 EnvironmentFile=-__DIENST__/konten.env
-ExecStart=__WURZEL__/frieda/betrieb/veroeffentlichen.sh
+ExecStart=__SOFTWARE__/betrieb/veroeffentlichen.sh
 # Die Tests brauchen Minuten an Rechenzeit; Schreibvorgänge des Schreibwegs gehen vor
 Nice=10
 IOSchedulingClass=best-effort

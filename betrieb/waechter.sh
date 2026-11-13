@@ -9,7 +9,7 @@
 # eine Kopie der Datei im laufenden Betrieb kann wegen WAL unbrauchbar sein). Scheitert eine Sicherung, kommt eine
 # dringende Meldung, die andere läuft trotzdem. Nach Erfolg von allem wird <FR_DIENST>/waechter-erfolg berührt (für die
 # Überwachung).
-# Aufruf von Hand:  frieda/betrieb/waechter.sh      Log: journalctl -u <instanz>-waechter -n 100
+# Aufruf von Hand:  betrieb/waechter.sh      Log: journalctl -u <instanz>-waechter -n 100
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
 

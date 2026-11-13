@@ -12,7 +12,9 @@ Die Altform (Punkte mit kat: wasser und Quelle „OSM node/…“ in plan/punkte
 
 Ergebnis: reisen/<reise>/inhalt/recherche/wasserstellen-osm.md (zur Durchsicht, ändert die Reise nicht).
 
-Aufruf (in der Wurzel des Reisen-Repos):  engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <reise>
+Aufruf im Bauordner (FR_WURZEL, sonst der aktuelle Ordner) mit dem Python der Software, FR_PYTHON (auf dem Server
+<FR_DIENST>/python/bin/python, im Entwicklungs-Checkout engine/.venv/bin/python; #454):
+  "$FR_PYTHON" werkzeuge/wasser_pruefen.py <reise>
 Braucht Internet. Kennung gegenüber OpenStreetMap: FR_KENNUNG der Instanz (engine/instanz.py).
 """
 import datetime
@@ -146,7 +148,7 @@ def abfragen(ids):
 def bericht(reise, stand, zeilen):
     z = {s: sum(1 for x in zeilen if x["stufe"] == s) for s in STUFEN}
     out = [f"# Water points per OpenStreetMap: state of the data ({reise})", "",
-           f"Source: OpenStreetMap data (ODbL), queried on {stand} with frieda/werkzeuge/wasser_pruefen.py; this is the same data "
+           f"Source: OpenStreetMap data (ODbL), queried on {stand} with werkzeuge/wasser_pruefen.py; this is the same data "
            "that Organic Maps shows. An assessment of the data, not a statement about the condition on site.", "",
            "“Well documented” means: entered as drinking water, no warnings, check date at most "
            f"{GEPRUEFT_JAHRE} years old. It does not mean the source is sure to flow at the time of the trip; "
@@ -200,5 +202,5 @@ def main(reise):
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        sys.exit("Usage: engine/.venv/bin/python frieda/werkzeuge/wasser_pruefen.py <trip>")
+        sys.exit("Usage: $FR_PYTHON werkzeuge/wasser_pruefen.py <trip>")
     main(sys.argv[1])

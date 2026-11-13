@@ -1,5 +1,5 @@
 # Proxy des eigenen Kartendienstes (#444): reicht den Verkehr vom Socket an den Container weiter und endet nach der Ruhezeit
-# ohne Verkehr (--exit-idle-time); mit ihm endet der Container (BindsTo, StopWhenUnneeded). Erzeugt von frieda/betrieb/einrichten.sh.
+# ohne Verkehr (--exit-idle-time); mit ihm endet der Container (BindsTo, StopWhenUnneeded). Erzeugt von betrieb/einrichten.sh.
 [Unit]
 Description=__TITEL__: eigener Kartendienst (Proxy, endet nach der Ruhezeit)
 Requires=__INSTANZ__-kartendienst.socket

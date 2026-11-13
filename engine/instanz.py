@@ -11,15 +11,17 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
   Konten   FR_KONTEN; sonst <Seiten>/_konten (Konten-Datenbank des Dienstes, nicht Teil einer Reise); eine ältere Datenbank
            unter <Ablage>/_konten/ gilt weiter, solange am neuen Ort keine liegt
   Speicher FR_SPEICHER; sonst <Seiten>/_speicher (Reisespeicher reisen.db, Versionen aller Reisen, ADR-0009, #346)
-  Speicherreisen FR_SPEICHERREISEN: kommagetrennte Namen (Ordner) der Reisen, die der Schreibweg über den Reisespeicher
-           schreibt (Stufe 2, #347); Vorgabe leer: jede Reise schreibt über Git wie bisher (bis Stufe 5)
+  Speicherreisen Im Speicher ist, was im Speicher steht (#454): die Reisen mit Eintrag im Reisespeicher, deren Umschaltung
+           nicht offen ist (speicherreisen()). FR_SPEICHERREISEN ist nur noch Übergang: gelesen, wirkungslos
   Neu      <Konten>/neu (Anfragen nach neuen Reisen und Meldungen an Personen, gehört zu keiner Reise, #72); ein älterer
            Ordner <Ablage>/_neu/ gilt weiter, solange am neuen Ort nichts liegt
   Konnektor FR_KONNEKTOR; sonst der Ordner von KN_ZUGAENGE (alter Name aus den Units, bis sie neu erzeugt sind);
            sonst <Seiten>/_konnektor (seiten.json, neue-reisen-ausstehend.jsonl; die alten Links sind abgeschafft, #421)
 
-Einstellungen der Instanz: <FR_WURZEL bzw. aktueller Ordner>/betrieb/einstellungen.env, Zeilen NAME=wert wie in
-betrieb/einstellungen.beispiel. Die Umgebung gilt vor der Datei.
+Einstellungen der Instanz (#454): FR_EINSTELLUNGEN, sonst <Dienst>/instanz/einstellungen.env, sonst (Übergang, alter Ort)
+<FR_WURZEL bzw. aktueller Ordner>/betrieb/einstellungen.env; Zeilen NAME=wert wie in betrieb/einstellungen.beispiel. Die
+Umgebung gilt vor der Datei. Der Dienstordner für diese Suche kommt nur aus der Umgebung (FR_DIENST, sonst aus FR_SEITEN bzw.
+FR_INSTANZ), nie aus der Datei selbst.
 """
 import os
 from pathlib import Path
@@ -33,8 +35,24 @@ def wurzel():
     return Path(os.environ.get("FR_WURZEL") or Path.cwd())
 
 
+def _dienst_aus_umgebung():
+    """Dienstordner nur aus der Umgebung (wie gemeinsam.sh vor dem Einlesen): FR_DIENST, sonst <FR_SEITEN>/_dienst, sonst
+    /srv/<FR_INSTANZ>/_dienst. Die Einstellungsdatei liegt darin, kann ihn also nicht selbst nennen."""
+    if os.environ.get("FR_DIENST"):
+        return Path(os.environ["FR_DIENST"])
+    seiten_ = os.environ.get("FR_SEITEN") or f"/srv/{os.environ.get('FR_INSTANZ') or VORGABE_INSTANZ}"
+    return Path(seiten_) / "_dienst"
+
+
 def _datei():
-    return Path(os.environ.get("FR_EINSTELLUNGEN") or wurzel() / "betrieb" / "einstellungen.env")
+    """Einstellungsdatei der Instanz (#454): FR_EINSTELLUNGEN, sonst <Dienst>/instanz/einstellungen.env, sonst (Übergang)
+    der alte Ort <Wurzel>/betrieb/einstellungen.env."""
+    if os.environ.get("FR_EINSTELLUNGEN"):
+        return Path(os.environ["FR_EINSTELLUNGEN"])
+    neu = _dienst_aus_umgebung() / "instanz" / "einstellungen.env"
+    if neu.exists() or neu.is_symlink():
+        return neu
+    return wurzel() / "betrieb" / "einstellungen.env"
 
 
 def einstellungen():
@@ -108,25 +126,43 @@ def speicher_ablage():
 
 
 class EinstellungenNichtLesbar(OSError):
-    """Die Einstellungsdatei der Instanz existiert, kann aber nicht gelesen werden (#361): Welche Reisen im Speicher liegen,
-    ist dann unbekannt. Wer darüber den Weg einer Reise wählt, muss laut abbrechen, nicht auf den Git-Weg ausweichen."""
+    """Die Einstellungsdatei der Instanz existiert, kann aber nicht gelesen werden (#361), oder der Reisespeicher ist nicht
+    lesbar (SpeicherNichtLesbar, #454): Welche Reisen im Speicher liegen, ist dann unbekannt. Wer darüber den Weg einer Reise
+    wählt, muss laut abbrechen, nicht auf den Git-Weg ausweichen."""
+
+
+class SpeicherNichtLesbar(EinstellungenNichtLesbar):
+    """Der Reisespeicher ist vorhanden, aber nicht lesbar (#454): speicherreisen() kennt die Reisen nicht (fail closed)."""
+
+
+def einstellungen_pruefen():
+    """Fail closed (#361): Ist die Einstellungsdatei vorhanden, aber nicht lesbar, EinstellungenNichtLesbar; eine fehlende
+    Datei ist in Ordnung. Für Entscheidungen, die von Orten aus den Einstellungen abhängen (Speicher, Dienstordner)."""
+    try:
+        _lesen()
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        raise EinstellungenNichtLesbar(f"{_datei().name}: {e.strerror or type(e).__name__}") from e
 
 
 def speicherreisen():
-    """Reisen, die über den Reisespeicher geschrieben werden (FR_SPEICHERREISEN, kommagetrennt; Leerzeichen und leere Teile
-    fallen weg). Ein gesetzter, auch leerer Wert in der Umgebung gilt vor der Datei. Vorgabe: keine (alles über Git).
-    Fehlt die Einstellungsdatei, gibt es keine Speicher-Reisen; ist sie vorhanden, aber nicht lesbar, wird
-    EinstellungenNichtLesbar ausgelöst (fail closed, #361). einstellungen() und wert() bleiben nachsichtig."""
-    if "FR_SPEICHERREISEN" in os.environ:
-        roh = os.environ["FR_SPEICHERREISEN"]
-    else:
-        try:
-            roh = _lesen().get("FR_SPEICHERREISEN", "")
-        except FileNotFoundError:
-            roh = ""
-        except OSError as e:
-            raise EinstellungenNichtLesbar(f"{_datei().name}: {e.strerror or type(e).__name__}") from e
-    return [r.strip() for r in roh.split(",") if r.strip()]
+    """Reisen, die über den Reisespeicher geschrieben und gebaut werden (#454): Im Speicher ist, was im Speicher steht, also
+    jede Reise mit mindestens einem Vorgang, deren Umschaltung nicht offen ist (reisespeicher.speicherreisen). Sortiert.
+    FR_SPEICHERREISEN aus Umgebung oder Datei ist nur noch Übergang und wirkungslos. Ohne Datenbank: keine. Ist der Speicher
+    vorhanden, aber nicht lesbar, wird SpeicherNichtLesbar ausgelöst (fail closed, #361), nie eine leere Liste. Ebenso
+    EinstellungenNichtLesbar, wenn die Einstellungsdatei vorhanden, aber nicht lesbar ist: Speicher und Dienstordner können
+    dort stehen, die Antwort wäre ungewiss (#361)."""
+    einstellungen_pruefen()
+    import reisespeicher
+    try:
+        return reisespeicher.speicherreisen()
+    except EinstellungenNichtLesbar:
+        raise
+    except reisespeicher.sqlite3.Error as e:
+        raise SpeicherNichtLesbar(f"{reisespeicher.pfad().name}: {e}") from e
+    except OSError as e:
+        raise SpeicherNichtLesbar(f"{reisespeicher.pfad().name}: {e.strerror or type(e).__name__}") from e
 
 
 def _belegt(p):

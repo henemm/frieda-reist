@@ -62,8 +62,11 @@ def test_einstellungen_aus_datei_mit_vorgaben(tmp_path):
     assert w["RM_ABLAGE"] == "/srv/probe/_rueckmeldungen" and w["FR_KONNEKTOR"] == "/srv/probe/_konnektor"
     assert w["KN_ZUGAENGE"] == ""        # die Datei der alten Links gibt es nicht mehr (#421)
     assert w["FR_KN_ADRESSE"] == w["KN_BASIS"] == "https://reisen.example.org"   # Konnektor an der Wurzel (#163)
-    assert w["FR_PYTHON"] == f"{tmp_path}/engine/.venv/bin/python"
+    assert w["FR_PYTHON"] == "/srv/probe/_dienst/python/bin/python"    # außerhalb des Software-Klons (#454)
     assert w["FR_UMZUG_NACH"] == ""
+    (tmp_path / ".gitmodules").write_text("")                         # alte Anordnung (Submodul): bis zum Umzug wie bisher
+    assert einstellungen(tmp_path, "FR_INSTANZ=probe\n")[1]["FR_PYTHON"] == f"{tmp_path}/engine/.venv/bin/python"
+    (tmp_path / ".gitmodules").unlink()
     r2, w2 = einstellungen(tmp_path, "FR_UMZUG_NACH=https://neu.example.org\n")   # wird an bauen.py weitergereicht (exportiert)
     assert w2["FR_UMZUG_NACH"] == "https://neu.example.org"
     # keine Shell-Auswertung: der Wert bleibt Text, es wird nichts ausgeführt
@@ -2109,7 +2112,8 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
         assert "einarbeiten" not in p.read_text() and "claude -p" not in p.read_text(), p.name
     srv = tmp_path / "srv/probe"
     einh = {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
-    assert f"ExecStart={tmp_path}/repo/frieda/betrieb/veroeffentlichen.sh" in einh["probe-veroeffentlichen.service"]
+    assert f"ExecStart={tmp_path}/repo/betrieb/veroeffentlichen.sh" in einh["probe-veroeffentlichen.service"]   # Klon (#454)
+    assert f"Environment=FR_DIENST={srv}/_dienst" in einh["probe-veroeffentlichen.service"]
     assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-veroeffentlichen.service"]
     assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "/home/reisen/.local/bin" in einh["probe-veroeffentlichen.service"]
     assert "Nice=10" in einh["probe-veroeffentlichen.service"] and "IOSchedulingClass=best-effort" in einh["probe-veroeffentlichen.service"]
@@ -2123,7 +2127,7 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     # Schreibweg (O-3): Konnektor kennt die Adresse, der Dienst läuft mit dem Python der Software aus dem Dienstordner
     assert "Environment=KN_SCHREIBDIENST=http://127.0.0.1:8773" in einh["probe-konnektor.service"]
     assert "Environment=FR_SB_PORT=8773" in einh["probe-schreiben.service"]
-    assert f"ExecStart={tmp_path}/repo/engine/.venv/bin/python {srv}/_dienst/schreiben.py dienst" in einh["probe-schreiben.service"]
+    assert f"ExecStart={srv}/_dienst/python/bin/python {srv}/_dienst/schreiben.py dienst" in einh["probe-schreiben.service"]
     assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-schreiben.service"]
     assert "ProtectHome=" not in einh["probe-schreiben.service"]     # schreibt in die Arbeitskopie neben dem Repo
     assert "sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben" in r.stdout
@@ -2366,13 +2370,14 @@ def test_software_ohne_pfade_einer_instanz():
 
 
 def test_einrichten_prueft_gh_und_nicht_claude(tmp_path):
-    """Der Schreibweg pusht mit gh als Credential-Helfer; Claude Code braucht der Server nicht mehr (ADR-0001, O-3)."""
+    """Seit #454 kommt die Software öffentlich ohne Anmeldung: einrichten.sh fragt gh nicht mehr (AC-2.19); Claude Code
+    braucht der Server ebenso nicht (ADR-0001, O-3)."""
     bin_ = tmp_path / "bin"
-    ausfuehrbar(bin_ / "gh", '#!/bin/sh\n[ "$1 $2" = "auth status" ] && [ "$ANGEMELDET" = true ]\n')
+    ausfuehrbar(bin_ / "gh", f'#!/bin/sh\necho "$@" >> {tmp_path}/gh.log\nexit 1\n')
     pfad = f"{bin_}:/usr/bin:/bin"
-    aus = einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="false").stdout
-    assert "MISSING gh is not signed in" in aus and "claude" not in aus.lower()
-    assert "ok      gh signed in" in einrichten(tmp_path, FR_PFAD=pfad, ANGEMELDET="true").stdout
+    aus = einrichten(tmp_path, FR_PFAD=pfad).stdout
+    assert not re.search(r"\bgh\b", aus) and "claude" not in aus.lower()
+    assert not (tmp_path / "gh.log").exists()
 
 
 def test_freischalten_erneuert_den_baustein_bei_neuer_vorlage(fs):
@@ -2695,8 +2700,9 @@ def test_gemischter_betrieb_baut_beide_quellen_unabhaengig(sp):
 
 
 def test_ohne_speicherreisen_bleibt_alles_wie_vorher(sp):
+    """Ohne Reisespeicher (keine Datenbank; seit #454 zählt FR_SPEICHERREISEN nicht) bleibt der Git-Weg wie vorher."""
     py = ausfuehrbar(sp["tmp"] / "python-falle", f'#!/bin/sh\necho "$@" >> {sp["tmp"]}/py.log\nexec {sys.executable} "$@"\n')
-    sp["env"].update({"FR_SPEICHERREISEN": "", "FR_PYTHON": str(py)})
+    sp["env"].update({"FR_SPEICHER": str(sp["tmp"] / "kein-speicher"), "FR_PYTHON": str(py)})
     sp["lauf"]()
     assert "reisespeicher" not in " ".join(sp["zeilen"]("py.log"))
     assert sp["deploys"]() == ["beispielreise", "zweitreise"]
@@ -2704,6 +2710,11 @@ def test_ohne_speicherreisen_bleibt_alles_wie_vorher(sp):
 
 def test_speicher_reise_wird_ohne_github_veroeffentlicht(sp):
     sp["speicher"].vorgang_schreiben("stadtwochenende", {"z.md": b"1"}, "Test", "test", "z")
+    anders = sp["tmp"] / "anders"                                     # zweitreise bleibt in Git (#454: ungleich, keine Umschaltung)
+    anders.mkdir()
+    (anders / "reise.json").write_text('{"anders": true}')
+    sp["speicher"].importieren(anders, "zweitreise", "Test", grund="Anfang")
+    sp["speicher"].vorgang_schreiben("zweitreise", {"notiz.md": b"1"}, "Test", "item_update", "im Speicher geschrieben")
     git(sp["arbeit"], "remote", "set-url", "origin", str(sp["tmp"] / "gibtes-nicht"))
     ausfuehrbar(sp["tmp"] / "bin/gh", f'#!/bin/sh\ntouch {sp["tmp"]}/gh-gerufen\nexit 1\n')
     ausfuehrbar(sp["tmp"] / "ls-remote.sh", "#!/bin/sh\nexit 1\n")
@@ -2751,9 +2762,11 @@ def test_speicher_rot_meldet_ohne_gh(sp):
 
 
 def test_speicher_teil_uebergeht_reise_ohne_eintrag(sp):
+    """Seit #454 nennt FR_SPEICHERREISEN keine Reisen mehr: ein Name ohne Eintrag im Speicher wird nie gebaut."""
     sp["env"]["FR_SPEICHERREISEN"] = "stadtwochenende,gibtesnicht"
     r = sp["lauf"]()
-    assert "gibtesnicht" not in sp["zeilen"]("deploy.log") and "gibtesnicht" in r.stdout
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "gibtesnicht" not in sp["zeilen"]("deploy.log")
     assert "stadtwochenende" in sp["zeilen"]("deploy.log")
 
 

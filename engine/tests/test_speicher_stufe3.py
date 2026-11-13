@@ -213,16 +213,27 @@ def test_doku_beschreibt_die_pruefbaren_zustaende():
 
 # ---------- Teil 2/3: Listen und Einheiten ----------
 
-def test_speicherreisen_shell_und_python_stimmen_ueberein(monkeypatch):
-    monkeypatch.setenv("FR_SPEICHERREISEN", " a , ,b ,")
+def _shell_umgebung(tmp_path, **mehr):
+    """Umgebung für gemeinsam.sh: Bauordner ohne Git, dieser Speicher, das Python der Tests (#454)."""
+    return {**os.environ, "FR_WURZEL": str(tmp_path), "FR_DIENST": str(tmp_path / "_dienst"), "FR_PYTHON": sys.executable,
+            "FR_SPEICHER": os.environ["FR_SPEICHER"], **mehr}
+
+
+def test_speicherreisen_shell_und_python_stimmen_ueberein(rs, tmp_path, monkeypatch):
+    """#454: Shell und Python fragen denselben Speicher; FR_SPEICHERREISEN zählt in beiden nicht."""
+    for r in ("a", "b"):
+        rs.vorgang_schreiben(r, {"reise.json": b"{}"}, "Test", "test", "Anfang")
+    monkeypatch.setenv("FR_WURZEL", str(tmp_path))
+    monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))
+    monkeypatch.setenv("FR_SPEICHERREISEN", " c , ,d ,")
     import instanz
     assert instanz.speicherreisen() == ["a", "b"]
     sh = (WURZEL / "betrieb" / "gemeinsam.sh").read_text()
     assert "ist_speicherreise" in sh
     p = subprocess.run(["bash", "-c", f'source "{WURZEL}/betrieb/gemeinsam.sh"; '
-                        'for r in a b c ""; do ist_speicherreise "$r" && echo "$r"; done'],
-                       capture_output=True, text=True, env={**os.environ, "FR_SPEICHERREISEN": " a , ,b ,"})
-    assert p.stdout.split() == ["a", "b"]
+                        'for r in a b c d ""; do ist_speicherreise "$r" && echo "$r"; done'],
+                       capture_output=True, text=True, env=_shell_umgebung(tmp_path, FR_SPEICHERREISEN=" c , ,d ,"))
+    assert p.stdout.split() == ["a", "b"], p.stdout + p.stderr
 
 
 def test_keine_neue_einheit_fuer_stufe3():
@@ -300,16 +311,27 @@ def test_nachziehen_speicher_kaputte_reise_ist_rot_nicht_stoerung(rs, tmp_path, 
     assert rs.stand_nummer(reise) == n
 
 
-def test_ist_speicherreise_zuverlaessig_unter_pipefail(tmp_path):
+def test_ist_speicherreise_zuverlaessig_unter_pipefail(rs, tmp_path):
     """F003: Unter set -euo pipefail (wie in den Skripten) darf die Frage nie falsch negativ sein, auch bei langer Liste
-    (eine Pipe mit grep -q liefe in SIGPIPE)."""
-    liste = ",".join(f"r{i}" for i in range(3000))
+    (eine Pipe mit grep -q liefe in SIGPIPE). Seit #454 kommt die Liste aus dem Speicher (einmal gelesen)."""
+    def arbeit(v):
+        for i in range(400):
+            rs._eintragen(v, f"r{i}", {"reise.json": b"{}"}, "Test", "test", "Anfang")
+    rs._transaktion(arbeit)
     p = subprocess.run(["bash", "-c", f'set -euo pipefail; source "{WURZEL}/betrieb/gemeinsam.sh"; f=0; '
-                        'for i in $(seq 20); do ist_speicherreise r0 || f=$((f+1)); done; '
-                        'ist_speicherreise r2999 || f=$((f+1)); ! ist_speicherreise r3000 || f=$((f+1)); echo "$f"'],
-                       capture_output=True, text=True,
-                       env={**os.environ, "FR_WURZEL": str(tmp_path), "FR_SPEICHERREISEN": liste})
+                        'speicherreisen_lesen; for i in $(seq 20); do ist_speicherreise r0 || f=$((f+1)); done; '
+                        'ist_speicherreise r399 || f=$((f+1)); ! ist_speicherreise r400 || f=$((f+1)); echo "$f"'],
+                       capture_output=True, text=True, env=_shell_umgebung(tmp_path))
     assert p.stdout.split() == ["0"], p.stdout + p.stderr
+
+
+def test_ist_speicherreise_unlesbarer_speicher_bricht_ab(rs, tmp_path):
+    """#454, #361: Ist der Speicher nicht lesbar, bricht die Frage das Skript ab, statt „keine Speicherreise“ zu sagen."""
+    Path(rs.pfad()).parent.mkdir(parents=True, exist_ok=True)
+    Path(rs.pfad()).mkdir()
+    p = subprocess.run(["bash", "-c", f'source "{WURZEL}/betrieb/gemeinsam.sh"; ist_speicherreise a; echo WEITER'],
+                       capture_output=True, text=True, env=_shell_umgebung(tmp_path))
+    assert p.returncode != 0 and "WEITER" not in p.stdout and "trip store cannot be read" in p.stderr
 
 
 def test_reise_ohne_plaene_materialisieren_vergleichen_nachziehen(rs, tmp_path):

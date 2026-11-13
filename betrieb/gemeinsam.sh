@@ -1,13 +1,17 @@
 # Gemeinsame Grundlage der Betriebsskripte (wird mit „. gemeinsam.sh“ eingelesen, nicht aufgerufen).
 #
-# Eine Instanz ist ein Reisen-Repo mit dieser Software als Submodul frieda/ (docs/betrieb.md). Die Skripte hier kennen
-# keine Instanz: Pfade, Adressen, Namen, Meldeweg und Überwachung kommen aus den Einstellungen.
+# Eine Instanz baut aus dem Software-Klon <FR_SEITEN>/_software (#454, docs/betrieb.md „Bauordner“), früher aus einem
+# Reisen-Repo mit dieser Software als Submodul frieda/ (alte Anordnung, bis zum Umzug). Die Skripte hier kennen keine
+# Instanz: Pfade, Adressen, Namen, Meldeweg und Überwachung kommen aus den Einstellungen.
 #
-#   FR_WURZEL         Wurzel des Reisen-Repos. Ohne Angabe das Repo, das diese Software als Submodul einbindet.
-#                     deploy.sh und veroeffentlichen.sh verlangen die Angabe (nur_bauordner, unten).
-#   FR_EINSTELLUNGEN  Einstellungsdatei der Instanz, Vorgabe <FR_WURZEL>/betrieb/einstellungen.env (Vorlage:
-#                     betrieb/einstellungen.beispiel). Darin nur Zeilen NAME=wert mit Namen FR_…, ohne Shell-Auswertung.
-#                     Was schon in der Umgebung steht (systemd, Aufruf von Hand, Tests), gilt vor der Datei.
+#   FR_WURZEL         Bauordner: der Software-Klon (neu) oder das Reisen-Repo (alt). Ohne Angabe das Repo, das diese Software
+#                     als Submodul einbindet. deploy.sh und veroeffentlichen.sh verlangen die Angabe (nur_bauordner, unten).
+#   FR_EINSTELLUNGEN  Einstellungsdatei der Instanz, Vorgabe <FR_DIENST>/instanz/einstellungen.env (#454); fehlt sie dort, gilt
+#                     (Übergang) der alte Ort <FR_WURZEL>/betrieb/einstellungen.env (Vorlage: betrieb/einstellungen.beispiel).
+#                     Darin nur Zeilen NAME=wert mit Namen FR_…, ohne Shell-Auswertung. Was schon in der Umgebung steht
+#                     (systemd, Aufruf von Hand, Tests), gilt vor der Datei. FR_DIENST für diese Suche kommt aus der Umgebung
+#                     (sonst <FR_SEITEN>/_dienst bzw. /srv/<FR_INSTANZ>/_dienst), nie aus der Datei selbst.
+#   <FR_DIENST>/instanz/  Ort der Instanz (#454): einstellungen.env, melden.sh (Meldeweg), optional tests/; vom Backup erfasst.
 #   <FR_DIENST>/betrieb.env  Geheime Werte (Überwachungsadressen, Meldeweg), nur für den Betriebsbenutzer lesbar,
 #                     nie im Repo; gleiche Form, wird nach den Einstellungen gelesen.
 
@@ -38,6 +42,10 @@ if [ -z "${FR_WURZEL:-}" ]; then
 fi
 FR_WURZEL="$(cd "$FR_WURZEL" && pwd)"
 export FR_WURZEL
+
+fr_alte_anordnung() {  # Bauordner in der alten Anordnung (#454): Reisen-Repo mit der Software als Submodul frieda/
+  [ -e "$FR_WURZEL/.gitmodules" ] || [ -d "$FR_WURZEL/frieda/betrieb" ]
+}
 
 # Gebaut und veröffentlicht wird nur im Bauordner der Instanz (docs/betrieb.md, Ordner; #137). Die Units und der
 # Schreibweg nennen ihn mit FR_WURZEL. Ohne diese Angabe nähme ein Aufruf von Hand den Ordner, in dem das Skript
@@ -76,7 +84,17 @@ fr_einlesen() {  # <datei>: NAME=wert-Zeilen übernehmen, Vorhandenes bleibt; nu
   done < "$1"
 }
 
-fr_einlesen "${FR_EINSTELLUNGEN:-$FR_WURZEL/betrieb/einstellungen.env}"
+# Ort der Einstellungen (#454): <FR_DIENST>/instanz/einstellungen.env, sonst (Übergang) der alte Ort im Reisen-Repo. Der
+# Dienstordner kommt hier nur aus der Umgebung; die Datei kann ihn nicht selbst nennen.
+fr_dienst_vorab="${FR_DIENST:-${FR_SEITEN:-/srv/${FR_INSTANZ:-frieda}}/_dienst}"
+if [ -n "${FR_EINSTELLUNGEN:-}" ]; then
+  fr_einstellungen_datei="$FR_EINSTELLUNGEN"
+elif [ -e "$fr_dienst_vorab/instanz/einstellungen.env" ] || [ -L "$fr_dienst_vorab/instanz/einstellungen.env" ]; then
+  fr_einstellungen_datei="$fr_dienst_vorab/instanz/einstellungen.env"
+else
+  fr_einstellungen_datei="$FR_WURZEL/betrieb/einstellungen.env"
+fi
+fr_einlesen "$fr_einstellungen_datei"
 
 # Vorgaben (Erklärung in einstellungen.beispiel)
 : "${FR_INSTANZ:=frieda}"
@@ -94,15 +112,28 @@ fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_SCHREIBKOPIE:=$FR_WURZEL-schreiben}"
 : "${FR_ADRESSE:=}"
 : "${FR_KN_ADRESSE:=$FR_ADRESSE}"   # Konnektor an der Wurzel der Adresse (/mcp, Anmeldung, OAuth; #163)
-: "${FR_PYTHON:=$FR_WURZEL/engine/.venv/bin/python}"
+# Python der Dienste (#454): fest unter <FR_DIENST>/python, außerhalb des Software-Klons; in der alten Anordnung (Submodul
+# frieda/ im Reisen-Repo) bis zum Umzug weiter <FR_WURZEL>/engine/.venv, außer die neue Umgebung steht schon
+if fr_alte_anordnung && [ ! -x "$FR_DIENST/python/bin/python" ]; then
+  : "${FR_PYTHON:=$FR_WURZEL/engine/.venv/bin/python}"
+else
+  : "${FR_PYTHON:=$FR_DIENST/python/bin/python}"
+fi
 : "${FR_MELDEN:=}"
 : "${FR_UMZUG_NACH:=}"
 : "${FR_SPERREN:=/tmp}"
 : "${FR_EIGENE_ADRESSEN:=}"   # Adressen, die nicht ins Anfragekontingent zählen: die des Servers selbst, getrennt durch Leerzeichen (nginx-zone.conf, #206)
 : "${FR_ZEITZONE:=UTC}"   # Zeitzone der Zeiten in Konnektor und Diensten, wenn die der Person unbekannt ist (#227)
 : "${FR_SPEICHER:=$FR_SEITEN/_speicher}"   # Reisespeicher (engine/reisespeicher.py, ADR-0009), wie instanz.speicher()
-: "${FR_SPEICHERREISEN:=}"   # Reisen aus dem Reisespeicher, kommagetrennt (Vorgabe: keine, alles über Git)
-case "$FR_MELDEN" in ""|/*) ;; *) FR_MELDEN="$FR_WURZEL/$FR_MELDEN" ;; esac   # relativ zur Wurzel
+: "${FR_SPEICHERREISEN:=}"   # nur noch Übergang (#454): gelesen, wirkungslos; im Speicher ist, was im Speicher steht
+# Meldeweg (#454): <FR_DIENST>/instanz/melden.sh, auch wenn die umgezogene Einstellung noch den alten relativen Pfad nennt;
+# sonst relativ zur Wurzel wie bisher. Ohne Meldeweg wird nichts gesendet.
+case "$FR_MELDEN" in
+  /*) ;;
+  "") [ ! -x "$FR_DIENST/instanz/melden.sh" ] || FR_MELDEN="$FR_DIENST/instanz/melden.sh" ;;
+  *) if [ -x "$FR_DIENST/instanz/$(basename "$FR_MELDEN")" ]; then FR_MELDEN="$FR_DIENST/instanz/$(basename "$FR_MELDEN")"
+     else FR_MELDEN="$FR_WURZEL/$FR_MELDEN"; fi ;;
+esac
 export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN FR_RM_PORT FR_KN_PORT FR_SB_PORT FR_SCHREIBKOPIE \
   FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH FR_NACHZIEHEN_WORKFLOW FR_ZEITZONE FR_EIGENE_ADRESSEN \
   FR_SPEICHER FR_SPEICHERREISEN
@@ -111,22 +142,42 @@ export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN 
 # ändert (nicht mitgeliefert; Overpass AGPL, Daten ODbL). Ein neuer Digest ist eine bewusste Änderung mit Abnahme.
 KD_BILD="wiktorn/overpass-api@sha256:9bb5f4a9b54cd225bf828c04c67e7f4010650ff4d70b72157a9473a9ba02d93c"
 
-speicherreisen() {  # Reisen aus FR_SPEICHERREISEN, eine je Zeile; Leerzeichen und leere Teile fallen weg wie in
-  # instanz.speicherreisen()
-  local r
-  local IFS=,
-  for r in $FR_SPEICHERREISEN; do
-    r="${r#"${r%%[![:space:]]*}"}"; r="${r%"${r##*[![:space:]]}"}"   # wie strip(): nur am Rand
-    [ -z "$r" ] || printf '%s\n' "$r"
-  done
+# Reisen im Speicher (#454): Im Speicher ist, was im Speicher steht (engine/reisespeicher.py speicherreisen, wie
+# instanz.speicherreisen()); FR_SPEICHERREISEN zählt nicht mehr. Ohne Datenbank keine (kein Python-Aufruf). Ist der Speicher
+# nicht lesbar: Fehlermeldung und Abbruch des Skripts (fail closed, #361), nie „keine Reisen“. Ein Lauf kann die Liste mit
+# speicherreisen_lesen einmal holen (Merker fr_speicherreisen_liste); sonst fragt jeder Aufruf den Speicher.
+fr_speicher_fehlt() {  # Exit 0 nur, wenn die Datenbank des Speichers sicher fehlt: keine reisen.db, und der nächste vorhandene
+  # Ordner auf dem Weg dorthin ist durchsuchbar. Ein `[ -e reisen.db ]` allein sähe in einem nicht durchsuchbaren Ordner
+  # „keine Datenbank“ (fail open, #454 F001); dann entscheidet engine/reisespeicher.py, und das ist ein Fehler (#361).
+  local d="$FR_SPEICHER"
+  if [ -e "$d/reisen.db" ] || [ -L "$d/reisen.db" ]; then return 1; fi
+  while [ ! -e "$d" ] && [ "$d" != / ]; do d="$(dirname "$d")"; done
+  [ -d "$d" ] && [ -x "$d" ]
 }
 
-ist_speicherreise() {  # <reise>: kommt sie aus dem Reisespeicher (Stufe 3, #348)? Sonst aus Git.
+speicherreisen_lesen() {  # Liste aus dem Speicher holen und merken; Exit 1, wenn er nicht lesbar ist
+  # Fail closed wie instanz.speicherreisen (#361): leer nur, wenn die Datenbank sicher fehlt (fr_speicher_fehlt, ohne
+  # Python); sonst engine/reisespeicher.py speicherreisen, und jeder Fehler dort bricht ab
+  local aus
+  fr_speicherreisen_gelesen=""
+  if fr_speicher_fehlt; then fr_speicherreisen_liste=""; fr_speicherreisen_gelesen=1; return 0; fi
+  aus="$("$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" speicherreisen 2>&1)" \
+    || { echo "ERROR: the trip store cannot be read ($(printf '%s\n' "$aus" | tail -1))." >&2; return 1; }
+  fr_speicherreisen_liste="$aus"; fr_speicherreisen_gelesen=1
+}
+
+speicherreisen() {  # Reisen im Speicher, eine je Zeile
+  if [ -z "${fr_speicherreisen_gelesen:-}" ]; then speicherreisen_lesen || exit 1; fi
+  [ -z "$fr_speicherreisen_liste" ] || printf '%s\n' "$fr_speicherreisen_liste"
+}
+
+ist_speicherreise() {  # <reise>: kommt sie aus dem Reisespeicher? Sonst aus Git (bis zum Umzug, #454).
   # Ohne Pipe: grep -q endete beim ersten Treffer, der Schreiber stürbe an SIGPIPE, und unter pipefail wäre die Antwort
   # zufällig „nein“
   local r
   [ -n "${1:-}" ] || return 1
-  while IFS= read -r r; do [ "$r" != "$1" ] || return 0; done <<< "$(speicherreisen)"
+  if [ -z "${fr_speicherreisen_gelesen:-}" ]; then speicherreisen_lesen || exit 1; fi
+  while IFS= read -r r; do [ "$r" != "$1" ] || return 0; done <<< "$fr_speicherreisen_liste"
   return 1
 }
 

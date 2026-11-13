@@ -118,13 +118,13 @@ jobs:
         if: matrix.umgebung == 'instanz'
         run: |
           {
-            echo "FR_WURZEL=/srv/beispiel/_bau"; echo "FR_INSTANZ=beispiel"; echo "FR_TITEL=Beispiel-Reisen"
+            echo "FR_WURZEL=/srv/beispiel/_software"; echo "FR_INSTANZ=beispiel"; echo "FR_TITEL=Beispiel-Reisen"
             echo "FR_SEITEN=/srv/beispiel"; echo "FR_DIENST=/srv/beispiel/_dienst"; echo "FR_ABLAGE=/srv/beispiel/_rueckmeldungen"
             echo "FR_KONNEKTOR=/srv/beispiel/_konnektor"; echo "FR_KONTEN=/srv/beispiel/_konten"
-            echo "FR_RM_PORT=8781"; echo "FR_KN_PORT=8782"; echo "FR_SB_PORT=8783"; echo "FR_SCHREIBKOPIE=/srv/beispiel/_bau-schreiben"
+            echo "FR_RM_PORT=8781"; echo "FR_KN_PORT=8782"; echo "FR_SB_PORT=8783"; echo "FR_SCHREIBKOPIE=/srv/beispiel/_software-schreiben"
             echo "FR_ADRESSE=https://reisen.example.org"; echo "FR_KN_ADRESSE=https://reisen.example.org"
             echo "FR_UMZUG_NACH=https://neu.example.org"; echo "FR_SPRACHEN=de,en"; echo "FR_KENNUNG=Beispiel-Reisen/1 (betrieb@example.org)"
-            echo "FR_PYTHON=/srv/beispiel/_bau/engine/.venv/bin/python"; echo "FR_MELDEN=/srv/beispiel/_bau/betrieb/melden.sh"
+            echo "FR_PYTHON=/srv/beispiel/_dienst/python/bin/python"; echo "FR_MELDEN=/srv/beispiel/_dienst/instanz/melden.sh"
             echo "FR_SPERREN=/tmp"; echo "FR_NACHZIEHEN_WORKFLOW=software-nachziehen.yml"; echo "FR_GEPRUEFT=0000000"
             echo "FR_WEGE_SPAETER=1"; echo "FR_BIBLIOTHEKEN_NEU=1"
             echo "FR_BASIS=https://reisen.example.org"; echo "FR_SMTP_HOST=smtp.example.org"; echo "FR_SMTP_PORT=587"

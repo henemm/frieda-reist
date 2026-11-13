@@ -966,9 +966,9 @@ def gedrosselt(o):
 
 
 # ---------- Anstoß „neue Software veröffentlichen“ (Fuß der Seite, Organisator:innen) ----------
-# Die Seite kann nur holen, was auf dem Server liegt. Liegt auf main der Software Neueres, zieht es der Workflow
-# „Software nachziehen“ des Reisen-Repos sonst alle 30 Minuten nach. Der Anstoß legt eine Datei in die Ablage; das nächste
-# Veröffentlichen (Timer, alle 5 Minuten) startet damit den Workflow und schreibt das Ergebnis daneben (docs/betrieb.md).
+# Die Seite kann nur holen, was auf dem Server liegt. Der Anstoß legt eine Datei in die Ablage; das nächste Veröffentlichen
+# (Timer, alle 5 Minuten) holt damit den neuesten Stand der Software, prüft und veröffentlicht ihn und schreibt das Ergebnis
+# daneben (#454: nur ein Lauf, kein Workflow; vor dem Umzug startete es den Workflow des Reisen-Repos; docs/betrieb.md).
 ANSTOSS, ANSTOSS_ERGEBNIS = "_anstoss.json", "_anstoss-ergebnis.json"
 
 

@@ -1,5 +1,5 @@
 # Rückmeldedienst der Instanz __INSTANZ__ (engine/rueckmeldungen.py), ein Prozess für alle Reisen.
-# Erzeugt von frieda/betrieb/einrichten.sh. Der Code läuft aus __DIENST__ (legt deploy.sh an), nicht aus dem
+# Erzeugt von betrieb/einrichten.sh. Der Code läuft aus __DIENST__ (legt deploy.sh an), nicht aus dem
 # Repo, damit ein Branch im Repo nie den laufenden Dienst ändert. deploy.sh startet ihn bei neuem Code neu.
 [Unit]
 Description=__TITEL__: Rückmeldedienst

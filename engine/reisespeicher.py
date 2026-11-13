@@ -41,11 +41,18 @@ Aufrufe:
   python3 engine/reisespeicher.py zustand [--sicherung-max-stunden H]        Exit 0 in Ordnung, 1 Sicherung fehlt/alt, 2 Fehler
   python3 engine/reisespeicher.py staende <reise> …                          je Reise „<reise> <Speicher> <Seite>“ (- = keine)
   python3 engine/reisespeicher.py umschaltung <reise>                        „frei“ (Exit 0) oder „gesperrt <grund>“ (Exit 1)
+  python3 engine/reisespeicher.py speicherreisen                             Reisen im Speicher, eine je Zeile (#454)
+  python3 engine/reisespeicher.py datenbank                                  „ja“ (Exit 0) oder „nein“ (Exit 1), nicht lesbar 2
+  python3 engine/reisespeicher.py umschalten <reise>                         Git-Reise automatisch umschalten (#454)
 
-Ab Stufe 5 (#350) prüft umschaltung_frei die erste Umschaltung einer Reise: Liegt eine Reise aus FR_SPEICHERREISEN im
+Ab Stufe 5 (#350) prüft umschaltung_frei die erste Umschaltung einer Reise: Liegt eine Reise mit Eintrag im Speicher im
 Git-Bauordner und wurde sie noch nie aus dem Speicher veröffentlicht (kein <FR_DIENST>/reise-stand/<reise>.gebaut),
 verweigern Veröffentlichen und Schreibweg sie ohne gültigen Stempel „gleich“ von betrieb/vergleichslauf.sh. Der Befehl
 umschaltung ist dieselbe Prüfung für die Shell; er liest nur.
+
+Ab #454 ist im Speicher, was im Speicher steht: speicherreisen nennt jede Reise mit Eintrag, deren Umschaltung nicht offen
+ist (FR_SPEICHERREISEN ist wirkungslos). umschalten schaltet eine übrige Git-Reise ohne Handschritt um (Anfangsvorgang aus
+dem Git-Stand, Vergleich, Stempel „gleich“), nur wenn beide byte-gleich sind; sonst bleibt sie in Git.
 """
 import collections
 import errno
@@ -705,16 +712,17 @@ def _git_baum(reise):
 
 def umschaltung_frei(reise):
     """Darf die Reise aus dem Speicher gebaut und über ihn beschrieben werden (Stufe 5, #350)? -> (True, "") oder
-    (False, grund). Gesperrt ist nur die erste Umschaltung: eine Reise aus FR_SPEICHERREISEN, die im Git-Bauordner liegt,
+    (False, grund). Gesperrt ist nur die erste Umschaltung: eine Reise, die im Git-Bauordner liegt,
     noch nie aus dem Speicher veröffentlicht wurde (kein <FR_DIENST>/reise-stand/<reise>.gebaut) und keinen gültigen
     Stempel „gleich“ von betrieb/vergleichslauf.sh hat (<FR_DIENST>/vergleich/<reise>.json: ergebnis gleich, baum gleich
     dem jetzigen Git-Baum der Reise, stand nicht größer als die Stand-Nummer im Speicher). Gründe: kein_stempel,
-    stempel_ungueltig, stempel_nicht_gleich, stempel_veraltet, git_nicht_lesbar. Liest nur. Einstellungen nicht lesbar:
-    instanz.EinstellungenNichtLesbar (#361)."""
+    stempel_ungueltig, stempel_nicht_gleich, stempel_veraltet, git_nicht_lesbar. Liest nur.
+    Ab #454 entscheidet diese Prüfung auch, ob eine Reise mit Eintrag im Speicher als Speicherreise gilt (speicherreisen):
+    Ist sie gesperrt, ist die Umschaltung offen und die Reise bleibt in Git. Einstellungsdatei vorhanden, aber nicht lesbar:
+    instanz.EinstellungenNichtLesbar (#361; Dienstordner und Speicher können dort stehen)."""
     if not isinstance(reise, str) or not REISE_MUSTER.match(reise):
         return False, "stempel_ungueltig"
-    if reise not in instanz.speicherreisen():
-        return True, ""
+    instanz.einstellungen_pruefen()
     if (instanz.dienst() / "reise-stand" / f"{reise}.gebaut").is_file():
         return True, ""
     try:
@@ -747,6 +755,114 @@ def umschaltung_frei(reise):
     if jetzt is None or stand > jetzt:
         return False, "stempel_veraltet"
     return True, ""
+
+
+def speicherreisen():
+    """Reisen im Speicher (#454): jede Reise mit mindestens einem Vorgang, deren Umschaltung nicht offen ist (umschaltung_frei;
+    offen heißt: Anfangsvorgang aus Git ohne gültigen Stempel „gleich“). Sortiert, ohne Duplikate, auch zur Löschung
+    vorgemerkte (ihre Namen bleiben vergeben). Liest nur; ohne Datenbank: leer. Nicht lesbar: sqlite3.Error oder OSError."""
+    p = pfad()
+    if not p.exists() and not p.is_symlink():
+        return []
+    with closing(_nur_lesen()) as v:
+        alle = [z[0] for z in v.execute("SELECT DISTINCT reise FROM vorgaenge ORDER BY reise")]
+    return [r for r in alle if umschaltung_frei(r)[0]]
+
+
+def _stempel_schreiben(reise, ergebnis, stand, git_stand, unterschiede, baum, arbeitsordner):
+    """Stempel wie betrieb/vergleichslauf.sh: <FR_DIENST>/vergleich/<reise>.json (erst daneben, dann umbenennen)."""
+    ordner = instanz.dienst() / "vergleich"
+    ordner.mkdir(parents=True, exist_ok=True)
+    datei = ordner / f"{reise}.json"
+    tmp = ordner / f".{reise}.json.{os.getpid()}"
+    tmp.write_text(json.dumps({"zeit": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "ergebnis": ergebnis,
+                               "stand": stand, "git": git_stand, "unterschiede": unterschiede, "baum": baum,
+                               "arbeitsordner": arbeitsordner}) + "\n", encoding="utf-8")
+    os.replace(tmp, datei)
+
+
+UMSCHALTEN_WER = "Frieda"   # Person des Anfangsvorgangs einer automatischen Umschaltung (#454), der Produktname
+
+
+class NichtNurImport(Exception):
+    """Im Speicher stehen für die Reise auch andere Vorgänge als Importe: der Git-Stand wird nicht nachgetragen (#454)."""
+
+
+def git_stand_nachtragen(ordner, reise, wer, grund):
+    """Offene Umschaltung, Git hat sich seit dem Anfangsvorgang geändert (#454, F005): den Git-Stand (ordner) als weiteren
+    Import-Vorgang anhängen (nur Unterschiede, fehlende Dateien als Tombstone; nie löschen, nie überschreiben, ADR-0009).
+    Nur, wenn die Reise im Speicher bisher ausschließlich Importe hat; sonst NichtNurImport, nichts geschrieben. Prüfung und
+    Eintrag in derselben Transaktion (kein Wettlauf mit einem Schreiber). Kein Unterschied: None. -> Vorgang oder None."""
+    dateien = _ordner_lesen(ordner)
+    name = Path(ordner).name
+
+    def arbeit(v):
+        andere = v.execute("SELECT COUNT(*) FROM vorgaenge WHERE reise = ? AND werkzeug != 'importieren'",
+                           (reise,)).fetchone()[0]
+        if andere:
+            raise NichtNurImport(reise)
+        bisher = _stand(v, reise, spalte="pruefsumme")
+        alles = {**{p: None for p in bisher if p not in dateien},
+                 **{p: b for p, b in dateien.items() if bisher.get(p) != _summe(b)}}
+        if not alles:
+            return None
+        return _eintragen(v, reise, alles, wer, "importieren", f"import:{name}", grund, herkunft=f"import:{name}")
+    return _transaktion(arbeit)
+
+
+def umschalten_automatisch(reise):
+    """Schaltet eine Reise aus dem Git-Bauordner auf den Speicher um (#454, Lieferung 1), ohne Handschritt -> Ergebnis:
+      schon_im_speicher  die Reise ist schon Speicherreise; nichts geschieht (kein zweiter Vorgang, Stempel unverändert)
+      nicht_in_git       weder Speicherreise noch in Git (reisen/<reise> im Commit HEAD): nichts zu tun
+      gleich             umgeschaltet: Anfangsvorgang aus dem Git-Stand (nur wenn noch keiner da ist), Vergleich byte-gleich,
+                         Stempel „gleich“ (baum, stand) wie betrieb/vergleichslauf.sh; ab jetzt Speicherreise
+      unterschied        der Speicher weicht vom Git-Stand ab: Stempel „unterschied“, die Reise bleibt in Git. Ausnahme
+                         (F005): stehen für die Reise im Speicher nur Importe (niemand hat dort geschrieben), ist Git die
+                         Wahrheit; der aktuelle Git-Stand wird als weiterer Import angehängt und erneut verglichen
+      fehler             git oder Speicher nicht lesbar: Stempel „fehler“ (wenn möglich), die Reise bleibt in Git
+    Der Git-Stand kommt aus dem Commit HEAD des Bauordners (ungesicherte Änderungen zählen nicht), dazu die von Git
+    ignorierten Dateien der Reise aus dem Bauordner (wie vergleichslauf.sh, #479). Es wird nie gelöscht und nie überschrieben.
+    Bricht die Umschaltung zwischen Anfangsvorgang und Stempel ab, ist sie offen: Der nächste Aufruf vergleicht gegen den
+    vorhandenen Anfangsvorgang und stempelt bei „gleich“."""
+    import tempfile
+    import stand_git
+    if not isinstance(reise, str) or not REISE_MUSTER.match(reise):
+        return "fehler"
+    bekannt = stand_nummer(reise) is not None if pfad().exists() else False
+    if bekannt and umschaltung_frei(reise)[0]:
+        return "schon_im_speicher"
+    try:
+        baum = _git_baum(reise)
+    except _GitNichtLesbar:
+        return "fehler"
+    if baum is None:
+        return "schon_im_speicher" if bekannt else "nicht_in_git"
+    wurzel = instanz.wurzel()
+    git_stand = stand_git.git(wurzel, "rev-parse", "HEAD") or ""
+    with tempfile.TemporaryDirectory(prefix="frieda-umschalten-") as tmp:   # Exportordner, nie die Ablage
+        ordner = Path(tmp) / reise
+        try:
+            arbeitsordner = stand_git.reise_aus_head(wurzel, reise, ordner)
+        except (OSError, ValueError, RuntimeError):
+            _stempel_schreiben(reise, "fehler", None, git_stand, 0, baum, 0)
+            return "fehler"
+        try:
+            if not bekannt:
+                importieren(ordner, reise, UMSCHALTEN_WER, grund="#454")
+            unterschiede = vergleichen(reise, ordner)
+            if unterschiede and bekannt:
+                try:
+                    git_stand_nachtragen(ordner, reise, UMSCHALTEN_WER, "#454: Git-Stand seit dem Anfangsvorgang geändert")
+                    unterschiede = vergleichen(reise, ordner)
+                except NichtNurImport:
+                    pass   # im Speicher wurde auch geschrieben: die Reise bleibt in Git (Warnzeile im Lauf, kein Alarm)
+            n = stand_nummer(reise)
+        except (sqlite3.Error, OSError, ValueError, KeyError, AblageFehlt, AblageFehler):
+            _stempel_schreiben(reise, "fehler", None, git_stand, 0, baum, arbeitsordner)
+            return "fehler"
+        ergebnis = "unterschied" if unterschiede else "gleich"
+        _stempel_schreiben(reise, ergebnis, n, git_stand, len(unterschiede), baum, arbeitsordner)
+        return ergebnis
 
 
 def zustand(max_stunden=SICHERUNG_MAX_STUNDEN):
@@ -1228,6 +1344,25 @@ def main(a):
             finally:
                 if v:
                     v.close()
+        elif befehl == "datenbank" and not rest:
+            # gibt es die Datenbank? Exit 0 ja, 1 nein, 2 nicht feststellbar (Ordner nicht durchsuchbar, #454)
+            p = pfad()
+            if p.exists() or p.is_symlink():
+                print("ja")
+                return 0
+            print("nein")
+            return 1
+        elif befehl == "speicherreisen" and not rest:
+            for r in speicherreisen():
+                print(r)
+        elif befehl == "umschalten":
+            # automatische Umschaltung (#454): Exit 0 gleich oder schon im Speicher, 1 unterschied, 2 fehler, 3 nicht in Git
+            if len(rest) != 1:
+                print("ERROR: usage: reisespeicher.py umschalten <reise>")
+                return 2
+            ergebnis = umschalten_automatisch(rest[0])
+            print(ergebnis)
+            return {"gleich": 0, "schon_im_speicher": 0, "unterschied": 1, "nicht_in_git": 3}.get(ergebnis, 2)
         elif befehl == "umschaltung":
             # Exit 1 heißt hier nur „gesperrt“: falsche Angaben geben wie jeder Fehler 2
             if len(rest) != 1:
