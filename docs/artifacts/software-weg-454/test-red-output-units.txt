@@ -1,0 +1,138 @@
+bringing up nodes...
+bringing up nodes...
+
+FFF...FFF..                                                              [100%]
+=================================== FAILURES ===================================
+___________ test_umzug_units_abweichend_nur_warnung_keine_umstellung ___________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x79e3a30d3a60>, 'deploys': <function vf.<locals>.deploys at 0x79e3a30afa60>, '...f.<locals>.anzahl_pings at 0x79e3a2887060>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79e3a30af6a0>, ...}
+
+    def test_umzug_units_abweichend_nur_warnung_keine_umstellung(alt):
+        """AC-2.13: Sind 1 bis 3 grün und weichen die Units ab, schreibt der Lauf nur die Warnzeile und stellt nichts um: kein
+        installieren, Units beim alten Bauordner, Veröffentlichen über den alten Weg, kein high, nächster Lauf wieder so."""
+        for _ in range(2):
+            r = alt["lauf_alt"]()
+            assert r.returncode == 0, r.stdout + r.stderr
+>           assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])
+E           AssertionError: assert '/tmp/pytest-...ten/_software' == '/tmp/pytest-...nd_nu0/arbeit'
+E             
+E             Skipping 64 identical leading characters in diff, use -v to show
+E             - chend_nu0/arbeit
+E             + chend_nu0/seiten/_software
+
+engine/tests/test_software_weg_454.py:759: AssertionError
+_________________________ test_umzug_ohne_handschritt __________________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x7734797e7a60>, 'deploys': <function vf.<locals>.deploys at 0x7734797bb6a0>, '...f.<locals>.anzahl_pings at 0x773479043060>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7734797bba60>, ...}
+
+    def test_umzug_ohne_handschritt(alt):
+        """AC-2.12: Der Lauf im alten Zustand legt den Klon an, kopiert Einstellungen und Meldeweg, baut die Python-Umgebung,
+        stellt die Units aber nicht selbst um (Warnzeile, alter Weg). Sind die Units bei der Auslieferung umgestellt, läuft
+        der nächste Lauf aus dem Klon, setzt den Umzug auf fertig und endet grün."""
+        r = alt["lauf_alt"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+        dienst, klon = alt["tmp"] / "dienst", alt["klon"]
+        assert git(klon, "rev-parse", "HEAD").strip() == git(alt["software"], "rev-parse", "HEAD").strip()
+        assert (dienst / "instanz" / "einstellungen.env").read_text() == \
+            (alt["arbeit"] / "betrieb" / "einstellungen.env").read_text()
+        assert (dienst / "instanz" / "melden.sh").exists()
+        assert (dienst / "python" / "bin" / "python").exists()
+>       assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])     # Units unverändert
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert '/tmp/pytest-...ten/_software' == '/tmp/pytest-...hritt0/arbeit'
+E         
+E         Skipping 61 identical leading characters in diff, use -v to show
+E         - dschritt0/arbeit
+E         + dschritt0/seiten/_software
+
+engine/tests/test_software_weg_454.py:702: AssertionError
+__________________ test_lauf_aus_dem_klon_setzt_umzug_fertig ___________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x77637a77ba60>, 'deploys': <function vf.<locals>.deploys at 0x77637a7576a0>, '...f.<locals>.anzahl_pings at 0x77637a2cb060>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x77637a757a60>, ...}
+
+    def test_lauf_aus_dem_klon_setzt_umzug_fertig(alt):
+        """AC-2.12, Entscheidung 10 Schritt 5: Startet der Lauf schon aus dem Klon (Units bei der Auslieferung umgestellt) und
+        ist der Umzug noch nicht fertig, setzt er den Zustand selbst auf fertig und endet grün."""
+        t = alt["tmp"]
+        gesperrt = ausfuehrbar(t / "units-gesperrt.sh", f'#!/bin/sh\necho "$1 $FR_WURZEL" >> {t}/units.log\n'
+                                                        'echo "probe-veroeffentlichen.service: BLOCKED, ExecStart wanted"\nexit 4\n')
+        r = alt["lauf_alt"](VF_UNITS=str(gesperrt))
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert (alt["klon"] / ".git").exists() and alt["umzug"]() != "fertig"
+        _units_umstellen(alt)
+        r = alt["lauf_neu"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+>       assert alt["umzug"]() == "fertig"
+E       AssertionError: assert None == 'fertig'
+E        +  where None = <function alt.<locals>.umzug at 0x77637a2caf20>()
+
+engine/tests/test_software_weg_454.py:736: AssertionError
+_________ test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig __________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x773478ed2ac0>, 'deploys': <function vf.<locals>.deploys at 0x773478ed27a0>, '...f.<locals>.anzahl_pings at 0x773478ed2ca0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x773478ed2d40>, ...}
+
+    def test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig(alt):
+        """AC-2.12: Zeigen die Units schon auf den Klon (bei der Auslieferung umgestellt) und läuft noch einmal das alte
+        Skript, setzt es den Umzug auf fertig und macht im Klon weiter, ohne die Units anzufassen."""
+        alt["lauf_alt"]()
+        _units_umstellen(alt)
+        r = alt["lauf_alt"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert alt["umzug"]() == "fertig"
+>       assert not alt["installiert"]()
+E       AssertionError: assert not ['installieren /tmp/pytest-of-hem/pytest-15471/popen-gw0/test_umzug_mit_umgestellten_un0/seiten/_software']
+E        +  where ['installieren /tmp/pytest-of-hem/pytest-15471/popen-gw0/test_umzug_mit_umgestellten_un0/seiten/_software'] = <function alt.<locals>.installiert at 0x773478ed31a0>()
+
+engine/tests/test_software_weg_454.py:721: AssertionError
+_________________________ test_umzug_ist_wiederholbar __________________________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+alt = {'lauf': <function vf.<locals>.lauf at 0x79e3a2952980>, 'deploys': <function vf.<locals>.deploys at 0x79e3a2952b60>, '...f.<locals>.anzahl_pings at 0x79e3a2952ac0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79e3a2952a20>, ...}
+
+    def test_umzug_ist_wiederholbar(alt):
+        """AC-2.14: Ein halber Umzug wird fortgesetzt, ohne neuere Einstellungen zu überschreiben, den Klon neu anzulegen oder
+        die Units anzufassen; nach der Umstellung bleibt jeder weitere Lauf ohne Änderung."""
+        (alt["tmp"] / "venv-kaputt").touch()
+        alt["lauf_alt"]()
+        einst = alt["tmp"] / "dienst" / "instanz" / "einstellungen.env"
+        einst.write_text("FR_TITEL=Neuer am Zielort (Beispielwert)\n")
+        marke = alt["klon"] / ".git" / "marke"
+        marke.write_text("derselbe Klon\n")
+        (alt["tmp"] / "venv-kaputt").unlink()
+        r = alt["lauf_alt"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert einst.read_text() == "FR_TITEL=Neuer am Zielort (Beispielwert)\n"
+        assert marke.exists()
+>       assert not alt["installiert"]()
+E       AssertionError: assert not ['installieren /tmp/pytest-of-hem/pytest-15471/popen-gw1/test_umzug_ist_wiederholbar0/seiten/_software']
+E        +  where ['installieren /tmp/pytest-of-hem/pytest-15471/popen-gw1/test_umzug_ist_wiederholbar0/seiten/_software'] = <function alt.<locals>.installiert at 0x79e3a29531a0>()
+
+engine/tests/test_software_weg_454.py:780: AssertionError
+_____________ test_rueckweg_und_einmalige_umstellung_in_betrieb_md _____________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+
+    def test_rueckweg_und_einmalige_umstellung_in_betrieb_md():
+        """AC-2.15 und Entscheidung 10, Schritt 4: docs/betrieb.md nennt für Umstellung und Rückweg einrichten.sh --installieren
+        (bewusst, als Root) und den Zustand alt; die Erlaubnisliste wird nicht als Weg genannt."""
+        text = _abschnitt((WURZEL / "docs" / "betrieb.md").read_text(), "Umzug auf den Software-Klon")
+        rueckweg = text[text.index("**Rückweg:**"):]
+>       assert "einrichten.sh --installieren" in rueckweg, rueckweg
+E       AssertionError: **Rückweg:** Der alte Bauordner und seine Vorlagen bleiben unangetastet. Zurück geht es mit demselben Mechanismus: `<FR_DIENST>/umzug-454` auf `alt` setzen (dann zieht kein Lauf erneut um) und die Units auf den alten Bauordner abgleichen (`FR_WURZEL=<alter Bauordner> <alter Bauordner>/frieda/betrieb/units.py pruefen` und `installieren`); Veröffentlichen, Wächter, Schreibweg und Kartendienst laufen dann wie vorher. Kein eigener Befehl.
+E         
+E         **Rückbau** des Git-Wegs (`schreiben_git.py`, `stand_git.py`, `vergleichslauf.sh`, Arbeitskopien `_bau-schreiben-*`, Workflow „Software nachziehen“, Archivierung des Reisen-Repos, Entfernen des alten Bauordners) ist ein eigenes Folge-Issue nach einer Beobachtungszeit.
+E         
+E       assert 'einrichten.sh --installieren' in '**Rückweg:** Der alte Bauordner und seine Vorlagen bleiben unangetastet. Zurück geht es mit demselben Mechanismus: `<...hivierung des Reisen-Repos, Entfernen des alten Bauordners) ist ein eigenes Folge-Issue nach einer Beobachtungszeit.\n'
+
+engine/tests/test_software_weg_454.py:822: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_software_weg_454.py::test_umzug_units_abweichend_nur_warnung_keine_umstellung
+FAILED engine/tests/test_software_weg_454.py::test_umzug_ohne_handschritt - A...
+FAILED engine/tests/test_software_weg_454.py::test_lauf_aus_dem_klon_setzt_umzug_fertig
+FAILED engine/tests/test_software_weg_454.py::test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig
+FAILED engine/tests/test_software_weg_454.py::test_umzug_ist_wiederholbar - A...
+FAILED engine/tests/test_software_weg_454.py::test_rueckweg_und_einmalige_umstellung_in_betrieb_md
+6 failed, 5 passed in 5.98s

@@ -240,10 +240,10 @@ TDD: erst RED (Tests unten laufen rot gegen den heutigen Stand), dann Umsetzung 
 | AC-2.9 | `engine/tests/test_software_weg_454.py::test_einstellungen_reihenfolge_umgebung_instanz_alter_ort` |
 | AC-2.10 | `engine/tests/test_software_weg_454.py::test_meldeweg_aus_instanz_ordner` |
 | AC-2.11 | `engine/tests/test_software_weg_454.py::test_python_umgebung_ausserhalb_des_klons` |
-| AC-2.12 | `engine/tests/test_software_weg_454.py::test_umzug_ohne_handschritt` |
-| AC-2.13 | `engine/tests/test_software_weg_454.py::test_umzug_scheitert_vor_units_alles_beim_alten` |
+| AC-2.12 | `engine/tests/test_software_weg_454.py::test_umzug_ohne_handschritt`, `::test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig`, `::test_lauf_aus_dem_klon_setzt_umzug_fertig` |
+| AC-2.13 | `engine/tests/test_software_weg_454.py::test_umzug_scheitert_vor_units_alles_beim_alten`, `::test_umzug_units_abweichend_nur_warnung_keine_umstellung`, `::test_f004_umzug_prueft_je_commit_einmal_und_warnt_einmal` |
 | AC-2.14 | `engine/tests/test_software_weg_454.py::test_umzug_ist_wiederholbar` |
-| AC-2.15 | `engine/tests/test_software_weg_454.py::test_alter_bauordner_bleibt_und_ist_rueckweg` |
+| AC-2.15 | `engine/tests/test_software_weg_454.py::test_alter_bauordner_bleibt_und_ist_rueckweg`, `::test_zustand_alt_startet_keinen_umzug`, `::test_rueckweg_und_einmalige_umstellung_in_betrieb_md` |
 | AC-2.16 | `engine/tests/test_software_weg_454.py::test_skript_startet_sich_nach_umschalten_neu` |
 | AC-2.17 | `engine/tests/test_software_weg_454.py::test_anstoss_startet_nur_einen_lauf` |
 | AC-2.18 | `engine/tests/test_software_weg_454.py::test_lauf_ohne_reisen_repo_und_ohne_gh` |
@@ -293,6 +293,7 @@ Weitere Prüfungen:
 
 ## Changelog
 
+- 2026-11-13 (RED zur Entscheidung PO): Tests zu AC-2.12, AC-2.13, AC-2.15 an die einmalige Umstellung der Units angepasst und ergänzt (Testplan).
 - 2026-11-13 (Entscheidung PO nach Validierung): Units-Schritt des Umzugs nach Entscheidung des Product Owners einmalig bei der Auslieferung durch den Tech Lead, Erlaubnisliste unverändert (Entscheidung 10, AC-2.12, AC-2.13, AC-2.15). Infrastruktur-Issue für AC-2.21: henemm-infra#436.
 - 2026-11-13: AC-1.7 um die Ausnahme der offenen Umschaltung mit nur Importen ergänzt (Adversary F005/F008); Prüfung vor dem Umschalten mit eigener Python-Umgebung, Rückfall nur bei rotem Dienst-Deploy (F002, F003).
 - 2026-11-12: Affected Files, ADR, Definition of Done ergänzt; offene Umschaltung (AC-1.9) eindeutig festgelegt.

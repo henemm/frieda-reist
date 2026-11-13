@@ -681,9 +681,16 @@ esac
             "klon": klon, "software": software, "seiten": seiten, "quelle": quelle}
 
 
+def _units_umstellen(alt):
+    """Die einmalige Umstellung der Units bei der Auslieferung (Entscheidung 10, Schritt 4; einrichten.sh --installieren
+    aus dem Klon, als Root): in der Attrappe zeigen die Units danach auf den Klon. Kein Aufruf über den Lauf."""
+    (alt["tmp"] / "units-ziel").write_text(str(alt["klon"]) + "\n")
+
+
 def test_umzug_ohne_handschritt(alt):
     """AC-2.12: Der Lauf im alten Zustand legt den Klon an, kopiert Einstellungen und Meldeweg, baut die Python-Umgebung,
-    gleicht die Units ab und setzt den Umzug auf fertig."""
+    stellt die Units aber nicht selbst um (Warnzeile, alter Weg). Sind die Units bei der Auslieferung umgestellt, läuft
+    der nächste Lauf aus dem Klon, setzt den Umzug auf fertig und endet grün."""
     r = alt["lauf_alt"]()
     assert r.returncode == 0, r.stdout + r.stderr
     dienst, klon = alt["tmp"] / "dienst", alt["klon"]
@@ -692,7 +699,40 @@ def test_umzug_ohne_handschritt(alt):
         (alt["arbeit"] / "betrieb" / "einstellungen.env").read_text()
     assert (dienst / "instanz" / "melden.sh").exists()
     assert (dienst / "python" / "bin" / "python").exists()
-    assert (alt["tmp"] / "units-ziel").read_text().strip() == str(klon)
+    assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])     # Units unverändert
+    assert not alt["installiert"](), alt["installiert"]()                            # der Lauf installiert nie
+    assert alt["umzug"]() != "fertig"
+    assert sum("units cannot be switched" in z for z in r.stdout.splitlines()) == 1, r.stdout
+    _units_umstellen(alt)
+    r = alt["lauf_neu"]()                                                            # Timer startet jetzt aus dem Klon
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert alt["umzug"]() == "fertig"
+    assert not alt["installiert"]()
+
+
+def test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig(alt):
+    """AC-2.12: Zeigen die Units schon auf den Klon (bei der Auslieferung umgestellt) und läuft noch einmal das alte
+    Skript, setzt es den Umzug auf fertig und macht im Klon weiter, ohne die Units anzufassen."""
+    alt["lauf_alt"]()
+    _units_umstellen(alt)
+    r = alt["lauf_alt"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert alt["umzug"]() == "fertig"
+    assert not alt["installiert"]()
+
+
+def test_lauf_aus_dem_klon_setzt_umzug_fertig(alt):
+    """AC-2.12, Entscheidung 10 Schritt 5: Startet der Lauf schon aus dem Klon (Units bei der Auslieferung umgestellt) und
+    ist der Umzug noch nicht fertig, setzt er den Zustand selbst auf fertig und endet grün."""
+    t = alt["tmp"]
+    gesperrt = ausfuehrbar(t / "units-gesperrt.sh", f'#!/bin/sh\necho "$1 $FR_WURZEL" >> {t}/units.log\n'
+                                                    'echo "probe-veroeffentlichen.service: BLOCKED, ExecStart wanted"\nexit 4\n')
+    r = alt["lauf_alt"](VF_UNITS=str(gesperrt))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (alt["klon"] / ".git").exists() and alt["umzug"]() != "fertig"
+    _units_umstellen(alt)
+    r = alt["lauf_neu"]()
+    assert r.returncode == 0, r.stdout + r.stderr
     assert alt["umzug"]() == "fertig"
 
 
@@ -710,9 +750,22 @@ def test_umzug_scheitert_vor_units_alles_beim_alten(alt):
     assert not [z for z in alt["zeilen"]("melden.log") if z.startswith("high|")]
 
 
+def test_umzug_units_abweichend_nur_warnung_keine_umstellung(alt):
+    """AC-2.13: Sind 1 bis 3 grün und weichen die Units ab, schreibt der Lauf nur die Warnzeile und stellt nichts um: kein
+    installieren, Units beim alten Bauordner, Veröffentlichen über den alten Weg, kein high, nächster Lauf wieder so."""
+    for _ in range(2):
+        r = alt["lauf_alt"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])
+        assert alt["umzug"]() != "fertig"
+    assert not alt["installiert"](), alt["installiert"]()
+    assert [z.split()[0] for z in alt["zeilen"]("units.log") if z.endswith(str(alt["klon"]))] == ["pruefen", "pruefen"]
+    assert not [z for z in alt["zeilen"]("melden.log") if z.startswith("high|")]
+
+
 def test_umzug_ist_wiederholbar(alt):
     """AC-2.14: Ein halber Umzug wird fortgesetzt, ohne neuere Einstellungen zu überschreiben, den Klon neu anzulegen oder
-    die Units ohne Unterschied neu zu installieren."""
+    die Units anzufassen; nach der Umstellung bleibt jeder weitere Lauf ohne Änderung."""
     (alt["tmp"] / "venv-kaputt").touch()
     alt["lauf_alt"]()
     einst = alt["tmp"] / "dienst" / "instanz" / "einstellungen.env"
@@ -722,18 +775,23 @@ def test_umzug_ist_wiederholbar(alt):
     (alt["tmp"] / "venv-kaputt").unlink()
     r = alt["lauf_alt"]()
     assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["umzug"]() == "fertig"
     assert einst.read_text() == "FR_TITEL=Neuer am Zielort (Beispielwert)\n"
     assert marke.exists()
-    assert len(alt["installiert"]()) == 1
-    r = alt["lauf_neu"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert len(alt["installiert"]()) == 1
+    assert not alt["installiert"]()
+    _units_umstellen(alt)
+    for _ in range(2):
+        r = alt["lauf_neu"]()
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert alt["umzug"]() == "fertig"
+    assert einst.read_text() == "FR_TITEL=Neuer am Zielort (Beispielwert)\n"
+    assert not alt["installiert"]()
 
 
 def test_alter_bauordner_bleibt_und_ist_rueckweg(alt):
     """AC-2.15: Nach dem Umzug bleibt der alte Bauordner unverändert; Läufe im neuen Zustand fassen ihn nicht an."""
-    r = alt["lauf_alt"]()
+    alt["lauf_alt"]()
+    _units_umstellen(alt)
+    r = alt["lauf_neu"]()
     assert r.returncode == 0, r.stdout + r.stderr
     assert alt["umzug"]() == "fertig"
     vorher = alt["bild"](alt["arbeit"])
@@ -742,6 +800,29 @@ def test_alter_bauordner_bleibt_und_ist_rueckweg(alt):
     r = alt["lauf_neu"]()
     assert r.returncode == 0, r.stdout + r.stderr
     assert alt["bild"](alt["arbeit"]) == vorher
+
+
+def test_zustand_alt_startet_keinen_umzug(alt):
+    """AC-2.15: Mit Zustand alt (Rückweg gewählt) legt ein Lauf der alten Anordnung keinen Klon an und prüft keine Units
+    für den Klon; er veröffentlicht über den alten Weg."""
+    (alt["tmp"] / "dienst").mkdir(exist_ok=True)
+    (alt["tmp"] / "dienst" / "umzug-454").write_text("alt\n")
+    r = alt["lauf_alt"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not alt["klon"].exists()
+    assert alt["umzug"]() == "alt"
+    assert not [z for z in alt["zeilen"]("units.log") if z.endswith(str(alt["klon"]))]
+
+
+def test_rueckweg_und_einmalige_umstellung_in_betrieb_md():
+    """AC-2.15 und Entscheidung 10, Schritt 4: docs/betrieb.md nennt für Umstellung und Rückweg einrichten.sh --installieren
+    (bewusst, als Root) und den Zustand alt; die Erlaubnisliste wird nicht als Weg genannt."""
+    text = _abschnitt((WURZEL / "docs" / "betrieb.md").read_text(), "Umzug auf den Software-Klon")
+    rueckweg = text[text.index("**Rückweg:**"):]
+    assert "einrichten.sh --installieren" in rueckweg, rueckweg
+    assert "`alt`" in rueckweg
+    assert "einmalig" in text and "Auslieferung" in text
+    assert "bis die Erlaubnisliste das zulässt" not in text
 
 
 def test_umzugsfehler_und_nachweis_sind_keine_high_meldung(sw):
