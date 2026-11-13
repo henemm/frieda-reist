@@ -2,7 +2,7 @@
 entity_id: software-weg-454
 type: feature
 created: 2026-11-12
-updated: 2026-11-12
+updated: 2026-11-13
 status: draft
 workflow: software-weg-454
 version: "1.0"
@@ -119,8 +119,8 @@ Dafür entsteht ein Issue im Infrastruktur-Repo; der Tech Lead setzt es selbst u
     1. Software-Klon anlegen oder aktualisieren (öffentlich, ohne Anmeldung, nur `main`).
     2. Einstellungen und Meldeweg nach `<FR_DIENST>/instanz/` kopieren (nur wenn Ziel fehlt oder älter ist; nie überschreiben, wenn dort Neueres liegt); optionale Instanz-Tests kopieren.
     3. Python-Umgebung unter `<FR_DIENST>/python` aufbauen und mit dem Klon-Commit prüfen (Probebau einer Beispielreise, Tests des Klons nach Entscheidung 5).
-    4. **Erst wenn 1 bis 3 grün sind:** Units auf die neuen Pfade abgleichen (`units_abgleichen`, Root-Hilfsprogramm). Das ist der **letzte** Schritt.
-    5. Zustand `<FR_DIENST>/umzug-454` auf `fertig` setzen; Neustart des Skripts mit `exec "$0"` (Muster #242), damit es aus dem Klon läuft.
+    4. **Erst wenn 1 bis 3 grün sind:** Units auf die neuen Pfade abgleichen. Das ist der **letzte** Schritt. Weil sich dabei `ExecStart` und `FR_WURZEL` ändern, die nicht in der Erlaubnisliste des Root-Hilfsprogramms stehen, stellt der Tech Lead die Units **einmalig bei der Auslieferung bewusst** um (`einrichten.sh --installieren` aus dem Klon, Root). Die Erlaubnisliste bleibt unverändert (Entscheidung des Product Owners, 13.11.2026). Bis dahin meldet der Lauf den Stand einmal je Commit als Warnzeile und veröffentlicht weiter über den alten Weg.
+    5. Zustand `<FR_DIENST>/umzug-454` auf `fertig` setzen; Neustart des Skripts mit `exec "$0"` (Muster #242), damit es aus dem Klon läuft. Startet der Lauf schon aus dem Klon (Units umgestellt), setzt er den Zustand selbst auf `fertig`, falls er es noch nicht ist.
 
     Scheitert ein Schritt vor 4, bleibt alles beim alten Weg: kein Alarm der Stufe `high`, eine Warnzeile, der nächste Lauf (alle 5 Minuten) versucht denselben Umzug erneut. Der alte Bauordner und alle seine Units-Vorlagen bleiben unangetastet; **Rückweg:** Units auf den alten Bauordner abgleichen (derselbe Mechanismus), Zustand auf `alt`. Der Rückweg gehört in `docs/betrieb.md` und ist kein neuer Befehl.
 11. **Alarm nur bei Ausfall (#446).** Neue Meldungen: nur Rot-Phase des Veröffentlichens bleibt `high` (bestehende Stelle, einmal je Rot-Phase). Alles Neue (Umzug scheitert, Umschaltung einer Reise bleibt aus, Nachweis nicht abrufbar) ist Warnzeile im Protokoll oder `normal`, entprellt über `fr_alarm`-Merker; die `high`-Liste `ALARMSTELLEN` in `engine/tests/test_betrieb.py` bekommt keine neue Stelle. Dauerhafte Zustände gehören als Teil-Check in `monitor.sh`.
@@ -197,10 +197,10 @@ Der Git-Teil des Reisen-Repos (Fetch, `reisen_des_laufs`, `git_reisen_uebrig`, `
 - **AC-2.9 (Einstellungen):** *Given* `<FR_DIENST>/instanz/einstellungen.env` liegt vor, *when* ein Skript startet, *then* kommen Einstellungen aus der Umgebung, sonst aus dieser Datei, sonst (Übergang) aus dem alten Ort.
 - **AC-2.10 (Meldeweg):** *Given* `<FR_DIENST>/instanz/melden.sh`, *when* eine Meldung ausgelöst wird, *then* ruft `FR_MELDEN` diesen Weg auf; ohne Meldeweg wird nichts gesendet.
 - **AC-2.11 (Python-Umgebung):** *Given* die Python-Umgebung liegt unter `<FR_DIENST>/python`, *when* der Klon umgeschaltet oder zurückgesetzt wird, *then* bleibt sie erhalten; ändert sich `requirements` im Commit, wird sie vor dem Umschalten der Dienste neu aufgebaut.
-- **AC-2.12 (Umzug ohne Handschritt):** *Given* eine Instanz im alten Zustand (Submodul im Bauordner), *when* der Lauf mit der Software dieses Commits läuft, *then* legt er den Klon an, kopiert Einstellungen und Meldeweg, baut die Python-Umgebung, gleicht die Units ab und stellt den Zustand auf `fertig`, ohne dass jemand etwas tut.
-- **AC-2.13 (Units zuletzt):** *Given* ein Schritt des Umzugs vor dem Abgleich der Units scheitert, *when* der Lauf endet, *then* zeigen alle Units unverändert auf den alten Bauordner, das Veröffentlichen läuft weiter über den alten Weg, und der nächste Lauf versucht den Umzug erneut.
+- **AC-2.12 (Umzug ohne Handschritt):** *Given* eine Instanz im alten Zustand (Submodul im Bauordner), *when* der Lauf mit der Software dieses Commits läuft, *then* legt er den Klon an, kopiert Einstellungen und Meldeweg, baut und prüft die Python-Umgebung, ohne dass jemand etwas tut; weichen die Units nur in gesperrten Zeilen ab (`ExecStart`, `FR_WURZEL`), bleibt er mit einer Warnzeile je Commit beim alten Weg, ohne die Units zu ändern. Sind die Units (einmalig bei der Auslieferung, Entscheidung 10, Schritt 4) auf den Klon umgestellt, läuft der nächste Lauf aus dem Klon, setzt den Zustand auf `fertig` und endet grün.
+- **AC-2.13 (Units zuletzt):** *Given* ein Schritt des Umzugs vor dem Abgleich der Units scheitert oder der Abgleich meldet gesperrte Abweichungen, *when* der Lauf endet, *then* zeigen alle Units unverändert auf den alten Bauordner, das Veröffentlichen läuft weiter über den alten Weg, und der nächste Lauf versucht den Umzug erneut.
 - **AC-2.14 (Wiederholbar):** *Given* der Umzug ist `fertig` oder halb durchgeführt, *when* der Lauf erneut läuft, *then* ändert er nichts Unnötiges (keine doppelten Kopien, kein Überschreiben neuerer Einstellungen, keine Units-Änderung ohne Unterschied).
-- **AC-2.15 (Alter Bauordner bleibt):** *Given* der Umzug ist `fertig`, *when* der alte Bauordner betrachtet wird, *then* ist er unverändert (nichts gelöscht, keine Datei verändert); stellt man die Units auf ihn zurück, laufen Veröffentlichen, Wächter, Schreibweg und Kartendienst wieder wie vorher (Rückweg).
+- **AC-2.15 (Alter Bauordner bleibt):** *Given* der Umzug ist `fertig`, *when* der alte Bauordner betrachtet wird, *then* ist er unverändert (nichts gelöscht, keine Datei verändert); der Rückweg (Units bewusst mit `einrichten.sh --installieren` aus dem alten Bauordner zurückstellen, Zustand `alt`) ist in `docs/betrieb.md` beschrieben, und ein Lauf mit Zustand `alt` startet keinen neuen Umzug.
 - **AC-2.16 (Selbstaustausch):** *Given* das Vorspulen des Klons ändert `veroeffentlichen.sh`, *when* der Lauf weiterläuft, *then* startet er mit `exec` das neue Skript neu und endet genau einmal mit einem Ergebnis (kein Mischlauf aus altem und neuem Code).
 - **AC-2.17 (Anstoß):** *Given* die Seite legt `_anstoss.json` ab, *when* der Lauf es sieht, *then* startet er einen Lauf und ruft kein `gh workflow run` auf; die Anstoß-Datei wird danach gelöscht, ohne dass der Lauf endlos wiederholt wird.
 - **AC-2.18 (Kein Git-Teil):** *Given* eine Instanz im neuen Zustand ohne Reisen-Repo und ohne `gh`, *when* der Lauf läuft, *then* endet er grün und ruft weder `gh` noch `git` auf dem Reisen-Repo auf (Fetch, Vorspulen, `software_anstossen`, `reisen_des_laufs`, Tests des Reisen-Repos).
@@ -293,6 +293,7 @@ Weitere Prüfungen:
 
 ## Changelog
 
+- 2026-11-13 (Validierung): Units-Schritt des Umzugs nach Entscheidung des Product Owners einmalig bei der Auslieferung durch den Tech Lead, Erlaubnisliste unverändert (Entscheidung 10, AC-2.12, AC-2.13, AC-2.15). Infrastruktur-Issue für AC-2.21: henemm-infra#436.
 - 2026-11-13: AC-1.7 um die Ausnahme der offenen Umschaltung mit nur Importen ergänzt (Adversary F005/F008); Prüfung vor dem Umschalten mit eigener Python-Umgebung, Rückfall nur bei rotem Dienst-Deploy (F002, F003).
 - 2026-11-12: Affected Files, ADR, Definition of Done ergänzt; offene Umschaltung (AC-1.9) eindeutig festgelegt.
 - 2026-11-12: Erstfassung (Spec zu #454, zwei Lieferungen, Folge-Issue für den Rückbau des Git-Wegs).
