@@ -20,9 +20,12 @@
 # Umzug (#454, alte Anordnung: Reisen-Repo mit Submodul frieda/): Nach jedem grünen Lauf zieht umzug_454 die Instanz in den
 # neuen Zustand um, ohne Handschritt und wiederholbar: Klon anlegen (auf dem Commit des Submoduls), Einstellungen, Meldeweg und
 # Prüfungen der Instanz nach <FR_DIENST>/instanz/ kopieren (nie über Neueres), Python-Umgebung bauen und den Klon prüfen,
-# zuletzt die Units auf den Klon abgleichen; dann <FR_DIENST>/umzug-454 = fertig und Neustart aus dem Klon. Scheitert ein
-# Schritt, bleibt alles beim alten Weg (Warnzeile, kein Alarm), der nächste Lauf versucht es wieder. Der alte Bauordner bleibt
-# unangetastet (Rückweg, docs/betrieb.md „Umzug“).
+# zuletzt die Units nur prüfen: Der Lauf stellt sie nie selbst um, das macht der Tech Lead einmalig bei der Auslieferung
+# (einrichten.sh --installieren aus dem Klon). Bis dahin eine Warnzeile je Commit und der alte Weg. Zeigen die Units auf den
+# Klon, <FR_DIENST>/umzug-454 = fertig und Neustart aus dem Klon; startet ein Lauf schon aus dem Klon, setzt er fertig selbst,
+# wenn die Units auf den Klon zeigen (eine frische Instanz ohne Umzug bekommt keinen Zustand).
+# Scheitert ein Schritt, bleibt alles beim alten Weg (Warnzeile, kein Alarm), der nächste Lauf versucht es wieder. Der alte
+# Bauordner bleibt unangetastet (Rückweg, docs/betrieb.md „Umzug“).
 #
 # Alte Anordnung (bis zum Umzug, Beschreibung unten): holt origin/main in den Bauordner, bringt die Software (Submodul) auf
 # den festgehaltenen Stand und ruft deploy.sh für jede Reise auf, sobald main einen neuen Stand hat.
@@ -850,6 +853,7 @@ main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
     echo "Uncommitted changes in the software clone, skipped."; return 0
   fi
   mkdir -p "$FR_DIENST"
+  umzug_fertig_im_klon
   vorgemerkte_entfernen || return 1
   speicherreisen_lesen || return 1
   speicher_reisen_lauf || return 1   # mit der Software, die jetzt da ist
@@ -959,7 +963,7 @@ umzug_kopieren() {  # <quelle> <ziel>: Datei kopieren, wenn das Ziel fehlt oder 
 }
 
 umzug_454() {  # Umzug einer Instanz der alten Anordnung in den Software-Klon (#454, docs/betrieb.md „Umzug“); nur nach einem
-  # grünen Lauf. Jeder Schritt ist wiederholbar; Units erst, wenn 1 bis 3 grün sind. Fehler: Warnzeile, kein Alarm.
+  # grünen Lauf. Jeder Schritt ist wiederholbar; Units erst, wenn 1 bis 3 grün sind (nur prüfen). Fehler: Warnzeile, kein Alarm.
   # Schritte 1 und 3 (Klon, Python-Umgebung, Prüfung) laufen je Software-Commit einmal: Sind sie für diesen Commit grün,
   # steht er in <FR_DIENST>/umzug-454.geprueft, und die folgenden Läufe gehen gleich zu Schritt 4 (F004). Schritt 2 (Kopieren,
   # nie über Neueres) läuft jedes Mal, er kostet nichts und nimmt eine inzwischen geänderte Einstellung mit.
@@ -1022,13 +1026,11 @@ umzug_kopieren_alle() {  # Schritt 2 des Umzugs: Einstellungen, Meldeweg und Pr�
 }
 
 umzug_units() {  # Schritte 4 und 5 des Umzugs (Variablen von umzug_454)
-  # 4. Zuletzt: Units auf den Klon (Root-Hilfsprogramm wie units_abgleichen); nur wenn danach alles gleich ist
+  # 4. Zuletzt: Units auf den Klon. Der Lauf stellt sie nie selbst um: ExecStart und FR_WURZEL stehen nicht in der
+  # Erlaubnisliste des Root-Hilfsprogramms; der Tech Lead stellt sie einmalig bei der Auslieferung um (einrichten.sh
+  # --installieren aus dem Klon, docs/betrieb.md „Umzug“). Hier nur prüfen: weichen sie ab, Warnzeile und alter Weg.
   local units="${VF_UNITS:-$FR_BETRIEB/units.py}"
   rc=0; aus="$(FR_WURZEL="$klon" FR_PYTHON="$py" "$units" pruefen 2>&1)" || rc=$?
-  if [ "$rc" = 3 ]; then
-    FR_WURZEL="$klon" FR_PYTHON="$py" "$units" installieren > /dev/null 2>&1 || true
-    rc=0; aus="$(FR_WURZEL="$klon" FR_PYTHON="$py" "$units" pruefen 2>&1)" || rc=$?
-  fi
   if [ "$rc" != 0 ]; then
     # Warnzeile einmal je Commit und Befund (Fingerabdruck der Ausgabe), nicht in jedem Takt (F004)
     fingerabdruck="$sub $rc $(printf '%s\n' "$aus" | sha256sum | cut -c1-16)"
@@ -1045,6 +1047,20 @@ umzug_units() {  # Schritte 4 und 5 des Umzugs (Variablen von umzug_454)
   echo fertig > "$zustand_datei.neu" && mv "$zustand_datei.neu" "$zustand_datei"
   echo "Move (#454) done: the instance builds from the software clone $klon; the old build folder stays untouched (way back: docs/betrieb.md)."
   umzug_neustart
+}
+
+umzug_fertig_im_klon() {  # Schritt 5 des Umzugs für einen Lauf, der schon aus dem Klon startet (Units bei der Auslieferung
+  # umgestellt): Zustand selbst auf fertig, falls er es noch nicht ist, aber nur wenn die Units wirklich auf den Klon zeigen
+  # (units.py pruefen ohne Abweichung; FR_WURZEL ist hier der Klon). Beim Rückweg (alt) bleibt er. Eine frische Instanz ohne
+  # Spur eines Umzugs (umzug-454, .geprueft, .units) bekommt keinen Zustand. Weichen die Units ab: stumm, nichts geschrieben.
+  local zustand_datei="$FR_DIENST/umzug-454" zustand
+  zustand="$(cat "$zustand_datei" 2>/dev/null || true)"
+  [ "$zustand" != fertig ] && [ "$zustand" != alt ] || return 0
+  [ -e "$zustand_datei" ] || [ -e "$FR_DIENST/umzug-454.geprueft" ] || [ -e "$FR_DIENST/umzug-454.units" ] || return 0
+  "${VF_UNITS:-$FR_BETRIEB/units.py}" pruefen > /dev/null 2>&1 || return 0
+  echo fertig > "$zustand_datei.neu" && mv "$zustand_datei.neu" "$zustand_datei"
+  rm -f "$FR_DIENST/umzug-454.units"
+  echo "Move (#454) done: this run starts from the software clone, the move is marked as done."
 }
 
 umzug_neustart() {  # Umzug fertig: den Lauf aus dem Klon fortsetzen (exec, FR_WURZEL = Klon, Python unter FR_DIENST, außer

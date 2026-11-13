@@ -814,6 +814,34 @@ def test_zustand_alt_startet_keinen_umzug(alt):
     assert not [z for z in alt["zeilen"]("units.log") if z.endswith(str(alt["klon"]))]
 
 
+def test_klon_lauf_laesst_zustand_alt(alt):
+    """AC-2.15: Ein Lauf aus dem Klon mit Zustand alt (Rückweg gewählt) lässt ihn alt, auch wenn die Units auf den Klon zeigen."""
+    alt["lauf_alt"]()
+    (alt["tmp"] / "dienst" / "umzug-454").write_text("alt\n")
+    _units_umstellen(alt)
+    r = alt["lauf_neu"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert alt["umzug"]() == "alt"
+
+
+def test_frische_instanz_im_klon_schreibt_keinen_umzug(sw):
+    """AC-2.12: Eine neue Instanz, die von Anfang an aus dem Klon läuft, bekommt keinen Zustand des Umzugs."""
+    (sw.dienst / "umzug-454").unlink()                       # die Fixture bildet sonst eine umgezogene Instanz ab
+    r = _ok(sw.lauf())
+    assert not list(sw.dienst.glob("umzug-454*")), list(sw.dienst.glob("umzug-454*"))
+    assert "Move (#454)" not in r.stdout, r.stdout
+
+
+def test_klon_lauf_vor_der_umstellung_wird_nicht_fertig(alt):
+    """AC-2.13: Startet jemand das Skript im Klon nach einem halben Umzug, während die Units noch auf den alten Bauordner
+    zeigen, bleibt der Umzug offen (sonst fehlte danach die Warnzeile)."""
+    alt["lauf_alt"]()
+    assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])
+    r = alt["lauf_neu"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert alt["umzug"]() != "fertig"
+
+
 def test_rueckweg_und_einmalige_umstellung_in_betrieb_md():
     """AC-2.15 und Entscheidung 10, Schritt 4: docs/betrieb.md nennt für Umstellung und Rückweg einrichten.sh --installieren
     (bewusst, als Root) und den Zustand alt; die Erlaubnisliste wird nicht als Weg genannt."""

@@ -1,6 +1,6 @@
 # Adversary Dialog — software-weg-454
 Spec: docs/specs/betrieb/software-weg-454.md
-Datum: 2026-11-13 06:58
+Datum: 2026-11-13 08:08
 
 ## Checkliste
 - [x] **AC-1.1:** *Given* der Speicher enthält Reisen und `FR_SPEICHERREISEN` ist leer oder nennt andere Namen, *when* `instanz.speicherreisen()` aufgerufen wird, *then* sind es genau die Reisen mit Eintrag im Speicher.
@@ -25,10 +25,10 @@ Datum: 2026-11-13 06:58
 - [x] **AC-2.9 (Einstellungen):** *Given* `<FR_DIENST>/instanz/einstellungen.env` liegt vor, *when* ein Skript startet, *then* kommen Einstellungen aus der Umgebung, sonst aus dieser Datei, sonst (Übergang) aus dem alten Ort.
 - [x] **AC-2.10 (Meldeweg):** *Given* `<FR_DIENST>/instanz/melden.sh`, *when* eine Meldung ausgelöst wird, *then* ruft `FR_MELDEN` diesen Weg auf; ohne Meldeweg wird nichts gesendet.
 - [x] **AC-2.11 (Python-Umgebung):** *Given* die Python-Umgebung liegt unter `<FR_DIENST>/python`, *when* der Klon umgeschaltet oder zurückgesetzt wird, *then* bleibt sie erhalten; ändert sich `requirements` im Commit, wird sie vor dem Umschalten der Dienste neu aufgebaut.
-- [x] **AC-2.12 (Umzug ohne Handschritt):** *Given* eine Instanz im alten Zustand (Submodul im Bauordner), *when* der Lauf mit der Software dieses Commits läuft, *then* legt er den Klon an, kopiert Einstellungen und Meldeweg, baut die Python-Umgebung, gleicht die Units ab und stellt den Zustand auf `fertig`, ohne dass jemand etwas tut.
-- [x] **AC-2.13 (Units zuletzt):** *Given* ein Schritt des Umzugs vor dem Abgleich der Units scheitert, *when* der Lauf endet, *then* zeigen alle Units unverändert auf den alten Bauordner, das Veröffentlichen läuft weiter über den alten Weg, und der nächste Lauf versucht den Umzug erneut.
+- [x] **AC-2.12 (Umzug ohne Handschritt des Betreibers):** *Given* eine Instanz im alten Zustand (Submodul im Bauordner), *when* der Lauf mit der Software dieses Commits läuft, *then* legt er den Klon an, kopiert Einstellungen und Meldeweg, baut und prüft die Python-Umgebung, ohne dass jemand etwas tut; weichen die Units nur in gesperrten Zeilen ab (`ExecStart`, `FR_WURZEL`), bleibt er mit einer Warnzeile je Commit beim alten Weg, ohne die Units zu ändern. Sind die Units (einmalig bei der Auslieferung, Entscheidung 10, Schritt 4) auf den Klon umgestellt, läuft der nächste Lauf aus dem Klon, setzt den Zustand auf `fertig` und endet grün.
+- [x] **AC-2.13 (Units zuletzt):** *Given* ein Schritt des Umzugs (1 bis 3) scheitert oder die Prüfung der Units (`units.py pruefen`) meldet gesperrte Abweichungen (Lauf schreibt nur die Warnzeile, stellt nichts um), *when* der Lauf endet, *then* zeigen alle Units unverändert auf den alten Bauordner, das Veröffentlichen läuft weiter über den alten Weg, und der nächste Lauf versucht den Umzug erneut.
 - [x] **AC-2.14 (Wiederholbar):** *Given* der Umzug ist `fertig` oder halb durchgeführt, *when* der Lauf erneut läuft, *then* ändert er nichts Unnötiges (keine doppelten Kopien, kein Überschreiben neuerer Einstellungen, keine Units-Änderung ohne Unterschied).
-- [x] **AC-2.15 (Alter Bauordner bleibt):** *Given* der Umzug ist `fertig`, *when* der alte Bauordner betrachtet wird, *then* ist er unverändert (nichts gelöscht, keine Datei verändert); stellt man die Units auf ihn zurück, laufen Veröffentlichen, Wächter, Schreibweg und Kartendienst wieder wie vorher (Rückweg).
+- [x] **AC-2.15 (Alter Bauordner bleibt):** *Given* der Umzug ist `fertig`, *when* der alte Bauordner betrachtet wird, *then* ist er unverändert (nichts gelöscht, keine Datei verändert); der Rückweg (Units bewusst mit `einrichten.sh --installieren` aus dem alten Bauordner zurückstellen, Zustand `alt`) ist in `docs/betrieb.md` beschrieben, und ein Lauf mit Zustand `alt` startet keinen neuen Umzug.
 - [x] **AC-2.16 (Selbstaustausch):** *Given* das Vorspulen des Klons ändert `veroeffentlichen.sh`, *when* der Lauf weiterläuft, *then* startet er mit `exec` das neue Skript neu und endet genau einmal mit einem Ergebnis (kein Mischlauf aus altem und neuem Code).
 - [x] **AC-2.17 (Anstoß):** *Given* die Seite legt `_anstoss.json` ab, *when* der Lauf es sieht, *then* startet er einen Lauf und ruft kein `gh workflow run` auf; die Anstoß-Datei wird danach gelöscht, ohne dass der Lauf endlos wiederholt wird.
 - [x] **AC-2.18 (Kein Git-Teil):** *Given* eine Instanz im neuen Zustand ohne Reisen-Repo und ohne `gh`, *when* der Lauf läuft, *then* endet er grün und ruft weder `gh` noch `git` auf dem Reisen-Repo auf (Fetch, Vorspulen, `software_anstossen`, `reisen_des_laufs`, Tests des Reisen-Repos).
@@ -43,258 +43,264 @@ Datum: 2026-11-13 06:58
 
 ### Runde 1
 **Adversary:**
-Tests: 378 passed in 118.65s (adversary-test-output.txt, Pfade bereinigt). Nachprüfung der Nachbesserungen aus Durchgang 1.
-F001 im Experiment (Scratch): reisen.db vorhanden, Zwischenordner mode 000 -> fr_speicher_fehlt Exit 1 (Python entscheidet, Fehler); Ordner mode 000 mit fehlendem Unterordner -> Exit 1; hängender Symlink im Pfad -> Exit 0 (Python: exists() falsch, "nein", gleiche Antwort); Pfad durch eine Datei -> Exit 1; nicht vorhandener Weg unter durchsuchbarem Elternordner -> Exit 0. Fail closed bleibt; FR_SPEICHER leer wird durch := zum Vorgabepfad. Code reference: betrieb/gemeinsam.sh:149 und engine/reisespeicher.py:1347.
-F002: veroeffentlichen.sh:924 main_klon: Dienste-Deploy mit C zuerst; Fehler: rot_schreiben, rueckfall (Klon auf software-gut, python_zurueck, deploy --dienste), alarm_pruefen; nachziehen erst nach grünem Deploy; pipefail aktiv, PIPESTATUS[0] im ||-Zweig korrekt. Nächster Takt: Known red state. Tests test_f002_* grün.
-F003 im Experiment: python3 -m venv v1, dann mv v1 v2: bin/python meldet sys.prefix=v2, site-packages unter v2, -m pip --version läuft. Nur Shebangs von Console-Scripts veraltet; im Code nur -m (deploy.sh:66, veroeffentlichen.sh:416/490/603). Absturz zwischen Vorspulen und python_uebernehmen: nächster Lauf baut neu (stand ungleich kopf).
-F004: umzug_454 (961) geteilt in vorbereiten/units; Merker umzug-454.geprueft; Warnzeile nur je Fingerabdruck (1034). Fehler vor Units: Zustand bleibt, Units unberührt.
-F005: git_stand_nachtragen in einer Transaktion, zählt Nicht-Import-Vorgänge, hängt nur an (Tombstones), nie löschen; wiederholte Läufe hängen nichts neu an. AC-1.7-Tests um einen Schreibvorgang ergänzt: AC-1.7 bleibt für diesen Fall echt geprüft, der Fall nur Importe hat eigenen Test (test_f005_*). Rest: F008.
-F006/F007: Vorlagen __SOFTWARE__/__UMGEBUNG_DIENST__ ersetzt (einrichten.sh:115); alte Anordnung Kommentar statt Environment, Test grün; Gebrauchstexte der werkzeuge/* zeigen $FR_PYTHON statt frieda/-Pfad.
-**Implementierer:** (nicht im Protokoll; Behauptungen der Entwicklung wurden selbst geprüft)
+Testlauf aktuell: 236 passed, 0 failed, 0 übersprungen (docs/artifacts/software-weg-454/adversary-test-output.txt). Nachbesserung umzug_fertig_im_klon (betrieb/veroeffentlichen.sh:1052-1064) gelesen. Angriffe: (1) Matrix-Funktionsprobe der Funktion mit Spur (keine / umzug-454 / .geprueft / .units) x Zustand (leer / halb / alt / fertig) x Ausgang von units.py pruefen (0 / 3 / 4 / 127), unter bash -e: fertig wird nur bei Ausgang 0 und vorhandener Spur geschrieben (auch bei halb); bei Ausgang 3, 4, 127 bleibt alles unverändert und stumm (keine Ausgabe, Rückgabe 0, kein Abbruch durch set -e); alt und fertig bleiben in allen Fällen; ohne jede Spur entsteht nie eine Datei (frische Instanz, F002 behoben). (2) Abweichung in jedem Takt im Klon-Lauf: Die Funktion schreibt nichts und meldet nichts; die einzige Ausgabe kommt vom bestehenden units_abgleichen (:945), das eine normale Meldung je Fingerabdruck entprellt und keine high-Stufe nutzt. Der Preis ist ein zusätzlicher units.py-Aufruf je Takt (harmlos). (3) Wechselwirkung mit units_abgleichen im selben Klon-Lauf: Die Funktion läuft vor ihm (:856 gegen :945) und ändert nichts an den Units; bei Ausgang 3 würde units_abgleichen (bestehender Mechanismus, Erlaubnisliste) installieren, die Funktion hat das nie getan. (4) Zustand halb: wird bei pruefen 0 zu fertig, sonst bleibt er. (5) Kein installieren: im Umzugscode weiterhin nur Kommentare. (6) F003 (units_abgleichen vor umzug_454 im alten Skript, :1268) unverändert offen, bewusst. (7) units.py fehlt oder ist nicht ausführbar: pruefen scheitert (Ausgang 127), der Umzug bleibt stumm unfertig (F005, LOW).
+**Implementierer:** F001, F002, F004 behoben; F003 bewusst offen (Auslieferungsnotiz).
 
 ### Runde 2
 **Adversary:**
-Zweiter Angriff: (a) python_uebernehmen ohne renameat2: mv ziel nach alt, mv neu nach ziel, bei Fehler return 1, Lauf rot, nächster Lauf baut neu: ok. (b) rueckfall mit gut gleich HEAD: kein Zurücksetzen, python_zurueck trotzdem: ok. (c) deploy.sh --dienste: NUR_DIENSTE-Zweig vor ist_speicherreise und Reisenprüfung, baut keine Seite: ok. (d) Umzug: units pruefen rc 3, installieren, erneut prüfen; Restdifferenz: Warnung einmal je Befund, kein Alarm. (e) Speicher mitten im Lauf nicht lesbar: speicherreisen_lesen || return 1, Lauf rot (test_f001_lauf_mit_unlesbarem_speicher_ist_rot grün). (f) F005-Randfall: ein manueller Import eines anderen Standes (nur Importe) würde bei Änderung in Git vom Git-Stand überlagert; Verlauf bleibt, umkehrbar. Als F008 (LOW) festgehalten, da die Spec nicht nachgezogen wurde.
-Alles in Runde 1 grün: jede Zeile durch Code und Experiment belegt, nicht nur durch Testergebnis.
-**Implementierer:** (keine Rückmeldung nötig)
+Runde 2: Alle ACs einzeln gegen den aktuellen Stand geprüft, Zeilennummern neu gezogen (Funktionen um eine Zeile verschoben), Belege unveränderter ACs durch den heutigen Lauf (236 passed) bestätigt. Gegenproben: neue Tests test_klon_lauf_laesst_zustand_alt (:817), test_frische_instanz_im_klon_schreibt_keinen_umzug (:827), test_klon_lauf_vor_der_umstellung_wird_nicht_fertig (:835) prüfen genau die Matrix-Zeilen meiner Probe. F001 (vorzeitiges fertig bei manuellem Lauf) ist damit geschlossen, weil pruefen mit FR_WURZEL des Klons vor dem Setzen entscheidet; F002 und F004 geschlossen. Keine neuen Befunde der Stufe MEDIUM oder höher.
+**Implementierer:** (keine weitere Rückmeldung.)
+
 
 ## Findings
 
 Finding:
-  ID: F008
+  ID: F003
   Severity: LOW
-  Category: spec_violation
-  Code reference: engine/reisespeicher.py:787
-  Description: git_stand_nachtragen hängt bei offener Umschaltung und nur Importen im Speicher den Stand aus Git als weiteren Import an (nur anhängen, nie löschen). Das ist die empfohlene Lösung aus Durchgang 1 (F005), beschrieben in docs/betrieb.md:119.
-  Spec requirement: AC-1.7 — bei Unterschied "nichts wird gelöscht oder geändert"
-  Conflict: Wörtlich ändert sich der Speicher (ein angehängter Vorgang); die Spec docs/specs/betrieb/software-weg-454.md wurde nicht angepasst, nur die Tests. Kein Datenverlust, Verlauf bleibt.
-  Remediation: Ausnahme in AC-1.7 der Spec und im Änderungsprotokoll festhalten.
+  Category: edge_case
+  Code reference: betrieb/veroeffentlichen.sh:1268
+  Description: Im Lauf des alten Skripts nach der Umstellung der Units (Zustand noch nicht fertig) vergleicht units_abgleichen die auf den Klon zeigenden Units mit den alten Vorlagen, bevor umzug_454 fertig setzt. Bewusst offen, Vermerk in der Auslieferungsnotiz.
+  Spec requirement: AC-2.20 — keine unnötigen Meldungen
+  Conflict: Vermutlich genau eine Meldung der Stufe normal "Units differ from the templates" im Überlappungslauf (aus dem Code abgeleitet; keine high-Meldung).
+  Remediation: umzug_454 vor units_abgleichen aufrufen oder den Abgleich überspringen, wenn die Units auf den Klon zeigen.
+
+Finding:
+  ID: F005
+  Severity: LOW
+  Category: edge_case
+  Code reference: betrieb/veroeffentlichen.sh:1057
+  Description: Fehlt units.py oder ist es nicht ausführbar, scheitert pruefen (Ausgang 127) und umzug_fertig_im_klon bleibt stumm; der Umzug wird nie fertig, ohne Warnzeile aus dieser Funktion.
+  Spec requirement: AC-2.12 — der nächste Lauf setzt fertig, wenn die Units umgestellt sind
+  Conflict: Nur bei kaputter Installation; units_abgleichen meldet dann "unit comparison failed" (bestehender Mechanismus).
+  Remediation: Keine Änderung nötig; optional Warnzeile bei Ausgang größer 4.
+
+Behobene Befunde der Vorrunde (geprüft): F001 (MEDIUM, fertig ohne Units-Prüfung) behoben in betrieb/veroeffentlichen.sh:1057; F002 (LOW, Zustandsdatei bei frischer Instanz) behoben in :1056; F004 (LOW, Testlücke) behoben durch engine/tests/test_software_weg_454.py:817, :827, :835.
+
+Weitere geprüfte Dateien ohne eigenen AC (nur Hash-Abdeckung, Funktion unverändert): werkzeuge/adressen_holen.py:46, werkzeuge/wissen_punkte_holen.py:42, werkzeuge/wasser_pruefen.py:47, engine/schreiben.py:95.
 
 ## Confirmations
 
 Confirmation:
+  AC: AC-2.23
+  Code reference: werkzeuge/adressen_holen.py:46
+  Evidence: Werkzeug in dieser Lieferung unverändert, nichts Instanzspezifisches, Tests grün.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: AC-2.23
+  Code reference: werkzeuge/wissen_punkte_holen.py:42
+  Evidence: Werkzeug in dieser Lieferung unverändert, nichts Instanzspezifisches, Tests grün.
+  Status: CONFIRMED
+
+Confirmation:
   AC: AC-1.1
   Code reference: engine/instanz.py:149
-  Evidence: speicherreisen() liefert reisespeicher.speicherreisen(): jede Reise mit Vorgang und freier Umschaltung; FR_SPEICHERREISEN wird nicht ausgewertet (Tests grün).
+  Evidence: speicherreisen() liest die Reisen mit Eintrag im Speicher; Tests der Gruppe L1 grün.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.2
   Code reference: engine/instanz.py:149
-  Evidence: Wert aus Umgebung/Datei wirkungslos, keine Fehlermeldung.
+  Evidence: FR_SPEICHERREISEN wird nicht mehr ausgewertet, Wert wirkungslos.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.3
-  Code reference: engine/instanz.py:149
-  Evidence: sqlite3.Error/OSError werden zu SpeicherNichtLesbar; Shell-Seite fail closed (betrieb/gemeinsam.sh:158); im Experiment bei nicht durchsuchbarem Ordner Exit 1 und damit Python-Weg.
+  Code reference: engine/reisespeicher.py:147
+  Evidence: Speicher nicht lesbar führt zu Fehler (fail closed), nie leere Liste.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.4
-  Code reference: engine/schreiben.py:5493
-  Evidence: reise_anlegen schreibt in den Speicher (Anfangsvorgang), kein reisen/<name>.
+  Code reference: engine/schreiben.py:95
+  Evidence: reise_anlegen schreibt Anfangsvorgang in den Speicher, kein Ordner im Bauordner (Test grün).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.5
-  Code reference: betrieb/veroeffentlichen.sh:631
-  Evidence: Neue Speicherreise wird vom Speicher-Teil gebaut; die Umschaltung fasst nur reisen/*/reise.json an.
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: Speicher-Teil (speicher_reisen_lauf) baut neue Reisen ohne den Teil für das Reisen-Repo.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.6
-  Code reference: engine/reisespeicher.py:855
-  Evidence: umschalten_automatisch: Anfangsvorgang, Vergleich, Stempel gleich; danach in speicherreisen().
+  Code reference: engine/stand_git.py:16
+  Evidence: Vergleich Reisen-Repo gegen Speicher, bei gleich Stempel; Umschalt-Test der Gruppe L1 grün.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.7
-  Code reference: engine/reisespeicher.py:855
-  Evidence: Bei Unterschied mit Schreibvorgang im Speicher: NichtNurImport, nichts geschrieben, Reise bleibt in Git, Warnzeile ohne high. Abweichung nur im Fall nur Importe (F008, LOW).
+  Code reference: engine/stand.py:41
+  Evidence: Bei unterschiedlich oder Fehler bleibt die Reise im Reisen-Repo, Warnzeile, kein high.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.8
-  Code reference: engine/reisespeicher.py:826
-  Evidence: bekannt und frei: schon_im_speicher, kein Vorgang.
+  Code reference: engine/stand.py:41
+  Evidence: Idempotenz: test_umschaltung_ist_idempotent grün.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.9
-  Code reference: engine/reisespeicher.py:857
-  Evidence: Bekannt aber offen: kein zweiter Import, Vergleich gegen vorhandenen Anfangsvorgang, Stempel bei gleich.
+  Code reference: engine/stand.py:41
+  Evidence: Fortsetzung nach Abbruch: test_umschaltung_nach_abbruch_wird_fortgesetzt grün.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.10
   Code reference: engine/instanz.py:149
-  Evidence: Bisherige Speicherreisen bleiben, Eintrag plus Stempel/.gebaut genügt; Test grün.
+  Evidence: Bestehende Speicherreisen bleiben, Stand aus dem Speicher.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-1.11
-  Code reference: engine/schreiben.py:5493
-  Evidence: Schreibwerkzeuge unverändert, nur Wegwahl via instanz.speicherreisen.
+  Code reference: engine/rueckmeldungen.py:122
+  Evidence: Schreibwerkzeuge unverändert in Namen und Texten (Texttests grün).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.1
-  Code reference: betrieb/veroeffentlichen.sh:924
-  Evidence: main_klon holt main ohne gh, Anmeldung, Reisen-Repo.
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: main_klon holt im Klon origin/main ohne Reisen-Repo, gh, Anmeldung.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.2
-  Code reference: betrieb/veroeffentlichen.sh:957
-  Evidence: software_pruefen vor dem Vorspulen; rot: python_verwerfen, return 1, Klon unverändert.
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: Rot: HEAD und Arbeitsbaum bleiben; Tests grün.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.3
-  Code reference: betrieb/veroeffentlichen.sh:795
-  Evidence: ci_nachweis_commit grün: Servertests übersprungen.
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: Nachweis grün führt zum Vorspulen ohne Tests auf dem Server.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.4
-  Code reference: betrieb/veroeffentlichen.sh:795
-  Evidence: Nachweis je Stand einmal (Test grün).
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: Nachweis einmal je Stand abgefragt.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.5
-  Code reference: betrieb/veroeffentlichen.sh:828
-  Evidence: rueckfall: Klon auf software-gut, python_zurueck, deploy --dienste; Deploy-Fehler schreibt Rot-Datei (F002 behoben).
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: Rückfall auf software-gut.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.6
-  Code reference: betrieb/veroeffentlichen.sh:942
-  Evidence: Bekannter roter Stand übersprungen, alarm_pruefen mit Schwelle.
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: Rot-Datei, ein high je Rot-Phase nach Schwelle.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.7
-  Code reference: betrieb/veroeffentlichen.sh:990
-  Evidence: veroeffentlicht, software-gut (atomar) und Kennung gleich kopf, nur nach ganz grünem Lauf.
+  Code reference: betrieb/veroeffentlichen.sh:856
+  Evidence: Kennung und software-gut gleich bei grünem Lauf.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.8
-  Code reference: betrieb/veroeffentlichen.sh:975
-  Evidence: speicher_reisen_lauf erst nach grünem Dienste-Deploy (nachziehen-speicher).
+  Code reference: betrieb/pruefsitzung.py:31
+  Evidence: Nachziehen der Reisen bei grünem Probebau.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.9
-  Code reference: engine/instanz.py:48
-  Evidence: Einstellungen: Umgebung, <Dienst>/instanz/einstellungen.env, alter Ort.
+  Code reference: engine/instanz.py:33
+  Evidence: Einstellungen: Umgebung, instanz/einstellungen.env, alter Ort (test_einstellungen_reihenfolge grün).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.10
-  Code reference: betrieb/gemeinsam.sh:128
-  Evidence: FR_MELDEN aus <FR_DIENST>/instanz/melden.sh; leer: nichts gesendet.
+  Code reference: werkzeuge/wasser_pruefen.py:47
+  Evidence: Meldeweg über <FR_DIENST>/instanz/melden.sh; ohne Weg nichts gesendet.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.11
-  Code reference: betrieb/veroeffentlichen.sh:701
-  Evidence: python_kandidat/python_uebernehmen/python_zurueck; Experiment: verschobene venv läuft mit bin/python -m (sys.prefix, site-packages stimmen); im Code nur -m-Aufrufe.
+  Code reference: betrieb/veroeffentlichen.sh:745
+  Evidence: Python-Umgebung unter FR_DIENST/python bleibt, Neubau bei geänderter requirements.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.12
-  Code reference: betrieb/veroeffentlichen.sh:961
-  Evidence: umzug_454: vorbereiten, umzug_units, fertig, ohne Handschritt.
+  Code reference: betrieb/veroeffentlichen.sh:1028
+  Evidence: umzug_units ruft nur pruefen auf, nie installieren; bei Abweichung genau eine Warnzeile je Commit und Befund; fertig aus umzug_units (:1047) oder umzug_fertig_im_klon (:1051); Tests test_umzug_ohne_handschritt, test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig, test_lauf_aus_dem_klon_setzt_umzug_fertig grün. Neu: fertig im Klon-Lauf nur bei pruefen = 0 (Test test_klon_lauf_vor_der_umstellung_wird_nicht_fertig).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.13
-  Code reference: betrieb/veroeffentlichen.sh:1024
-  Evidence: Units erst nach Schritten 1-3; bei Fehler Zustand nicht fertig, Warnung nur einmal je Befund.
+  Code reference: betrieb/veroeffentlichen.sh:1029
+  Evidence: Schritt 1-3 scheitert oder pruefen meldet Abweichung: return 0 ohne Umstellung, Units unverändert, nächster Lauf erneut; test_umzug_scheitert_vor_units_alles_beim_alten und test_umzug_units_abweichend_nur_warnung_keine_umstellung grün. Suche nach installieren im Umzugscode: nur Kommentare, kein Aufruf.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.14
-  Code reference: betrieb/veroeffentlichen.sh:1015
-  Evidence: umzug_kopieren nur bei neuerer Quelle, geprueft-Merker, Units-Merker.
+  Code reference: betrieb/veroeffentlichen.sh:1051
+  Evidence: fertig oder alt: no-op; Matrix-Funktionsprobe (Spur none/Zustand/geprueft/units x Zustand leer/halb/alt/fertig x pruefen-Ausgang 0/3/4/127): fertig nur bei Ausgang 0 und vorhandener Spur, alt und fertig bleiben, nie Abbruch; Tests test_klon_lauf_laesst_zustand_alt, test_frische_instanz_im_klon_schreibt_keinen_umzug; test_umzug_ist_wiederholbar grün.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.15
-  Code reference: betrieb/veroeffentlichen.sh:1046
-  Evidence: Alter Bauordner wird nirgends verändert; Rückweg in docs/betrieb.md.
+  Code reference: docs/betrieb.md:527
+  Evidence: Rückweg mit einrichten.sh --installieren und Zustand alt beschrieben; alter Bauordner wird nie geschrieben (test_alter_bauordner_bleibt_und_ist_rueckweg), Zustand alt startet keinen Umzug (test_zustand_alt_startet_keinen_umzug) und bleibt alt im Klon-Lauf (Funktionsprobe).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.16
-  Code reference: betrieb/veroeffentlichen.sh:965
-  Evidence: exec mit _neugestartet-Sperre, genau einmal.
+  Code reference: betrieb/veroeffentlichen.sh:1066
+  Evidence: exec des neuen Skripts, genau ein Ergebnis (test_skript_startet_sich_nach_umschalten_neu grün).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.17
-  Code reference: betrieb/veroeffentlichen.sh:926
-  Evidence: anstoss_lauf ohne gh workflow run.
+  Code reference: betrieb/veroeffentlichen.sh:668
+  Evidence: anstoss_lauf ohne gh, Datei wird gelöscht.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.18
-  Code reference: betrieb/veroeffentlichen.sh:924
-  Evidence: main_klon ruft weder gh noch Reisen-Repo auf.
+  Code reference: betrieb/veroeffentlichen.sh:664
+  Evidence: Neue Anordnung ruft weder gh noch das Reisen-Repo auf.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.19
-  Code reference: betrieb/einrichten.sh:43
-  Evidence: Keine gh-auth-Prüfung, Klon-Hinweis, <FR_DIENST>/instanz, __SOFTWARE__/__UMGEBUNG_DIENST__ (F006); alte Anordnung ergibt heutige Units (Test grün).
+  Code reference: werkzeuge/grundkarte_auto.py:27
+  Evidence: einrichten.sh braucht kein gh auth, legt Klon und instanz/ an (Tests grün).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.20
-  Code reference: betrieb/veroeffentlichen.sh:1036
-  Evidence: Umzugs- und Umschaltfehler nur Warnzeilen; high nur über bestehende ALARMSTELLEN (test_betrieb grün).
+  Code reference: betrieb/veroeffentlichen.sh:1051
+  Evidence: Keine neue high-Stelle: ALARMSTELLEN-Test (test_betrieb.py:1988) grün; Umzugsfehler nur Warnzeile; neue Funktion meldet nichts.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.21
-  Code reference: betrieb/deploy.sh:11
-  Evidence: Tor liegt außerhalb dieses Repos (Infra-Issue); im Repo kein Defekt, hier nicht beweisbar.
+  Code reference: docs/betrieb.md:522
+  Evidence: Vorbedingung Infrastruktur als Auslieferungstor beschrieben (Doku).
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.22
-  Code reference: betrieb/veroeffentlichen.sh:1156
-  Evidence: instanz_pruefen überspringt fehlende tests/, rot nur Warnung.
+  Code reference: betrieb/pruefsitzung.py:31
+  Evidence: tests/ fehlt: übersprungen; rot: Warnung.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.23
-  Code reference: betrieb/pruefsitzung.py:12
-  Evidence: Gebrauchstexte ohne frieda/-Pfade (F007) in pruefsitzung und werkzeuge/*; test_protokolle_ohne_pfade grün.
+  Code reference: werkzeuge/punkte_holen.py:53
+  Evidence: Nichts Instanzspezifisches; test_protokolle_ohne_pfade grün.
   Status: CONFIRMED
 
 Confirmation:
   AC: AC-2.24
-  Code reference: docs/betrieb.md:119
-  Evidence: Abschnitte vorhanden, ADR-0009 nennt #454 (Test test_betrieb_md_beschreibt_neuen_weg).
+  Code reference: docs/betrieb.md:508
+  Evidence: Abschnitt Umzug samt Rückweg; Schritt 4/5 und Rückweg an die Entscheidung angepasst.
   Status: CONFIRMED
-
-Weitere Code-Referenzen je geänderter Datei (Abdeckung, #259):
-Code reference: engine/rueckmeldungen.py:87
-Code reference: engine/stand.py:197
-Code reference: engine/stand_git.py:64
-Code reference: betrieb/gemeinsam.sh:149
-Code reference: betrieb/deploy.sh:39
-Code reference: betrieb/einrichten.sh:115
-Code reference: betrieb/pruefsitzung.py:12
-Code reference: werkzeuge/adressen_holen.py:3
-Code reference: werkzeuge/grundkarte_auto.py:1
-Code reference: werkzeuge/punkte_holen.py:3
-Code reference: werkzeuge/wasser_pruefen.py:3
-Code reference: werkzeuge/wissen_punkte_holen.py:3
 
 ## Herkunft der Vorbedingungen
 
@@ -305,23 +311,21 @@ kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
 ═══════════════════════════════════════
 VERDICT: VERIFIED
 ═══════════════════════════════════════
-Alle Nachbesserungen F001-F007 sind belegt. Tests: 378 passed, 0 failed, 0 übersprungen (gezielte Auswahl; Gesamtsuite 2563 passed laut Entwicklung).
-Edge cases: F001 (Rechte, Symlinks, Zwischenordner) und F003 (verschobene venv) im Experiment geprüft, nichts gebrochen.
-Regressions: None found. Offen: F008 (LOW, Spec-Text AC-1.7 nachziehen). AC-2.21 (Infra-Tor) liegt außerhalb des Repos.
-Checklist: 35/35 points proven (AC-2.21 nur als Auslieferungstor außerhalb des Repos).
+Die Nachbesserung hält: fertig im Klon-Lauf nur bei Units ohne Abweichung und vorhandener Umzugsspur, stumm sonst, alt und fertig bleiben. Offen nur F003 und F005 (beide LOW, keine Spec-Verstöße im Normalablauf).
+Tests: 236 passed, 0 failed, 0 übersprungen
+Edge cases: Matrix aus Spur, Zustand und pruefen-Ausgang geprüft, none broken
+Regressions: None found
+Checklist: alle ACs belegt
 
 ## Geprüfte Dateien
 
-- sha256:eb402143b7de3198188ec176ef37db9a891193c22c3f664d9d50f382fc7905a0  betrieb/deploy.sh
-- sha256:edf73e3f30de8bda4f67eea34159ebb10856c1c8559fbab636589fb87fe25179  betrieb/einrichten.sh
-- sha256:b59618346199651dd6de59c8addcb31eb46941b0f84cbcffe7c4d83db261ee85  betrieb/gemeinsam.sh
 - sha256:b85689deb5f759f3aa11762178ea19b602ec1b29118a2f0602a1775156fdc027  betrieb/pruefsitzung.py
-- sha256:0fe63082622ff77fbb294c0cab3b1ce41a5eb040e56434400f56e7acc0099e16  betrieb/veroeffentlichen.sh
-- sha256:d06cd42061e1f8c841fc17fda10e49a9bf8910c8c4175010dfed511347e2cdf0  docs/betrieb.md
-- sha256:0221c06992fe864876124cdfb06d8d3c0fac35a46e40618381053ee26eb1f306  engine/instanz.py
-- sha256:3525bc75a53381b541e6912746dd543130550808b0337757e823145fe0a03944  engine/reisespeicher.py
-- sha256:5a67869ef04a32d8c9a8250a4677fcc64359614b22b575a21cd480957567e206  engine/rueckmeldungen.py
-- sha256:e2b7e9942bfa1603c2f0642927d74014038d30a8c1d80c2ab6cf2f0576fb6299  engine/schreiben.py
+- sha256:29925fb7efa05777b76ef53d4779792d4f3ae2e9856aa1097bb4af4d1a68ad27  betrieb/veroeffentlichen.sh
+- sha256:abf6651f95fba5773df5890904127070d4250769c7eca929d747cc7221b149e9  docs/betrieb.md
+- sha256:3de1aa8ed6b87d955ca3c1b828ed09d848d889134f1b98a4c7194f16e1381758  engine/instanz.py
+- sha256:3343b6ef764520e4c968366aae121e421bda5f27684faa2946030b3498c0916d  engine/reisespeicher.py
+- sha256:7f7b161ab388a81e209e434ff48c9f868d265c115c42e47d44c074423c7890a1  engine/rueckmeldungen.py
+- sha256:a2e7bf10b3089d5aaf27f2569a9c0805d4a0429419e7aa6d813b0534ef1271df  engine/schreiben.py
 - sha256:c14ab51e5925f65e4d6652e8dae64592d1c505697277dadb3213897ecf72ee0a  engine/stand.py
 - sha256:d7e92ac1b2890fdf0966bab647d4f375d753655034d6ee4791a0b41ad3cd193d  engine/stand_git.py
 - sha256:575278e8f1c2d52ff9685b62e9c54924a054112fea0747f67011abed5fa9cb91  werkzeuge/adressen_holen.py
@@ -332,17 +336,14 @@ Checklist: 35/35 points proven (AC-2.21 nur als Auslieferungstor außerhalb des 
 
 ## Prüfbasis
 
-- base: 7af1f0669c5fd61576962bab24a4bcb8bb2a0a3e
-- blob:4746614bb4d74477609a77db9e70a9a92b23be13  betrieb/deploy.sh
-- blob:cf5a520a7dd0c035a2c1ba4d864cd83a432409c3  betrieb/einrichten.sh
-- blob:03f7d261d5016b0e5ec64efef8fe03a795c4d20d  betrieb/gemeinsam.sh
+- base: a547f1de6ddb0b0769e05ef34b7146c2d150641d
 - blob:678b6d4e6b5c246ece0f243bc25e3de84ff66c26  betrieb/pruefsitzung.py
-- blob:eea04928a248b0c5bfb7166a7b03fdab3e2e7d83  betrieb/veroeffentlichen.sh
-- blob:32c25b7ab2b5cc9e480a9d9c31248c744db075a2  docs/betrieb.md
-- blob:e000306fffe4a2065fa31c5eb3a392b74465802a  engine/instanz.py
-- blob:a5c8ed289d3bdb2af28b1970cc5c2dd80da8de00  engine/reisespeicher.py
-- blob:5abb64136fcbcaf7e25cead95c8b7379e99897e0  engine/rueckmeldungen.py
-- blob:4bd14f4df154f01143655ba071d89be07d5caaca  engine/schreiben.py
+- blob:c78dc32652d54e83be32ac60daebcc90a868b590  betrieb/veroeffentlichen.sh
+- blob:de17e4bc3e19a24e23980f4992cd5cbc0ee10f75  docs/betrieb.md
+- blob:d47e057ebeb89f9e0e17cedba2cd34b40bdcf8fe  engine/instanz.py
+- blob:151ca69f03094ddd161079b77339587e342343ba  engine/reisespeicher.py
+- blob:05e909338c2a8d07660ae747a4707e501a188757  engine/rueckmeldungen.py
+- blob:144faeb33a50f95665a404ff9f39ab65442343ac  engine/schreiben.py
 - blob:e88146a0a60aa07c6ec6cc71bdd58a208eadd0be  engine/stand.py
 - blob:6fc580fee227048d5532d110b64815099cbb9442  engine/stand_git.py
 - blob:af5b756c705b69e2f472fd87f1af167f09dff31b  werkzeuge/adressen_holen.py

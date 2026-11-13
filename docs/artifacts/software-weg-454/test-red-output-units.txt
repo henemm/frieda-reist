@@ -4,7 +4,7 @@ bringing up nodes...
 FFF...FFF..                                                              [100%]
 =================================== FAILURES ===================================
 ___________ test_umzug_units_abweichend_nur_warnung_keine_umstellung ___________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 alt = {'lauf': <function vf.<locals>.lauf at 0x79e3a30d3a60>, 'deploys': <function vf.<locals>.deploys at 0x79e3a30afa60>, '...f.<locals>.anzahl_pings at 0x79e3a2887060>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79e3a30af6a0>, ...}
 
@@ -23,7 +23,7 @@ E             + chend_nu0/seiten/_software
 
 engine/tests/test_software_weg_454.py:759: AssertionError
 _________________________ test_umzug_ohne_handschritt __________________________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 alt = {'lauf': <function vf.<locals>.lauf at 0x7734797e7a60>, 'deploys': <function vf.<locals>.deploys at 0x7734797bb6a0>, '...f.<locals>.anzahl_pings at 0x773479043060>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7734797bba60>, ...}
 
@@ -49,7 +49,7 @@ E         + dschritt0/seiten/_software
 
 engine/tests/test_software_weg_454.py:702: AssertionError
 __________________ test_lauf_aus_dem_klon_setzt_umzug_fertig ___________________
-[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 
 alt = {'lauf': <function vf.<locals>.lauf at 0x77637a77ba60>, 'deploys': <function vf.<locals>.deploys at 0x77637a7576a0>, '...f.<locals>.anzahl_pings at 0x77637a2cb060>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x77637a757a60>, ...}
 
@@ -71,7 +71,7 @@ E        +  where None = <function alt.<locals>.umzug at 0x77637a2caf20>()
 
 engine/tests/test_software_weg_454.py:736: AssertionError
 _________ test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig __________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 alt = {'lauf': <function vf.<locals>.lauf at 0x773478ed2ac0>, 'deploys': <function vf.<locals>.deploys at 0x773478ed27a0>, '...f.<locals>.anzahl_pings at 0x773478ed2ca0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x773478ed2d40>, ...}
 
@@ -89,7 +89,7 @@ E        +  where ['installieren /tmp/pytest-of-hem/pytest-15471/popen-gw0/test_
 
 engine/tests/test_software_weg_454.py:721: AssertionError
 _________________________ test_umzug_ist_wiederholbar __________________________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 alt = {'lauf': <function vf.<locals>.lauf at 0x79e3a2952980>, 'deploys': <function vf.<locals>.deploys at 0x79e3a2952b60>, '...f.<locals>.anzahl_pings at 0x79e3a2952ac0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x79e3a2952a20>, ...}
 
@@ -113,7 +113,7 @@ E        +  where ['installieren /tmp/pytest-of-hem/pytest-15471/popen-gw1/test_
 
 engine/tests/test_software_weg_454.py:780: AssertionError
 _____________ test_rueckweg_und_einmalige_umstellung_in_betrieb_md _____________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/linked-shimmying-bumblebee/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
     def test_rueckweg_und_einmalige_umstellung_in_betrieb_md():
         """AC-2.15 und Entscheidung 10, Schritt 4: docs/betrieb.md nennt für Umstellung und Rückweg einrichten.sh --installieren
