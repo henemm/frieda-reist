@@ -71,8 +71,11 @@ def test_orte_nutzen_die_drei_zonen(tmp_path):
     mcp = ort("location = /mcp")
     assert "zone=probe_mcp burst=40 nodelay" in mcp and "proxy_buffering off" in mcp and "proxy_read_timeout 300s" in mcp
     assert "zone=probe_anmelden burst=10 nodelay" in ort("location = /anmelden")
-    for frei in ("location = /token", "location = /register", "location ^~ /.well-known/oauth-", "location ^~ /schrift/"):
+    for frei in ("location ^~ /.well-known/oauth-", "location ^~ /schrift/"):
         assert "limit_req" not in ort(frei), frei
+    # /token und /register: großzügige Drossel der Zone _mcp (#552, AC-11; test_nginx_helfer.py::test_echte_vorlage_mit_drossel)
+    for mcp_ort in ("location = /token", "location = /register"):
+        assert "zone=probe_mcp burst=40 nodelay" in ort(mcp_ort), mcp_ort
     for konto in ("location ^~ /einladung/", "location ^~ /kalender/"):
         assert "zone=probe_konto burst=20 nodelay" in ort(konto), konto
     # keine Direktive doppelt in einem Ort: Lesefrist und Puffer stehen nur dort, wo sie gelten
@@ -564,3 +567,41 @@ def test_reise_baustein_ueber_helfer(tmp_path):
     helfer.write_text("#!/bin/sh\necho 'nginx -t failed' >&2\nexit 4\n")
     r = subprocess.run([str(BETRIEB / "freischalten.sh"), "beispielreise"], env=env, capture_output=True, text=True)
     assert r.returncode != 0 and "ERROR" in r.stdout and "Seite:" not in r.stdout, r.stdout
+
+
+# ---------- #552, Entscheidung 9: Lesen ohne sudo, Installieren mit der Gruppe der Instanz ----------
+
+def test_anwenden_installiert_mit_gruppe_der_instanz():
+    """nginx.py anwenden (mit Root-Rechten) installiert die Bausteine der Instanz mit 0640 root:<Gruppe>; eine fremde
+    conf.d-Datei behält Modus und Besitz. Ohne Root (Tests) bleibt es beim Modus."""
+    m = nginx_modul()
+    assert m.install_befehl("640", "/q/probe-konnektor.inc", "/etc/nginx/snippets", "reisegruppe", root=True) == \
+        ["install", "-m", "640", "-o", "root", "-g", "reisegruppe", "/q/probe-konnektor.inc", "/etc/nginx/snippets/"]
+    assert m.install_befehl("640", "/q/x.conf", "/etc/nginx/conf.d", "reisegruppe", root=False) == \
+        ["install", "-m", "640", "/q/x.conf", "/etc/nginx/conf.d/"]
+    assert m.install_befehl("644", "/q/limit.conf", "/etc/nginx/conf.d", None, root=True) == \
+        ["install", "-m", "644", "/q/limit.conf", "/etc/nginx/conf.d/"]
+    assert m.MODI == {"zone": "640", "orte": "640"}
+
+
+def test_befehl_nennt_die_gruppe(monkeypatch):
+    """Der Befehl aus der Meldung trägt die Gruppe des Dienstbenutzers (FR_GRUPPE, sonst die Gruppe des Aufrufers)."""
+    m = nginx_modul()
+    monkeypatch.setenv("FR_GRUPPE", "reisegruppe")
+    assert "FR_GRUPPE=reisegruppe" in m.befehl("probe", "/srv/probe/_dienst", "/etc/nginx/snippets")
+
+
+def test_pruefen_liest_ohne_sudo_und_ueberspringt_unlesbare_fremde_dateien(abgleich):
+    """pruefen liest die Bausteine der Instanz ohne sudo (lesbar über die Gruppe); eine fremde conf.d-Datei, die der
+    Dienstbenutzer nicht lesen darf, wird übersprungen statt den Abgleich scheitern zu lassen."""
+    if os.geteuid() == 0:
+        pytest.skip("als root ist jede Datei lesbar")
+    abgleich["installieren"]()
+    fremd = abgleich["confd"] / "fremd-logging.conf"
+    fremd.write_text("access_log off;\n")
+    fremd.chmod(0)
+    try:
+        r = abgleich["lauf"](FR_SUDO="false")
+        assert r.returncode == 0 and r.stdout.strip() == "", r.stdout + r.stderr
+    finally:
+        fremd.chmod(0o600)

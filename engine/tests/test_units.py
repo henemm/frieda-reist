@@ -221,6 +221,9 @@ def test_sandbox_nicht_in_erlaubnisliste(tmp_path):
     """Sandbox- und Benutzerzeilen stehen in keiner Erlaubnisliste; fehlen sie in einer installierten Unit, ist das eine
     gesperrte Abweichung (Einmalschritt einrichten.sh --installieren), die units.py pruefen meldet."""
     helfer = (BETRIEB / "vorlagen" / "units-installieren.py").read_text(encoding="utf-8")
+    # nur die Erlaubnisliste des Hilfsprogramms: Seine Prüfung „User= ist der Dienstbenutzer“ nennt "User" zu Recht
+    helfer = helfer[helfer.index("ERLAUBT = {"):]
+    helfer = helfer[:helfer.index("\n}\n")]
     for schluessel in ("ReadWritePaths", "ProtectSystem", "ProtectHome", "InaccessiblePaths", "User", "NoNewPrivileges"):
         assert not [k for k in units().ERLAUBT if schluessel in k[1]], schluessel
         assert f'"{schluessel}"' not in helfer, schluessel

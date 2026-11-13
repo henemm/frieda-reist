@@ -1688,11 +1688,27 @@ def fs(tmp_path):
     (repo / "reisen/beispielreise").mkdir(parents=True)
     (repo / "reisen/beispielreise/reise.yaml").write_text("titel: x\n")
     (repo / "engine").symlink_to(ENGINE)
+    # Den Baustein legt seit #552 nur der Reise-Helfer an: das von einrichten.sh erzeugte Hilfsprogramm, hier ohne Root mit
+    # Snippets, Sicherung und Sperre im Testordner; nginx -t und Reload gehen an die Attrappe nginx.sh
+    soll = tmp_path / "soll"
+    subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], check=True, capture_output=True,
+                   env={**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "FR_WURZEL": str(tmp_path),
+                        "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen",
+                        "FR_SEITEN": str(seiten), "FR_RM_PORT": "8871", "FR_NGINX_SNIPPETS": str(snippets), "EI_ZIEL": str(soll)})
+    helfer = ausfuehrbar(tmp_path / "reise-helfer.py", f"""#!{sys.executable}
+import importlib.machinery, importlib.util, subprocess, sys
+datei = {str(soll / "sbin" / "probe-nginx-reise-installieren")!r}
+spec = importlib.util.spec_from_file_location("helfer", datei, loader=importlib.machinery.SourceFileLoader("helfer", datei))
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+lauf = lambda *a: subprocess.run([{str(nginx)!r}, *a]).returncode == 0
+sys.exit(m.main(sys.argv, None, snippets={str(snippets)!r}, sicherung={str(tmp_path / "sicherung")!r},
+                sperre={str(tmp_path / "sperre")!r}, nginx={str(nginx)!r}, testen=lambda: lauf("-t"), neu_laden=lambda: lauf("reload")))
+""")
     env = {**SAUBER, "FR_WURZEL": str(repo), "FR_INSTANZ": "probe", "FR_SEITEN": str(seiten),
            "FR_ABLAGE": str(tmp_path / "ablage"), "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_RM_PORT": "8871",
            "FR_ADRESSE": "https://example.invalid", "FR_KN_ADRESSE": "https://example.invalid/mcp",
-           "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
-           "FS_NGINX_TEST": f"{nginx} -t", "FS_NGINX_LADEN": f"{nginx} reload", "FS_ABRUF": str(abruf),
+           "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "", "FR_NGINX_REISE_HELFER": str(helfer), "FS_ABRUF": str(abruf),
            "FS_WARTEN": "0", "FS_429_WARTEN": "0"}
 
     def lauf(*args):
@@ -1815,7 +1831,7 @@ def test_freischalten_unbekannte_reise_und_fehlende_adresse(fs):
 
 def _zustellen_umgebung(fs, monkeypatch):
     for k in ("FR_WURZEL", "FR_INSTANZ", "FR_SEITEN", "FR_KONNEKTOR", "FR_ADRESSE", "FR_KN_ADRESSE", "FR_NGINX_SNIPPETS",
-              "FR_SUDO", "FR_RM_PORT", "FS_NGINX_TEST", "FS_NGINX_LADEN", "FS_ABRUF", "FS_WARTEN"):
+              "FR_SUDO", "FR_RM_PORT", "FR_NGINX_REISE_HELFER", "FS_ABRUF", "FS_WARTEN"):
         monkeypatch.setenv(k, fs["env"][k])
     monkeypatch.setenv("RM_ABLAGE", fs["env"]["FR_ABLAGE"])
     monkeypatch.setenv("KN_SEITEN", str(fs["seiten"]))
@@ -2129,7 +2145,9 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     assert "Environment=FR_SB_PORT=8773" in einh["probe-schreiben.service"]
     assert f"ExecStart={srv}/_dienst/python/bin/python {srv}/_dienst/schreiben.py dienst" in einh["probe-schreiben.service"]
     assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-schreiben.service"]
-    assert "ProtectHome=" not in einh["probe-schreiben.service"]     # schreibt in die Arbeitskopie neben dem Repo
+    # schreibt in die Arbeitskopie neben dem Repo, das Home nur lesend (#552, test_schreiben_unit_sandbox)
+    assert "ProtectHome=read-only" in einh["probe-schreiben.service"]
+    assert f"ReadWritePaths=-{tmp_path}/repo-schreiben {tmp_path}/repo " in einh["probe-schreiben.service"]
     assert "sudo systemctl enable --now probe-rueckmeldungen probe-konnektor probe-schreiben" in r.stdout
     assert "OnCalendar=" in einh["probe-waechter.timer"] and "Persistent=true" in einh["probe-waechter.timer"]
     nginx = (aus / "nginx/probe-konnektor-orte.inc").read_text()
@@ -3063,10 +3081,12 @@ def test_einrichten_kartendienst_nur_mit_regionen(tmp_path):
     assert "StopWhenUnneeded=yes" in dienst and "2g" in dienst and "/srv/probe/kartendienst" in dienst
     assert "ExecStartPost=" in dienst and "/api/status" not in dienst
     assert "OnCalendar=" in texte_["kartendienst-aktualisieren.timer"]
-    assert "kartendienst.sh aktualisieren" in texte_["kartendienst-aktualisieren.service"]
+    # root-eigene Kopie von kartendienst.sh in /usr/local/sbin (#552, test_kartendienst.py::test_kartendienst_ohne_dienstbenutzer)
+    assert "ExecStart=/usr/local/sbin/probe-kartendienst aktualisieren" in texte_["kartendienst-aktualisieren.service"]
     r, ziel = kd_einrichten(tmp_path, **KD_REGIONEN, FR_KARTENDIENST_PORT="23456", FR_KARTENDIENST_RUHE="5min",
                             FR_KARTENDIENST_SPEICHER="3g")
-    assert re.search(r"755 .*/srv/probe/kartendienst|/srv/probe/kartendienst.*755", r.stdout), r.stdout
+    # Daten im Zustandsordner des Karte-Benutzers (755), FR_KARTENDIENST_ORDNER wird ein Verweis dorthin (#552, Entscheidung 10)
+    assert re.search(r"755 .*/var/lib/probe-kartendienst", r.stdout) and "kartendienst-umzug.sh /srv/probe/kartendienst " in r.stdout, r.stdout
     assert "enable --now probe-kartendienst.socket" in r.stdout and "kartendienst.sh einspielen" in r.stdout, r.stdout
     assert "enable --now probe-kartendienst-aktualisieren.timer" in r.stdout, r.stdout
     texte_ = {n: (ziel / "kartendienst" / f"probe-{n}").read_text(encoding="utf-8") for n in KD_EINHEITEN}
@@ -3424,6 +3444,10 @@ def test_einrichten_installieren_attrappe(tmp_path):
     subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True)
     subprocess.run(["git", "init", "-q", str(repo)], check=True)
     subprocess.run(["git", "-C", str(repo), "remote", "add", "origin", str(origin)], check=True)
+    # Software-Klon (#454): einrichten.sh prüft, dass „git fetch origin main“ ohne Rückfrage geht
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=Probe", "-c", "user.email=probe@example.invalid", "commit", "-q",
+                    "--allow-empty", "-m", "Probe"], check=True)
+    subprocess.run(["git", "-C", str(repo), "push", "-q", "origin", "HEAD:main"], check=True)
     bin_ = tmp_path / "bin"
     bin_.mkdir()
     log = tmp_path / "sudo.log"
@@ -3450,3 +3474,18 @@ def test_einrichten_installieren_attrappe(tmp_path):
     assert "probe-nginx-reise-installieren" in text
     for zeile in (z.strip() for z in text.splitlines() if "NOPASSWD" in z):
         assert NUR_HELFER.search(zeile), zeile
+
+
+def test_einrichten_bausteine_lesbar_fuer_die_gruppe(tmp_path):
+    """#552, Entscheidung 9: Die Bausteine der Instanz kommen mit 0640 root:<FR_GRUPPE>, und --installieren stellt vorhandene
+    (<instanz>-*.conf/.inc in conf.d und Snippets) einmalig so um; nginx.py pruefen liest sie danach ohne sudo."""
+    r = einrichten(tmp_path, FR_NGINX_SNIPPETS=str(tmp_path / "snippets"))
+    aus = r.stdout
+    zeilen = [z.strip() for z in aus.splitlines()]
+    assert f"sudo install -m 640 -o root -g reisen {tmp_path}/aus/nginx/probe-zone.conf /etc/nginx/conf.d/" in zeilen, aus
+    assert any(z.startswith("sudo install -m 640 -o root -g reisen ") and z.endswith(f" {tmp_path}/snippets/") for z in zeilen), aus
+    umstellen = [z for z in zeilen if z.startswith("sudo find ")]
+    assert len(umstellen) == 1, aus
+    z = umstellen[0]
+    assert f"{tmp_path}/snippets /etc/nginx/conf.d" in z and "-maxdepth 1" in z and "'probe-*.conf'" in z and "'probe-*.inc'" in z
+    assert "-exec chown root:reisen {} +" in z and "-exec chmod 640 {} +" in z

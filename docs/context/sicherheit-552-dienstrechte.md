@@ -1,7 +1,7 @@
 # Context: sicherheit-552-dienstrechte
 
 ## Request Summary
-Rest der Sicherheitsprüfung vom 12.11.2026 (#552, privat frieda-reisen#271 Punkte 2 und 6, K3-Rest): Die aus dem Netz
+Rest der Sicherheitsprüfung vom 12.11.2026 (#552, privates Issue der Instanz Punkte 2 und 6, K3-Rest): Die aus dem Netz
 erreichbaren Dienste (Konnektor, Rückmeldedienst, Push) dürfen weder über sudo noch über Docker an Root-Rechte kommen;
 dazu Härtung an nginx (`limit_req` für `/register`, `/token`), am Schreibweg (`ProtectSystem`, `ReadWritePaths`),
 Sperrdateien aus `/tmp`, Rollenprüfung über den Schreibweg statt aus dem veröffentlichten Stand. Software-Wechsel laufen
@@ -41,12 +41,12 @@ weiter automatisch (Entscheidung PO 13.11.2026). Fertig erst, wenn auch die Inst
 - Downstream: `veroeffentlichen.sh` ruft `freischalten.sh` je Reise; `units.py`/`nginx.py` beim Veröffentlichen;
   `kartendienst.sh` koordiniert sich mit dem Veröffentlichen über die Sperre in `FR_DIENST`.
 
-## Befund auf diesem Server (Instanz frieda-reisen)
-- Dienstbenutzer ist `hem` — der Admin-Benutzer des Servers mit `(ALL) NOPASSWD: ALL` und Gruppe `docker`; auch alle
-  Claude-Code-Sitzungen laufen als `hem`. Die schmalen sudo-Regeln der Doku wirken hier nicht.
+## Befund auf diesem Server (eigene Instanz)
+- Dienstbenutzer der Instanz ist der Admin-Benutzer des Servers mit `(ALL) NOPASSWD: ALL` und Gruppe `docker`; auch alle
+  Claude-Code-Sitzungen laufen unter ihm. Die schmalen sudo-Regeln der Doku wirken hier nicht.
 - Netzdienste (`konnektor`, `rueckmeldungen`, `push`) laufen mit `NoNewPrivileges=yes` → sudo ist für sie gesperrt.
   Offener Weg: `/run/docker.sock` ist erreichbar (`ProtectSystem=strict` sperrt kein Verbinden mit einem Socket).
-- `schreiben.service`: `ProtectSystem=no`, `ProtectHome=no` → kann Dateien in `/home/hem` (Shell-Profile, Skripte des
+- `schreiben.service`: `ProtectSystem=no`, `ProtectHome=no` → kann Dateien im Home-Verzeichnis (Shell-Profile, Skripte des
   Bauordners, die der Timer ohne `NoNewPrivileges` ausführt) ändern → indirekt Root.
 - `veroeffentlichen.service`, `waechter.service`, `kartendienst-aktualisieren.service` ohne Sandbox (brauchen sudo bzw. Docker).
 
@@ -55,11 +55,11 @@ weiter automatisch (Entscheidung PO 13.11.2026). Fertig erst, wenn auch die Inst
 - Specs zu Units-Abgleich (#260) unter `docs/specs/betrieb/`
 
 ## Risks & Considerations
-- Echte Trennung braucht auf diesem Server einen eigenen Dienstbenutzer statt `hem` (Besitz von `/srv/frieda-reisen`,
+- Echte Trennung braucht auf diesem Server einen eigenen Dienstbenutzer statt des Admin-Benutzers (Besitz des Instanzordners,
   Bauordner, Schreibkopie, venv, Git-Zugang zum Pushen). Großer Umzug mit Ausfallrisiko; vor dem Bauen abwägen, was die
   Netzdienste tatsächlich erreicht (Sandbox) gegenüber Benutzerwechsel.
 - Jede Änderung an Units ist für `units-installieren` eine gesperrte Abweichung → Installation je Instanz mit Root
-  (hier möglich, `hem` hat sudo) oder Erweiterung der Erlaubnisliste (Sicherheitsentscheidung).
+  (hier möglich, der Dienstbenutzer hat sudo) oder Erweiterung der Erlaubnisliste (Sicherheitsentscheidung).
 - Root-Helfer, die Code oder Umgebung aus Ordnern des Dienstbenutzers lesen (`betrieb.env`, Skripte im Repo), heben die
   Trennung wieder auf (EnvironmentFile kann `LD_PRELOAD` setzen).
 - `ProtectSystem=strict` für den Schreibweg muss alle Schreibziele kennen: Schreibkopie, `.git` des Bauordners (Worktree),
@@ -95,7 +95,7 @@ Feature (Härtung des Betriebs nach der Sicherheitsprüfung vom 12.11.2026)
 - Risk Level: MEDIUM — betrifft Freischalten neuer Reisen, Schreibweg und Kartendienst; Fehler stoppen Veröffentlichen oder Schreiben, zerstören aber keine Daten (Helfer mit Sicherung und Rückweg).
 
 ### Technical Approach
-Entscheidung (Tech Lead): **kein Umzug der ganzen Instanz auf einen neuen Benutzer** in diesem Issue (großer Umzug mit Ausfallrisiko; auf diesem Server bleibt `hem` ohnehin Admin). Stattdessen „least privilege“ je Dienst:
+Entscheidung (Tech Lead): **kein Umzug der ganzen Instanz auf einen neuen Benutzer** in diesem Issue (großer Umzug mit Ausfallrisiko; auf diesem Server bleibt der Dienstbenutzer ohnehin Admin). Stattdessen „least privilege“ je Dienst:
 1. Netzdienste abgeschottet: `NoNewPrivileges` (schon da) + `InaccessiblePaths=-/run/docker.sock` → weder sudo noch Docker. Test an den Vorlagen.
 2. Root nur über feste Helfer mit Grammatik (units, nginx-orte, neu nginx-reise); sudo-Regeln für `install/test/cat/rm`, `nginx -t`, reload entfallen.
 3. Docker nur für den Kartendienst unter eigenem Benutzer.
@@ -106,7 +106,7 @@ Entscheidung (Tech Lead): **kein Umzug der ganzen Instanz auf einen neuen Benutz
 
 Unit-Änderungen gehen **nicht** in die Erlaubnisliste `ERLAUBT` (Sandbox-Werte wie `ReadWritePaths` könnten Schreibrechte öffnen); einmalige Installation je Instanz mit `einrichten.sh --installieren` (bestehendes Muster). Auf dieser Instanz führt Claude das selbst aus.
 
-Reihenfolge: limit_req + docker.sock → Einladungsreihenfolge → nginx-reise-Helfer + freischalten.sh/nginx.py → Sperren → Schreibweg-Sandbox nach Messlauf → Kartendienst-Benutzer → Doku → Instanz umstellen (frieda-reisen#271).
+Reihenfolge: limit_req + docker.sock → Einladungsreihenfolge → nginx-reise-Helfer + freischalten.sh/nginx.py → Sperren → Schreibweg-Sandbox nach Messlauf → Kartendienst-Benutzer → Doku → Instanz umstellen (privates Issue der Instanz).
 
 ### Dependencies
 - `veroeffentlichen.service` (ohne Sandbox) ruft `freischalten.sh` je Reise; der Schreibweg startet nur das Veröffentlichen (#465).

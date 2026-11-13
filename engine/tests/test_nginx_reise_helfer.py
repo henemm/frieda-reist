@@ -255,3 +255,26 @@ def test_lesemodus(h, capsys):
     assert aus == pfad + "\n"
     assert "alias" not in aus and "location" not in aus
     assert len(h["z"]["tests"]) == tests and h["m"].pfad_lesen("beispielreise", snippets=h["kw"]["snippets"]) == pfad
+
+
+# ---------- #552, Entscheidung 9: Bausteine lesbar für die Gruppe des Dienstbenutzers ----------
+
+def test_baustein_mit_gruppe_der_instanz(tmp_path, monkeypatch):
+    """Der Reise-Helfer installiert mit 0640 root:<FR_GRUPPE>; die Gruppe ist eingebacken, kein Argument nennt sie."""
+    ziel = tmp_path / "soll"
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans",
+           "FR_GRUPPE": "reisegruppe", "FR_SEITEN": SEITEN, "FR_RM_PORT": "8781", "EI_ZIEL": str(ziel)}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    m = lade(ziel / "sbin" / "probe-nginx-reise-installieren", "nginx_reise_helfer_gruppe")
+    assert m.GRUPPE == "reisegruppe"
+    assert m.main(["helfer", "--gruppe"], b"beispielreise") == 3
+    aufrufe = []
+    monkeypatch.setattr(m.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(m.os, "fchown", lambda fd, uid, gid: aufrufe.append((uid, gid)))
+    monkeypatch.setattr(m.grp, "getgrnam", lambda n: type("G", (), {"gr_gid": 4711})() if n == "reisegruppe" else None)
+    snippets = tmp_path / "snippets"
+    snippets.mkdir()
+    m.ersetzen(b"x\n", str(snippets), str(snippets / "probe-beispielreise.conf"))
+    assert aufrufe == [(0, 4711)]
+    assert stat.S_IMODE((snippets / "probe-beispielreise.conf").stat().st_mode) == 0o640

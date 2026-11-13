@@ -54,7 +54,7 @@ NEU = BASIS + f"location ^~ /info/                 {{ {INC} }}\n"
 
 def ersetze(text, snippets="/etc/nginx/snippets"):
     return (text.replace("__INSTANZ__", "probe").replace("__SNIPPETS__", snippets).replace("__ZONE_MCP__", "probe_mcp")
-            .replace("__ZONE_ANMELDEN__", "probe_anmelden").replace("__ZONE_KONTO__", "probe_konto"))
+            .replace("__ZONE_ANMELDEN__", "probe_anmelden").replace("__ZONE_KONTO__", "probe_konto").replace("__GRUPPE__", "hans"))
 
 
 def lade(datei, name="nginx_helfer"):
@@ -338,7 +338,8 @@ def test_ac7_als_root_fremdes_eigentum_lehnt_ab(h, monkeypatch):
     abgelehnt(h, NEU)
 
 
-def test_ac7_als_root_mit_root_eigentum_setzt_root_root(h, monkeypatch):
+def test_ac7_als_root_mit_root_eigentum_setzt_root_und_gruppe(h, monkeypatch):
+    """Als root: Besitz root und die eingebackene Gruppe des Dienstbenutzers (#552, Entscheidung 9; vorher root:root)."""
     echt = os.fstat
 
     def fstat(fd):
@@ -349,8 +350,9 @@ def test_ac7_als_root_mit_root_eigentum_setzt_root_root(h, monkeypatch):
     monkeypatch.setattr(os, "fstat", fstat)
     monkeypatch.setattr(os, "fchown", lambda fd, uid, gid: gesetzt.append((uid, gid)))
     monkeypatch.setattr(os, "chown", lambda p, uid, gid, **k: gesetzt.append((uid, gid)))
+    monkeypatch.setattr(h["m"].grp, "getgrnam", lambda n: type("G", (), {"gr_gid": 4711})() if n == "hans" else None)
     assert h["lauf"](NEU) == 0
-    assert gesetzt and set(gesetzt) == {(0, 0)}
+    assert gesetzt and set(gesetzt) == {(0, 4711)}
 
 
 def test_f002_installierte_datei_groesser_als_64_kib_wird_nicht_gekuerzt_gesichert(h, capsys):
@@ -635,3 +637,27 @@ def test_echte_vorlage_mit_drossel(tmp_path):
         assert block, ort
         assert "limit_req zone=probe_mcp burst=40 nodelay;" in block.group(1), (ort, block.group(1))
         assert "limit_req_status 429;" in block.group(1), ort
+
+
+# ---------- #552, Entscheidung 9: Bausteine lesbar für die Gruppe des Dienstbenutzers ----------
+
+def test_orte_helfer_installiert_mit_gruppe_der_instanz(tmp_path, monkeypatch):
+    """Der Orte-Helfer installiert die Datei mit 0640 root:<FR_GRUPPE>; die Gruppe ist beim Einrichten eingebacken (nie aus
+    Eingabe, Argumenten oder Umgebung), damit nginx.py pruefen ohne sudo lesen kann."""
+    ziel = tmp_path / "soll"
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans",
+           "FR_GRUPPE": "reisegruppe", "EI_ZIEL": str(ziel)}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    m = lade(ziel / "sbin" / "probe-nginx-orte-installieren", "nginx_helfer_gruppe")
+    assert m.GRUPPE == "reisegruppe"
+    assert m.main(["helfer", "--gruppe"], b"") == 3
+    aufrufe = []
+    monkeypatch.setattr(m.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(m.os, "fchown", lambda fd, uid, gid: aufrufe.append((uid, gid)))
+    monkeypatch.setattr(m.grp, "getgrnam", lambda n: type("G", (), {"gr_gid": 4711})() if n == "reisegruppe" else None)
+    snippets = tmp_path / "snippets"
+    snippets.mkdir()
+    m.ersetzen(b"x\n", str(snippets), str(snippets / NAME))
+    assert aufrufe == [(0, 4711)]
+    assert oct((snippets / NAME).stat().st_mode & 0o777) == "0o640"

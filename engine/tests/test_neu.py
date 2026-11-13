@@ -530,6 +530,30 @@ def test_nachziehen_nimmt_die_entfallene_regel_anmeldung_heraus(tmp_path):
     assert y.read_text(encoding="utf-8") == text
 
 
+def test_nachziehen_speicher_nimmt_sperren_tmp_aus_der_einstellung_im_dienstordner(tmp_path, monkeypatch, capsys):
+    """#552, AC-12 im Software-Klon (#454): Dort läuft der Workflow mit „neu.py nachziehen“ nicht mehr; die Einstellung
+    liegt unter <FR_DIENST>/instanz/einstellungen.env. Der Lauf „nachziehen-speicher“ nach einem Software-Wechsel nimmt die
+    Zeile FR_SPERREN=/tmp dort heraus, ein zweiter Lauf ändert nichts."""
+    import os
+    for k in list(os.environ):
+        if k.startswith("FR_"):
+            monkeypatch.delenv(k)
+    dienst = tmp_path / "_dienst"
+    env = dienst / "instanz" / "einstellungen.env"
+    env.parent.mkdir(parents=True)
+    kopf = "# Einstellungen der Instanz (erfundene Beispielwerte)\nFR_INSTANZ=beispiel\n"
+    env.write_text(kopf + "FR_SPERREN=/tmp\nFR_SB_PORT=8773\n", encoding="utf-8")
+    monkeypatch.setenv("FR_DIENST", str(dienst))
+    monkeypatch.setenv("FR_WURZEL", str(tmp_path / "_software"))
+    monkeypatch.setattr(neu, "nachziehen_speicher", lambda reise, ordner: (0, ["nichts umzustellen"]))
+    assert neu.main(["nachziehen-speicher", "stadtwochenende", str(tmp_path / "bau")]) == 0
+    assert env.read_text(encoding="utf-8") == kopf + "FR_SB_PORT=8773\n"
+    assert "FR_SPERREN=/tmp removed" in capsys.readouterr().out
+    assert neu.main(["nachziehen-speicher", "beispielreise", str(tmp_path / "bau")]) == 0
+    assert env.read_text(encoding="utf-8") == kopf + "FR_SB_PORT=8773\n"
+    assert "FR_SPERREN" not in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
 def test_nachziehen_sperren(tmp_path, monkeypatch, reise):
     """#552, AC-12: Sperren liegen ohne Einstellung im Dienstordner (FR_DIENST). Steht in der Einstellung der Instanz

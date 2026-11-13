@@ -395,3 +395,30 @@ def test_kartendienst_ohne_dienstbenutzer(tmp_path):
     akt = einheiten["probe-kartendienst-aktualisieren.service"]
     assert re.search(r"^ExecStart=/usr/local/sbin/probe-kartendienst aktualisieren$", akt, re.M), akt
     assert "EnvironmentFile" not in akt
+
+
+
+# ---------- #552, Entscheidung 10: Daten im Zustandsordner des Karte-Benutzers ----------
+
+def test_kartendienst_daten_im_zustandsordner(tmp_path):
+    """Das Karte-Skript arbeitet in /var/lib/<instanz>-kartendienst/daten; der Zustandsordner ist für Konnektor und Docker
+    lesbar (0755); einrichten.sh legt ihn an und zieht vorhandene Daten mit kartendienst-umzug.sh um (Verweis am alten Ort)."""
+    import os
+    import subprocess
+    betrieb = Path(__file__).resolve().parents[2] / "betrieb"
+    ziel = tmp_path / "soll"
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
+           "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
+           "FR_HOME": "/home/hans", "EI_ZIEL": str(ziel), "EI_SYSTEMD": str(tmp_path / "systemd"),
+           "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+    r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    karte = (ziel / "sbin" / "probe-kartendienst").read_text(encoding="utf-8")
+    assert "\nFR_KARTENDIENST_ORDNER=/var/lib/probe-kartendienst/daten\n" in karte
+    akt = (ziel / "kartendienst" / "probe-kartendienst-aktualisieren.service").read_text(encoding="utf-8")
+    assert "StateDirectory=probe-kartendienst" in akt and "StateDirectoryMode=0755" in akt
+    aus = subprocess.run(["bash", str(betrieb / "einrichten.sh")], env=env, capture_output=True, text=True).stdout
+    assert "sudo install -d -o probe-karte -g probe-karte -m 755 /var/lib/probe-kartendienst" in aus, aus
+    assert f"sudo bash {betrieb}/kartendienst-umzug.sh /srv/probe/kartendienst /var/lib/probe-kartendienst probe-karte" in aus
+    assert not re.search(r"install -d [^\n]*/srv/probe/kartendienst", aus), aus
+    assert "must belong to probe-karte" not in aus

@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/betrieb/dienstrechte-552.md
-spec_sha256: 16fe5c8e42a774b88086d7bf0a6eff1d28b5f6b52a61eee99338524199f813d3
-spec_frozen_sha256: 81feaa3dc054a916e4c47088d4ed729798209be22f39250c3981685551fdee66
+spec_sha256: 92c7e179eefbccd07c11bd8a9a4f08cc613951ad00749adbad7eb978f282e8a5
+spec_frozen_sha256: 4533ba9f1e6d872c4447519a0177d6d4289762954148318994907382367bf8ad
 ---
 
 # PO-Briefing: sicherheit-552-dienstrechte
@@ -12,20 +12,21 @@ spec_frozen_sha256: 81feaa3dc054a916e4c47088d4ed729798209be22f39250c3981685551fd
 
 ## Was gebaut wird
 
-Ein gekaperter Internet-Dienst kommt nicht mehr an Administratorrechte, und Einladen, Erledigen und Einplanen prüfen die aktuelle Rolle.
+Aus dem Netz erreichbare Dienste bekommen engere Rechte, und Rollen werden gegen den aktuellen Stand der Reise geprüft.
 
 ## Definition of Done
 
-Alle Tests grün, die Anleitung beschreibt den neuen Weg, und die echte Instanz ist umgestellt und im privaten Ticket abgehakt.
+Die Instanz ist umgestellt, Veröffentlichen, Schreiben, neue Reise und Kartenaktualisierung laufen, und Netzdienste erreichen weder Root-Rechte noch Docker.
 
 ## Wie geprüft wird
 
-Automatische Tests belegen jedes Kriterium; die Umstellung der echten Instanz und der Schreibtest unter Sandbox lassen sich nur dort nachweisen.
+Automatische Tests belegen jedes Kriterium; nur die Umstellung der echten Server-Instanz wird manuell nachgewiesen, nicht in der automatischen Prüfung.
 
 ## Kritische Anmerkungen
 
-- Der Server-Admin bleibt Dienstbenutzer; die Härtung wirkt über die Dienst-Abschottung, nicht über Rechteregeln (bewusst, dokumentiert).
-- Fällt der Schreibdienst aus, sind Einladen, Erledigen und Einplanen kurz gesperrt (gewollt).
+- Auf diesem Server ist der Dienstbenutzer zugleich Admin; die engeren Rechte schützen dort nur eingeschränkt (dokumentiert).
+- Restrisiko Bauordner ist korrekt als Ihre Entscheidung vom 13.11. festgehalten, #555 geschlossen.
+- Fällt der Schreibweg aus, sind Einladen, Erledigen und Einplanen vorübergehend gesperrt (gewollt).
 
 ## Freigabe-Frage
 

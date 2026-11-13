@@ -914,12 +914,12 @@ tmp_path = PosixPath('<tmp>')
         dienst = tmp_path / "dienst"
         env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
                "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
-               "FR_HOME": "/home/hans", "FR_DIENST": str(dienst), "EI_ZIEL": str(ziel),
-               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+               "FR_HOME": "<home>", "FR_DIENST": str(dienst), "EI_ZIEL": str(ziel),
+               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "<srv>/kartendienst"}
         r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
         assert r.returncode == 0, r.stdout + r.stderr
         einheiten = {p.name: p.read_text(encoding="utf-8") for p in (ziel / "kartendienst").iterdir()}
-        dienstbenutzer_ordner = (str(tmp_path), "/home/hans", str(dienst))
+        dienstbenutzer_ordner = (str(tmp_path), "<home>", str(dienst))
         for name, text in einheiten.items():
 >           assert "User=hans" not in text, name
 E           AssertionError: probe-kartendienst-aktualisieren.service
@@ -929,7 +929,7 @@ E             'User=hans' is contained here:
 E               e=oneshot
 E               User=hans
 E               Group=hans
-E               Environment=PATH=/home/hans/.local/bin:/home/hans/.local/share/fnm/aliases/default/bin:/usr/local/bin:/usr/bin:/bin
+E               Environment=PATH=<home>/.local/bin:<home>/.local/share/fnm/aliases/default/bin:/usr/local/bin:/usr/bin:/bin
 E               Environment=FR_WURZEL=<tmp>
 E             
 E             ...Full output truncated (4 lines hidden), use '-vv' to show
@@ -1001,7 +1001,7 @@ tmp_path = PosixPath('<tmp>')
                 ausfuehrbar(bin_ / name, "#!/bin/sh\nexit 0\n")
         env = {**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "PATH": f"{bin_}:{SAUBER.get('PATH', '/usr/bin:/bin')}",
                "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "EI_ZIEL": str(tmp_path / "aus"),
-               "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen",
+               "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "<home>",
                "FR_PFAD": f"{bin_}:/usr/bin:/bin", "FR_PYTHON": sys.executable, "FR_NGINX_SNIPPETS": str(tmp_path / "snippets")}
         r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--installieren"], input="ja\n", env=env, capture_output=True,
                            text=True, timeout=120)

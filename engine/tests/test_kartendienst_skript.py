@@ -71,12 +71,13 @@ def kd(tmp_path):
     eltern.mkdir()
     ordner = eltern / "kartendienst"
     (tmp_path / "tmp").mkdir()
+    (tmp_path / "dienst").mkdir()      # Sperren liegen ohne Einstellung im Dienstordner (#552)
     protokoll = tmp_path / "aufrufe.log"
 
     def lauf(befehl, regionen="europe/andorra europe/monaco", umgebung=None, **fehler):
         protokoll.write_text("")
         env = {**SAUBER, "PATH": f"{bin_}:/usr/bin:/bin", "TMPDIR": str(tmp_path / "tmp"), "FR_WURZEL": str(tmp_path),
-               "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_KARTENDIENST_ORDNER": str(ordner),
+               "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_DIENST": str(tmp_path / "dienst"), "FR_KARTENDIENST_ORDNER": str(ordner),
                "FR_KARTENDIENST_REGIONEN": regionen, "KD_SPEICHER_MIN_MB": "0", "KD_PLATZ_MIN_MB": "0",
                "ATTRAPPE_PROTOKOLL": str(protokoll), **{f"ATTRAPPE_{k.upper()}_FEHLER": v for k, v in fehler.items()},
                **(umgebung or {})}
@@ -189,3 +190,77 @@ def test_aktualisieren_wartet_auf_die_sperre(kd, tmp_path):
     assert not kd["ordner"].exists() and kd["protokoll"].read_text() == ""
     r = kd["lauf"]("aktualisieren", umgebung=umgebung)     # ohne fremde Sperre: alter Stand zurück, sonst nichts zu tun
     assert r.returncode == 0 and (kd["ordner"] / "abdeckung.json").exists(), (r.stdout, r.stderr)
+
+
+# ---------- #552, Entscheidung 10: Daten im Zustandsordner des Karte-Benutzers, Umzug ohne Handschritt ----------
+UMZUG = WURZEL / "betrieb" / "kartendienst-umzug.sh"
+
+
+def _umzug(ordner, ziel):
+    import getpass
+    return subprocess.run(["bash", str(UMZUG), str(ordner), str(ziel), getpass.getuser()], env=SAUBER, capture_output=True,
+                          text=True, timeout=60)
+
+
+def _baum(p):
+    return sorted((str(x.relative_to(p)), x.read_text() if x.is_file() else None) for x in p.rglob("*"))
+
+
+def test_umzug_verschiebt_daten_und_legt_verweis_an(tmp_path):
+    """Vorhandene Daten (FR_KARTENDIENST_ORDNER als Ordner) ziehen nach <ziel>/daten um, an ihrer Stelle steht ein Verweis
+    dorthin; nichts geht verloren, ein zweiter Lauf ändert nichts."""
+    ordner, ziel = tmp_path / "instanz" / "kartendienst", tmp_path / "varlib" / "probe-kartendienst"
+    (ordner / "db").mkdir(parents=True)
+    (ordner / "abdeckung.json").write_text('{"stand": "x"}')
+    (ordner / "db" / "nodes.bin").write_text("daten")
+    vorher = _baum(ordner)
+    r = _umzug(ordner, ziel)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert ordner.is_symlink() and Path(os.readlink(ordner)) == ziel / "daten"
+    assert _baum(ziel / "daten") == vorher and _baum(ordner) == vorher       # Leser sehen über den Pfad dasselbe
+    assert oct(ziel.stat().st_mode & 0o777) == "0o755"
+    r = _umzug(ordner, ziel)
+    assert r.returncode == 0 and _baum(ziel / "daten") == vorher and ordner.is_symlink(), r.stdout + r.stderr
+
+
+def test_umzug_ohne_daten_und_nach_abbruch(tmp_path):
+    """Ohne vorhandene Daten entsteht nur der Verweis; nach einem Abbruch zwischen Kopie und Löschen (Daten schon am Ziel,
+    Rest am alten Ort) räumt ein neuer Lauf den Rest weg, die Daten am Ziel bleiben."""
+    ordner, ziel = tmp_path / "instanz" / "kartendienst", tmp_path / "varlib" / "probe-kartendienst"
+    ordner.parent.mkdir()
+    r = _umzug(ordner, ziel)
+    assert r.returncode == 0 and ordner.is_symlink() and Path(os.readlink(ordner)) == ziel / "daten", r.stdout + r.stderr
+    ordner.unlink()
+    (ordner / "db").mkdir(parents=True)
+    (ordner / "db" / "rest.bin").write_text("rest")
+    (ziel / "daten" / "db").mkdir(parents=True)
+    (ziel / "daten" / "db" / "rest.bin").write_text("rest")
+    (ziel / "daten.umzug").mkdir()
+    r = _umzug(ordner, ziel)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert ordner.is_symlink() and (ziel / "daten" / "db" / "rest.bin").read_text() == "rest"
+    assert not (ziel / "daten.umzug").exists()
+
+
+def test_umzug_fremder_verweis_aendert_nichts(tmp_path):
+    ordner, ziel = tmp_path / "instanz" / "kartendienst", tmp_path / "varlib" / "probe-kartendienst"
+    ordner.parent.mkdir()
+    (tmp_path / "anders").mkdir()
+    ordner.symlink_to(tmp_path / "anders")
+    r = _umzug(ordner, ziel)
+    assert r.returncode != 0 and "ERROR" in r.stdout + r.stderr
+    assert Path(os.readlink(ordner)) == tmp_path / "anders" and not (ziel / "daten").exists()
+
+
+def test_einspielen_schaltet_hinter_dem_verweis_um(kd, tmp_path):
+    """Ist FR_KARTENDIENST_ORDNER ein Verweis (Umzug), schaltet das Skript im Zustandsordner um, nicht im Elternordner des
+    Verweises; der Verweis bleibt, Leser sehen über ihn den neuen Stand."""
+    ziel = tmp_path / "varlib" / "probe-kartendienst"
+    ziel.mkdir(parents=True)
+    kd["ordner"].symlink_to(ziel / "daten")
+    vorher = sorted(p.name for p in kd["eltern"].iterdir())
+    r = kd["lauf"]("einspielen")
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert kd["ordner"].is_symlink() and (kd["ordner"] / "abdeckung.json").exists()
+    assert (ziel / "daten" / "abdeckung.json").exists()
+    assert sorted(p.name for p in kd["eltern"].iterdir()) == vorher       # im Elternordner des Verweises nichts Neues

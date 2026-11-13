@@ -83,9 +83,9 @@ reise = 'beispielreise'
                 monkeypatch.delenv(k)
         beispiel = Path(__file__).resolve().parents[2] / "beispiel" / "reisen" / reise
         kopf = "# Einstellungen der Instanz (erfundene Beispielwerte)\nFR_INSTANZ=beispiel\n"
-        fuss = "FR_DIENST=/srv/beispiel/_dienst\nFR_SB_PORT=8773\n"
+        fuss = "FR_DIENST=<srv>/_dienst\nFR_SB_PORT=8773\n"
         for i, (zeile, bleibt) in enumerate((("FR_SPERREN=/tmp\n", False), ('FR_SPERREN="/tmp"\n', False),
-                                             ("FR_SPERREN=/srv/beispiel/sperren\n", True))):
+                                             ("FR_SPERREN=<srv>/sperren\n", True))):
             wurzel = tmp_path / f"instanz{i}"
             r = wurzel / "reisen" / reise
             shutil.copytree(beispiel, r)
@@ -101,7 +101,7 @@ E           AssertionError: ('FR_SPERREN=/tmp
 E             ', '# Einstellungen der Instanz (erfundene Beispielwerte)
 E             FR_INSTANZ=beispiel
 E             FR_SPERREN=/tmp
-E             FR_DIENST=/srv/beispiel/_dienst
+E             FR_DIENST=<srv>/_dienst
 E             FR_SB_PORT=8773
 E             ')
 E           assert '# Einstellun...B_PORT=8773\n' == '# Einstellun...B_PORT=8773\n'
@@ -109,7 +109,7 @@ E
 E             Skipping 67 identical leading characters in diff, use -v to show
 E               ispiel
 E             + FR_SPERREN=/tmp
-E               FR_DIENST=/srv/beispiel/_dienst
+E               FR_DIENST=<srv>/_dienst
 E               FR_SB_PORT=8773
 
 engine/tests/test_neu.py:558: AssertionError
@@ -132,9 +132,9 @@ reise = 'stadtwochenende'
                 monkeypatch.delenv(k)
         beispiel = Path(__file__).resolve().parents[2] / "beispiel" / "reisen" / reise
         kopf = "# Einstellungen der Instanz (erfundene Beispielwerte)\nFR_INSTANZ=beispiel\n"
-        fuss = "FR_DIENST=/srv/beispiel/_dienst\nFR_SB_PORT=8773\n"
+        fuss = "FR_DIENST=<srv>/_dienst\nFR_SB_PORT=8773\n"
         for i, (zeile, bleibt) in enumerate((("FR_SPERREN=/tmp\n", False), ('FR_SPERREN="/tmp"\n', False),
-                                             ("FR_SPERREN=/srv/beispiel/sperren\n", True))):
+                                             ("FR_SPERREN=<srv>/sperren\n", True))):
             wurzel = tmp_path / f"instanz{i}"
             r = wurzel / "reisen" / reise
             shutil.copytree(beispiel, r)
@@ -150,7 +150,7 @@ E           AssertionError: ('FR_SPERREN=/tmp
 E             ', '# Einstellungen der Instanz (erfundene Beispielwerte)
 E             FR_INSTANZ=beispiel
 E             FR_SPERREN=/tmp
-E             FR_DIENST=/srv/beispiel/_dienst
+E             FR_DIENST=<srv>/_dienst
 E             FR_SB_PORT=8773
 E             ')
 E           assert '# Einstellun...B_PORT=8773\n' == '# Einstellun...B_PORT=8773\n'
@@ -158,7 +158,7 @@ E
 E             Skipping 67 identical leading characters in diff, use -v to show
 E               ispiel
 E             + FR_SPERREN=/tmp
-E               FR_DIENST=/srv/beispiel/_dienst
+E               FR_DIENST=<srv>/_dienst
 E               FR_SB_PORT=8773
 
 engine/tests/test_neu.py:558: AssertionError
