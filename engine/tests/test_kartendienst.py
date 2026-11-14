@@ -302,7 +302,8 @@ class Kaputt:
         self.sock.bind(("127.0.0.1", 0))
         self.sock.listen(5)
         self.adresse = f"http://127.0.0.1:{self.sock.getsockname()[1]}/api/interpreter"
-        threading.Thread(target=self.laufen, daemon=True).start()
+        self.faden = threading.Thread(target=self.laufen, daemon=True)
+        self.faden.start()
 
     def laufen(self):
         while True:
@@ -313,11 +314,21 @@ class Kaputt:
             with verbindung:
                 daten = b""
                 while b"\r\n\r\n" not in daten:      # ganze Anfrage lesen, sonst setzt der Abbau die Verbindung zurück
-                    daten += verbindung.recv(65536)
+                    teil = verbindung.recv(65536)
+                    if not teil:                    # Gegenseite hat ohne (ganze) Anfrage geschlossen (#567)
+                        break
+                    daten += teil
+                if b"\r\n\r\n" not in daten:
+                    continue
                 kopf, _, koerper = daten.partition(b"\r\n\r\n")
                 laenge = int(re.search(rb"(?i)content-length:\s*(\d+)", kopf).group(1))
                 while len(koerper) < laenge:
-                    koerper += verbindung.recv(65536)
+                    teil = verbindung.recv(65536)
+                    if not teil:
+                        break
+                    koerper += teil
+                if len(koerper) < laenge:
+                    continue
                 self.anfragen.append(time.monotonic())
                 if self.art == "statuszeile":
                     verbindung.sendall(b"KAPUTT\r\n\r\n")
@@ -326,7 +337,13 @@ class Kaputt:
                 verbindung.shutdown(socket.SHUT_WR)
 
     def schliessen(self):
+        """#567: shutdown() weckt einen Faden, der in accept() wartet (close() allein tut das unter Linux nicht)."""
+        try:
+            self.sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
         self.sock.close()
+        self.faden.join(timeout=3)
 
 
 @pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])

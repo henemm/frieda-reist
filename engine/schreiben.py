@@ -2271,9 +2271,15 @@ def overpass_eigen(abfrage, adresse, frist):
     import urllib.error
     try:
         antwort = overpass_senden(adresse, abfrage, frist, max(0.1, frist))
-    except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError, ValueError):   # auch abgebrochene Antworten
+    except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError, ValueError) as e:   # auch abgebrochene Antworten
+        # #567: der Rückfall hinterlässt eine Zeile mit Grund im Protokoll, ohne Adresse des Dienstes (Instanzdetail)
+        sys.stderr.write(f"Own map service failed ({' '.join(f'{type(e).__name__}: {e}'.split())[:LOG_LAENGE]}), "
+                         "falling back to public\n")
         return None
-    return antwort if isinstance(antwort, dict) and isinstance(antwort.get("elements"), list) else None
+    if isinstance(antwort, dict) and isinstance(antwort.get("elements"), list):
+        return antwort
+    sys.stderr.write("Own map service answered without elements, falling back to public\n")
+    return None
 
 
 def overpass_oeffentlich(abfrage, adresse, frist):
