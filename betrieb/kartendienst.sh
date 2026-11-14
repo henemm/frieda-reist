@@ -154,7 +154,7 @@ probeabfrage() {  # echte Abfrage gegen den Nebenordner in einem Probe-Container
 
 abdeckung_schreiben() {  # <datei>…: abdeckung.json im Nebenordner
   "$PY" -I - "$NEBEN/abdeckung.json" "$(pruefsumme)" "$ARBEIT/probe.json" "${@/#/$ARBEIT/}" <<'PY'
-import datetime, json, sys
+import datetime, json, os, sys
 ziel, summe, probe, *dateien = sys.argv[1:]
 rahmen = []
 for d in dateien:
@@ -166,6 +166,7 @@ with open(probe, encoding="utf-8") as f:
 jetzt = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 with open(ziel, "w", encoding="utf-8") as f:
     json.dump({"stand": jetzt, "daten": daten, "regionen_pruefsumme": summe, "rahmen": rahmen}, f)
+os.chmod(ziel, 0o644)   # der Konnektor (Dienstbenutzer) liest sie, unabhängig von der Umask des Karte-Benutzers (#552)
 PY
 }
 

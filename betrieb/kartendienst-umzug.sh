@@ -39,6 +39,9 @@ if [ -d "$ordner" ]; then
     chown -R "$benutzer:" "$daten.umzug" 2>/dev/null || chown -R "$benutzer" "$daten.umzug"
     # keine setuid/setgid-Bits für den Karte-Benutzer (Gruppe docker); chown löscht sie bei Ordnern nicht
     find "$daten.umzug" -perm /6000 ! -type l -exec chmod ug-s {} +
+    # abdeckung.json liest der Konnektor (Dienstbenutzer, nicht in der Gruppe des Karte-Benutzers); alte Dateien tragen
+    # oft 0660 aus der Umask des Dienstbenutzers
+    [ ! -f "$daten.umzug/abdeckung.json" ] || chmod 644 "$daten.umzug/abdeckung.json"
     mv "$daten.umzug" "$daten"
   fi
   rm -rf "$ordner"                            # die Daten liegen vollständig am Ziel

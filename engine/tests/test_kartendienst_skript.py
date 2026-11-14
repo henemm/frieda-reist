@@ -253,6 +253,30 @@ def test_umzug_entfernt_setuid_und_setgid(tmp_path):
         assert not p.stat().st_mode & 0o6000, (p, oct(p.stat().st_mode))
 
 
+def test_umzug_macht_abdeckung_fuer_den_konnektor_lesbar(tmp_path):
+    """Nach dem Umzug gehört abdeckung.json dem Karte-Benutzer; der Konnektor (Dienstbenutzer, andere Gruppe) liest sie weiter.
+    Eine alte Datei mit 0660 (Umask des Dienstbenutzers) wird lesbar für alle, sonst fragte der Konnektor bis zum nächsten
+    Einspielen nie den eigenen Dienst."""
+    ordner, ziel = tmp_path / "instanz" / "kartendienst", tmp_path / "varlib" / "probe-kartendienst"
+    ordner.mkdir(parents=True)
+    (ordner / "abdeckung.json").write_text('{"stand": "x"}')
+    (ordner / "abdeckung.json").chmod(0o660)
+    r = _umzug(ordner, ziel)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (ziel / "daten" / "abdeckung.json").stat().st_mode & 0o004
+
+
+def test_einspielen_schreibt_abdeckung_lesbar_fuer_alle(kd):
+    """abdeckung.json ist lesbar für den Konnektor, auch wenn das Skript mit enger Umask läuft (Karte-Benutzer, #552)."""
+    vorher = os.umask(0o007)
+    try:
+        r = kd["lauf"]("einspielen")
+    finally:
+        os.umask(vorher)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert (kd["ordner"] / "abdeckung.json").stat().st_mode & 0o004
+
+
 def test_umzug_ohne_daten_und_nach_abbruch(tmp_path):
     """Ohne vorhandene Daten entsteht nur der Verweis; nach einem Abbruch zwischen Kopie und Löschen (Daten schon am Ziel,
     Rest am alten Ort) räumt ein neuer Lauf den Rest weg, die Daten am Ziel bleiben."""
