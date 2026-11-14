@@ -1,0 +1,482 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: .
+plugins: xdist-3.8.0, repeat-0.9.4
+collecting ... collected 57 items / 47 deselected / 10 selected
+
+engine/tests/test_kartendienst.py::test_rueckfall_fehlerantwort_schreibt_protokollzeile[statuszeile] FAILED [ 10%]
+engine/tests/test_kartendienst.py::test_rueckfall_fehlerantwort_schreibt_protokollzeile[abgeschnitten] FAILED [ 20%]
+engine/tests/test_kartendienst.py::test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[500] FAILED [ 30%]
+engine/tests/test_kartendienst.py::test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[kein_json] FAILED [ 40%]
+engine/tests/test_kartendienst.py::test_rueckfall_nicht_erreichbar_schreibt_protokollzeile FAILED [ 50%]
+engine/tests/test_kartendienst.py::test_rueckfall_ohne_elements_schreibt_protokollzeile FAILED [ 60%]
+engine/tests/test_kartendienst.py::test_erfolg_schreibt_keine_protokollzeile[200] PASSED [ 70%]
+engine/tests/test_kartendienst.py::test_erfolg_schreibt_keine_protokollzeile[leer] PASSED [ 80%]
+engine/tests/test_kartendienst.py::test_kaputt_beendet_faden_nach_schliessen[wartet_in_accept] FAILED [ 90%]
+engine/tests/test_kartendienst.py::test_kaputt_beendet_faden_nach_schliessen[leere_verbindung] FAILED [100%]
+
+=================================== FAILURES ===================================
+______ test_rueckfall_fehlerantwort_schreibt_protokollzeile[statuszeile] _______
+
+dienste = <function dienste.<locals>.starten at 0x74b885588860>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74b884df5460>
+capfd = <_pytest.capture.CaptureFixture object at 0x74b884df5760>
+art = 'statuszeile'
+
+    @pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])
+    def test_rueckfall_fehlerantwort_schreibt_protokollzeile(dienste, monkeypatch, capfd, art):
+        """AC-1 (#567): Antwortet der eigene Dienst kaputt, steht genau eine Zeile mit Fehlerart auf stderr; Rückfall wie bisher."""
+        e, o = dienste()
+        k = Kaputt(art)
+        try:
+            monkeypatch.setenv("FR_KARTENDIENST", k.adresse)
+            capfd.readouterr()
+            antwort = sb.overpass_holen(ABFRAGE, 20)
+            assert antwort["dienst"] == "oeffentlich" and len(o.anfragen) == 1
+>           zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [k.adresse, e.adresse, o.adresse])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:52737/api/interpreter', 'http://127.0.0.1:42181/api/interpreter', 'http://127.0.0.1:38449/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+_____ test_rueckfall_fehlerantwort_schreibt_protokollzeile[abgeschnitten] ______
+
+dienste = <function dienste.<locals>.starten at 0x74b885589800>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74b884df3b30>
+capfd = <_pytest.capture.CaptureFixture object at 0x74b884df52e0>
+art = 'abgeschnitten'
+
+    @pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])
+    def test_rueckfall_fehlerantwort_schreibt_protokollzeile(dienste, monkeypatch, capfd, art):
+        """AC-1 (#567): Antwortet der eigene Dienst kaputt, steht genau eine Zeile mit Fehlerart auf stderr; Rückfall wie bisher."""
+        e, o = dienste()
+        k = Kaputt(art)
+        try:
+            monkeypatch.setenv("FR_KARTENDIENST", k.adresse)
+            capfd.readouterr()
+            antwort = sb.overpass_holen(ABFRAGE, 20)
+            assert antwort["dienst"] == "oeffentlich" and len(o.anfragen) == 1
+>           zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [k.adresse, e.adresse, o.adresse])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:34947/api/interpreter', 'http://127.0.0.1:45279/api/interpreter', 'http://127.0.0.1:34063/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+____ test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[500] _____
+
+dienste = <function dienste.<locals>.starten at 0x74b885589760>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74b884f6e030>
+capfd = <_pytest.capture.CaptureFixture object at 0x74b884f6dd90>, fehler = 500
+
+    @pytest.mark.parametrize("fehler", [500, "kein_json"])
+    def test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile(dienste, monkeypatch, capfd, fehler):
+        """AC-1 (#567): HTTP-Fehler und Nicht-JSON des eigenen Dienstes hinterlassen ebenfalls genau eine Zeile mit Fehlerart."""
+        e, o = dienste(eigen=[fehler])
+        capfd.readouterr()
+        assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+>       zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [e.adresse, o.adresse])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:403: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:40669/api/interpreter', 'http://127.0.0.1:42211/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+_ test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[kein_json] __
+
+dienste = <function dienste.<locals>.starten at 0x74b883105940>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74b884f6eb10>
+capfd = <_pytest.capture.CaptureFixture object at 0x74b884f6ea50>
+fehler = 'kein_json'
+
+    @pytest.mark.parametrize("fehler", [500, "kein_json"])
+    def test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile(dienste, monkeypatch, capfd, fehler):
+        """AC-1 (#567): HTTP-Fehler und Nicht-JSON des eigenen Dienstes hinterlassen ebenfalls genau eine Zeile mit Fehlerart."""
+        e, o = dienste(eigen=[fehler])
+        capfd.readouterr()
+        assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+>       zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [e.adresse, o.adresse])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:403: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:37285/api/interpreter', 'http://127.0.0.1:36669/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+___________ test_rueckfall_nicht_erreichbar_schreibt_protokollzeile ____________
+
+dienste = <function dienste.<locals>.starten at 0x74b88558bb00>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74b884f6fec0>
+capfd = <_pytest.capture.CaptureFixture object at 0x74b884f6f9b0>
+
+    def test_rueckfall_nicht_erreichbar_schreibt_protokollzeile(dienste, monkeypatch, capfd):
+        """AC-1 (#567): Ist der eigene Dienst nicht erreichbar, steht genau eine Zeile mit Fehlerart auf stderr."""
+        e, o = dienste()
+        unerreichbar = "http://127.0.0.1:9/api/interpreter"
+        monkeypatch.setenv("FR_KARTENDIENST", unerreichbar)
+        capfd.readouterr()
+        assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+>       zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [unerreichbar, o.adresse])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:415: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:9/api/interpreter', 'http://127.0.0.1:38631/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+_____________ test_rueckfall_ohne_elements_schreibt_protokollzeile _____________
+
+dienste = <function dienste.<locals>.starten at 0x74b88558bce0>
+capfd = <_pytest.capture.CaptureFixture object at 0x74b884f76270>
+
+    def test_rueckfall_ohne_elements_schreibt_protokollzeile(dienste, capfd):
+        """AC-2 (#567): Gültige Antwort ohne Liste „elements“ -> genau diese Zeile, Rückfall wie bisher."""
+        e, o = dienste(eigen=["ohne_elements"])
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == "oeffentlich" and len(e.anfragen) == 1 and len(o.anfragen) == 1
+>       assert zeilen_eigener_dienst(capfd) == ["Own map service answered without elements, falling back to public"]
+E       AssertionError: assert [] == ['Own map ser...ck to public']
+E         
+E         Right contains one more item: 'Own map service answered without elements, falling back to public'
+E         
+E         Full diff:
+E         + []
+E         - [
+E         -     'Own map service answered without elements, falling back to public',
+E         - ]
+
+engine/tests/test_kartendienst.py:425: AssertionError
+_________ test_kaputt_beendet_faden_nach_schliessen[wartet_in_accept] __________
+
+fall = 'wartet_in_accept'
+
+    @pytest.mark.parametrize("fall", ["wartet_in_accept", "leere_verbindung"])
+    def test_kaputt_beendet_faden_nach_schliessen(fall):
+        """AC-4 (#567): Nach schliessen() läuft kein Faden des Stummels Kaputt mehr: weder einer, der in accept() wartet, noch
+        einer, dessen Gegenseite ohne Anfrage schließt (recv() == b"")."""
+        k, faeden = faeden_von(lambda: Kaputt("statuszeile"))
+        assert len(faeden) == 1, faeden
+        if fall == "leere_verbindung":
+            with socket.create_connection(("127.0.0.1", int(k.adresse.split(":")[2].split("/")[0])), timeout=2):
+                pass
+        time.sleep(0.2)                                 # der Faden wartet jetzt in accept() bzw. liest die leere Verbindung
+        start = time.monotonic()
+        k.schliessen()
+        faeden[0].join(timeout=3)
+>       assert not faeden[0].is_alive(), f"Faden des Stummels läuft nach schliessen() weiter ({fall})"
+E       AssertionError: Faden des Stummels läuft nach schliessen() weiter (wartet_in_accept)
+E       assert not True
+E        +  where True = is_alive()
+E        +    where is_alive = <Thread(Thread-30 (laufen), started daemon 128335810131648)>.is_alive
+
+engine/tests/test_kartendienst.py:457: AssertionError
+_________ test_kaputt_beendet_faden_nach_schliessen[leere_verbindung] __________
+
+fall = 'leere_verbindung'
+
+    @pytest.mark.parametrize("fall", ["wartet_in_accept", "leere_verbindung"])
+    def test_kaputt_beendet_faden_nach_schliessen(fall):
+        """AC-4 (#567): Nach schliessen() läuft kein Faden des Stummels Kaputt mehr: weder einer, der in accept() wartet, noch
+        einer, dessen Gegenseite ohne Anfrage schließt (recv() == b"")."""
+        k, faeden = faeden_von(lambda: Kaputt("statuszeile"))
+        assert len(faeden) == 1, faeden
+        if fall == "leere_verbindung":
+            with socket.create_connection(("127.0.0.1", int(k.adresse.split(":")[2].split("/")[0])), timeout=2):
+                pass
+        time.sleep(0.2)                                 # der Faden wartet jetzt in accept() bzw. liest die leere Verbindung
+        start = time.monotonic()
+        k.schliessen()
+        faeden[0].join(timeout=3)
+>       assert not faeden[0].is_alive(), f"Faden des Stummels läuft nach schliessen() weiter ({fall})"
+E       AssertionError: Faden des Stummels läuft nach schliessen() weiter (leere_verbindung)
+E       assert not True
+E        +  where True = is_alive()
+E        +    where is_alive = <Thread(Thread-31 (laufen), started daemon 128335801738944)>.is_alive
+
+engine/tests/test_kartendienst.py:457: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_fehlerantwort_schreibt_protokollzeile[statuszeile]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_fehlerantwort_schreibt_protokollzeile[abgeschnitten]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[500]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[kein_json]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_nicht_erreichbar_schreibt_protokollzeile
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_ohne_elements_schreibt_protokollzeile
+FAILED engine/tests/test_kartendienst.py::test_kaputt_beendet_faden_nach_schliessen[wartet_in_accept]
+FAILED engine/tests/test_kartendienst.py::test_kaputt_beendet_faden_nach_schliessen[leere_verbindung]
+================= 8 failed, 2 passed, 47 deselected in 12.37s ==================
+...........................................FFFFFF..FF....                [100%]
+=================================== FAILURES ===================================
+______ test_rueckfall_fehlerantwort_schreibt_protokollzeile[statuszeile] _______
+
+dienste = <function dienste.<locals>.starten at 0x7b80c1a9f7e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b80c337f110>
+capfd = <_pytest.capture.CaptureFixture object at 0x7b80c2b14cb0>
+art = 'statuszeile'
+
+    @pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])
+    def test_rueckfall_fehlerantwort_schreibt_protokollzeile(dienste, monkeypatch, capfd, art):
+        """AC-1 (#567): Antwortet der eigene Dienst kaputt, steht genau eine Zeile mit Fehlerart auf stderr; Rückfall wie bisher."""
+        e, o = dienste()
+        k = Kaputt(art)
+        try:
+            monkeypatch.setenv("FR_KARTENDIENST", k.adresse)
+            capfd.readouterr()
+            antwort = sb.overpass_holen(ABFRAGE, 20)
+            assert antwort["dienst"] == "oeffentlich" and len(o.anfragen) == 1
+>           zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [k.adresse, e.adresse, o.adresse])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:50623/api/interpreter', 'http://127.0.0.1:35749/api/interpreter', 'http://127.0.0.1:34703/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+_____ test_rueckfall_fehlerantwort_schreibt_protokollzeile[abgeschnitten] ______
+
+dienste = <function dienste.<locals>.starten at 0x7b80c1a9f100>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b80c1b056a0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7b80c1b06210>
+art = 'abgeschnitten'
+
+    @pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])
+    def test_rueckfall_fehlerantwort_schreibt_protokollzeile(dienste, monkeypatch, capfd, art):
+        """AC-1 (#567): Antwortet der eigene Dienst kaputt, steht genau eine Zeile mit Fehlerart auf stderr; Rückfall wie bisher."""
+        e, o = dienste()
+        k = Kaputt(art)
+        try:
+            monkeypatch.setenv("FR_KARTENDIENST", k.adresse)
+            capfd.readouterr()
+            antwort = sb.overpass_holen(ABFRAGE, 20)
+            assert antwort["dienst"] == "oeffentlich" and len(o.anfragen) == 1
+>           zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [k.adresse, e.adresse, o.adresse])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:45805/api/interpreter', 'http://127.0.0.1:38821/api/interpreter', 'http://127.0.0.1:38895/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+____ test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[500] _____
+
+dienste = <function dienste.<locals>.starten at 0x7b80c1a9c4a0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b80c1b06ea0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7b80c1b04b00>, fehler = 500
+
+    @pytest.mark.parametrize("fehler", [500, "kein_json"])
+    def test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile(dienste, monkeypatch, capfd, fehler):
+        """AC-1 (#567): HTTP-Fehler und Nicht-JSON des eigenen Dienstes hinterlassen ebenfalls genau eine Zeile mit Fehlerart."""
+        e, o = dienste(eigen=[fehler])
+        capfd.readouterr()
+        assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+>       zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [e.adresse, o.adresse])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:403: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:41309/api/interpreter', 'http://127.0.0.1:34929/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+_ test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[kein_json] __
+
+dienste = <function dienste.<locals>.starten at 0x7b80c1a9e8e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b80c1aa32c0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7b80c1aa1fa0>
+fehler = 'kein_json'
+
+    @pytest.mark.parametrize("fehler", [500, "kein_json"])
+    def test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile(dienste, monkeypatch, capfd, fehler):
+        """AC-1 (#567): HTTP-Fehler und Nicht-JSON des eigenen Dienstes hinterlassen ebenfalls genau eine Zeile mit Fehlerart."""
+        e, o = dienste(eigen=[fehler])
+        capfd.readouterr()
+        assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+>       zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [e.adresse, o.adresse])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:403: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:46379/api/interpreter', 'http://127.0.0.1:45781/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+___________ test_rueckfall_nicht_erreichbar_schreibt_protokollzeile ____________
+
+dienste = <function dienste.<locals>.starten at 0x7b80c00ee980>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b80c1aa28d0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7b80c1aa2960>
+
+    def test_rueckfall_nicht_erreichbar_schreibt_protokollzeile(dienste, monkeypatch, capfd):
+        """AC-1 (#567): Ist der eigene Dienst nicht erreichbar, steht genau eine Zeile mit Fehlerart auf stderr."""
+        e, o = dienste()
+        unerreichbar = "http://127.0.0.1:9/api/interpreter"
+        monkeypatch.setenv("FR_KARTENDIENST", unerreichbar)
+        capfd.readouterr()
+        assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+>       zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [unerreichbar, o.adresse])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_kartendienst.py:415: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeilen = []
+adressen = ['http://127.0.0.1:9/api/interpreter', 'http://127.0.0.1:42257/api/interpreter']
+
+    def pruefe_zeile(zeilen, adressen):
+>       assert len(zeilen) == 1, zeilen
+E       AssertionError: []
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:371: AssertionError
+_____________ test_rueckfall_ohne_elements_schreibt_protokollzeile _____________
+
+dienste = <function dienste.<locals>.starten at 0x7b80c00ece00>
+capfd = <_pytest.capture.CaptureFixture object at 0x7b80c1aa23c0>
+
+    def test_rueckfall_ohne_elements_schreibt_protokollzeile(dienste, capfd):
+        """AC-2 (#567): Gültige Antwort ohne Liste „elements“ -> genau diese Zeile, Rückfall wie bisher."""
+        e, o = dienste(eigen=["ohne_elements"])
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == "oeffentlich" and len(e.anfragen) == 1 and len(o.anfragen) == 1
+>       assert zeilen_eigener_dienst(capfd) == ["Own map service answered without elements, falling back to public"]
+E       AssertionError: assert [] == ['Own map ser...ck to public']
+E         
+E         Right contains one more item: 'Own map service answered without elements, falling back to public'
+E         Use -v to get more diff
+
+engine/tests/test_kartendienst.py:425: AssertionError
+_________ test_kaputt_beendet_faden_nach_schliessen[wartet_in_accept] __________
+
+fall = 'wartet_in_accept'
+
+    @pytest.mark.parametrize("fall", ["wartet_in_accept", "leere_verbindung"])
+    def test_kaputt_beendet_faden_nach_schliessen(fall):
+        """AC-4 (#567): Nach schliessen() läuft kein Faden des Stummels Kaputt mehr: weder einer, der in accept() wartet, noch
+        einer, dessen Gegenseite ohne Anfrage schließt (recv() == b"")."""
+        k, faeden = faeden_von(lambda: Kaputt("statuszeile"))
+        assert len(faeden) == 1, faeden
+        if fall == "leere_verbindung":
+            with socket.create_connection(("127.0.0.1", int(k.adresse.split(":")[2].split("/")[0])), timeout=2):
+                pass
+        time.sleep(0.2)                                 # der Faden wartet jetzt in accept() bzw. liest die leere Verbindung
+        start = time.monotonic()
+        k.schliessen()
+        faeden[0].join(timeout=3)
+>       assert not faeden[0].is_alive(), f"Faden des Stummels läuft nach schliessen() weiter ({fall})"
+E       AssertionError: Faden des Stummels läuft nach schliessen() weiter (wartet_in_accept)
+E       assert not True
+E        +  where True = is_alive()
+E        +    where is_alive = <Thread(Thread-162 (laufen), started daemon 135792669275840)>.is_alive
+
+engine/tests/test_kartendienst.py:457: AssertionError
+_________ test_kaputt_beendet_faden_nach_schliessen[leere_verbindung] __________
+
+fall = 'leere_verbindung'
+
+    @pytest.mark.parametrize("fall", ["wartet_in_accept", "leere_verbindung"])
+    def test_kaputt_beendet_faden_nach_schliessen(fall):
+        """AC-4 (#567): Nach schliessen() läuft kein Faden des Stummels Kaputt mehr: weder einer, der in accept() wartet, noch
+        einer, dessen Gegenseite ohne Anfrage schließt (recv() == b"")."""
+        k, faeden = faeden_von(lambda: Kaputt("statuszeile"))
+        assert len(faeden) == 1, faeden
+        if fall == "leere_verbindung":
+            with socket.create_connection(("127.0.0.1", int(k.adresse.split(":")[2].split("/")[0])), timeout=2):
+                pass
+        time.sleep(0.2)                                 # der Faden wartet jetzt in accept() bzw. liest die leere Verbindung
+        start = time.monotonic()
+        k.schliessen()
+        faeden[0].join(timeout=3)
+>       assert not faeden[0].is_alive(), f"Faden des Stummels läuft nach schliessen() weiter ({fall})"
+E       AssertionError: Faden des Stummels läuft nach schliessen() weiter (leere_verbindung)
+E       assert not True
+E        +  where True = is_alive()
+E        +    where is_alive = <Thread(Thread-163 (laufen), started daemon 135792694453952)>.is_alive
+
+engine/tests/test_kartendienst.py:457: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_fehlerantwort_schreibt_protokollzeile[statuszeile]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_fehlerantwort_schreibt_protokollzeile[abgeschnitten]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[500]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile[kein_json]
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_nicht_erreichbar_schreibt_protokollzeile
+FAILED engine/tests/test_kartendienst.py::test_rueckfall_ohne_elements_schreibt_protokollzeile
+FAILED engine/tests/test_kartendienst.py::test_kaputt_beendet_faden_nach_schliessen[wartet_in_accept]
+FAILED engine/tests/test_kartendienst.py::test_kaputt_beendet_faden_nach_schliessen[leere_verbindung]
+8 failed, 49 passed in 32.52s

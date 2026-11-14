@@ -2970,7 +2970,7 @@ def test_kartenpunkte_nennt_stand_und_dienst(repo, monkeypatch):
     assert all(texte.t("de", f"schreiben.antwort.kartenpunkte.dienst.{d}") not in a["text"] for d in ("eigen", "oeffentlich"))
 
 
-def test_kartenpunkte_dienstwahl_an_beiden_beispielreisen(repo, speicherweg, overpass_stummel, monkeypatch, tmp_path):
+def test_kartenpunkte_dienstwahl_an_beiden_beispielreisen(repo, speicherweg, overpass_stummel, monkeypatch, tmp_path, capfd):
     """AC-10: Wanderung mit Strecke im erfundenen abgedeckten Rahmen -> eigener Stummel; Strecke außerhalb -> öffentlicher Stummel;
     Städtewochenende (keine Linie) -> dieselbe Ablehnung wie bisher, kein Abruf an irgendeinen Dienst."""
     wurzel, _, arbeit, _ = repo
@@ -2987,13 +2987,19 @@ def test_kartenpunkte_dienstwahl_an_beiden_beispielreisen(repo, speicherweg, ove
                                  {**tom, "args": {"strecke": "E-01", "kategorie": "wasser", "osm": ["amenity=drinking_water"]}})
     assert code == 422 and not a["ok"], a
     assert eigen.anfragen == [] and oeffentlich.anfragen == []
+    def diagnose(schritt):
+        """#567: Wird der Test rot, zeigt die Meldung beide Anfragelisten, den Text der Antwort und das eingefangene stderr
+        (dort steht seit #567 der Grund eines Rückfalls auf den öffentlichen Dienst)."""
+        return (f"{schritt}: eigen.anfragen={eigen.anfragen!r} oeffentlich.anfragen={oeffentlich.anfragen!r} "
+                f"text={a.get('text')!r} stderr={capfd.readouterr().err!r}")
+    capfd.readouterr()
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
-    assert code == 200 and a["ok"], a
-    assert len(eigen.anfragen) == 1 and oeffentlich.anfragen == []
+    assert code == 200 and a["ok"], diagnose("innerhalb")
+    assert len(eigen.anfragen) == 1 and oeffentlich.anfragen == [], diagnose("innerhalb")
     abdeckung.write_text(json.dumps({"stand": "2026-10-01T00:00:00Z", "regionen_pruefsumme": "abc", "rahmen": [[10.0, 10.0, 11.0, 11.0]]}))
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
-    assert code == 200 and a["ok"], a
-    assert len(eigen.anfragen) == 1 and len(oeffentlich.anfragen) == 1
+    assert code == 200 and a["ok"], diagnose("außerhalb")
+    assert len(eigen.anfragen) == 1 and len(oeffentlich.anfragen) == 1, diagnose("außerhalb")
 
 
 def test_arten_aus_den_vorlagen(repo):

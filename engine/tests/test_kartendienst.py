@@ -45,7 +45,8 @@ def kd():
 
 class Stummel:
     """Lokaler Overpass-Ersatz: antwortet nacheinander mit den Einträgen von `antworten`:
-    200 (Treffer mit Stand), "leer" (gültig, keine Treffer), "kein_json", ein anderer HTTP-Code oder ("haengen", s)."""
+    200 (Treffer mit Stand), "leer" (gültig, keine Treffer), "kein_json", "ohne_elements" (gültiges JSON ohne Liste
+    „elements“), ein anderer HTTP-Code oder ("haengen", s)."""
 
     def __init__(self, antworten):
         self.antworten, self.anfragen = list(antworten), []
@@ -67,6 +68,8 @@ class Stummel:
                     koerper = json.dumps({"osm3s": {"timestamp_osm_base": STAND}, "elements": []})
                 elif art == "kein_json":
                     koerper = "<html>kein json</html>"
+                elif art == "ohne_elements":
+                    koerper = json.dumps({"osm3s": {"timestamp_osm_base": STAND}, "remark": "ohne elements (erfunden)"})
                 elif art != 200:
                     code, koerper = art, "fehler"
                 try:
@@ -355,6 +358,104 @@ def test_kaputte_antwort_des_oeffentlichen_dienstes_wird_abgelehnt(dienste, monk
             assert a.value.schluessel == "schreiben.kartenpunkte.dienst"
     finally:
         k.schliessen()
+
+
+# ---------- #567: Rückfall hinterlässt eine Protokollzeile, Stummel Kaputt endet sauber ----------
+
+def zeilen_eigener_dienst(capfd):
+    """-> Zeilen auf stderr über den eigenen Kartendienst (Protokoll des Rückfalls, #567)."""
+    return [z for z in capfd.readouterr().err.splitlines() if "Own map service" in z]
+
+
+def pruefe_zeile(zeilen, adressen):
+    assert len(zeilen) == 1, zeilen
+    zeile = zeilen[0]
+    assert zeile.endswith("falling back to public"), zeile
+    assert len(zeile) <= sb.LOG_LAENGE + len("Own map service failed (), falling back to public"), zeile
+    assert "\r" not in zeile and "\t" not in zeile and "  " not in zeile, repr(zeile)
+    for adresse in adressen:
+        assert adresse not in zeile and "127.0.0.1" not in zeile, zeile
+    return zeile
+
+
+@pytest.mark.parametrize("art", ["statuszeile", "abgeschnitten"])
+def test_rueckfall_fehlerantwort_schreibt_protokollzeile(dienste, monkeypatch, capfd, art):
+    """AC-1 (#567): Antwortet der eigene Dienst kaputt, steht genau eine Zeile mit Fehlerart auf stderr; Rückfall wie bisher."""
+    e, o = dienste()
+    k = Kaputt(art)
+    try:
+        monkeypatch.setenv("FR_KARTENDIENST", k.adresse)
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == "oeffentlich" and len(o.anfragen) == 1
+        zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [k.adresse, e.adresse, o.adresse])
+        assert re.fullmatch(r"Own map service failed \(\w+: .*\), falling back to public", zeile), zeile
+    finally:
+        k.schliessen()
+
+
+@pytest.mark.parametrize("fehler", [500, "kein_json"])
+def test_rueckfall_http_fehler_und_kein_json_schreibt_protokollzeile(dienste, monkeypatch, capfd, fehler):
+    """AC-1 (#567): HTTP-Fehler und Nicht-JSON des eigenen Dienstes hinterlassen ebenfalls genau eine Zeile mit Fehlerart."""
+    e, o = dienste(eigen=[fehler])
+    capfd.readouterr()
+    assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+    zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [e.adresse, o.adresse])
+    erwartet = "HTTPError" if fehler == 500 else "JSONDecodeError"
+    assert zeile.startswith(f"Own map service failed ({erwartet}: "), zeile
+
+
+def test_rueckfall_nicht_erreichbar_schreibt_protokollzeile(dienste, monkeypatch, capfd):
+    """AC-1 (#567): Ist der eigene Dienst nicht erreichbar, steht genau eine Zeile mit Fehlerart auf stderr."""
+    e, o = dienste()
+    unerreichbar = "http://127.0.0.1:9/api/interpreter"
+    monkeypatch.setenv("FR_KARTENDIENST", unerreichbar)
+    capfd.readouterr()
+    assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "oeffentlich"
+    zeile = pruefe_zeile(zeilen_eigener_dienst(capfd), [unerreichbar, o.adresse])
+    assert re.fullmatch(r"Own map service failed \(\w+: .*\), falling back to public", zeile), zeile
+
+
+def test_rueckfall_ohne_elements_schreibt_protokollzeile(dienste, capfd):
+    """AC-2 (#567): Gültige Antwort ohne Liste „elements“ -> genau diese Zeile, Rückfall wie bisher."""
+    e, o = dienste(eigen=["ohne_elements"])
+    capfd.readouterr()
+    antwort = sb.overpass_holen(ABFRAGE, 20)
+    assert antwort["dienst"] == "oeffentlich" and len(e.anfragen) == 1 and len(o.anfragen) == 1
+    assert zeilen_eigener_dienst(capfd) == ["Own map service answered without elements, falling back to public"]
+
+
+@pytest.mark.parametrize("art", [200, "leer"])
+def test_erfolg_schreibt_keine_protokollzeile(dienste, capfd, art):
+    """AC-3 (#567): Antwortet der eigene Dienst gültig (auch ohne Treffer), entsteht keine Zeile über ihn."""
+    e, o = dienste(eigen=[art])
+    capfd.readouterr()
+    assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "eigen"
+    assert zeilen_eigener_dienst(capfd) == []
+
+
+def faeden_von(start):
+    """-> Fäden, die `start()` neu anlegt (der Stummel merkt sich seinen Faden nicht; so prüft der Test von außen)."""
+    vorher = set(threading.enumerate())
+    objekt = start()
+    return objekt, [f for f in threading.enumerate() if f not in vorher]
+
+
+@pytest.mark.parametrize("fall", ["wartet_in_accept", "leere_verbindung"])
+def test_kaputt_beendet_faden_nach_schliessen(fall):
+    """AC-4 (#567): Nach schliessen() läuft kein Faden des Stummels Kaputt mehr: weder einer, der in accept() wartet, noch
+    einer, dessen Gegenseite ohne Anfrage schließt (recv() == b"")."""
+    k, faeden = faeden_von(lambda: Kaputt("statuszeile"))
+    assert len(faeden) == 1, faeden
+    if fall == "leere_verbindung":
+        with socket.create_connection(("127.0.0.1", int(k.adresse.split(":")[2].split("/")[0])), timeout=2):
+            pass
+    time.sleep(0.2)                                 # der Faden wartet jetzt in accept() bzw. liest die leere Verbindung
+    start = time.monotonic()
+    k.schliessen()
+    faeden[0].join(timeout=3)
+    assert not faeden[0].is_alive(), f"Faden des Stummels läuft nach schliessen() weiter ({fall})"
+    assert time.monotonic() - start < 5
 
 
 def test_umkreis_geht_an_oeffentlichen_dienst(dienste):
