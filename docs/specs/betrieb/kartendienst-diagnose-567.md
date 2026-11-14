@@ -72,7 +72,7 @@ Der Test `test_kartenpunkte_dienstwahl_an_beiden_beispielreisen` war einmal rot 
 
 ## Implementation Details
 
-1. **Protokollzeile in `overpass_eigen`** (nicht in `overpass_holen`, damit jeder der beiden `None`-Fälle seine eigene Begründung trägt). Sie geht auf stderr, ist englisch und einzeilig (Leerraum zusammengezogen), der Fehlertext auf `LOG_LAENGE` gekürzt, nach dem Muster von `kartenpunkte_vorab`:
+1. **Protokollzeile in `overpass_eigen`** (nicht in `overpass_holen`, damit jeder der beiden `None`-Fälle seine eigene Begründung trägt). Sie geht auf stderr, ist englisch und einzeilig (Leerraum zusammengezogen), auf `LOG_LAENGE` gekürzt, nach dem Muster von `kartenpunkte_vorab`:
    - Ausnahme: `Own map service failed (URLError: ...), falling back to public` mit Fehlerart und Text.
    - Antwort ohne Liste `elements`: `Own map service answered without elements, falling back to public`.
    - Keine Adresse des Dienstes in der Zeile (Instanzdetail). Im Erfolgsfall keine Zeile. Rückgabewerte und Rückfallverhalten bleiben unverändert.
@@ -115,7 +115,7 @@ Vor der Umsetzung rot: Test 1 bis 3 (keine Zeile), Test 5 (Faden läuft weiter).
 
 ## Acceptance Criteria
 
-- **AC-1 (Fehler):** Given der eigene Kartendienst antwortet mit Fehler oder ist nicht erreichbar / When `overpass_holen` läuft / Then steht genau eine Protokollzeile `Own map service failed (<Fehlerart>: <Text>), falling back to public` auf stderr, einzeilig, Fehlertext auf `LOG_LAENGE` gekürzt, ohne Adresse; Rückgabe und Rückfall sind wie bisher
+- **AC-1 (Fehler):** Given der eigene Kartendienst antwortet mit Fehler oder ist nicht erreichbar / When `overpass_holen` läuft / Then steht genau eine Protokollzeile `Own map service failed (<Fehlerart>: <Text>), falling back to public` auf stderr, einzeilig, auf `LOG_LAENGE` gekürzt, ohne Adresse; Rückgabe und Rückfall sind wie bisher
   - Test: `engine/tests/test_kartendienst.py::test_rueckfall_fehlerantwort_schreibt_protokollzeile`, `::test_rueckfall_nicht_erreichbar_schreibt_protokollzeile`
 - **AC-2 (Antwort ohne elements):** Given der eigene Dienst antwortet gültig ohne Liste `elements` / When `overpass_holen` läuft / Then steht genau die Zeile `Own map service answered without elements, falling back to public`
   - Test: `engine/tests/test_kartendienst.py::test_rueckfall_ohne_elements_schreibt_protokollzeile`
@@ -135,7 +135,6 @@ Vor der Umsetzung rot: Test 1 bis 3 (keine Zeile), Test 5 (Faden läuft weiter).
 - **Die Ursache des einen roten Laufs bleibt unbelegt.** Die Änderung macht das nächste Rot erklärbar und beseitigt einen nachgewiesenen Mangel im Stummel (Faden hängt in `accept()`, Fadenzahl 3 auf 9, mögliche Wiederverwendung der Dateinummer). Sie behauptet keine Behebung.
 - Die Protokollzeile erscheint nur im Dienst-Journal; eine Überwachung des eigenen Kartendienstes ist damit nicht gegeben (Out of Scope).
 - Der Zusammenhang zwischen Stummel und rotem Lauf ist wegen des Zeitpunkts (71 % des Laufs) eher unwahrscheinlich; wird er widerlegt, zeigt die neue Zeile die tatsächliche Ursache.
-- Bei einer falsch eingestellten Adresse des eigenen Dienstes (etwa ungültiges Format) kann die Fehlermeldung der Bibliothek die Adresse selbst enthalten und damit in der Zeile stehen. Das betrifft nur Fehlkonfiguration, nicht Ausfall oder Nichterreichbarkeit; die Zeile bleibt im Dienst-Journal der eigenen Instanz.
 
 ## Abschlusskriterium für Issue #567
 
