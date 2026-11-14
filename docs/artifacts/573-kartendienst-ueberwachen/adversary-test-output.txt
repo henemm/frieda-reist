@@ -1,0 +1,86 @@
+## Frieda: engine/tests/test_kartendienst.py
+.............................................................            [100%]
+61 passed in 25.14s
+
+## Infra: tests/test_monitor_frieda_kartendienst_bereit.py
+..............                                                           [100%]
+14 passed in 0.92s
+
+## Adversary-Probe (eigene Szenarien, Auszug)
+== zwei
+ out: 'ERRORS=0\nSTATE=ok\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== drei
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50\nERRORS=0\nSTATE=fail\n'
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== drei mit elements-less
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (answered without elements, falling back to public) — journalctl -u frieda-reisen-schreiben -n 50\nERRORS=0\nSTATE=fail\n'
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (answered without elements, falling back to public) — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== quotes
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (X: "a" \'b\' $(id) `id` %s %d \\n ), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50\nERRORS=0\nSTATE=fail\n'
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (X: "a" \'b\' $(id) `id` %s %d \\n ), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== fail text enthaelt answered (
+ out: 'ERRORS=0\nSTATE=ok\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== schwelle abc
+ out: 'ERRORS=0\nSTATE=ok\ntail: invalid number of lines: ‘abc’\n/dev/fd/61: line 29: [: abc: integer expression expected\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== schwelle 0
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 0 Abfragen aus, öffentlicher Dienst trägt () — journalctl -u frieda-reisen-schreiben -n 50\nERRORS=0\nSTATE=fail\n'
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 0 Abfragen aus, öffentlicher Dienst trägt () — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== schwelle 1 erfolg
+ out: 'ERRORS=0\nSTATE=ok\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== schwelle leer
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50\nERRORS=0\nSTATE=fail\n'
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== journal rc 1 mit zeilen
+ out: 'ERRORS=0\nSTATE=ok\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== journal leer
+ out: 'ERRORS=0\nSTATE=ok\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== set -e
+ out: ''
+ meld: []
+ sys: 
+== set -eu
+ out: '/dev/fd/62: line 74: SCRIPT_DIR: unbound variable\n'
+ meld: []
+ sys: 
+== crlf/lange
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx) — journalctl -u frieda-reisen-schreiben 
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx) — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== erfolg 0
+ out: 'ERRORS=0\nSTATE=ok\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== erfolg dann 3 fall
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50\nERRORS=0\nSTATE=fail\n'
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== fremd dazwischen
+ out: ' 2026-11-14 13:03:34: ALERT: 🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50\nERRORS=0\nSTATE=fail\n'
+ meld: ['🟡 Frieda: eigener Kartendienst fiel bei den letzten 3 Abfragen aus, öffentlicher Dienst trägt (failed (HTTPError: HTTP Error 502: Bad Gateway), falling back to public) — journalctl -u frieda-reisen-schreiben -n 50']
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+#### set -u
+== set -u
+ out: '/dev/fd/62: line 5: LOG_PREFIX: unbound variable\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service
+== set -u ruhe
+ out: 'ERRORS=0\nSTATE=ok\n'
+ meld: []
+ sys: is-active --quiet frieda-reisen-kartendienst.socket | is-failed --quiet frieda-reisen-kartendienst-proxy.service | is-failed --quiet frieda-reisen-kartendienst.service

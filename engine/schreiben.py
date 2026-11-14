@@ -2278,7 +2278,10 @@ def overpass_eigen(abfrage, adresse, frist):
         sys.stderr.write(f"Own map service failed ({' '.join(f'{type(e).__name__}: {e}'.split())[:LOG_LAENGE]}), "
                          "falling back to public\n")
         return None
+    # #573: alle drei Zeilen beginnen mit „Own map service“; das Präfix ist Vertrag mit monitor.sh der Infrastruktur
+    # (Check frieda-reisen-kartendienst-bereit liest sie aus dem Journal des Schreibwegs), nicht ändern
     if isinstance(antwort, dict) and isinstance(antwort.get("elements"), list):
+        sys.stderr.write(f"Own map service answered ({len(antwort['elements'])} elements)\n")
         return antwort
     sys.stderr.write("Own map service answered without elements, falling back to public\n")
     return None

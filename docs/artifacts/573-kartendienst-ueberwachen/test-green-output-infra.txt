@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /usr/bin/python3
+rootdir: ~/henemm-infra-wt-573
+plugins: anyio-4.13.0
+collecting ... collected 20 items
+
+tests/test_monitor_frieda_kartendienst_bereit.py::test_ohne_abdeckung_still_ok PASSED [  5%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_ruhender_dienst_ist_ok PASSED [ 10%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_journal_nicht_lesbar_entscheidet_nicht PASSED [ 15%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_socket_nicht_aktiv_warnt PASSED [ 20%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_proxy_oder_container_failed_warnt PASSED [ 25%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_drei_rueckfaelle_warnen PASSED [ 30%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_einzelne_rueckfaelle_warnen_nicht PASSED [ 35%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_erfolg_nach_haeufung_ist_ok_und_entwarnt_einmal PASSED [ 40%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_jungste_drei_rueckfaelle_nach_erfolg_warnen PASSED [ 45%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_erfolg_zwischen_rueckfaellen_ist_ok PASSED [ 50%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_vorgaben_oben_in_monitor_sh PASSED [ 55%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_gesetzte_schwelle_und_fenster_gelten PASSED [ 60%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_gleiche_stoerung_meldet_einmal PASSED [ 65%]
+tests/test_monitor_frieda_kartendienst_bereit.py::test_aufruf_und_keine_probe_im_quelltext PASSED [ 70%]
+tests/test_monitor_frieda_schreiben.py::test_gesunder_dienst_ist_ok PASSED [ 75%]
+tests/test_monitor_frieda_schreiben.py::test_failed_meldet_ohne_agent PASSED [ 80%]
+tests/test_monitor_frieda_schreiben.py::test_inaktiver_dienst_meldet PASSED [ 85%]
+tests/test_monitor_frieda_schreiben.py::test_antwort_nicht_gesund_meldet PASSED [ 90%]
+tests/test_monitor_frieda_schreiben.py::test_keine_antwort_meldet PASSED [ 95%]
+tests/test_monitor_frieda_schreiben.py::test_einarbeiten_check_ist_weg PASSED [100%]
+
+============================== 20 passed in 0.87s ==============================
