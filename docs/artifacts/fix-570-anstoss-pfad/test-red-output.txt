@@ -1,0 +1,131 @@
+============================= test session starts ==============================
+platform linux -- engine/.venv/bin/python
+rootdir: .
+plugins: xdist-3.8.0, repeat-0.9.4
+collecting ... collected 7 items
+
+engine/tests/test_anstoss_pfad_570.py::test_vorgabe_alte_anordnung_mit_gitmodules FAILED [ 14%]
+engine/tests/test_anstoss_pfad_570.py::test_vorgabe_alte_anordnung_mit_ordner FAILED [ 28%]
+engine/tests/test_anstoss_pfad_570.py::test_vorgabe_neue_anordnung FAILED [ 42%]
+engine/tests/test_anstoss_pfad_570.py::test_vorrang_argument_umgebung_vorgabe FAILED [ 57%]
+engine/tests/test_anstoss_pfad_570.py::test_anstoss_neue_anordnung_startet_skript FAILED [ 71%]
+engine/tests/test_anstoss_pfad_570.py::test_fehlendes_skript_schreibt_eine_zeile FAILED [ 85%]
+engine/tests/test_anstoss_pfad_570.py::test_leerer_pfad_bleibt_still PASSED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_vorgabe_alte_anordnung_mit_gitmodules __________________
+
+tmp_path = PosixPath('<tmp>
+
+    def test_vorgabe_alte_anordnung_mit_gitmodules(tmp_path):
+        """AC-1: Wurzel mit .gitmodules -> <wurzel>/frieda/betrieb/veroeffentlichen.sh."""
+        w = wurzel_anlegen(tmp_path, "reisen")
+        (w / ".gitmodules").write_text("[submodule \"frieda\"]\n\tpath = frieda\n")
+        erwartet = w / "frieda" / "betrieb" / "veroeffentlichen.sh"
+>       assert Path(sb.veroeffentlichen_skript(w)) == erwartet
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'veroeffentlichen_skript'
+
+engine/tests/test_anstoss_pfad_570.py:48: AttributeError
+____________________ test_vorgabe_alte_anordnung_mit_ordner ____________________
+
+tmp_path = PosixPath('<tmp>
+
+    def test_vorgabe_alte_anordnung_mit_ordner(tmp_path):
+        """AC-2: Wurzel mit Ordner frieda/betrieb, ohne .gitmodules -> ebenfalls der alte Pfad."""
+        w = wurzel_anlegen(tmp_path, "reisen")
+        (w / "frieda" / "betrieb").mkdir(parents=True)
+        erwartet = w / "frieda" / "betrieb" / "veroeffentlichen.sh"
+>       assert Path(sb.veroeffentlichen_skript(w)) == erwartet
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'veroeffentlichen_skript'
+
+engine/tests/test_anstoss_pfad_570.py:57: AttributeError
+_________________________ test_vorgabe_neue_anordnung __________________________
+
+tmp_path = PosixPath('<tmp>
+
+    def test_vorgabe_neue_anordnung(tmp_path):
+        """AC-3: Software-Klon (ohne .gitmodules, ohne frieda/betrieb) -> <wurzel>/betrieb/veroeffentlichen.sh."""
+        w = wurzel_anlegen(tmp_path, "klon")
+        (w / "betrieb").mkdir()
+        erwartet = w / "betrieb" / "veroeffentlichen.sh"
+>       assert Path(sb.veroeffentlichen_skript(w)) == erwartet
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'veroeffentlichen_skript'
+
+engine/tests/test_anstoss_pfad_570.py:66: AttributeError
+____________________ test_vorrang_argument_umgebung_vorgabe ____________________
+
+tmp_path = PosixPath('<tmp>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75b2de7fde80>
+
+    def test_vorrang_argument_umgebung_vorgabe(tmp_path, monkeypatch):
+        """AC-4: Argument vor SB_VEROEFFENTLICHEN vor der Vorgabe; ein ausdrücklich leeres Argument schaltet aus."""
+        w = wurzel_anlegen(tmp_path, "klon")
+        arbeit = tmp_path / "arbeit"
+>       assert Path(sb.Schreiber(w, arbeit).veroeffentlichen) == w / "betrieb" / "veroeffentlichen.sh"
+E       AssertionError: assert PosixPath('<tmp> == ((PosixPath('<tmp> / 'betrieb') / 'veroeffentlichen.sh')
+E        +  where PosixPath('<tmp> = Path('<tmp>
+E        +    where '<tmp> = <schreiben.Schreiber object at 0x75b2de7fe5d0>.veroeffentlichen
+E        +      where <schreiben.Schreiber object at 0x75b2de7fe5d0> = <class 'schreiben.Schreiber'>(PosixPath('<tmp> PosixPath('<tmp>
+E        +        where <class 'schreiben.Schreiber'> = sb.Schreiber
+
+engine/tests/test_anstoss_pfad_570.py:75: AssertionError
+__________________ test_anstoss_neue_anordnung_startet_skript __________________
+
+tmp_path = PosixPath('<tmp>
+
+    def test_anstoss_neue_anordnung_startet_skript(tmp_path):
+        """AC-5: Im Software-Klon ohne SB_VEROEFFENTLICHEN startet der Anstoß <wurzel>/betrieb/veroeffentlichen.sh."""
+        w = wurzel_anlegen(tmp_path, "klon")
+        (w / "betrieb").mkdir()
+        marke = tmp_path / "gelaufen"
+        stummel = w / "betrieb" / "veroeffentlichen.sh"
+        stummel.write_text(f"#!/bin/sh\ntouch '{marke}'\n")
+        stummel.chmod(0o755)
+        sb.Schreiber(w, tmp_path / "arbeit").veroeffentlichen_anstossen()
+        ende = time.monotonic() + 10
+        while not marke.exists() and time.monotonic() < ende:
+            time.sleep(0.05)
+>       assert marke.exists(), "Veröffentlichen im Software-Klon nicht angestoßen"
+E       AssertionError: Veröffentlichen im Software-Klon nicht angestoßen
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('<tmp>
+
+engine/tests/test_anstoss_pfad_570.py:94: AssertionError
+__________________ test_fehlendes_skript_schreibt_eine_zeile ___________________
+
+tmp_path = PosixPath('<tmp>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75b2de7fc710>
+capsys = <_pytest.capture.CaptureFixture object at 0x75b2de7fc3e0>
+
+    def test_fehlendes_skript_schreibt_eine_zeile(tmp_path, monkeypatch, capsys):
+        """AC-6: Fehlt das Skript, genau eine Zeile auf stderr, kein Start, keine Ausnahme."""
+        gerufen = kein_start(monkeypatch)
+        fehlt = tmp_path / "gibt-es-nicht.sh"
+        s = sb.Schreiber(wurzel_anlegen(tmp_path, "klon"), tmp_path / "arbeit", str(fehlt))
+        s.veroeffentlichen_anstossen()
+        zeilen = capsys.readouterr().err.splitlines()
+>       assert zeilen == [f"Publishing not started ({fehlt}): script missing"]
+E       AssertionError: assert [] == ['Publishing ...ript missing']
+E         
+E         Right contains one more item: 'Publishing not started (<tmp> script missing'
+E         
+E         Full diff:
+E         + []
+E         - [
+E         -     'Publishing not started '...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+engine/tests/test_anstoss_pfad_570.py:104: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_anstoss_pfad_570.py::test_vorgabe_alte_anordnung_mit_gitmodules
+FAILED engine/tests/test_anstoss_pfad_570.py::test_vorgabe_alte_anordnung_mit_ordner
+FAILED engine/tests/test_anstoss_pfad_570.py::test_vorgabe_neue_anordnung - A...
+FAILED engine/tests/test_anstoss_pfad_570.py::test_vorrang_argument_umgebung_vorgabe
+FAILED engine/tests/test_anstoss_pfad_570.py::test_anstoss_neue_anordnung_startet_skript
+FAILED engine/tests/test_anstoss_pfad_570.py::test_fehlendes_skript_schreibt_eine_zeile
+========================= 6 failed, 1 passed in 10.32s =========================
