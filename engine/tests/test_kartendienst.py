@@ -442,13 +442,40 @@ def test_rueckfall_ohne_elements_schreibt_protokollzeile(dienste, capfd):
     assert zeilen_eigener_dienst(capfd) == ["Own map service answered without elements, falling back to public"]
 
 
-@pytest.mark.parametrize("art", [200, "leer"])
-def test_erfolg_schreibt_keine_protokollzeile(dienste, capfd, art):
-    """AC-3 (#567): Antwortet der eigene Dienst gültig (auch ohne Treffer), entsteht keine Zeile über ihn."""
+# ---------- #573: Erfolg hinterlässt eine Zeile, Präfix ist der Vertrag mit monitor.sh ----------
+
+VERTRAGSPRAEFIX = "Own map service"   # monitor.sh der Infrastruktur (check_frieda_kartendienst_bereit) liest genau dieses Präfix
+
+
+@pytest.mark.parametrize("art, anzahl", [(200, 1), ("leer", 0)])
+def test_erfolg_schreibt_erfolgszeile(dienste, capfd, art, anzahl):
+    """AC-1 (#573, ersetzt AC-3 aus #567): Antwortet der eigene Dienst gültig (auch ohne Treffer), steht genau die Zeile
+    „Own map service answered (<n> elements)“ auf stderr, einzeilig und ohne Adresse; Rückgabe wie bisher."""
     e, o = dienste(eigen=[art])
     capfd.readouterr()
-    assert sb.overpass_holen(ABFRAGE, 20)["dienst"] == "eigen"
-    assert zeilen_eigener_dienst(capfd) == []
+    antwort = sb.overpass_holen(ABFRAGE, 20)
+    assert antwort["dienst"] == "eigen" and len(antwort["elements"]) == anzahl
+    assert len(e.anfragen) == 1 and o.anfragen == []
+    zeilen = zeilen_eigener_dienst(capfd)
+    assert zeilen == [f"Own map service answered ({anzahl} elements)"], zeilen
+    assert e.adresse not in zeilen[0] and "127.0.0.1" not in zeilen[0]
+
+
+@pytest.mark.parametrize("weg", ["fehler", "ohne_elements", "erfolg"])
+def test_protokollzeilen_beginnen_mit_vertragspraefix(dienste, capfd, weg):
+    """AC-2 (#573): Jeder der drei Wege hinterlässt genau eine Zeile über den eigenen Dienst, und sie beginnt mit dem
+    Vertragspräfix; Rückgabe und Rückfall wie bisher. Ein Kommentar an overpass_eigen benennt das Präfix als Vertrag."""
+    eigen = {"fehler": [500], "ohne_elements": ["ohne_elements"], "erfolg": [200]}[weg]
+    e, o = dienste(eigen=eigen)
+    capfd.readouterr()
+    antwort = sb.overpass_holen(ABFRAGE, 20)
+    assert antwort["dienst"] == ("eigen" if weg == "erfolg" else "oeffentlich")
+    assert len(o.anfragen) == (0 if weg == "erfolg" else 1)
+    zeilen = [z for z in capfd.readouterr().err.splitlines() if "map service" in z.lower()]
+    assert len(zeilen) == 1 and zeilen[0].startswith(VERTRAGSPRAEFIX), zeilen
+    import inspect
+    quelle = inspect.getsource(sb.overpass_eigen)
+    assert "monitor.sh" in quelle and VERTRAGSPRAEFIX in quelle, "Kommentar zum Vertrag mit monitor.sh fehlt"
 
 
 def faeden_von(start):

@@ -1,0 +1,130 @@
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+___________________ test_erfolg_schreibt_erfolgszeile[200-1] ___________________
+
+dienste = <function dienste.<locals>.starten at 0x7d0e71ba4040>
+capfd = <_pytest.capture.CaptureFixture object at 0x7d0e725901a0>, art = 200
+anzahl = 1
+
+    @pytest.mark.parametrize("art, anzahl", [(200, 1), ("leer", 0)])
+    def test_erfolg_schreibt_erfolgszeile(dienste, capfd, art, anzahl):
+        """AC-1 (#573, ersetzt AC-3 aus #567): Antwortet der eigene Dienst gültig (auch ohne Treffer), steht genau die Zeile
+        „Own map service answered (<n> elements)“ auf stderr, einzeilig und ohne Adresse; Rückgabe wie bisher."""
+        e, o = dienste(eigen=[art])
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == "eigen" and len(antwort["elements"]) == anzahl
+        assert len(e.anfragen) == 1 and o.anfragen == []
+        zeilen = zeilen_eigener_dienst(capfd)
+>       assert zeilen == [f"Own map service answered ({anzahl} elements)"], zeilen
+E       AssertionError: []
+E       assert [] == ['Own map ser...(1 elements)']
+E         
+E         Right contains one more item: 'Own map service answered (1 elements)'
+E         Use -v to get more diff
+
+engine/tests/test_kartendienst.py:460: AssertionError
+__________________ test_erfolg_schreibt_erfolgszeile[leer-0] ___________________
+
+dienste = <function dienste.<locals>.starten at 0x7d0e71ba42c0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7d0e725b7a70>, art = 'leer'
+anzahl = 0
+
+    @pytest.mark.parametrize("art, anzahl", [(200, 1), ("leer", 0)])
+    def test_erfolg_schreibt_erfolgszeile(dienste, capfd, art, anzahl):
+        """AC-1 (#573, ersetzt AC-3 aus #567): Antwortet der eigene Dienst gültig (auch ohne Treffer), steht genau die Zeile
+        „Own map service answered (<n> elements)“ auf stderr, einzeilig und ohne Adresse; Rückgabe wie bisher."""
+        e, o = dienste(eigen=[art])
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == "eigen" and len(antwort["elements"]) == anzahl
+        assert len(e.anfragen) == 1 and o.anfragen == []
+        zeilen = zeilen_eigener_dienst(capfd)
+>       assert zeilen == [f"Own map service answered ({anzahl} elements)"], zeilen
+E       AssertionError: []
+E       assert [] == ['Own map ser...(0 elements)']
+E         
+E         Right contains one more item: 'Own map service answered (0 elements)'
+E         Use -v to get more diff
+
+engine/tests/test_kartendienst.py:460: AssertionError
+__________ test_protokollzeilen_beginnen_mit_vertragspraefix[fehler] ___________
+
+dienste = <function dienste.<locals>.starten at 0x7d0e71ba4fe0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7d0e72593b60>
+weg = 'fehler'
+
+    @pytest.mark.parametrize("weg", ["fehler", "ohne_elements", "erfolg"])
+    def test_protokollzeilen_beginnen_mit_vertragspraefix(dienste, capfd, weg):
+        """AC-2 (#573): Jeder der drei Wege hinterlässt genau eine Zeile über den eigenen Dienst, und sie beginnt mit dem
+        Vertragspräfix; Rückgabe und Rückfall wie bisher. Ein Kommentar an overpass_eigen benennt das Präfix als Vertrag."""
+        eigen = {"fehler": [500], "ohne_elements": ["ohne_elements"], "erfolg": [200]}[weg]
+        e, o = dienste(eigen=eigen)
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == ("eigen" if weg == "erfolg" else "oeffentlich")
+        assert len(o.anfragen) == (0 if weg == "erfolg" else 1)
+        zeilen = [z for z in capfd.readouterr().err.splitlines() if "map service" in z.lower()]
+        assert len(zeilen) == 1 and zeilen[0].startswith(VERTRAGSPRAEFIX), zeilen
+        import inspect
+        quelle = inspect.getsource(sb.overpass_eigen)
+>       assert "monitor.sh" in quelle and VERTRAGSPRAEFIX in quelle, "Kommentar zum Vertrag mit monitor.sh fehlt"
+E       AssertionError: Kommentar zum Vertrag mit monitor.sh fehlt
+E       assert ('monitor.sh' in 'def overpass_eigen(abfrage, adresse, frist):\n    """Der eigene Kartendienst: ein Versuch mit der Teilfrist -> JSON m...twort\n    sys.stderr.write("Own map service answered without elements, falling back to public\\n")\n    return None\n')
+
+engine/tests/test_kartendienst.py:478: AssertionError
+_______ test_protokollzeilen_beginnen_mit_vertragspraefix[ohne_elements] _______
+
+dienste = <function dienste.<locals>.starten at 0x7d0e71ba6ca0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7d0e725758b0>
+weg = 'ohne_elements'
+
+    @pytest.mark.parametrize("weg", ["fehler", "ohne_elements", "erfolg"])
+    def test_protokollzeilen_beginnen_mit_vertragspraefix(dienste, capfd, weg):
+        """AC-2 (#573): Jeder der drei Wege hinterlässt genau eine Zeile über den eigenen Dienst, und sie beginnt mit dem
+        Vertragspräfix; Rückgabe und Rückfall wie bisher. Ein Kommentar an overpass_eigen benennt das Präfix als Vertrag."""
+        eigen = {"fehler": [500], "ohne_elements": ["ohne_elements"], "erfolg": [200]}[weg]
+        e, o = dienste(eigen=eigen)
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == ("eigen" if weg == "erfolg" else "oeffentlich")
+        assert len(o.anfragen) == (0 if weg == "erfolg" else 1)
+        zeilen = [z for z in capfd.readouterr().err.splitlines() if "map service" in z.lower()]
+        assert len(zeilen) == 1 and zeilen[0].startswith(VERTRAGSPRAEFIX), zeilen
+        import inspect
+        quelle = inspect.getsource(sb.overpass_eigen)
+>       assert "monitor.sh" in quelle and VERTRAGSPRAEFIX in quelle, "Kommentar zum Vertrag mit monitor.sh fehlt"
+E       AssertionError: Kommentar zum Vertrag mit monitor.sh fehlt
+E       assert ('monitor.sh' in 'def overpass_eigen(abfrage, adresse, frist):\n    """Der eigene Kartendienst: ein Versuch mit der Teilfrist -> JSON m...twort\n    sys.stderr.write("Own map service answered without elements, falling back to public\\n")\n    return None\n')
+
+engine/tests/test_kartendienst.py:478: AssertionError
+__________ test_protokollzeilen_beginnen_mit_vertragspraefix[erfolg] ___________
+
+dienste = <function dienste.<locals>.starten at 0x7d0e71ba71a0>
+capfd = <_pytest.capture.CaptureFixture object at 0x7d0e72575910>
+weg = 'erfolg'
+
+    @pytest.mark.parametrize("weg", ["fehler", "ohne_elements", "erfolg"])
+    def test_protokollzeilen_beginnen_mit_vertragspraefix(dienste, capfd, weg):
+        """AC-2 (#573): Jeder der drei Wege hinterlässt genau eine Zeile über den eigenen Dienst, und sie beginnt mit dem
+        Vertragspräfix; Rückgabe und Rückfall wie bisher. Ein Kommentar an overpass_eigen benennt das Präfix als Vertrag."""
+        eigen = {"fehler": [500], "ohne_elements": ["ohne_elements"], "erfolg": [200]}[weg]
+        e, o = dienste(eigen=eigen)
+        capfd.readouterr()
+        antwort = sb.overpass_holen(ABFRAGE, 20)
+        assert antwort["dienst"] == ("eigen" if weg == "erfolg" else "oeffentlich")
+        assert len(o.anfragen) == (0 if weg == "erfolg" else 1)
+        zeilen = [z for z in capfd.readouterr().err.splitlines() if "map service" in z.lower()]
+>       assert len(zeilen) == 1 and zeilen[0].startswith(VERTRAGSPRAEFIX), zeilen
+E       AssertionError: []
+E       assert (0 == 1)
+E        +  where 0 = len([])
+
+engine/tests/test_kartendienst.py:475: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_kartendienst.py::test_erfolg_schreibt_erfolgszeile[200-1]
+FAILED engine/tests/test_kartendienst.py::test_erfolg_schreibt_erfolgszeile[leer-0]
+FAILED engine/tests/test_kartendienst.py::test_protokollzeilen_beginnen_mit_vertragspraefix[fehler]
+FAILED engine/tests/test_kartendienst.py::test_protokollzeilen_beginnen_mit_vertragspraefix[ohne_elements]
+FAILED engine/tests/test_kartendienst.py::test_protokollzeilen_beginnen_mit_vertragspraefix[erfolg]
+5 failed, 54 deselected in 12.18s

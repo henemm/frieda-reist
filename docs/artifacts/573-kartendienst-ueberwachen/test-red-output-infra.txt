@@ -1,0 +1,18 @@
+FFFFFFFFFFFFFF                                                           [100%]
+=========================== short test summary info ============================
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_ohne_abdeckung_still_ok
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_ruhender_dienst_ist_ok
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_journal_nicht_lesbar_entscheidet_nicht
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_socket_nicht_aktiv_warnt
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_proxy_oder_container_failed_warnt
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_drei_rueckfaelle_warnen
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_einzelne_rueckfaelle_warnen_nicht
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_erfolg_nach_haeufung_ist_ok_und_entwarnt_einmal
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_jungste_drei_rueckfaelle_nach_erfolg_warnen
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_erfolg_zwischen_rueckfaellen_ist_ok
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_vorgaben_oben_in_monitor_sh
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_gesetzte_schwelle_und_fenster_gelten
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_gleiche_stoerung_meldet_einmal
+FAILED tests/test_monitor_frieda_kartendienst_bereit.py::test_aufruf_und_keine_probe_im_quelltext
+14 failed in 0.38s
+(Infra-Repo, Grund jeweils: Funktion check_frieda_kartendienst_bereit und Vorgaben fehlen in monitor.sh)
