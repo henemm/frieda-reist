@@ -266,6 +266,25 @@ def test_umzug_macht_abdeckung_fuer_den_konnektor_lesbar(tmp_path):
     assert (ziel / "daten" / "abdeckung.json").stat().st_mode & 0o004
 
 
+def test_umzug_laesst_eigentuemer_der_datenbank_unveraendert(tmp_path):
+    """Die Datenbank gehört dem Benutzer im Container (overpass); der Umzug gibt nur den Datenordner selbst dem Karte-Benutzer,
+    nie rekursiv. Nach einem rekursiven chown scheiterte der Abfragedienst beim Start (Umstellung 14.11.2026)."""
+    ordner, ziel = tmp_path / "instanz" / "kartendienst", tmp_path / "varlib" / "probe-kartendienst"
+    (ordner / "db").mkdir(parents=True)
+    (ordner / "db" / "osm3s_osm_base").write_text("x")
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "chown").write_text('#!/usr/bin/env bash\necho "chown $*" >> "$CHOWN_PROTOKOLL"\n', encoding="utf-8")
+    (bin_ / "chown").chmod(0o755)
+    protokoll = tmp_path / "chown.log"
+    import getpass
+    r = subprocess.run(["bash", str(UMZUG), str(ordner), str(ziel), getpass.getuser()], capture_output=True, text=True, timeout=60,
+                       env={**SAUBER, "PATH": f"{bin_}:/usr/bin:/bin", "CHOWN_PROTOKOLL": str(protokoll)})
+    assert r.returncode == 0, r.stdout + r.stderr
+    aufrufe = protokoll.read_text().splitlines()
+    assert aufrufe and not [a for a in aufrufe if " -R" in a or "/db" in a], aufrufe
+
+
 def test_einspielen_schreibt_abdeckung_lesbar_fuer_alle(kd):
     """abdeckung.json ist lesbar für den Konnektor, auch wenn das Skript mit enger Umask läuft (Karte-Benutzer, #552)."""
     vorher = os.umask(0o007)

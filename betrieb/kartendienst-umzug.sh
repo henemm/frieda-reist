@@ -3,8 +3,8 @@
 #
 #   kartendienst-umzug.sh <FR_KARTENDIENST_ORDNER> /var/lib/<instanz>-kartendienst <instanz>-karte
 #
-# Ruft einrichten.sh --installieren mit Root-Rechten auf. Danach liegen die Daten in <ziel>/daten (dem Karte-Benutzer, 755,
-# lesbar für Konnektor und Container), und an der Stelle von FR_KARTENDIENST_ORDNER steht ein Verweis dorthin (root-eigen, wenn
+# Ruft einrichten.sh --installieren mit Root-Rechten auf. Danach liegen die Daten in <ziel>/daten (der Ordner gehört dem
+# Karte-Benutzer, 755, lesbar für Konnektor und Container), und an der Stelle von FR_KARTENDIENST_ORDNER steht ein Verweis dorthin (root-eigen, wenn
 # als root aufgerufen). Leser (Konnektor, Docker-Bind-Mount der Einheit) nutzen den Pfad unverändert; das Umschalten beim
 # Einspielen geschieht im Zustandsordner, nicht im Elternordner von FR_KARTENDIENST_ORDNER (der gehört der Instanz).
 #
@@ -36,7 +36,10 @@ if [ -d "$ordner" ]; then
   if [ ! -e "$daten" ]; then
     rm -rf "$daten.umzug"                     # Rest eines abgebrochenen Laufs (der alte Ordner ist noch ganz da)
     cp -a "$ordner" "$daten.umzug"
-    chown -R "$benutzer:" "$daten.umzug" 2>/dev/null || chown -R "$benutzer" "$daten.umzug"
+    # Nur der Ordner selbst wechselt den Eigentümer, der Inhalt nie: Die Datenbank gehört dem Benutzer im Container (overpass,
+    # Kennung 1000 im Abbild; dessen Start setzt das selbst), sonst scheitert der Abfragedienst beim Start an seinen
+    # eigenen Dateien (Umstellung 14.11.2026)
+    chown "$benutzer:" "$daten.umzug" 2>/dev/null || chown "$benutzer" "$daten.umzug"
     # keine setuid/setgid-Bits für den Karte-Benutzer (Gruppe docker); chown löscht sie bei Ordnern nicht
     find "$daten.umzug" -perm /6000 ! -type l -exec chmod ug-s {} +
     # abdeckung.json liest der Konnektor (Dienstbenutzer, nicht in der Gruppe des Karte-Benutzers); alte Dateien tragen
