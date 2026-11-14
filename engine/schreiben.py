@@ -22,7 +22,9 @@ steht, und eine neue Reise entsteht immer dort):
   Git-Weg  jede andere Reise, bis zum Umzug (#454, engine/schreiben_git.py): Arbeitskopie <Wurzel>-schreiben-<reise>
            (FR_SCHREIBKOPIE) auf origin/main, `anwenden` mit dem Code dieser Arbeitskopie, Commit und Push nach main.
 Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh (im Hintergrund; bis Stufe 3, #348, baut es nur
-aus Git, eine Speicher-Reise wartet so lange).
+aus Git, eine Speicher-Reise wartet so lange). Der Pfad hängt von der Anordnung der Wurzel ab (veroeffentlichen_skript, #570):
+im Software-Klon <Wurzel>/betrieb/veroeffentlichen.sh, in der alten Anordnung (Reisen-Repo mit Submodul frieda/)
+<Wurzel>/frieda/betrieb/veroeffentlichen.sh.
 
 Regeln vor dem Schreiben (Prüfstelle ADR-0001): Rolle und Status (reise.erlaubt mit reise.yaml der Arbeitskopie, nicht
 nur mit dem, was der Konnektor sagt), Form der Arten und Merkmale (docs/ontologie.md), Probebau (routen.arten_pruefen und
@@ -5095,6 +5097,17 @@ def neue_hinweise(vorher, nachher):
     return neu
 
 
+def veroeffentlichen_skript(wurzel):
+    """Pfad des Veröffentlichen-Skripts je Anordnung der Wurzel, dieselbe Regel wie fr_alte_anordnung in
+    betrieb/gemeinsam.sh (#454, #570): alt, wenn <wurzel>/.gitmodules existiert oder <wurzel>/frieda/betrieb ein Ordner ist,
+    dann <wurzel>/frieda/betrieb/veroeffentlichen.sh; sonst (Software-Klon) <wurzel>/betrieb/veroeffentlichen.sh. Prüft nur
+    die Anordnung, nicht das Skript, und ändert nichts auf der Platte."""
+    wurzel = Path(wurzel)
+    if (wurzel / ".gitmodules").exists() or (wurzel / "frieda" / "betrieb").is_dir():
+        return str(wurzel / "frieda" / "betrieb" / "veroeffentlichen.sh")
+    return str(wurzel / "betrieb" / "veroeffentlichen.sh")
+
+
 class Schreiber:
     """Arbeitskopie einer Reise für den Schreibweg: ändern, prüfen, sichern, veröffentlichen. Zwei Träger: der Reisespeicher
     (basis gesetzt: die Arbeitskopie ist ein Export des Stands basis, Stufe 2, #347) oder bis Stufe 5 eine Git-Arbeitskopie
@@ -5103,8 +5116,12 @@ class Schreiber:
     def __init__(self, wurzel, arbeit=None, veroeffentlichen=None):
         self.wurzel = Path(wurzel)
         self.arbeit = Path(arbeit or schreibkopie(self.wurzel))
-        self.veroeffentlichen = veroeffentlichen or os.environ.get("SB_VEROEFFENTLICHEN") \
-            or str(self.wurzel / "frieda" / "betrieb" / "veroeffentlichen.sh")
+        # Argument vor SB_VEROEFFENTLICHEN vor der Vorgabe je Anordnung; ein ausdrücklich leerer Pfad schaltet aus (#570).
+        if veroeffentlichen is None:
+            veroeffentlichen = os.environ.get("SB_VEROEFFENTLICHEN")
+        if veroeffentlichen is None:
+            veroeffentlichen = veroeffentlichen_skript(self.wurzel)
+        self.veroeffentlichen = veroeffentlichen
         self.ende = None     # time.monotonic(), bis zu der ein Vorgang fertig sein muss (anwenden_extern); None: ohne Frist
         self.basis = None    # Speicherweg: Stand-Nummer, aus der die Arbeitskopie stammt (0: neue Reise); None: Git-Weg
 
@@ -5279,7 +5296,10 @@ class Schreiber:
         Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu seinem Ende offen hielte; die Datei
         zeigt, was der Anstoß tat (#398). Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie.
         Das Veröffentlichen baut auch Reisen aus dem Reisespeicher (Stufe 3, #348)."""
-        if not self.veroeffentlichen or not Path(self.veroeffentlichen).exists():
+        if not self.veroeffentlichen:   # gewollt ausgeschaltet
+            return
+        if not Path(self.veroeffentlichen).exists():   # eine Zeile ins Journal des Dienstes statt stillem Zurückkehren (#570)
+            print(f"Publishing not started ({self.veroeffentlichen}): script missing", file=sys.stderr)
             return
         # Ohne TMPDIR: Der Schreib-Unterprozess setzt es auf seinen Arbeitsordner, der mit dem Vorgang verschwindet; das Skript
         # (mktemp) fand dann keinen Ordner und baute eine Speicher-Reise erst im nächsten Takt des Timers (#398).
