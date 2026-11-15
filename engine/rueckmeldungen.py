@@ -775,14 +775,15 @@ def wuensche(o):
 
 def spalte(e, b, vorschlag=None):
     """Spalte eines Wunsches. passt nicht: Claude hat ihn verworfen; erlebt: abgehakt; eingeplant: ein:e Organisator:in hat ihn
-    bestätigt oder die Option, die aus ihm wurde, gewählt; geprüft: Claude hat ihn aufgenommen; sonst eingebracht."""
+    bestätigt oder die Option, die aus ihm wurde, gewählt; geprüft: Claude hat ihn aufgenommen oder einen Vorschlag
+    eingetragen (ein leerer Eintrag ist kein Vorschlag); sonst eingebracht."""
     if e.get("status") == "verworfen":
         return "passt_nicht"
     if (b or {}).get("erlebt"):
         return "erlebt"
     if (b or {}).get("eingeplant") or (vorschlag or {}).get("gewaehlt"):
         return "eingeplant"
-    return "geprueft" if e.get("status") == "uebernommen" else "eingebracht"
+    return "geprueft" if e.get("status") == "uebernommen" or vorschlag else "eingebracht"
 
 
 def _schluessel(name):

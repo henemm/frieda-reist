@@ -483,7 +483,9 @@ def test_wunsch_brett(tmp_path, monkeypatch, browser):
     seiten = reise_bauen(tmp_path, status="unterwegs")
     o = tmp_path / "ablage" / "beispielreise"
     o.mkdir(parents=True)
-    wuensche = [("R-20261021-091500-a1b2", "Karl", "Einmal mit der Kirnitzschtalbahn fahren", "uebernommen"),
+    # #13: Vorschlag heißt geprüft. Für den ersten Wunsch hat die Beispielreise einen Vorschlag (plan/wuensche.yaml),
+    # er steht deshalb auch ohne abgeschlossene Rückmeldung unter „geprüft“.
+    wuensche = [("R-20261021-091500-a1b2", "Karl", "Einmal mit der Kirnitzschtalbahn fahren", "neu"),
                 ("R-20261022-100000-0001", "Ida", "Abends in Hohnstein essen", "neu"),
                 ("R-20261023-100000-0002", "Karl", "Baden in der Elbe", "verworfen")]
     (o / "eingang.jsonl").write_text("".join(json.dumps({"id": i, "name": n, "art": "Wunsch", "ziel": "wuensche", "text": t,

@@ -5276,7 +5276,7 @@ function wuSpalte(w) {
   if (w.status === "verworfen") return "passt_nicht";
   if (w.erlebt) return "erlebt";
   if (w.eingeplant || (w.vorschlag && w.vorschlag.gewaehlt)) return "eingeplant";
-  return w.status === "uebernommen" ? "geprueft" : "eingebracht";
+  return (w.status === "uebernommen" || (w.vorschlag && Object.keys(w.vorschlag).length)) ? "geprueft" : "eingebracht";
 }
 
 // Alle Wünsche mit Brett-Angaben: nicht Gesendete, dann der Dienst-Stand; Abgehaktes ohne Netz schon eingerechnet
@@ -5288,7 +5288,7 @@ function wuAlle() {
     const w = alle.find(x => x.id === a.rid);
     if (w && !w.erlebt) { w.erlebt = {wer: a.name, datum: heute()}; w.nachreichen = true; }
   }
-  for (const w of alle) w.spalte = w.status ? wuSpalte(w) : "eingebracht";
+  for (const w of alle) w.spalte = wuSpalte(w);
   return alle;
 }
 

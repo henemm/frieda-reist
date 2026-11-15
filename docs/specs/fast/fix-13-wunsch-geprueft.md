@@ -11,6 +11,7 @@ Ursache: `engine/rueckmeldungen.py` `spalte()` setzt „geprüft“ nur beim Rü
 ## Was ändert sich
 
 - `spalte()`: Ein Wunsch mit Vorschlag (aus `wunsch_vorschlaege`) steht unter „geprüft“, auch wenn die Rückmeldung noch nicht abgeschlossen ist. Status `uebernommen` ohne Vorschlag bleibt wie bisher „geprüft“.
+- Reiseseite (`engine/vorlage.html`, `wuSpalte`/`wuAlle`): Die Seite rechnet die Spalte selbst nach (für ohne Netz Abgehaktes) und muss dieselbe Regel wie der Dienst anwenden: ein Vorschlag heißt „geprüft“, und die Spalte wird auch bei leerem Rückmeldestatus nach dem Vorrang berechnet (Fund in Phase 6: sonst bliebe der Fehler auf der Seite bestehen, nur der Konnektor zeigte „geprüft“).
 
 ## Was darf sich nicht ändern
 
@@ -26,3 +27,4 @@ Ursache: `engine/rueckmeldungen.py` `spalte()` setzt „geprüft“ nur beim Rü
 ## Inline-Test
 
 - [ ] test_brett: Wunsch mit Vorschlag ohne Status uebernommen → Spalte geprueft; verworfen mit Vorschlag → passt_nicht; Vorschlag mit gewählter Option → eingeplant.
+- [ ] test_seite (Brett im Browser): der Wunsch der Beispielreise mit Vorschlag (R-20261021-091500-a1b2) ohne abgeschlossene Rückmeldung steht auf der Seite unter „geprüft“; ohne Netz abgehakt weiterhin „erlebt“.
