@@ -79,3 +79,63 @@ Freigabe des Product Owners: Kommentar in #455 vom 15.11.2026 (Entwurf als priva
 - **Beispielreise:** braucht echte freie Bilder (klein) mit Lizenz, in `THIRD_PARTY.md` vermerkt; Tests nie mit Netz – Commons-Antworten als Testdaten.
 - **Instanz-Tests:** neue Meldungstexte und Datenformat → vor dem Vorspulen Tests der einbindenden Instanz mit dem Branch laufen lassen.
 - **Umfang:** sehr groß (Format, Werkzeug, Netzabruf, Bau, Vorlage, Konto, SW, nachziehen, #581). In der Analyse in Pakete schneiden (wie Packliste: Paket 1 Daten+Werkzeug+#581, Paket 2 Darstellung, Paket 3 Doku/Konto).
+
+## Analysis
+
+### Type
+Feature (mit Sicherheitsanteil #581)
+
+### Affected Files (with changes)
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `engine/bilder.py` | CREATE | Liste der Bilder (`plan/bilder.yaml`), Commons/Wikidata-Abruf (`commons_info`, `herunterladen`, User-Agent `instanz.kennung()`, Zeitlimit, eine Wiederholung), Lizenz-Positivliste, Urheber-HTML säubern, Pillow-Prüfung, zwei WebP-Fassungen 480/1600, Lesefunktion Titelbild |
+| `engine/neu.py` | MODIFY | `ARTEN` + `BI`; `nachziehen` Schritt `bilder_nachziehen` (Altbestand `medien/…` im Text → Bild „aus der Reise übernommen“, Hotlink-Bild → Link) |
+| `engine/routen.py` | MODIFY | `MUSTER` um `BI-\d+` |
+| `engine/schreiben.py` | MODIFY | `ID_MUSTER`; Vorab-Abruf nach Muster `kartenpunkte_vorab` (Netz vor der Sperre, Ergebnis als Datei in `vorab`); Aktionen `image_add`/Bild ändern/zurückziehen/Titelbild; Bytes in Arbeitskopie `medien/`, Probebau, `ordner_als_vorgang` |
+| `engine/reise.py` | MODIFY | `AKTIONEN`: Bild ab mitwirkend, Titelbild organisator |
+| `engine/konnektor.py`, `engine/schnittstelle.py` | MODIFY | Werkzeug `image_add` (+ Ändern/Zurückziehen), deutsche Aliase, `MitBild`-Vorschau zurück an Claude; P3: angemeldete Route `/bild/<reise>/<BI>.webp` (Mitgliedschaft, `Cache-Control: private`, Vorbild `/info/` `:3459`) |
+| `engine/bauen.py` | MODIFY | #581: `TextPruefung` für `img src` nur `medien/…`/`BI-…`; Meta-CSP `img-src 'self' data:` (`:139`); P2: Bilddaten an Vorlage, `![](BI-03)`, Fassungen kopieren, Precache, Warnung Offline-Grenze |
+| `engine/vorlage.html` | MODIFY | Bausteine Titelbild, Kopfbild + Bildreihe, Mini-Vorschau (Zeilen, Tagesliste), Bild im Text mit Nennung, Großansicht; Kopfkommentar, Bausteinseite |
+| `engine/sw.vorlage.js` | MODIFY | zweistufiges Offline (klein alle, groß Titel/Kopf, Rest beim Ansehen) |
+| `engine/anmeldung.py` | MODIFY | „Meine Reisen“ als Kacheln (Titelbild über Konto-Route, sonst Akzentfläche mit App-Symbol) |
+| `engine/texte_*.py` | MODIFY | Werkzeugbeschreibung, Ablehnungen, Nennung, Großansicht, „n Bilder“ in allen Sprachen |
+| `betrieb/deploy.sh` | MODIFY | `bilder.py` in `KN_MODULE`/`SB_MODULE` |
+| `beispiel/reisen/beispielreise/` + `THIRD_PARTY.md` | MODIFY | kleine freie Beispielbilder mit Lizenz; Stadtwochenende unverändert |
+| `docs/konnektor.md`, `docs/design.md`, `docs/ontologie.md`, ADR-0001-Verlauf | MODIFY | Werkzeug, Bausteine, Bild als Eigenschaft der Grundformen |
+| `engine/tests/test_bilder.py` (+ Fixtures Commons-JSON, kleines Bild) | CREATE | Lizenzregel, Abruf per monkeypatch, Werkzeug, nachziehen, Hotlink-Sperre, CSP, Bau, Konto-Route |
+| `engine/tests/test_sicherheit.py`, `test_design.py:175`, `test_betrieb.py:1508` | MODIFY | neue Sperrtests, Werkzeugliste, Modulliste |
+
+### Scope Assessment
+- Files: ca. 25 (in drei Paketen)
+- Estimated LoC: P1 +1500–1800, P2 +1500–2000 (größtenteils Vorlage), P3 +300–500
+- Risk Level: MEDIUM-HIGH (Datenformat für alle Reisen, Sperre kann echte Reisen mit Netz-Bildern brechen, CSP der Reiseseite, großer Oberflächenanteil)
+
+### Technical Approach
+Bewertung (Plan-Agent, Code gelesen 15.11.2026), angenommen:
+
+- **Drei Pakete in fester Reihenfolge, je eigener PR, je für sich lieferbar:**
+  - **P1 Daten + Werkzeug + #581 + nachziehen:** Liste, `BI-`, Rechte, Commons-Abruf vorab, Positivliste, beide WebP-Fassungen **schon beim Anlegen** in der Ablage (nicht erst im Bau: Bau bleibt deterministisch und kopiert nur; Konto-Route hat die kleine Fassung ohne Bau). Hotlink-Sperre und `bilder_nachziehen` zwingend im selben PR (sonst scheitert der Bau echter Reisen). Bau ignoriert Bilder-Liste noch.
+  - **P2 Bau + Darstellung + Service Worker** nach freigegebenem Entwurf; Browser-Rundgang mit Karte (CSP), Belegen, Großansicht, beiden Beispielreisen.
+  - **P3 Konto-Kachel + Doku.**
+- **CSP:** einzige Stelle ist die Meta in `bauen.py:139–149` (kein `default-src`/`img-src` heute; nginx setzt keine). Karte ist Leaflet + protomaps (Canvas, `divIcon`s), `data:` nötig für das Ebenen-Symbol als CSS-`url(data:…)` (`vorlage.html:796`). → `img-src 'self' data:`; `blob:` nur, wenn der Rundgang es zeigt.
+- **Kachel-Bild:** `seiten.json` enthält den geheimen Link je Reise (vom Betrieb beim Freischalten geschrieben, `konnektor.py:2063`), Host je Instanz möglich → `img-src 'self'` der Konto-Seite würde ein Bild von dort blockieren. Darum eigene angemeldete Konnektor-Route mit Mitgliedschaftsprüfung; geheimer Link taucht nicht auf, unabhängig vom Veröffentlichen. Base64 in der Seite abgelehnt.
+- **Präfix `BI-`:** keine Kollision. `neu.py:109` `(?<![A-Za-z0-9])B-(\d+)`, `B-\d+`-Prüfungen in `schreiben.py:3653,5334`, `konnektor.py:1618,3159` sind `fullmatch`. Generische `[A-Z]+-\d+` (`schreiben.py:5248`), `[A-Z]{1,2}-` (`rueckmeldungen.py:398`) passen auf `BI-` (gewollt). `vorlage.html:3738` (Sprungmarken) erkennt `BI-` bewusst nicht. Zu ändern: `ARTEN`, `MUSTER`, `ID_MUSTER`; Tests mit Liste aller Arten suchen.
+- **Altbestand:** Pipeline `bilder_schreiben` für `medien/…` (JPEG) bleibt unverändert (`test_bauen.py:226–235,670`, `test_pwa.py:59,98` bleiben grün); WebP nur für die neue Liste. Nach `nachziehen` stehen Altbilder ohnehin als `BI-` im Text.
+- **Netz im Test:** nie; `monkeypatch` auf die zwei Netzfunktionen, Commons-Antworten als Fixtures.
+
+### Dependencies
+- P2 braucht das Format aus P1; P3 braucht 480er-Fassung und Titelbild-Kennung aus P1.
+- Upstream: Pillow (WebP), `urllib.request`, Commons-API (`imageinfo`/`extmetadata`, `iiurlwidth=1600`), Wikidata P18, Reisespeicher-Ablage, `instanz.kennung()`.
+- Downstream: Instanz-Tests (neue Meldungstexte, Datenformat) vor jedem Vorspulen mit dem Branch laufen lassen.
+
+### Risks
+- Echte Reisen mit Netz-Bildern: `nachziehen` im selben Commit wie die Sperre.
+- CSP blockiert Ebenen-Symbol/Belege/Symbol, wenn `data:` fehlt → Rundgang.
+- 64-KB-Grenze: nur Dateiname/Q durchs Gespräch.
+- Commons-Ausfall/Rate-Limit: Zeitlimit, klare Katalogtexte, nicht unter der Schreibsperre warten.
+- Urheberfeld ist HTML: säubern, nie roh ausliefern.
+- Ablage ohne Grenze: Obergrenze je Reise (Anzahl/Summe), Offline 25 MB mit Warnung im Bau, in `reise.yaml` änderbar.
+
+### Open Questions
+- Keine Produktfrage offen (Entwurf, Variante A, Rechte, Stufentrennung entschieden 15.11.2026).
+- Für die Spec festzulegen (technisch, Claude entscheidet): genaue Grenzwerte je Reise (Vorschlag 60 Bilder / 25 MB offline), Werkzeugschnitt (`image_add` + `image_update` mit Zurückziehen/Titelbild), Felder in `plan/bilder.yaml`.
