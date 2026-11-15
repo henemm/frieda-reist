@@ -36,6 +36,8 @@ async function seite(breite) {
 const stand = p => p.evaluate(() => ({
   spalten: Object.fromEntries([...document.querySelectorAll(".brett .wu-karte")].map(k =>
     [k.querySelector(".wu-kopf .text").textContent, k.closest(".spalte").dataset.spalte])),
+  leise: Object.fromEntries([...document.querySelectorAll(".brett .wu-karte")].map(k =>
+    [k.querySelector(".wu-kopf .text").textContent, !!k.querySelector(".chip.ag-leise")])),
   bilanz: [...document.querySelectorAll(".wu-person")].map(x => x.textContent),
   nachreichen: document.querySelectorAll(".wu-karte .chip.offen").length,
   breit: document.documentElement.scrollWidth > innerWidth + 1,

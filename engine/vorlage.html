@@ -5317,7 +5317,7 @@ function wuKarte(w) {
   k.append(kopf);
   const c = el("div", {class: "chips"});
   if (!gesendet) c.append(chip("offen", RM_STATUS.ausstehend));
-  else if (w.status === "neu") c.append(chip("leise", T("seite.wunsch.wird_geprueft")));
+  else if (w.status === "neu" && w.spalte === "eingebracht") c.append(chip("leise", T("seite.wunsch.wird_geprueft")));
   else if (w.status === "rueckfrage") c.append(chip("offen", T("seite.wunsch.rueckfrage")));
   if (KONTINGENT.art === "punkte" && w.punkte) c.append(chip("", "●".repeat(Math.min(w.punkte, 5)) + " " + T("seite.anzahl.punkte", {n: w.punkte}), {title: T("seite.wunsch.punkte_titel")}));
   if (w.nachreichen) c.append(chip("offen", T("seite.wunsch.wird_nachgereicht")));

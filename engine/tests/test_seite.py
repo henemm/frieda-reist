@@ -517,6 +517,8 @@ def test_wunsch_brett(tmp_path, monkeypatch, browser):
     assert e["fehler"] == []
     bahn, essen, baden = (t for _, _, t, _ in wuensche)
     assert e["start"]["spalten"] == {bahn: "geprueft", essen: "eingebracht", baden: "passt_nicht"}
+    # #13: ein geprüfter Wunsch (mit Vorschlag) zeigt nicht mehr „wird geprüft“, nur der noch offene in „eingebracht“
+    assert e["start"]["leise"] == {bahn: False, essen: True, baden: False}
     assert any(z.startswith("Karl") and "1 Wunsch" not in z for z in e["start"]["bilanz"])
     assert e["punkte"] == "1" and e["fremdePunkte"] == 0               # Punkte nur auf eigene Wünsche
     assert e["erlebt"]["spalten"][essen] == "erlebt"                   # fremden Wunsch abgehakt
