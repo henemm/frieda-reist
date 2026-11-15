@@ -334,6 +334,8 @@ def test_anleitung_je_reise_nach_baustein(zwei, bausteine, erwartet):
     u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
     for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
         d = kn.daten(reise)
+        if bausteine is None:   # die Beispielreisen tragen eine Liste ohne profile; „ohne bausteine“ heißt: Feld fehlt ganz
+            d = {**d, "reise": {n: w for n, w in d["reise"].items() if n != "bausteine"}}
         schl = konten.mitglied(k["id"], reise)
         schl = schl["schluessel"] if isinstance(schl, dict) else schl
         text = kn.anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": "de"}, d)

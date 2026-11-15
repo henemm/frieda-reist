@@ -24,7 +24,7 @@ Technik (Python-Generator, HTML-Vorlage, Service Worker, nginx, systemd, Git) is
 2. Das Modell ist für die KI gebaut: Reise, Personen, Rollen, Bausteine, Herkunft und Prüfdatum sind Felder mit Schema (`reise.yaml`, `routen.yaml`, Merkmale). Fließtext bleibt Fließtext.
 3. Die Regeln prüft die Maschine (Rechte, Pflichtfelder, Konflikte); die KI bekommt nur eine kurze Verfassung.
 4. Die KI handelt: Was im Gespräch festgelegt wird, gilt sofort; Veränderliches wird überwacht, Fristen werden gemeldet, Optionen werden im Gespräch vorgeschlagen.
-5. Frieda kennt die Menschen: je Person ein Konto mit E-Mail-Adresse, über Reisen hinweg (ADR-0005). Ein Profil je Person (Vorlieben, Erlebtes) ist Ausbaustufe 3 (Paket F) und noch nicht gebaut; was dort entsteht, trägt der AI-Client über den Konnektor ein, kein Lauf in Frieda.
+5. Frieda kennt die Menschen: je Person ein Konto mit E-Mail-Adresse, über Reisen hinweg (ADR-0005). Dazu hat jede Person ein Profil (Vorlieben, Erlebtes, Paket F, #12): Einträge trägt der AI-Client über den Konnektor ein, nur nach Bestätigung der Person, kein Lauf in Frieda; sehen, ändern und löschen kann es nur sie selbst (`docs/konnektor.md`, „Profil je Person“).
 
 ## Sprachen
 
@@ -46,7 +46,7 @@ Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `person
 
 ## Einstellungen je Reise (`reise.yaml`)
 
-- **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan mit Zeitachse und Tagesseiten, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `packliste`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` ist seit Paket E gebaut, `profile` ist angelegt, aber noch nicht gebaut: Ausbaustufe 3.) `tagesseiten` ist seit #214 kein Schalter mehr: Tagesseiten gehören zur Grundform Tag und gibt es in jeder Reise; eine ältere `reise.yaml`, die den Baustein nennt, baut weiter, der Eintrag ist ohne Wirkung.
+- **Bausteine, an oder aus** (`bausteine:`). Immer da: Plan mit Zeitachse und Tagesseiten, Wissen, Suche, Personen. Zuschaltbar: `varianten`, `karte`, `rueckmeldungen`, `fragen`, `aufgaben`, `wuensche`, `packliste`, `waechter`, `profile`. Ein ausgeschalteter Baustein verschwindet aus Seite und App, seine Daten bleiben. (`waechter` ist seit Paket E gebaut, `profile` seit #12: Es steuert, ob der AI-Client das Profil der Person für diese Reise nutzt.) `tagesseiten` ist seit #214 kein Schalter mehr: Tagesseiten gehören zur Grundform Tag und gibt es in jeder Reise; eine ältere `reise.yaml`, die den Baustein nennt, baut weiter, der Eintrag ist ohne Wirkung.
 - **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (organisator), dazu die Regeln des Wächters. Die Regeln des Einarbeitens (`entscheidungsweg`, `sammelzeit_minuten`) sind seit 29.10.2026 entfallen, die Regel `anmeldung` seit #421 (Mitmachen geht immer nur angemeldet); stehen sie noch in einer `reise.yaml`, baut die Reise mit Hinweis (`anmeldung` nimmt `neu.py nachziehen` heraus).
 - **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht (nur noch der Plan-Baum im Vergleich der Pläne, #214), Gruppen. `plan_reiter` ist seit #214 ohne Wirkung (die Abschnitte stehen unter „Wissen“). Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg (Product Owner); der alte Schlüssel `mahnungen` ist ohne Wirkung. Berechnet werden die Mahnungen weiter und stehen in der Claude-App (`ueberblick`).
 
@@ -153,7 +153,7 @@ Die Rollen und Status der laufenden Reisen stehen in deren `reise.yaml`, die Ent
 | C Gespräch für alle | Zugang je Person mit Rolle; Werkzeuge entscheiden, Frage beantworten, Person einladen; Entscheidung wird im Moment geprüft | 2 |
 | D Sofort statt stündlich | Eingaben lösten das Einarbeiten aus (Sammelzeit); mit O-3 (29.10.2026) durch den Schreibweg ersetzt und abgeschaltet: Eintragen gilt sofort | abgeschlossen (Geschichte) |
 | E Wächter und Erinnerer | Prüfung veränderlicher Angaben, Meldung von Fristen und „ab“-Terminen | 2 |
-| F Profile | je Person, vom AI-Client über den Konnektor gepflegt (kein KI-Lauf in Frieda), einsehbar, reiseübergreifend; nicht gebaut | 2 |
+| F Profile | je Person, vom AI-Client über den Konnektor gepflegt (kein KI-Lauf in Frieda), einsehbar, reiseübergreifend; gebaut (#12), Lernen aus Erlebtem folgt | 2 |
 | G Wunsch-Brett | Spalten, Kontingent, Verknüpfung mit Tag oder Ort, Bilanz je Person, Abhaken unterwegs | 2 bis 3 |
 | H Neue Reise anlegen | Vorlage; Reise entsteht im Gespräch aus Eckdaten, Personen, Quellen | 2 |
 | I Mehrere Haushalte | eigene Instanz je Reisegruppe; später | 5 oder mehr |

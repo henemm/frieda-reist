@@ -175,6 +175,10 @@ CREATE TABLE IF NOT EXISTS loeschprotokoll (reise TEXT PRIMARY KEY, datum TEXT N
 CREATE TABLE IF NOT EXISTS betreiber_meldungen (
   id INTEGER PRIMARY KEY AUTOINCREMENT, konto TEXT NOT NULL, reise TEXT NOT NULL DEFAULT '', art TEXT NOT NULL,
   text TEXT NOT NULL, zusammenhang TEXT NOT NULL DEFAULT '', zeit REAL NOT NULL, issue TEXT);
+CREATE TABLE IF NOT EXISTS profil (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, konto TEXT NOT NULL, bereich TEXT NOT NULL, text TEXT NOT NULL,
+  herkunft TEXT NOT NULL, datum TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS profil_konto ON profil (konto);
 CREATE INDEX IF NOT EXISTS push_abos_konto ON push_abos (konto);
 CREATE INDEX IF NOT EXISTS push_warteschlange_offen ON push_warteschlange (gesendet, konto);
 CREATE INDEX IF NOT EXISTS oauth_tokens_konto ON oauth_tokens (konto);
@@ -658,7 +662,7 @@ def loeschen(kid):
         # oauth_clients: Registrierungen der Claude-App ohne Konto, Name oder Adresse; sie bleiben
         for t in ("sitzungen", "oauth_tokens", "oauth_codes", "mitgliedschaften", "anfragen", "kalender_abo", "push_abos",
                   "push_einstellungen", "push_warteschlange", "meldung_gelesen", "angelegte_reisen", "schreibvorgaenge",
-                  "betreiber_meldungen"):
+                  "betreiber_meldungen", "profil"):
             v.execute(f"DELETE FROM {t} WHERE konto = ?", (kid,))
         v.execute("DELETE FROM konten WHERE id = ?", (kid,))
 
@@ -694,8 +698,91 @@ def zusammenfuehren(von, nach):
         v.execute("INSERT OR IGNORE INTO meldung_gelesen (konto, meldung, wann) SELECT ?, meldung, wann FROM meldung_gelesen "
                   "WHERE konto = ?", (nach, von))
         v.execute("DELETE FROM meldung_gelesen WHERE konto = ?", (von,))
+        # Profil (#12): Einträge hängen um, Kennungen bleiben; die Obergrenze gilt hier nicht, nichts geht verloren
+        v.execute("UPDATE profil SET konto = ? WHERE konto = ?", (nach, von))
         _widerrufen(v, von)
         v.execute("DELETE FROM konten WHERE id = ?", (von,))
+
+
+# ---------------------------------------------------------------- Profil je Person (#12)
+# Ein Kontodatum wie Sitzungen, kein Teil einer Reise. Jede Abfrage filtert mit der Kennung des Kontos (WHERE konto = ?);
+# es gibt keine Funktion, die Einträge ohne Konto liest. Die Software prüft nur Pflichtfelder, Längen und Anzahl, nie den
+# Inhalt und nie einen Bereichsnamen. Profiltexte erscheinen nie in Protokollen oder Meldungen.
+
+PROFIL_MUSTER = re.compile(r"^PR-(\d{1,12})\Z")
+
+
+def _profil_eintrag(z):
+    return {"id": f"PR-{z['id']}", "bereich": z["bereich"], "text": z["text"], "herkunft": z["herkunft"],
+            "datum": z["datum"]}
+
+
+def _profil_nummer(eid):
+    """PR-<n> als Zahl; alles andere gilt als unbekannter Eintrag."""
+    m = PROFIL_MUSTER.match(str(eid or "").strip())
+    if not m:
+        raise KontoFehler("konto.fehler.profil_unbekannt", id=str(eid or "")[:40])
+    return int(m.group(1))
+
+
+def _profil_feld(roh, grenze):
+    wert_ = str(roh if roh is not None else "").strip()
+    if not wert_:
+        raise KontoFehler("konto.fehler.profil_leer")
+    if grenze and len(wert_) > grenze:
+        raise KontoFehler("konto.fehler.profil_zu_lang", max=grenze)
+    return wert_
+
+
+def _profil_zeile(v, kid, n, eid):
+    z = v.execute("SELECT * FROM profil WHERE id = ? AND konto = ?", (n, kid)).fetchone()
+    if not z:   # fremd oder unbekannt: derselbe Satz, nichts verrät ein anderes Konto
+        raise KontoFehler("konto.fehler.profil_unbekannt", id=str(eid).strip())
+    return z
+
+
+def profil_liste(kid):
+    """Einträge im Profil eines Kontos, nach Nummer aufsteigend."""
+    with closing(db()) as v:
+        return [_profil_eintrag(z) for z in v.execute("SELECT * FROM profil WHERE konto = ? ORDER BY id", (kid,))]
+
+
+def profil_setzen(kid, bereich, text, herkunft, id=None):  # noqa: A002  (Name wie der Parameter des Werkzeugs)
+    """Neuen Eintrag anlegen oder (mit id) einen eigenen Eintrag ändern; das Datum setzt Frieda. -> Eintrag"""
+    bereich = _profil_feld(bereich, instanz.grenze_profil_bereich())
+    text = _profil_feld(text, instanz.grenze_profil_text())
+    herkunft = _profil_feld(herkunft, None)
+    n = _profil_nummer(id) if id not in (None, "") else None
+    with closing(db()) as v, v:
+        if n is not None:
+            _profil_zeile(v, kid, n, id)
+            v.execute("UPDATE profil SET bereich = ?, text = ?, herkunft = ?, datum = ? WHERE id = ? AND konto = ?",
+                      (bereich, text, herkunft, _datum(), n, kid))
+        else:
+            anzahl = v.execute("SELECT COUNT(*) FROM profil WHERE konto = ?", (kid,)).fetchone()[0]
+            if anzahl >= instanz.grenze_profil_eintraege():
+                raise KontoFehler("konto.fehler.profil_voll", max=instanz.grenze_profil_eintraege())
+            n = v.execute("INSERT INTO profil (konto, bereich, text, herkunft, datum) VALUES (?, ?, ?, ?, ?)",
+                          (kid, bereich, text, herkunft, _datum())).lastrowid
+        return _profil_eintrag(_profil_zeile(v, kid, n, id))
+
+
+def profil_aendern(kid, id, text):  # noqa: A002
+    """Nur den Text eines eigenen Eintrags ändern (Mein Konto); Herkunft bleibt, das Datum wird erneuert. -> Eintrag"""
+    text = _profil_feld(text, instanz.grenze_profil_text())
+    n = _profil_nummer(id)
+    with closing(db()) as v, v:
+        _profil_zeile(v, kid, n, id)
+        v.execute("UPDATE profil SET text = ?, datum = ? WHERE id = ? AND konto = ?", (text, _datum(), n, kid))
+        return _profil_eintrag(_profil_zeile(v, kid, n, id))
+
+
+def profil_entfernen(kid, id):  # noqa: A002
+    """Einen eigenen Eintrag wirklich löschen (Art. 17 DSGVO, Product Owner 1.11.2026)."""
+    n = _profil_nummer(id)
+    with closing(db()) as v, v:
+        _profil_zeile(v, kid, n, id)
+        v.execute("DELETE FROM profil WHERE id = ? AND konto = ?", (n, kid))
 
 
 # ---------------------------------------------------------------- Rechte und Anfragen

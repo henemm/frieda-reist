@@ -38,7 +38,7 @@ BAUSTEINE = ("varianten", "karte", "rueckmeldungen", "fragen", "aufgaben", "wuen
 # nennt, baut weiter; der Eintrag wird gelesen und ist ohne Wirkung.
 ALTE_BAUSTEINE = ("tagesseiten",)
 KERN = ("plan", "wissen", "suche", "personen")           # immer da, nicht abschaltbar
-NOCH_NICHT_GEBAUT = {"profile": "Stufe 3"}
+NOCH_NICHT_GEBAUT = {}                   # noch nicht gebaute Bausteine: die Prüfung nennt sie als Hinweis (profile ist seit #12 gebaut)
 VORGABEN = {
     "konflikt": "offene_frage",          # zwei Organisator:innen entscheiden verschieden -> offene Frage, Meldung an beide
     "kontingent": {"art": "punkte", "je_person": 10},   # Wunsch-Brett: punkte | anzahl

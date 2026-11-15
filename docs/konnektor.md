@@ -179,9 +179,24 @@ Eine neue Reise legt eine Person an, keine Reise. Der Konnektor „Frieda“ hat
 | `meine_reisen` | die veröffentlichten Reisen, auf denen die Person dabei ist (Schlüssel oder Name in `reise.yaml`), mit Rolle, Status und Link zur Seite; davor die Meldungen an sie (mit Konto über alle ihre Reisen, je Zeile mit dem Titel der Reise), danach ihre angefragten neuen Reisen. Archivierte Reisen stehen nicht in der Liste, sondern in einer Schlusszeile mit Ordnernamen (#416; nur auf Nachfrage nennen), ansprechbar bleiben sie |
 | `sprache_setzen` | Konto-Werkzeug (alle Rollen), Eingabe `sprache` (de, en …): stellt die Sprache des Kontos ein; sie gilt für Anleitung, Beschreibungen, Antworten, Kontoseiten und Mails (ADR-0006) |
 | `an_frieda_melden` | Konto-Werkzeug (jedes Konto, auch ohne Reise; zählt nicht in die Schreibgrenze, #530): Fehler, Wünsche und Fragen zu Frieda selbst an den Betreiber. Eingaben `text` (1 bis 2000 Zeichen), `art` (`Fehler`, `Wunsch`, `Frage`), optional `reise` (nur eigene Reisen) und `zusammenhang` (höchstens 2000 Zeichen). Speichert in der Kontendatenbank, mailt jedem Betreiber-Konto mit der Adresse der Person als Antwortadresse; höchstens 10 je Konto und Tag. Betreiber sehen offene Meldungen bei `meine_reisen` (`docs/betrieb.md`, „Meldungen an den Betreiber“) |
+| `mein_profil` (`my_profile`) | Konto-Werkzeug (jedes Konto, ohne `reise`, nur Lesen, #12): das eigene Profil, je Eintrag `PR-<n>`, Bereich, Text, Herkunft, Datum. Immer erreichbar; ob es für eine Reise gilt, sagt deren Anleitung (Baustein `profile`) |
+| `profil_eintrag_setzen` (`profile_entry_set`) | Konto-Werkzeug (#12): Eingaben `bereich` (`area`, freier Text), `text`, `herkunft` (`origin`, Pflicht), `bestaetigt` (`confirmed`, muss `true` sein), optional `id` (`PR-<n>`, dann wird dieser eigene Eintrag geändert). Ohne Bestätigung oder Herkunft wird nichts geschrieben; das Datum setzt Frieda. Zählt zur Schreibgrenze je Konto (#380) |
+| `profil_eintrag_entfernen` (`profile_entry_remove`) | Konto-Werkzeug (#12): Eingabe `id` (`PR-<n>`), löscht den eigenen Eintrag endgültig; nie von der Schreibgrenze blockiert und zählt nicht zu ihr |
 | `reise_anlegen` | Eingaben `titel`, `von`, `bis` (JJJJ-MM-TT), optional `ziel`, `sprache` (Sprache der Reise, Vorgabe: Sprache des Kontos), `personen` (je `vorname`, `rolle`, `reist`, `notiz`), `notiz` (Bekanntes in eigenen Worten mit Herkunft) und `pfad`; wer anlegt, ist Organisator:innen der neuen Reise |
 
 `reise_anlegen` lehnt sofort ab, wenn Angaben fehlen oder nicht passen oder wenn es den Ordnernamen schon gibt, als veröffentlichte Reise, als Ablage oder als offene Anfrage (`reise.neue_reise_pruefen`). Sonst bleibt die Anfrage mit `daten.neue_reise` als Beleg in `<konten>/neu/auftraege.jsonl` (gehört zu keiner Reise), und der Schreibweg legt die Reise sofort an (`neu.aus_auftrag`, die Notiz wird der Überblick, Probebau, Commit nach `main`). Das Veröffentlichen schaltet sie frei, verknüpft das Konto mit der Reise, schickt die Einladungen und schreibt der Person die Meldung „neue Reise“ nach `<konten>/neu/meldungen.jsonl` (`betrieb/zustellen.py`). Die Links zu den Seiten liest der Konnektor aus `KN_SEITENLINKS` (Standard `seiten.json` im Ordner des Konnektors, `FR_KONNEKTOR`), die der Betrieb beim Freischalten schreibt. Den Stand der Anfragen zeigt `rueckmeldungen.py liste _neu`. Dieselbe Übersicht zeigt „Mein Konto“ im Web, die Startseite der Adresse (#41). Die Meldungen an ein Konto kommen für `meine_reisen`, Mein Konto und die Reiseseiten aus einer Quelle (`rueckmeldungen.meldungen_des_kontos`): die ohne Reise und die jeder Reise, in der das Konto Mitglied ist (#21 Stufe 1).
+
+## Profil je Person (#12, Paket F, 15.11.2026)
+
+Jede Person hat ein reiseübergreifendes Profil mit kurzen Einträgen zu ihren Vorlieben, als Kontodatum in der Kontendatenbank (Tabelle `profil`), nicht in einer Reise. Regeln:
+
+- Geschrieben wird nur über den AI-Client und nur, was die Person im Gespräch ausdrücklich bestätigt hat (`confirmed=true`); die Bestätigung ist ihre Einwilligung (Art. 9 DSGVO, Datenschutzseite). Es gibt keine Stufe „vorgeschlagen“.
+- Als Bestätigung zählt nur der JSON-Wert `true` für `confirmed`/`bestaetigt`; Zeichenketten wie "true", Zahlen oder ein fehlendes Feld werden abgelehnt (Einwilligung nach Art. 9 DSGVO).
+- Der Bereich ist freier Text; die Software kennt keine Kategorien und prüft nur Pflichtfelder, Längen und Anzahl (`FR_GRENZE_PROFIL_BEREICH`, Vorgabe 60 Zeichen; `FR_GRENZE_PROFIL_TEXT`, 500; `FR_GRENZE_PROFIL_EINTRAEGE`, 100 je Konto, `engine/instanz.py`).
+- Kennungen `PR-<n>` werden nie neu vergeben, auch nach dem Löschen oder Zusammenführen von Konten nicht.
+- Nur die Person selbst sieht ihr Profil: im eigenen AI-Client und auf „Mein Konto“ (ansehen, Text ändern, löschen; kein Neuanlegen). Organisator:innen, Mitreisende, Reiseseite, Service Worker, Reisedaten, Meldungen und Protokolle enthalten es nie.
+- Die Anleitung je Reise sagt bei eingeschaltetem Baustein `profile` (oder ohne `bausteine`): Profil nutzen und an Wahlstellen als Grund nennen; bei ausgeschaltetem: nicht nutzen.
+- Das Profil steht im eigenen Export (`person.json`, Feld `profil`) und geht mit dem Konto (ADR-0001, Verlauf 15.11.2026).
 
 ## Sprache (ADR-0006, Stand 31.10.2026)
 
@@ -306,6 +321,9 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 | `map_points_fetch` | `kartenpunkte_holen` |
 | `language_set` | `sprache_setzen` |
 | `report_to_frieda` | `an_frieda_melden` |
+| `my_profile` | `mein_profil` |
+| `profile_entry_set` | `profil_eintrag_setzen` |
+| `profile_entry_remove` | `profil_eintrag_entfernen` |
 
 Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten eine Ausnahme steht):
 
@@ -316,6 +334,7 @@ Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten ein
 | `anreise`, `abreise` (nur Buchung) | `arrival`, `departure` |
 | `anreise_ab`, `abreise_bis` | `checkin_from`, `checkout_until` |
 | `vor_ort_zahlen` | `pay_on_site` |
+| `bereich`, `herkunft`, `bestaetigt` (nur `profil_eintrag_setzen`) | `area`, `origin`, `confirmed` |
 | `abschnitt` | `section` |
 | `adresse` | `address` |
 | `alle` | `all` |

@@ -1,0 +1,104 @@
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 10%]
+........................................................................ [ 20%]
+........................................................................ [ 30%]
+........................................................................ [ 40%]
+........................................................................ [ 51%]
+........................................................................ [ 61%]
+........................................................................ [ 71%]
+........................................................................ [ 81%]
+........................................................................ [ 92%]
+..............................F.........................                 [100%]
+=================================== FAILURES ===================================
+__________________ test_pruefungen_buendeln_je_reise_und_tag ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+engine/tests/test_anmeldung.py:558: in test_pruefungen_buendeln_je_reise_und_tag
+    assert aus[0]["text"] == texte.t(texte.VORGABE, "konto.meldungen.pruefungen", n=2)
+E   AssertionError: assert '2 Angaben zu prüfen' == '2 details to check'
+E     
+E     - 2 details to check
+E     + 2 Angaben zu prüfen
+=========================== short test summary info ============================
+FAILED engine/tests/test_anmeldung.py::test_pruefungen_buendeln_je_reise_und_tag
+1 failed, 703 passed in 202.44s (0:03:22)
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 10%]
+........................................................................ [ 20%]
+........................................................................ [ 30%]
+........................................................................ [ 40%]
+........................................................................ [ 51%]
+........................................................................ [ 61%]
+........................................................................ [ 71%]
+........................................................................ [ 81%]
+........................................................................ [ 92%]
+........................................................                 [100%]
+704 passed in 177.98s (0:02:57)
+KARL entf 'PR-1' True Eintrag PR-1 nicht gefunden.
+KARL set 'PR-1' True Eintrag PR-1 nicht gefunden.
+KARL entf 'pr-1' True Eintrag pr-1 nicht gefunden.
+KARL set 'pr-1' True Eintrag pr-1 nicht gefunden.
+KARL entf '1' True Eintrag 1 nicht gefunden.
+KARL set '1' True Eintrag 1 nicht gefunden.
+KARL entf 'PR-01' True Eintrag PR-01 nicht gefunden.
+KARL set 'PR-01' True Eintrag PR-01 nicht gefunden.
+KARL entf '' True Eintrag  nicht gefunden.
+KARL set '' False Eingetragen: PR-2. Die Person sieht den Eintrag unter „Mein Konto“ und kann ihn dort ändern oder löschen.
+KARL entf 'PR-1 ' True Eintrag PR-1 nicht gefunden.
+KARL set 'PR-1 ' True Eintrag PR-1 nicht gefunden.
+KARL entf ' PR-1' True Eintrag PR-1 nicht gefunden.
+KARL set ' PR-1' True Eintrag PR-1 nicht gefunden.
+KARL entf 'PR--1' True Eintrag PR--1 nicht gefunden.
+KARL set 'PR--1' True Eintrag PR--1 nicht gefunden.
+KARL entf 'PR-0' True Eintrag PR-0 nicht gefunden.
+KARL set 'PR-0' True Eintrag PR-0 nicht gefunden.
+KARL entf 'PR-99999999999999999999' True Eintrag PR-99999999999999999999 nicht gefunden.
+KARL set 'PR-99999999999999999999' True Eintrag PR-99999999999999999999 nicht gefunden.
+KARL entf None True Eintrag  nicht gefunden.
+KARL set None False Eingetragen: PR-3. Die Person sieht den Eintrag unter „Mein Konto“ und kann ihn dort ändern oder löschen.
+KARL entf 'PR-１' True Eintrag PR-１ nicht gefunden.
+KARL set 'PR-１' True Eintrag PR-１ nicht gefunden.
+KARL entf 'PR-1\n' True Eintrag PR-1 nicht gefunden.
+KARL set 'PR-1\n' True Eintrag PR-1 nicht gefunden.
+PR-0n own: PR-4 False Eingetragen: PR-4. Die Person sieht den Eintrag unter „Mein Konto“ und kann ihn dort ändern oder löschen.
+.POST 200
+confirmed True False
+confirmed 'true' True
+confirmed 'True' True
+confirmed 1 True
+confirmed 'yes' True
+confirmed None True
+confirmed False True
+confirmed [True] True
+ohne True
+gespeichert: 1
+area ['profil_eintrag_setzen'] False
+origin ['profil_eintrag_setzen'] False
+confirmed ['profil_eintrag_setzen'] False
+.POST 200
+True Bitte Bereich, Text und Herkunft angeben.
+vorgaenge nach Fehler: [<sqlite3.Row object at 0x7da25e710e20>]
+.POST 200
+script roh: False False 200
+profil_aendern PR-999 None 200 False
+profil_aendern PR-1 None 200 False
+profil_aendern PR-1 None 200 False
+profil_aendern  None 200 False
+profil_loeschen PR-1 None 200 False
+profil_loeschen None None 200 False
+profil_aendern PR-1 null 403 False
+profil_aendern PR-1 https://evil.invalid 403 False
+texte: ['<script>alert(1)</sc']
+ohne Sitzung 303
+ohne Origin 403
+texte danach: ['<script>alert(1)</sc']
+.POST 200
+vorgaenge nach 1 Fehler + 1 unbestaetigt: 1
+EN anleitung mein_profil: False True True
+DE anleitung my_profile roh: True
+['my_profile', 'profile_entry_set', 'profile_entry_remove']
+.
+5 passed in 8.16s

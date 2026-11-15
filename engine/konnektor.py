@@ -2239,6 +2239,21 @@ ANFRAGE_ENTSCHEIDEN = {"name": "anfrage_entscheiden", "description": "@konnektor
                            "erlauben": {"type": "boolean", "description": "@konnektor.werkzeug.anfrage_entscheiden.erlauben"}},
                            "required": ["email", "erlauben"]}}
 EMAIL_FELD = {"type": "string", "description": "@konnektor.feld.email_feld"}
+# Profil je Person (#12): Konto-Werkzeuge ohne reise; das Profil gehört dem Konto des Aufrufers, niemand sonst liest es
+PROFIL_ID = {"type": "string", "description": "@konnektor.werkzeug.profil.id"}
+MEIN_PROFIL = {"name": "mein_profil", "description": "@konnektor.werkzeug.mein_profil",
+               "inputSchema": {"type": "object", "properties": {}}}
+PROFIL_EINTRAG_SETZEN = {"name": "profil_eintrag_setzen", "description": "@konnektor.werkzeug.profil_eintrag_setzen",
+                         "inputSchema": {"type": "object", "properties": {
+                             "bereich": {"type": "string", "description": "@konnektor.werkzeug.profil_eintrag_setzen.bereich"},
+                             "text": {"type": "string", "description": "@konnektor.werkzeug.profil_eintrag_setzen.text"},
+                             "herkunft": {"type": "string", "description": "@konnektor.werkzeug.profil_eintrag_setzen.herkunft"},
+                             "bestaetigt": {"type": "boolean",
+                                            "description": "@konnektor.werkzeug.profil_eintrag_setzen.bestaetigt"},
+                             "id": PROFIL_ID},
+                             "required": ["bereich", "text", "herkunft", "bestaetigt"]}}
+PROFIL_EINTRAG_ENTFERNEN = {"name": "profil_eintrag_entfernen", "description": "@konnektor.werkzeug.profil_eintrag_entfernen",
+                            "inputSchema": {"type": "object", "properties": {"id": PROFIL_ID}, "required": ["id"]}}
 
 
 def reisen_des_kontos(k):
@@ -2263,6 +2278,7 @@ def frieda_werkzeuge(k):
     eigene.append(KALENDER)
     eigene.append(sprache_setzen_werkzeug(k["sprache"]))
     eigene.append(an_frieda_melden_werkzeug(k["sprache"], [r for r, _, _ in reisen]))
+    eigene += [MEIN_PROFIL, PROFIL_EINTRAG_SETZEN, PROFIL_EINTRAG_ENTFERNEN]
     je_name, wo = {}, {}
     for reise, schl, _ in reisen:
         for w in werkzeuge_fuer({"reise": reise, "person": schl}):
@@ -2300,7 +2316,7 @@ def anleitung_frieda(k, sprache=None):
               anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": sprache}, d)]
     if not reisen:
         z += ["", anl(sprache, "frieda.keine_reisen"), "", anl(sprache, "antwortsprache")]
-    z += ["", anl(sprache, "frieda.melden")]
+    z += ["", anl(sprache, "frieda.melden"), "", anl(sprache, "frieda.profil")]
     return "\n".join(z)
 
 
@@ -2390,6 +2406,8 @@ def frieda_werkzeug(k, name, args):
         except konten.KontoFehler as f:
             return f.text(sprache), True
         return texte.t(sprache, "konnektor.an_frieda_melden.angekommen", nr=nr), False
+    if name in ("mein_profil", "profil_eintrag_setzen", "profil_eintrag_entfernen"):
+        return profil_werkzeug(k, name, args)
     if name == "anfrage_entscheiden":
         if not konten.recht(k, "betreiber"):
             return tk("konnektor.frieda_werkzeug.3"), True
@@ -2416,6 +2434,35 @@ def frieda_werkzeug(k, name, args):
         konten.schreiben_vormerken(k)
     args.pop("name", None)
     return werkzeug({"reise": reise, "person": schl, "konto_id": k["id"]}, name, args)
+
+
+def profil_werkzeug(k, name, args):
+    """Konto-Werkzeuge des Profils (#12) -> (text, ist_fehler). Gelesen und geschrieben wird nur das Profil des Aufrufers;
+    eingetragen wird nur mit bestaetigt=true und Herkunft, das Datum setzt Frieda. Setzen zählt zur Schreibgrenze (#380),
+    Entfernen nie. Profiltexte stehen nie im Protokoll."""
+    sprache = k.get("sprache") or texte.VORGABE_REISE
+    try:
+        if name == "mein_profil":
+            eintraege = konten.profil_liste(k["id"])
+            if not eintraege:
+                return texte.t(sprache, "konnektor.profil.leer"), False
+            return "\n".join([texte.t(sprache, "konnektor.profil.kopf")]
+                             + [f"- {e['id']} · {e['bereich']}: {e['text']} ({e['herkunft']}, {e['datum'][:10]})"
+                                for e in eintraege]), False
+        if name == "profil_eintrag_entfernen":
+            konten.profil_entfernen(k["id"], args.get("id"))
+            return texte.t(sprache, "konnektor.profil.entfernt", id=str(args.get("id")).strip()), False
+        if args.get("bestaetigt") is not True:
+            return texte.t(sprache, "konnektor.profil.nicht_bestaetigt"), True
+        warten = konten.schreibgrenze(k)
+        if warten is not None:
+            sys.stderr.write(f"grenze {k['id']} schreiben\n")
+            return texte.t(sprache, "konnektor.grenze.schreiben", minuten=math.ceil(warten / 60)), True
+        konten.schreiben_vormerken(k)
+        e = konten.profil_setzen(k["id"], args.get("bereich"), args.get("text"), args.get("herkunft"), id=args.get("id"))
+        return texte.t(sprache, "konnektor.profil.gesetzt", id=e["id"]), False
+    except konten.KontoFehler as f:
+        return f.text(sprache), True
 
 
 def kalender_link(k, neu=False):
@@ -3056,6 +3103,8 @@ def anleitung(zugang, d):
         z.append(anl(sp, "alternativen"))
     if bausteine is None or "waechter" in bausteine:
         z.append(anl(sp, "waechter"))
+    # Profil je Person (#12): lesbar ist es immer (Konto-Werkzeug), die Wirkung je Reise steuert dieser Satz
+    z.append(anl(sp, "profil_nutzen" if bausteine is None or "profile" in bausteine else "profil_nicht_nutzen"))
     if "wuensche" in (bausteine or []):
         z.append(anl(sp, "wuensche"))
     if "packliste" in (bausteine or []):

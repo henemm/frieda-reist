@@ -486,7 +486,9 @@ def test_datenschutz_nennt_meldungen(monkeypatch, sprache):
         "recht.datenschutz.konto_loeschen", sprache)
     assert text("recht.datenschutz.folgt", sprache) == FOLGT[sprache]
     rechte = [text(f"recht.datenschutz.{s}", sprache) for s in ("reise_loeschen", "namen_freitext", "export", "folgt")]
-    stellen = [t.find(r.split("{")[0][:30]) for r in rechte]
+    # gesucht ab dem Abschnitt „Deine Rechte“: der Absatz zum Profil (#12) beginnt wie der zum Export mit „Unter „Mein Konto““
+    ab = t.index(text("recht.datenschutz.rechte.titel", sprache))
+    stellen = [t.find(r.split("{")[0][:30], ab) for r in rechte]
     assert all(s >= 0 for s in stellen) and stellen == sorted(stellen)
 
 

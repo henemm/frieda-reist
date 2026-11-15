@@ -89,6 +89,7 @@ form{display:flex;flex-direction:column;gap:.5rem;margin:0}
 label{font-size:.9375rem;font-weight:600}
 input[type=email],input[type=text],select{width:100%;height:3.125rem;padding:0 .875rem;font:inherit;color:var(--fg);
 background:var(--bg);border:1.5px solid var(--feld);border-radius:12px}
+textarea{width:100%;min-height:5rem;padding:.6rem .875rem;font:inherit;color:var(--fg);background:var(--bg);border:1.5px solid var(--feld);border-radius:12px;resize:vertical}
 input.code{height:3.6rem;font-size:1.75rem;font-weight:600;letter-spacing:.28em;text-align:center}
 button,a.knopf{display:flex;align-items:center;justify-content:center;min-height:3.125rem;margin-top:.5rem;padding:.5rem 1.25rem;
 font-family:inherit;font-size:1.0625rem;font-weight:600;border:0;border-radius:999px;background:var(--acc);color:var(--card);cursor:pointer;text-decoration:none}
@@ -949,7 +950,8 @@ def export_person(k, reisen, reise_info):
             "push": konten.push_einstellungen(kid),
             # Meldungen an den Betreiber (#530): ohne Nummer und ohne Verweis auf das Issue im privaten Repo des Betreibers
             "betreiber_meldungen": [{**m, "zeit": datetime.datetime.fromtimestamp(m["zeit"], datetime.timezone.utc).isoformat()}
-                                    for m in konten.eigene_betreiber_meldungen(kid)]}
+                                    for m in konten.eigene_betreiber_meldungen(kid)],
+            "profil": konten.profil_liste(kid)}   # Profil je Person (#12): nur das eigene
 
 
 def _export_json(wert):
@@ -1035,6 +1037,28 @@ def _export_belege(z, o, reise, name, rolle):
         datei = _export_name(str(b.get("datei") or ""), nur_datei=True)
         with open(belege.datei_pfad(o, b), "rb") as quelle:
             _export_kopieren(quelle, z, f"{reise}/belege/{datei}", os.fstat(quelle.fileno()).st_size)
+
+
+def profil_karte(k):
+    """Abschnitt „Mein Profil“ (#12, Heimat des Profils nach ADR-0003): die eigenen Einträge mit Bereich, Text, Herkunft und
+    Datum, je Eintrag „Text ändern“ und „Löschen“. Kein Formular zum Neuanlegen: Einträge entstehen nur im AI-Client nach
+    Bestätigung (Product Owner, 1.11.2026)."""
+    grenze = instanz.grenze_profil_text()
+    teile = []
+    for e in konten.profil_liste(k["id"]):
+        aendern = (f'<details><summary>{esc(tx("konto.profil.aendern"))}</summary><div class="inhalt" style="padding:0">'
+                   + formular("/konto", verdeckt(aktion="profil_aendern", id=e["id"])
+                              + f'<textarea name="text" maxlength="{grenze}" required>{esc(e["text"])}</textarea>',
+                              tx("konto.seite.speichern"), "leise")
+                   + "</div></details>")
+        loeschen = formular("/konto", verdeckt(aktion="profil_loeschen", id=e["id"]), tx("konto.profil.loeschen"), "neutral")
+        teile.append(karte(f'<div><strong>{esc(e["bereich"])}</strong><p style="margin:.2rem 0">{esc(e["text"])}</p>'
+                           f'<p class="klein" style="margin:0">{esc(e["herkunft"])} · {esc(e["datum"][:10])}</p>'
+                           f'<p class="klein" style="margin:0">{esc(e["id"])}</p></div>',
+                           f'<div class="kalender-links">{aendern}{loeschen}</div>'))
+    inhalt = "".join(teile) or karte(f'<p class="hinweis">{esc(tx("konto.profil.leer"))}</p>')
+    return (f'<div class="abschnitt" id="profil"><h2>{esc(tx("konto.profil.titel"))}</h2>'
+            f'<p class="hinweis" style="margin:0 0 .5rem">{esc(tx("konto.profil.erklaerung"))}</p>{inhalt}</div>')
 
 
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
@@ -1126,6 +1150,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
                  kalender_karte(k, reise_info, offen == "kalender"),
                  push_karte(k, offen == "push"),
                  betreiber,
+                 profil_karte(k),
                  f'<div class="abschnitt"><h2>{esc(tx("konto.seite.einstellungen"))}</h2><div class="liste">{einstellungen}</div></div>',
                  export_karte(k),
                  '<div class="links" style="flex-direction:column;align-items:center">'
@@ -1188,14 +1213,16 @@ def einladungs_seite(e, token, k, reise_info, meldung=""):
 
 RECHT = ("/datenschutz", "/impressum", "/alpha")
 BETREIBER = (("FR_BETREIBER_NAME", "name"), ("FR_BETREIBER_ANSCHRIFT", "anschrift"), ("FR_BETREIBER_KONTAKT", "kontakt"))
-DATENSCHUTZ_ABSCHNITTE = ("konto", "warteliste", "reise", "verlauf", "belege", "betreiber_meldungen", "sicherungen", "weitergabe", "cookie")
+# Profil (#12) direkt nach dem Konto; sein Absatz heißt recht.datenschutz.profil (Art. 9 DSGVO, ausdrückliche Einwilligung)
+DATENSCHUTZ_TEXT = {"profil": "recht.datenschutz.profil"}
+DATENSCHUTZ_ABSCHNITTE = ("konto", "profil", "warteliste", "reise", "verlauf", "belege", "betreiber_meldungen", "sicherungen", "weitergabe", "cookie")
 ALPHA_PUNKTE = ("fehler", "datenverlust", "aenderungen", "claude_konto")
 
 
 def datenschutz_inhalt():
     impressum = link("/impressum", "recht.link.impressum")
     abschnitte = "".join(f'<div><h2>{esc(tx(f"recht.datenschutz.{a}.titel"))}</h2><p style="margin:.3rem 0 0">'
-                         f'{esc(tx(f"recht.datenschutz.{a}.text"))}</p></div>' for a in DATENSCHUTZ_ABSCHNITTE)
+                         f'{esc(tx(DATENSCHUTZ_TEXT.get(a, f"recht.datenschutz.{a}.text")))}</p></div>' for a in DATENSCHUTZ_ABSCHNITTE)
     return (f'<div><h1>{esc(tx("recht.datenschutz.titel"))}</h1>'
             f'<p class="lead">{th("recht.datenschutz.einleitung", impressum=impressum)}</p></div>' + abschnitte
             + f'<div><h2>{esc(tx("recht.datenschutz.rechte.titel"))}</h2>'
@@ -1560,6 +1587,12 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             if a == "meldungen_gelesen":
                 konten.gelesen_merken(k["id"], [m["id"] for m in rm.meldungen_des_kontos(k) if not m["gelesen"] and m["id"]])
                 return weiter("/konto")
+            if a == "profil_aendern":      # Profil (#12): nur der eigene Eintrag (WHERE konto = ?), Herkunft bleibt
+                konten.profil_aendern(k["id"], f.get("id"), f.get("text"))
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.profil.geaendert")))
+            if a == "profil_loeschen":
+                konten.profil_entfernen(k["id"], f.get("id"))
+                return antwort(200, konto_seite(k, reise_info, hinweis=tx("konto.profil.geloescht")))
             if a == "alle_abmelden":
                 konten.alle_abmelden(k["id"])
                 return weiter("/anmelden", [cookie_loeschen()])

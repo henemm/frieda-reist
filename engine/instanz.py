@@ -238,3 +238,23 @@ def loeschfrist_tage():
     """Schonfrist in Tagen zwischen „Reise löschen“ und dem endgültigen Entfernen (FR_LOESCHFRIST_TAGE, #381); in dieser
     Zeit kann eine Organisator:in die Reise zurückholen."""
     return _grenze("FR_LOESCHFRIST_TAGE", VORGABE_LOESCHFRIST_TAGE)
+
+
+VORGABE_GRENZE_PROFIL_EINTRAEGE = 100
+VORGABE_GRENZE_PROFIL_BEREICH = 60
+VORGABE_GRENZE_PROFIL_TEXT = 500
+
+
+def grenze_profil_eintraege():
+    """Höchstzahl der Einträge im Profil eines Kontos (FR_GRENZE_PROFIL_EINTRAEGE, #12); gilt nur beim Neuanlegen."""
+    return _grenze("FR_GRENZE_PROFIL_EINTRAEGE", VORGABE_GRENZE_PROFIL_EINTRAEGE)
+
+
+def grenze_profil_bereich():
+    """Höchstlänge des Bereichs eines Profileintrags in Zeichen (FR_GRENZE_PROFIL_BEREICH, #12)."""
+    return _grenze("FR_GRENZE_PROFIL_BEREICH", VORGABE_GRENZE_PROFIL_BEREICH)
+
+
+def grenze_profil_text():
+    """Höchstlänge des Textes eines Profileintrags in Zeichen (FR_GRENZE_PROFIL_TEXT, #12)."""
+    return _grenze("FR_GRENZE_PROFIL_TEXT", VORGABE_GRENZE_PROFIL_TEXT)

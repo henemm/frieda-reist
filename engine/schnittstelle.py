@@ -82,6 +82,9 @@ NAMEN = {
     "gear_update": "gegenstand_aendern",
     "gear_pack": "gegenstand_packen",
     "packing_list_adopt": "packliste_uebernehmen",
+    "my_profile": "mein_profil",
+    "profile_entry_set": "profil_eintrag_setzen",
+    "profile_entry_remove": "profil_eintrag_entfernen",
 }
 INTERN_ZU_ENGLISCH = {i: e for e, i in NAMEN.items()}
 
@@ -124,6 +127,8 @@ PARAMETER_JE_WERKZEUG = {
     # Zeitraum einer Buchung (#463): arrival/departure nur hier; bei Strecken (ding_*) heißen sie Abfahrt und Ankunft (PARAMETER_VERSTECKT)
     "buchung_anlegen": {"ab": "available_from", "anreise": "arrival", "abreise": "departure"},
     "buchung_aendern": {"ab": "available_from", "anreise": "arrival", "abreise": "departure"},
+    # Profil je Person (#12): nur hier; „bereich“ und „herkunft“ meinen bei anderen Werkzeugen anderes oder fehlen dort
+    "profil_eintrag_setzen": {"bereich": "area", "herkunft": "origin", "bestaetigt": "confirmed"},
 }
 def _werte_aus_dem_katalog():
     """Englischer Wert -> Datenwert aus den Einträgen wert.* und symbol.* des englischen Katalogs (dieselben Wörter, die Antworten zeigen)."""
