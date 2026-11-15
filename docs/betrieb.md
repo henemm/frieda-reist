@@ -4,7 +4,7 @@ Wie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen an
 
 ## Instanz
 
-Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: Ordner, Dienste und Adresse auf einem Server, gebaut aus einem Klon dieser Software (#454; vorher aus einem Reisen-Repo, Abschnitt „Umzug auf den Software-Klon“). Mehrere Gruppen bedeuten mehrere Instanzen, gern auf demselben Server. Die Reisen einer Instanz teilen sich Ablage, Dienste und Meldeweg; getrennt sind die Gruppen nur über eigene Instanzen. Mandanten innerhalb einer Instanz sind ein späterer Schritt (Issue #68).
+Eine **Instanz** ist eine Reisegruppe mit eigenem Betreiber: Ordner, Dienste und Adresse auf einem Server, gebaut aus einem Klon dieser Software (#454; vorher aus einem Reisen-Repo, Abschnitt „Umzug auf den Software-Klon“). Mehrere Gruppen bedeuten mehrere Instanzen, gern auf demselben Server. Die Reisen einer Instanz teilen sich Ablage, Dienste und Meldeweg. Innerhalb einer Instanz trennen Konten und Rollen je Reise die Personen: Jede sieht nur die Reisen, zu denen sie gehört (ADR-0005, #380). Eine eigene Ebene „Mandant“ über mehreren Reisen gibt es nicht (#68, als überholt geschlossen am 15.11.2026).
 
 | Teil | Ort | Inhalt |
 |---|---|---|
@@ -43,7 +43,7 @@ Drei Gruppen, die sich nie mischen sollen:
 
 **Umzug von `_neu` (#72, 1.11.2026):** Früher lagen Anfragen und Meldungen ohne Reise in `<FR_ABLAGE>/_neu/`. Dieser Ort gilt weiter, solange in `<FR_KONTEN>/neu/` nichts liegt. Umziehen bei angehaltenen Diensten: `mv <FR_ABLAGE>/_neu <FR_KONTEN>/neu && chmod 700 <FR_KONTEN>/neu`.
 
-Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen und nennt nur diese Instanz, nicht die Software. Eine zweite Reisegruppe bekommt eine zweite Instanz mit eigenem Namen, eigenem Reisen-Repo und eigenen Ordnern, ihre Daten sind damit von denen der ersten getrennt (#15). Ein gemeinsamer Ort für mehrere Gruppen mit Trennung je Mandant ist #68.
+Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen und nennt nur diese Instanz, nicht die Software. Eine zweite Reisegruppe bekommt eine zweite Instanz mit eigenem Namen, eigenem Reisen-Repo und eigenen Ordnern, ihre Daten sind damit von denen der ersten getrennt (#15). Mehrere Gruppen auf einer Instanz trennen Konten und Rollen je Reise (#380); einen eigenen Mandanten gibt es nicht (#68).
 
 ## Datenschutz je Instanz (#15)
 
