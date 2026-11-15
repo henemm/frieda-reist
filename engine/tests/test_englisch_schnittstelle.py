@@ -15,7 +15,7 @@ from englisch_hilfe import BEZEICHNER, deutsche_woerter  # noqa: E402
 from test_konnektor import BEISPIEL, seiten  # noqa: E402,F401  (seiten: Fixture)
 
 # Eigennamen aus den Beispielen der Beschreibungen (Orte, Anbieter, Pensionen), keine deutschen Wörter
-EIGENNAMEN = frozenset({"elbblick", "eurowings", "refugi", "pnr", "ryokan", "carrer", "lluna", "ller", "popup", "sóller", "soller", "münster", "allgäu", "pdfs", "webcal"})
+EIGENNAMEN = frozenset({"elbblick", "eurowings", "refugi", "pnr", "ryokan", "carrer", "lluna", "ller", "popup", "sóller", "soller", "münster", "allgäu", "pdfs", "webcal", "wikimedia", "wikidata"})
 # Bekannte Schuld: {Ort: [Wörter]}. Darf nur kürzer werden; Ziel ist eine leere Liste.
 BEKANNT = {}
 

@@ -13,6 +13,8 @@ Der Malerweg ist ein Rundweg von 112 km in acht Etappen. Er beginnt im Liebethal
 ### Die Basteibrücke
 Die steinerne Brücke an der Bastei entstand 1850/51 aus Sandstein. Sie ist 76,5 m lang und überspannt die Mardertelle mit sieben Bögen. Vorher stand dort seit etwa 1826 eine Holzbrücke, die baufällig geworden war.[^3]
 
+![Die Basteibrücke](BI-03)
+
 ### Der Hockstein
 Der Hockstein ist ein 291 m hoher Sandsteinberg über dem Polenztal, westlich davon liegt Hohnstein. Am bequemsten erreicht man ihn über eine Steinbrücke von 1821, ein zweiter Zugang führt durch die Wolfsschlucht. Er liegt auf der 2. Etappe des Malerwegs.[^4] Dass die Wolfsschlucht steiler und bei Nässe heikler ist, ist eine Annahme (Wahlstelle V-02).
 

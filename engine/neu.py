@@ -50,7 +50,7 @@ VORLAGEN = Path(__file__).with_name("reisevorlage")   # je Sprache ein Ordner (d
 
 def vorlage_ordner(sprache):
     return VORLAGEN / sprache if (VORLAGEN / sprache).is_dir() else VORLAGEN / texte.VORGABE
-ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B", "G")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung, G = Gegenstand der Packliste); Pläne (P-A) und Aufgaben (AG, live) nicht
+ARTEN = ("W", "F", "O", "U", "A", "E", "T", "V", "B", "G", "BI")     # nummerierte IDs (A = Aufenthalt ohne Nacht, B = Buchung, G = Gegenstand der Packliste, BI = Bild, #455); Pläne (P-A) und Aufgaben (AG, live) nicht
 GRUPPEN = ("wissen", "praxis", "quelle")
 # waechter von Anfang an (Product Owner, 11.11.2026, #517): er arbeitet ohnehin erst ab Status fest
 BAUSTEINE_IDEE = ["rueckmeldungen", "fragen", "aufgaben", "wuensche", "waechter"]
@@ -1065,6 +1065,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
         meldungen += eckdaten_nachziehen(reise_dir, cfg, schreiben)
     meldungen += rollen_namen_nachziehen(reise_dir, schreiben)
     meldungen += reste_nachziehen(reise_dir, schreiben)
+    meldungen += bilder_nachziehen(reise_dir, schreiben)   # #455, #581: Altbestand -> BI-…, fremde Bilder -> Link
     if betrieb:
         meldungen += sperren_nachziehen(schreiben)
     return meldungen
@@ -1422,6 +1423,126 @@ def rollen_namen_nachziehen(reise_dir, schreiben=True):
         pfad.write_text(text, encoding="utf-8")
     else:
         sb.arten_speichern(reise_dir, arten, {"name": "Betrieb (neu.py nachziehen)"})
+    return meldungen
+
+
+# Bilder im Text (#455, #581): ![alt](ziel) mit freiwilligem Titel, Leerraum in der Klammer wie bei Markdown
+BILD_IM_TEXT = re.compile(r"!\[([^\]]*)\]\(\s*([^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)")
+ABSCHNITT_KENNUNG = re.compile(r"([A-Z]{1,2}-\d+[A-Za-z]?)\b")
+
+
+def _bild_abschnitt(titel, zuordnung):
+    """Kennung eines Abschnitts aus seiner Überschrift („E-01 …“) oder der Zuordnung in reise.json, sonst „reise“."""
+    from routen import REISE_ALS_ELTERN
+    if (m := ABSCHNITT_KENNUNG.match(titel)):
+        return m.group(1)
+    eintrag = zuordnung.get(titel)
+    return eintrag[0] if isinstance(eintrag, list) and eintrag and isinstance(eintrag[0], str) else REISE_ALS_ELTERN
+
+
+def _fremdes_bild_ersetzen(alt, ziel):
+    """Ein Bild, das der Bau als fremde Bildquelle ablehnt (bauen.FREMDE_BILDQUELLE) -> Ersatz, mit dem er gelingt, oder None
+    (eigenes Bild): http(s) und //host werden ein Link (//host mit https:), jede andere Quelle (data:, javascript:, /…, \\…) nur ihr
+    Alt-Text."""
+    if not re.match(r"[a-z][a-z0-9+.-]*:|[/\\]", ziel, re.I):
+        return None
+    if re.match(r"https?://", ziel, re.I) or ziel.startswith("//"):
+        adresse = "https:" + ziel if ziel.startswith("//") else ziel
+        return f"[{alt or adresse}]({adresse})"
+    return alt
+
+
+def _bild_aus_der_reise(reise_dir, quelle, zu, liste, schreiben):
+    """Altbestand (Datei der Reise) als Eintrag quelle: reise mit beiden WebP-Fassungen (ohne Netz) -> Kennung. Die
+    Originaldatei bleibt. Ohne schreiben nur die Kennung, die es bekäme (die Liste merkt sie sich, damit jede eindeutig ist).
+    Ein Inhalt, den Pillow nicht als Rasterbild liest, wirft bilder.Abgelehnt, bevor etwas geschrieben ist."""
+    import bilder
+    inhalt = quelle.read_bytes()
+    bilder.raster_pruefen(inhalt)
+    if not schreiben:
+        n = max([_nummern(reise_dir, "BI")] + [int(b["id"][3:]) for b in liste]) + 1
+        liste.append({"id": f"BI-{n:02d}"})
+        return f"BI-{n:02d}"
+    bid = naechste_id(reise_dir, "BI")
+    f = bilder.fassungen_schreiben(inhalt, reise_dir, bid)
+    liste.append({"id": bid, "zu": zu, "quelle": "reise", "status": "aktiv", **f,
+                  "hinzugefuegt": {"datum": datetime.date.today(), "wer": "neu.py nachziehen"}})
+    return bid
+
+
+def _bild_ersetzen(m, reise_dir, datei, zu, liste, schreiben, meldungen, umgestellt):
+    """Ein Bild im Markdown-Text -> sein Ersatz (unverändert, wenn es schon BI- ist, keine Datei der Reise oder kaputt)."""
+    import bilder
+    alt, ziel = m.groups()
+    rel = datei.relative_to(reise_dir).as_posix()
+    if bilder.KENNUNG.fullmatch(ziel.upper()):
+        return m.group(0)
+    if (ersatz := _fremdes_bild_ersetzen(alt, ziel)) is not None:
+        meldungen.append(f"{rel}: image {ziel[:80]} → link or text (#581)")
+        return ersatz
+    quelle = (datei.parent / ziel).resolve()
+    if not quelle.is_file() or reise_dir.resolve() not in quelle.parents \
+            or quelle.suffix.lower() not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+        return m.group(0)   # bleibt, wie es ist; der Bau meldet es wie bisher
+    if quelle not in umgestellt:
+        try:
+            umgestellt[quelle] = _bild_aus_der_reise(reise_dir, quelle, zu, liste, schreiben)
+        except (bilder.Abgelehnt, OSError):
+            meldungen.append(f"OPEN {rel}: image {ziel} cannot be read as a raster image, left unchanged")
+            umgestellt[quelle] = None
+            return m.group(0)
+        meldungen.append(f"{rel}: image {ziel} → {umgestellt[quelle]} (source: trip)")
+    return m.group(0) if umgestellt[quelle] is None else f"![{alt}]({umgestellt[quelle]})"
+
+
+def _bilder_einer_datei(reise_dir, datei, zuordnung, liste, schreiben, meldungen, umgestellt):
+    """Bilder eines Markdown-Texts umstellen -> neuer Text: Altbestand medien/… wird ![alt](BI-NN), ein fremdes Bild ein Link
+    oder Text."""
+    zeilen, zu = [], _bild_abschnitt("", {})
+    for z in datei.read_text(encoding="utf-8").split("\n"):
+        if (m := re.match(r"##\s+(.+?)\s*$", z)):
+            zu = _bild_abschnitt(m.group(1), zuordnung)
+        zeilen.append(BILD_IM_TEXT.sub(lambda m: _bild_ersetzen(m, reise_dir, datei, zu, liste, schreiben, meldungen, umgestellt), z)
+                      if "![" in z else z)
+    return "\n".join(zeilen)
+
+
+def _fremde_bilder_in_yaml(text):
+    return BILD_IM_TEXT.sub(lambda m: e if (e := _fremdes_bild_ersetzen(*m.groups())) is not None else m.group(0), text)
+
+
+def bilder_nachziehen(reise_dir, schreiben=True):
+    """Bilder im Text (#455, #581): Altbestand ![…](medien/x.jpg) in Markdown-Texten wird ein Eintrag in plan/bilder.yaml mit
+    quelle: reise (zu: Kennung des ##-Abschnitts, sonst reise) und beiden WebP-Fassungen, der Text ![…](BI-NN); ein Bild von
+    einer fremden Adresse wird ein Link oder nur sein Alt-Text (auch in YAML-Texten), so dass der Bau gelingt. Ein Altbild, das
+    Pillow nicht lesen kann, bleibt unverändert (Meldung). Liste und Texte werden erst am Ende geschrieben. Ein zweiter Lauf
+    ändert nichts. -> Meldungen."""
+    import bilder
+    reise_dir = Path(reise_dir)
+    cfg = lies_json(reise_dir / "reise.json") if (reise_dir / "reise.json").is_file() else {}
+    abschnitte = cfg.get("abschnitte") if isinstance(cfg.get("abschnitte"), dict) else {}
+    liste = bilder.laden(reise_dir)
+    vorher, meldungen, umgestellt, neue_texte = len(liste), [], {}, {}
+    for datei in sorted(reise_dir.rglob("*")):
+        teile = datei.relative_to(reise_dir).parts
+        if not datei.is_file() or "medien" in teile or "dist" in teile or datei.suffix not in (".md", ".yaml", ".yml"):
+            continue
+        text = datei.read_text(encoding="utf-8")
+        if "![" not in text:
+            continue
+        if datei.suffix == ".md":
+            zuordnung = abschnitte.get(datei.relative_to(reise_dir).as_posix()) or {}
+            neu_text = _bilder_einer_datei(reise_dir, datei, zuordnung, liste, schreiben, meldungen, umgestellt)
+        else:
+            neu_text = _fremde_bilder_in_yaml(text)
+            meldungen += [f"{teile[-1]}: image → link or text (#581)"] if neu_text != text else []
+        if neu_text != text:
+            neue_texte[datei] = neu_text
+    if schreiben:
+        if len(liste) != vorher:
+            bilder.speichern(reise_dir, liste, texte.t(sprache_von(reise_dir), "inhalt.schreiben.bilder_kopf"))
+        for datei, neu_text in neue_texte.items():
+            datei.write_text(neu_text, encoding="utf-8")
     return meldungen
 
 

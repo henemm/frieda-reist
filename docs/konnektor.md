@@ -67,6 +67,8 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `gegenstand_aendern` | Mitwirkende (eigene), Organisator:innen | Kategorie, Titel, Merkmale (leer entfernt), `an`, `wer`, Notiz, Status ändern; Weglassen ist `entfaellt` mit Grund (gelöscht wird nie), `aktiv` holt zurück; Verlaufseintrag mit Person, Datum, Grund |
 | `gegenstand_packen` | Mitwirkende, Organisator:innen | Gegenstände für die sprechende Person abhaken (`gepackt`: true) oder zurücknehmen (false); ein Gegenstand mit `wer` nur von dieser Person; der Packstand liegt live beim Rückmeldedienst (`GET/PATCH /<reise>/packstand`), nicht im Verlauf der Reise |
 | `packliste_uebernehmen` | Organisator:innen | Kategorien und Gegenstände einer früheren Reise (derselben Person) als Vorschlag kopieren: neue IDs, ohne Packstand, ohne `an` und `wer`, weggelassene bleiben weg; danach im Gespräch streichen und ergänzen |
+| `bild_hinzufuegen` | Mitwirkende, Organisator:innen | ein Bild aus Wikimedia Commons zur Reise (#455): genau eine Quelle `commons` (Dateiname) oder `wikidata` (Q…, Bild aus P18), `zu` (Kennung oder `reise`), freiwillig `bildunterschrift`, `alt`, `titelbild` (nur Organisator:innen). Frieda holt das Bild selbst (vor der Schreibsperre), prüft die Lizenz (CC0, gemeinfrei, CC BY, CC BY-SA; sonst Ablehnung `bild.abgelehnt.*`), legt zwei WebP-Fassungen (480 und 1600 px) und den Eintrag in `plan/bilder.yaml` an (neue ID `BI-…`); die Antwort zeigt eine kleine Vorschau. Im Text erscheint es mit `![…](BI-…)` samt Namensnennung |
+| `bild_aendern` | Mitwirkende, Organisator:innen | Bildunterschrift, `alt`, `zu`, Titelbild (nur Organisator:innen, löst das bisherige ab), zurückziehen (erscheint nirgends mehr, bleibt erhalten) oder wiederherstellen; gelöscht wird nie |
 | `personen` | alle | die Personen der Reise lesen (#406): Name, Rolle, ob sie mitreist, von/bis; Organisator:innen sehen zusätzlich den Zugang (angemeldet, eingeladen, noch keiner). E-Mail-Adressen und Notizen zeigt das Werkzeug nie; es schreibt nichts |
 | `person_einladen` | je nach `regeln.einladen` (Vorgabe Organisator:innen) | legt eine Person mit Rolle an und lädt sie per E-Mail-Adresse ein (Paket C, J; Links gibt es nicht mehr, #421); seit O-3 steht sie sofort in `reise.yaml` (`person_schreiben`), `person_entfernen` macht sie zum Gast, der nicht mitreist (niemand wird gestrichen) |
 
@@ -281,6 +283,8 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 | `gear_update` | `gegenstand_aendern` |
 | `gear_pack` | `gegenstand_packen` |
 | `packing_list_adopt` | `packliste_uebernehmen` |
+| `image_add` | `bild_hinzufuegen` |
+| `image_update` | `bild_aendern` |
 | `value_set` | `wert_eintragen` |
 | `location_set` | `lage_eintragen` |
 | `item_create` | `ding_anlegen` |
@@ -335,6 +339,7 @@ Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten ein
 | `anreise_ab`, `abreise_bis` | `checkin_from`, `checkout_until` |
 | `vor_ort_zahlen` | `pay_on_site` |
 | `bereich`, `herkunft`, `bestaetigt` (nur `profil_eintrag_setzen`) | `area`, `origin`, `confirmed` |
+| `zu`, `bildunterschrift`, `alt`, `titelbild`, `zurueckziehen`, `wiederherstellen` (nur `bild_hinzufuegen`, `bild_aendern`) | `belongs_to`, `caption`, `alt_text`, `title_image`, `withdraw`, `restore` |
 | `abschnitt` | `section` |
 | `adresse` | `address` |
 | `alle` | `all` |

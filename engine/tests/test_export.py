@@ -194,7 +194,7 @@ def test_dienst_export_reporeise(repo, monkeypatch):
         assert code == 200 and kopf["content-type"].startswith("application/zip"), daten[:300]
         namen = git(wurzel, "ls-tree", "-r", "--name-only", "origin/main", "reisen/beispielreise").splitlines()
         erwartet = {n.removeprefix("reisen/beispielreise/"): git(wurzel, "show", f"origin/main:{n}").encode()
-                    for n in namen if not n.endswith((".png", ".jpg", ".gpx"))}
+                    for n in namen if not n.endswith((".png", ".jpg", ".webp", ".gpx"))}
         z = als_zip(daten)
         assert set(z.namelist()) >= set(erwartet) and all(not n.startswith("reisen/") for n in z.namelist())
         for n, inhalt in erwartet.items():

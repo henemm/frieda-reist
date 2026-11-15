@@ -35,7 +35,7 @@ ARTEN = WANN                      # alter Name, wird von Bestand gelesen
 UHRZEIT = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MUSTER = {"ort": r"O-\d+", "strecke": r"E-\d+[A-Za-z]?", "unterkunft": r"U-\d+", "aufenthalt": r"A-\d+",
           "tag": r"T-\d+", "wahl": r"V-\d+", "option": r"V-\d+\.[a-z]+", "wissen": r"W-\d+(?:\.[a-z0-9-]+)?", "buchung": r"B-\d+",
-          "gegenstand": r"G-\d+"}
+          "gegenstand": r"G-\d+", "bild": r"BI-\d+"}   # bild: Eigenschaft der Grundformen mit eigener Liste (#455), keine Grundform
 # Elternbezug (ADR-0007, #282): jedes Ding darf mit an: sagen, an welchem anderen Ding es zu Hause ist (genau eines). Erlaubt sind
 # Tag, Ort, Strecke, Aufenthalt, Unterkunft, Abschnitt des Wissens und die Reise selbst (an: reise). Ohne an: gilt die Vorgabe
 # der Grundform (Nacht und Strecke am Tag, Aufenthalt am Tag, sonst an seinem Ort). Bei einer Strecke war an: bis zum

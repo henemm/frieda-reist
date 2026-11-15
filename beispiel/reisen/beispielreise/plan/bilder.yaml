@@ -1,0 +1,56 @@
+# Bilder dieser Reise (BI-…): Herkunft, Lizenz, Zuordnung und Fassungen (medien/bilder/).
+# Gepflegt im Gespräch im AI-Client (bild_hinzufuegen, bild_aendern); gelöscht wird nie, zurückgezogene Bilder bleiben erhalten.
+# Beispielwerte (erfunden ist nur die Reise): BI-01 ist die eigene Skizze (Altbestand, quelle: reise); BI-02 und BI-03 sind echte
+# freie Bilder aus Wikimedia Commons, Urheber und Lizenz aus deren Angaben (THIRD_PARTY.md).
+bilder:
+- id: BI-01
+  zu: E-01
+  quelle: reise
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-01-480.webp
+    gross: medien/bilder/BI-01-1600.webp
+  breite: 800
+  hoehe: 400
+  hinzugefuegt:
+    datum: 2026-11-15
+    wer: neu.py nachziehen
+- id: BI-02
+  zu: reise
+  quelle:
+    commons: Nationalpark Sächsische Schweiz 20260906 Schrammsteine 01.jpg
+  urheber: NutzerAusBerlin
+  lizenz: CC0
+  lizenz_url: https://creativecommons.org/publicdomain/zero/1.0/deed.en
+  seite: https://commons.wikimedia.org/wiki/File:Nationalpark_S%C3%A4chsische_Schweiz_20260906_Schrammsteine_01.jpg
+  bildunterschrift: Die Schrammsteine
+  alt: Felsgrat aus Sandstein über bewaldeten Hängen
+  titelbild: true
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-02-480.webp
+    gross: medien/bilder/BI-02-1600.webp
+  breite: 1600
+  hoehe: 1200
+  hinzugefuegt:
+    datum: 2026-11-15
+    wer: Ida
+- id: BI-03
+  zu: W-05
+  quelle:
+    commons: Basteibrücke 01.jpg
+  urheber: John Samuel
+  lizenz: CC BY-SA 4.0
+  lizenz_url: https://creativecommons.org/licenses/by-sa/4.0
+  seite: https://commons.wikimedia.org/wiki/File:Basteibr%C3%BCcke_01.jpg
+  bildunterschrift: Die Basteibrücke
+  alt: Steinbrücke zwischen Sandsteinfelsen
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-03-480.webp
+    gross: medien/bilder/BI-03-1600.webp
+  breite: 1600
+  hoehe: 1067
+  hinzugefuegt:
+    datum: 2026-11-15
+    wer: Ida

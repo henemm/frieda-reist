@@ -14,4 +14,11 @@ Python-Pakete (`engine/requirements.txt`, nicht mitgeliefert): Markdown (BSD), n
 
 Kartendaten: Grundkarten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL) über Protomaps; bei automatischen Karten holt sie das Veröffentlichen (`werkzeuge/grundkarte_auto.py`). Punkte aus `kartenpunkte_holen` kommen über den Overpass-Dienst aus OpenStreetMap (ODbL) und tragen Quelle und Stand. Die Seite zeigt die Namensnennung an. Die Beispielreise enthält keine Kartendaten Dritter, ihre Tracks und Punkte sind von Hand geschätzt.
 
+Bilder der Beispielreise (`beispiel/reisen/beispielreise/medien/bilder/`, #455): zwei freie Bilder aus Wikimedia Commons, von Frieda selbst geholt und als WebP-Fassungen (480 und 1600 px) abgelegt; Urheber und Lizenz stehen auch in `plan/bilder.yaml` der Reise und erscheinen auf der Seite unter dem Bild. Die Skizze `skizze-felsen.png` (BI-01) ist eine eigene Zeichnung.
+
+| Bild | Datei auf Commons | Urheber | Lizenz | Seite |
+|---|---|---|---|---|
+| BI-02 (Titelbild) | Nationalpark Sächsische Schweiz 20260906 Schrammsteine 01.jpg | NutzerAusBerlin | CC0 | https://commons.wikimedia.org/wiki/File:Nationalpark_S%C3%A4chsische_Schweiz_20260906_Schrammsteine_01.jpg |
+| BI-03 | Basteibrücke 01.jpg | John Samuel | CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0) | https://commons.wikimedia.org/wiki/File:Basteibr%C3%BCcke_01.jpg |
+
 Eigener Kartendienst (optional, #444, `docs/betrieb.md`): Eine Instanz kann einen eigenen Overpass-Dienst betreiben. Overpass API steht unter der GNU Affero General Public License (AGPL); das Docker-Image `wiktorn/overpass-api` wird nicht mitgeliefert, sondern auf dem Server geladen und per Digest gepinnt (`betrieb/gemeinsam.sh`). Die eingespielten Regionsauszüge (Geofabrik) sind Daten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL, Namensnennung in jedem Treffer).

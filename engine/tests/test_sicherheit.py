@@ -38,6 +38,27 @@ def test_reisetext_laesst_uebliche_adressen_zu(adresse):
     assert not p.fremd
 
 
+@pytest.mark.parametrize("adresse", ["https://example.org/x.jpg", "http://example.org/x.png", "//example.org/x.jpg",
+                                     "/\\example.org/x.jpg", " https://example.org/x.jpg", "data:image/png;base64,AAAA"])
+def test_bild_von_fremder_adresse_wird_gemeldet(adresse):
+    """#581: Bis Bilder Stufe 1 ließ die Prüfung fremde Bildquellen durch (Hotlink); jetzt sind sie ein Baufehler."""
+    p = bauen.TextPruefung()
+    p.feed(f'<p><img src="{adresse}" alt="x"></p>')
+    assert p.fremde_bilder, adresse
+
+
+@pytest.mark.parametrize("adresse", ["medien/bild.jpg", "medien/bilder/BI-01-1600.webp"])
+def test_eigenes_bild_bleibt_erlaubt(adresse):
+    p = bauen.TextPruefung()
+    p.feed(f'<p><img src="{adresse}" alt="x"><a href="https://example.org/x">Link</a></p>')
+    assert not p.fremde_bilder and not p.fremd
+
+
+def test_schutzrichtlinie_begrenzt_bilder_auf_die_eigene_adresse():
+    aus = bauen.skripte_festlegen("<html><head><title>x</title></head><body></body></html>")
+    assert "img-src 'self' data:" in aus and "blob:" not in aus
+
+
 def test_reisetext_wird_gesaeubert_auch_wo_pythons_parser_nichts_sieht():
     """CDATA liest Pythons HTMLParser als Daten, der Browser als Kommentar bis zum ersten „>“: Die Prüfung allein sah das
     <img onerror> nicht. Gesäubert wird mit einem Parser, der wie ein Browser liest."""

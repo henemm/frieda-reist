@@ -43,7 +43,7 @@ Drei Wandertage auf Abschnitten des Malerwegs, dazu eine Alternative für den le
 6. Hohnstein
 
 ### Skizze
-![Skizze: Felsnadeln, Brücke und Fluss](../medien/skizze-felsen.png)
+![Skizze: Felsnadeln, Brücke und Fluss](BI-01)
 
 Eigene Zeichnung, kein Foto. Sie zeigt das Motiv der Gegend: Sandsteinfelsen, eine Bogenbrücke, darunter der Fluss.
 

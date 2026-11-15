@@ -83,7 +83,9 @@ ONTOLOGIE_WERKZEUGE = ("art_definieren", "merkmal_definieren", "kategorie_defini
                        "reise_aendern", "plan_anlegen", "plan_aendern", "merkmal_zusammenfuehren", "arten_uebernehmen", "wunsch_vorschlagen",
                        "start_ende_setzen", "symbol_setzen", "kartenansicht_setzen", "track_anhaengen", "kartenpunkte_holen",
                        # Packliste (ADR-0010, #370)
-                       "gegenstand_anlegen", "gegenstand_aendern", "packliste_uebernehmen")
+                       "gegenstand_anlegen", "gegenstand_aendern", "packliste_uebernehmen",
+                       # Bilder Stufe 1 (#455)
+                       "bild_hinzufuegen", "bild_aendern")
 # Aktion der Regelprüfung je Werkzeug; art_definieren und merkmal_definieren gehen für Mitwirkende als Rückmeldung (Vorschlag)
 ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "kategorie_definieren": "ontologie", "wert_eintragen": "wert",
                     "ding_anlegen": "ding", "ding_aendern": "ding", "lage_eintragen": "ding", "option_anlegen": "alternative",
@@ -94,7 +96,8 @@ ONTOLOGIE_AKTION = {"art_definieren": "ontologie", "merkmal_definieren": "ontolo
                     "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
                     "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
                     "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte",
-                    "gegenstand_anlegen": "gegenstand", "gegenstand_aendern": "gegenstand", "packliste_uebernehmen": "packliste_uebernehmen"}
+                    "gegenstand_anlegen": "gegenstand", "gegenstand_aendern": "gegenstand", "packliste_uebernehmen": "packliste_uebernehmen",
+                    "bild_hinzufuegen": "bild", "bild_aendern": "bild"}
 # Werkzeug -> Aktion der Regelprüfung (reise.AKTIONEN); rueckmeldung_geben mit Art Wunsch ist die Aktion „wunsch“
 SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufgabe", "aufgabe_aendern": "aufgabe", "beleg_anlegen": "buchung",
                   "entscheiden": "entscheiden", "rueckmeldung_erledigen": "rueckmeldung_erledigen",
@@ -1621,6 +1624,8 @@ def ontologie_werkzeug(reise, d, wer, zugang, name, args):
         return text + (" " + bt if not bf else tk("konnektor.ontologie_werkzeug.14", bt=bt)), False
     if name == "buchung_anlegen":
         text += tk("konnektor.ontologie_werkzeug.2")
+    if isinstance(antwort.get("vorschau"), str) and antwort["vorschau"]:   # Bild (#455): kleine Fassung zur Kontrolle an Claude
+        return MitBild(text, [("image/webp", antwort["vorschau"])]), False
     return text, False
 
 
@@ -2945,6 +2950,22 @@ PACKLISTE_UEBERNEHMEN = {"name": "packliste_uebernehmen", "description": "@konne
                              "arten": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.packliste_uebernehmen.arten"},
                              "grund": {"type": "string"}}, "required": ["von_reise"]}}
 WERKZEUGE += [PACKLISTE_LESEN, GEGENSTAND_PACKEN]
+# Bilder Stufe 1 (#455): Claude nennt nur Dateiname oder Kennung, Frieda holt und prüft das Bild selbst (engine/bilder.py)
+BILD_FELDER = {"zu": {"type": "string", "description": "@konnektor.werkzeug.bild.zu"},
+               "bildunterschrift": {"type": "string", "description": "@konnektor.werkzeug.bild.bildunterschrift"},
+               "alt": {"type": "string", "description": "@konnektor.werkzeug.bild.alt"},
+               "titelbild": {"type": "boolean", "description": "@konnektor.werkzeug.bild.titelbild"}}
+BILD_HINZUFUEGEN = {"name": "bild_hinzufuegen", "description": "@konnektor.werkzeug.bild_hinzufuegen",
+                    "inputSchema": {"type": "object", "properties": {
+                        "commons": {"type": "string", "description": "@konnektor.werkzeug.bild_hinzufuegen.commons"},
+                        "wikidata": {"type": "string", "description": "@konnektor.werkzeug.bild_hinzufuegen.wikidata"},
+                        **BILD_FELDER}, "required": ["zu"]}}
+BILD_AENDERN = {"name": "bild_aendern", "description": "@konnektor.werkzeug.bild_aendern",
+                "inputSchema": {"type": "object", "properties": {
+                    "ziel": {"type": "string", "description": "@konnektor.werkzeug.bild_aendern.ziel"}, **BILD_FELDER,
+                    "zurueckziehen": {"type": "boolean", "description": "@konnektor.werkzeug.bild_aendern.zurueckziehen"},
+                    "wiederherstellen": {"type": "boolean", "description": "@konnektor.werkzeug.bild_aendern.wiederherstellen"}},
+                    "required": ["ziel"]}}
 START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.werkzeug.start_ende_setzen",
                      "inputSchema": {"type": "object", "properties": {
                          "start_datum": {"type": "string"}, "start_ort": {"type": "string", "description": "O-…"},
@@ -3326,7 +3347,7 @@ def werkzeuge_fuer(zugang):
                  BUCHUNG_ANLEGEN, BUCHUNG_AENDERN, TAG_ANLEGEN, TERMIN_SETZEN, WAHLSTELLE_AENDERN, OPTION_AENDERN, WISSEN_AENDERN,
                  LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
                  WUNSCH_VORSCHLAGEN, SYMBOL_SETZEN, KARTENANSICHT_SETZEN, KARTENPUNKTE_HOLEN,
-                 GEGENSTAND_ANLEGEN, GEGENSTAND_AENDERN, PACKLISTE_UEBERNEHMEN] if schreibdienst() else []
+                 GEGENSTAND_ANLEGEN, GEGENSTAND_AENDERN, PACKLISTE_UEBERNEHMEN, BILD_HINZUFUEGEN, BILD_AENDERN] if schreibdienst() else []
     for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:

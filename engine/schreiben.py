@@ -88,7 +88,8 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "wissen_aendern": "wissen", "lesetext_schreiben": "wissen", "reise_aendern": "einstellung", "plan_anlegen": "plan",
             "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
             "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte",
-            "gegenstand_anlegen": "gegenstand", "gegenstand_aendern": "gegenstand", "packliste_uebernehmen": "packliste_uebernehmen"}   # reise.AKTIONEN
+            "gegenstand_anlegen": "gegenstand", "gegenstand_aendern": "gegenstand", "packliste_uebernehmen": "packliste_uebernehmen",
+            "bild_hinzufuegen": "bild", "bild_aendern": "bild"}   # reise.AKTIONEN
 HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
 verbinden = texte.Satz.verbinden
@@ -169,7 +170,7 @@ class Ablehnung(Exception):
             self.schluessel, self.werte = text_oder_schluessel.schluessel, dict(text_oder_schluessel.werte)
             super().__init__(str(text_oder_schluessel))
             return
-        self.schluessel = text_oder_schluessel if re.fullmatch(r"(schreiben|dienst)(\.[A-Za-z0-9_]+)+", str(text_oder_schluessel)) else None
+        self.schluessel = text_oder_schluessel if re.fullmatch(r"(schreiben|dienst|bild)(\.[A-Za-z0-9_]+)+", str(text_oder_schluessel)) else None
         self.werte = {k: texte.Datum(v) if isinstance(v, datetime.date) and not isinstance(v, datetime.datetime)
                        else v if isinstance(v, (str, int, float, bool, texte.Satz)) or v is None else str(v) for k, v in werte.items()}
         super().__init__(texte.t(texte.VORGABE_REISE, self.schluessel, **self._werte_in(texte.VORGABE_REISE))
@@ -1208,7 +1209,7 @@ def wert_leeren(reise_dir, ziel, k):
 
 # ---------- Dinge, Wahlstellen, Optionen (plan/routen.yaml) ----------
 DING_ARTEN = {"unterkunft": ("U", "unterkuenfte"), "aufenthalt": ("A", "aufenthalte"), "strecke": ("E", "strecken"), "ort": ("O", "orte")}
-ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+|G-\d+)\Z")
+ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?|F-\d+|B-\d+|G-\d+|BI-\d+)\Z")
 
 
 PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte", "aufenthalte", "orte",
@@ -5063,6 +5064,178 @@ def packliste_uebernehmen(reise_dir, wer, args, heute=None):
             + S("schreiben.antwort.packliste.vorschlag") + (S("schreiben.antwort.grund", w1=grund) if grund else ""))
 
 
+# ---------- Bilder (Stufe 1, #455, #581; engine/bilder.py) ----------
+
+def bild_ablehnung(e):
+    """Ablehnung von engine/bilder.py (bild.abgelehnt.*) -> Ablehnung des Schreibwegs mit demselben Schlüssel."""
+    return Ablehnung(e.schluessel, **e.werte)
+
+
+def bild_liste(reise_dir):
+    import bilder
+    try:
+        return bilder.laden(reise_dir)
+    except Exception as e:   # yaml wirft verschiedene Fehlerklassen
+        raise Ablehnung(texte.satz("pruefung.bauen.bild_liste", e=type(e).__name__))
+
+
+def bild_liste_speichern(reise_dir, liste):
+    import bilder
+    bilder.speichern(reise_dir, liste, texte.t(sprache_von(reise_dir), "inhalt.schreiben.bilder_kopf"))
+
+
+def bild_ziel(reise_dir, wert):
+    """zu eines Bilds: genau eine Kennung eines Orts, einer Strecke, Unterkunft, eines Aufenthalts, Tags, Abschnitts des
+    Wissens oder „reise“ -> Kennung; sonst Ablehnung bild.abgelehnt.ziel."""
+    from routen import REISE_ALS_ELTERN
+    zu = " ".join(str(wert or "").split())
+    if zu == REISE_ALS_ELTERN:
+        return zu
+    roh = routen_laden(reise_dir) if (Path(reise_dir) / "plan" / "routen.yaml").exists() else {}
+    bekannt = set(wissen_ids(reise_dir))
+    for menge in ("orte", "strecken", "unterkuenfte", "aufenthalte", "tage"):
+        bekannt |= set((roh.get(menge) or {}) if isinstance(roh.get(menge), dict) else {})
+    if zu not in bekannt:
+        raise Ablehnung("bild.abgelehnt.ziel", zu=zu[:80])
+    return zu
+
+
+def bild_titelbild_recht(wer):
+    import reise
+    if not reise.darf(wer.get("rolle"), reise.AKTIONEN["titelbild"]["rolle"]):
+        raise Ablehnung("bild.abgelehnt.rolle")
+
+
+def bild_grenze(reise_dir, liste):
+    """Höchstzahl aktiver Bilder (reise.yaml bilder: max_anzahl, Vorgabe 60): ist sie erreicht, Ablehnung bild.abgelehnt.grenze."""
+    import bilder
+    import reise
+    roh = reise_yaml_laden(reise_dir)[1] if (Path(reise_dir) / "reise.yaml").exists() else {}
+    hoechstens = reise.bilder_grenzen(roh)["max_anzahl"]
+    if sum(1 for b in liste if bilder.aktiv(b)) >= hoechstens:
+        raise Ablehnung("bild.abgelehnt.grenze", anzahl=hoechstens)
+
+
+def bild_anfrage(reise_dir, wer, args):
+    """Anfrage von bild_hinzufuegen prüfen, bevor das Netz gefragt wird -> {"commons", "wikidata", "zu", "titelbild"}."""
+    import bilder
+    commons, wikidata = text_wert(args, "commons", laenge=bilder.MAX_DATEINAME + 10), text_wert(args, "wikidata", laenge=20)
+    if bool(commons) == bool(wikidata) or (wikidata and not bilder.WIKIDATA_KENNUNG.fullmatch(wikidata)):
+        raise Ablehnung("bild.abgelehnt.quelle")
+    try:
+        commons = bilder.commons_name(commons) if commons else None
+    except bilder.Abgelehnt as e:
+        raise bild_ablehnung(e)
+    zu = bild_ziel(reise_dir, args.get("zu"))
+    titelbild = bool_wert(args, "titelbild")
+    if titelbild:
+        bild_titelbild_recht(wer)
+    bild_grenze(reise_dir, bild_liste(reise_dir))
+    return {"commons": commons, "wikidata": wikidata, "zu": zu, "titelbild": bool(titelbild)}
+
+
+def bild_eintrag(bid, q, r, f, args, wer):
+    """Neuer Eintrag der Liste aus Anfrage q, Abruf r und Fassungen f."""
+    quelle = {"wikidata": q["wikidata"], "commons": r["datei"]} if q["wikidata"] else {"commons": r["datei"]}
+    b = {"id": bid, "zu": q["zu"], "quelle": quelle, "urheber": r.get("urheber") or "", "lizenz": r["lizenz"],
+         "lizenz_url": r.get("lizenz_url"), "seite": r["seite"], "bildunterschrift": text_wert(args, "bildunterschrift"),
+         "alt": text_wert(args, "alt"), "titelbild": True if q["titelbild"] else None, "status": "aktiv", **f,
+         "hinzugefuegt": {"datum": datetime.date.today(), "wer": wer["name"]}}
+    return {k: v for k, v in b.items() if v is not None}
+
+
+def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+    """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+    (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+    plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+    import bilder
+    q = bild_anfrage(reise_dir, wer, args)
+    try:
+        r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+        bid = neue_id(reise_dir, "BI")
+        f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+    except bilder.Abgelehnt as e:
+        raise bild_ablehnung(e)
+    liste = bild_liste(reise_dir)
+    if q["titelbild"]:
+        for b in liste:
+            b.pop("titelbild", None)
+    liste.append(bild_eintrag(bid, q, r, f, args, wer))
+    bild_liste_speichern(reise_dir, liste)
+    return (S("schreiben.titel.bild_neu", bid=bid, zu=q["zu"]),
+            S("schreiben.antwort.bild.neu", bid=bid, zu=q["zu"], urheber=r.get("urheber") or "", lizenz=r["lizenz"]))
+
+
+def bild_status_setzen(reise_dir, liste, b, args):
+    """zurueckziehen oder wiederherstellen -> Schlüssel der Antwort oder None."""
+    import bilder
+    zurueck, wieder = bool_wert(args, "zurueckziehen"), bool_wert(args, "wiederherstellen")
+    if zurueck and wieder:
+        raise Ablehnung("schreiben.bild.zurueck_und_wieder")
+    if zurueck:
+        b["status"] = "zurueckgezogen"
+        b.pop("titelbild", None)   # ein zurückgezogenes Bild ist nie Titelbild
+        return "schreiben.antwort.bild.zurueckgezogen"
+    if wieder:
+        if not bilder.aktiv(b):
+            bild_grenze(reise_dir, liste)
+        b["status"] = "aktiv"
+        return "schreiben.antwort.bild.wiederhergestellt"
+    return None
+
+
+def bild_titelbild_setzen(wer, liste, b, titelbild):
+    """titelbild true: dieses Bild wird das Titelbild (löst das bisherige ab; nie ein zurückgezogenes); false: nur seine eigene
+    Marke fällt weg. Nur Organisator:innen."""
+    import bilder
+    bild_titelbild_recht(wer)
+    if not titelbild:
+        b.pop("titelbild", None)
+        return
+    if not bilder.aktiv(b):
+        raise Ablehnung("bild.abgelehnt.zurueckgezogen")
+    for x in liste:
+        x.pop("titelbild", None)
+    b["titelbild"] = True
+
+
+def bild_aendern(reise_dir, wer, args, heute=None):
+    """Ein Bild der Reise ändern (#455): bildunterschrift, alt, zu, titelbild (nur Organisator:innen; löst das bisherige ab),
+    zurueckziehen oder wiederherstellen. Gelöscht wird nie. -> (Titel, Text)."""
+    bid = " ".join(str(args.get("ziel") or "").split())
+    liste = bild_liste(reise_dir)
+    b = next((x for x in liste if x.get("id") == bid), None)
+    if b is None:
+        raise Ablehnung("schreiben.bild.unbekannt", bid=bid[:40])
+    geaendert = False
+    for feld in ("bildunterschrift", "alt"):
+        if feld in args:
+            wert, geaendert = text_wert(args, feld), True
+            b.update({feld: wert}) if wert else b.pop(feld, None)
+    if args.get("zu") is not None:
+        b["zu"], geaendert = bild_ziel(reise_dir, args.get("zu")), True
+    antwort = bild_status_setzen(reise_dir, liste, b, args)
+    if (titelbild := bool_wert(args, "titelbild")) is not None:
+        bild_titelbild_setzen(wer, liste, b, titelbild)
+        geaendert = True
+    if not geaendert and not antwort:
+        raise Ablehnung("schreiben.bild.nichts")
+    bild_liste_speichern(reise_dir, liste)
+    return S("schreiben.titel.bild_geaendert", bid=bid), S(antwort or "schreiben.antwort.bild.geaendert", bid=bid)
+
+
+def bild_vorschau(reise_dir, bid):
+    """Kleine Fassung eines Bilds als Base64 (für MitBild im Konnektor) oder None."""
+    import base64
+    import bilder
+    try:
+        b = next((x for x in bilder.laden(reise_dir) if x.get("id") == bid), None)
+        datei = Path(reise_dir) / str(((b or {}).get("dateien") or {}).get("klein") or "")
+        return base64.b64encode(datei.read_bytes()).decode("ascii") if b and datei.is_file() else None
+    except Exception:   # die Vorschau ist eine Beigabe; ohne sie gilt der Eintrag trotzdem
+        return None
+
+
 WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_definieren, "kategorie_definieren": kategorie_definieren, "wert_eintragen": wert_eintragen,
              "ding_anlegen": ding_anlegen, "ding_aendern": ding_aendern, "option_anlegen": option_anlegen,
              "wahlstelle_anlegen": wahlstelle_anlegen, "frage_anlegen": frage_anlegen, "entscheiden": entscheiden,
@@ -5078,7 +5251,9 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              # Karte (Epic #225)
              "kartenansicht_setzen": kartenansicht_setzen, "track_anhaengen": track_anhaengen, "kartenpunkte_holen": kartenpunkte_holen,
              # Packliste (ADR-0010, #370)
-             "gegenstand_anlegen": gegenstand_anlegen, "gegenstand_aendern": gegenstand_aendern, "packliste_uebernehmen": packliste_uebernehmen}
+             "gegenstand_anlegen": gegenstand_anlegen, "gegenstand_aendern": gegenstand_aendern, "packliste_uebernehmen": packliste_uebernehmen,
+             # Bilder Stufe 1 (#455)
+             "bild_hinzufuegen": bild_hinzufuegen, "bild_aendern": bild_aendern}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 
@@ -5247,6 +5422,8 @@ class Schreiber:
             antwort["text_teile"] = text.teile_json()
         if (m := re.match(r"^([A-Z]+-\d+(?:\.[\w-]+)?) ", titel)):   # neu angelegtes Ding: seine ID, damit der Konnektor weitermachen kann
             antwort["id"] = m.group(1)
+            if m.group(1).startswith("BI-") and (vorschau := bild_vorschau(self.arbeit / "reisen" / reise, m.group(1))):
+                antwort["vorschau"] = vorschau   # kleine Fassung, der Konnektor zeigt sie Claude zur Kontrolle (MitBild, #455)
         if hinweise:   # nur neue Warnungen; reise_anlegen (REPO_WERKZEUGE) hat keinen Vergleich
             antwort["hinweise"] = [str(h) for h in hinweise]
             antwort["hinweise_teile"] = [h.teile_json() if isinstance(h, texte.Satz) else str(h) for h in hinweise]
@@ -5354,7 +5531,8 @@ def abgelehnt(werkzeug, e):
     sys.stderr.write(f"Rejected {werkzeug} 422: {grund}\n")
     antwort = {"ok": False, "fehler": str(e)}
     if e.schluessel:   # der Konnektor setzt den Satz in der Sprache der Person zusammen
-        antwort.update(fehler_code=e.schluessel, werte=e.werte_json())
+        antwort.update(fehler_code=e.schluessel, werte=e.werte_json(),
+                       text_teile=texte.Satz(str(e), e.schluessel, e.werte).teile_json())   # wie bei Bestätigungen: in jeder Sprache lesbar
     return 422, antwort
 
 
@@ -5577,6 +5755,43 @@ def kartenpunkte_vorab(s, reise, anfrage, vorab):
     return str(datei)
 
 
+def bild_vorab(s, reise, anfrage, vorab):
+    """Abruf bei Wikimedia Commons für bild_hinzufuegen vor der Sperre (#455, Muster kartenpunkte_vorab) -> Pfad der Datei für
+    FR_BILD_VORAB oder None (dann ruft der Vorgang selbst ab). Lesekopie, Rolle und Anfrage werden vorher geprüft (höchstens
+    ZEIT_VORAB_VORB Sekunden); lehnt das ab, kein Abruf: der Vorgang lehnt mit demselben Grund ab. Eine Ablehnung des Abrufs
+    (Lizenz, nicht gefunden, Netz …) geht als Ablehnung an den Aufrufer. Endet die Vorbereitung zu spät, räumt ihr Faden
+    `vorab` selbst weg."""
+    import bilder
+    ergebnis, zustand, schloss = {}, {}, threading.Lock()
+
+    def vorbereiten():
+        try:
+            if REISE_MUSTER.match(reise or ""):
+                kopie = lesekopie(s, reise, vorab)
+                args = anfrage.get("args") if isinstance(anfrage.get("args"), dict) else {}
+                ergebnis["q"] = bild_anfrage(kopie, s.wer_pruefen(kopie, anfrage, "bild_hinzufuegen"), args)
+        except Exception:     # Ablehnung oder Fehler: maßgeblich bleibt der Vorgang
+            pass
+        finally:
+            with schloss:
+                zustand["fertig"] = True
+                if zustand.get("abgebrochen"):
+                    shutil.rmtree(vorab, ignore_errors=True)
+    faden = threading.Thread(target=vorbereiten, daemon=True)
+    faden.start()
+    faden.join(ZEIT_VORAB_VORB)
+    with schloss:
+        zustand["abgebrochen"] = not zustand.get("fertig")
+    q = None if zustand["abgebrochen"] else ergebnis.get("q")
+    if not q:
+        return None
+    quelle = {"commons": q["commons"], "wikidata": q["wikidata"]}
+    try:
+        return bilder.vorab_schreiben(vorab, quelle, bilder.abrufen(**quelle))
+    except bilder.Abgelehnt as e:
+        raise bild_ablehnung(e)
+
+
 def anwenden_extern(s, reise, werkzeug, anfrage):
     """Ein Schreibvorgang des Dienstes -> (Code, Antwort). Der Weg richtet sich nach der Reise: liegt sie im Reisespeicher
     (instanz.speicherreisen, #454), über ihn (vorgang_speicher), sonst bis zum Umzug über Git (schreiben_git.vorgang). Eine
@@ -5589,18 +5804,21 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
     code, antwort = 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
     vorab = None
     try:
-        osm_vorab = None
+        osm_vorab, weiter = None, {}
         if werkzeug == "kartenpunkte_holen":
             vorab = tempfile.mkdtemp(prefix="frieda-osm-")
             osm_vorab = kartenpunkte_vorab(s, reise, anfrage, vorab)
+        elif werkzeug == "bild_hinzufuegen":   # #455: das Bild kommt vor der Sperre, der Vorgang liest es aus FR_BILD_VORAB
+            vorab = tempfile.mkdtemp(prefix="frieda-bild-")
+            weiter = {"bild_vorab": bild} if (bild := bild_vorab(s, reise, anfrage, vorab)) else {}
         if konten.reise_vorgemerkt(reise):   # #381: zur Löschung vorgemerkt oder entfernt, nichts wird mehr geschrieben
             code, antwort = 410, fehler_antwort("schreiben.dienst.reise_geloescht")
         elif werkzeug in REPO_WERKZEUGE or reise in instanz.speicherreisen():
             # Eine neue Reise entsteht immer im Speicher (#454), nie mehr in Git
-            code, antwort = vorgang_speicher(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab)
+            code, antwort = vorgang_speicher(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab, **weiter)
         else:
             import schreiben_git
-            code, antwort = schreiben_git.vorgang(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab)
+            code, antwort = schreiben_git.vorgang(s, reise, werkzeug, anfrage, time.monotonic(), osm_vorab=osm_vorab, **weiter)
     except Ablehnung as e:     # Vorab-Abruf gescheitert: ohne Sperre, ohne Vorgang
         code, antwort = abgelehnt(werkzeug, e)
     except instanz.SpeicherNichtLesbar as e:           # #454: Speicher nicht lesbar, nie auf den Git-Weg ausweichen
@@ -5618,11 +5836,12 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
     return code, antwort
 
 
-def vorab_umgebung(env, osm_vorab):
-    """Umgebung des Unterprozesses `anwenden` mit FR_OSM_VORAB, wenn der Dienst vorab abgerufen hat, sonst ohne."""
-    env.pop("FR_OSM_VORAB", None)
-    if osm_vorab:
-        env["FR_OSM_VORAB"] = str(osm_vorab)
+def vorab_umgebung(env, osm_vorab, bild_vorab=None):
+    """Umgebung des Unterprozesses `anwenden` mit FR_OSM_VORAB und FR_BILD_VORAB, wenn der Dienst vorab abgerufen hat, sonst ohne."""
+    for name, wert in (("FR_OSM_VORAB", osm_vorab), ("FR_BILD_VORAB", bild_vorab)):
+        env.pop(name, None)
+        if wert:
+            env[name] = str(wert)
     return env
 
 
@@ -5634,7 +5853,7 @@ def git_reisen(wurzel_):
         return []
 
 
-def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None):
+def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None, bild_vorab=None):
     """Ein Schreibvorgang über den Reisespeicher (Stufe 2, #347, ADR-0009) -> (Code, Antwort). Sperre der Reise (bei
     reise_anlegen der Reisen), Reise im Speicher?, Arbeitskopie als Export des Stands basis in einem temporären Ordner,
     dann `anwenden` mit dem Code dieses Dienstes (im Betrieb <FR_DIENST>) in der Frist; der Unterprozess trägt den Vorgang
@@ -5710,7 +5929,7 @@ def vorgang_speicher(s, reise, werkzeug, anfrage, start, osm_vorab=None):
                 return nicht_eingetragen(werkzeug)     # noch nichts angewendet, keine Prüfung nötig
             env = vorab_umgebung({**os.environ, "FR_WURZEL": str(s.wurzel), "FR_SCHREIBKOPIE": str(arbeit), "FR_VORGANG": kennung,
                                   "FR_SPEICHER_BASIS": str(basis), "FR_SB_FRIST": f"{ende - time.monotonic():.3f}",
-                                  "TMPDIR": str(tmp / "tmp")}, osm_vorab)
+                                  "TMPDIR": str(tmp / "tmp")}, osm_vorab, bild_vorab)
             try:
                 r = befehl_mit_frist([sys.executable, str(Path(__file__).resolve()), "anwenden", reise, werkzeug],
                                      json.dumps(anfrage), ende - time.monotonic(), env=env)

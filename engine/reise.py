@@ -53,6 +53,16 @@ VORGABEN = {
     "meldekanal": ["app", "nachricht", "push", "mail"],
 }
 KANAELE = ("app", "nachricht", "push", "mail")
+# Grenzen der Bilder je Reise (#455): reise.yaml bilder: {max_anzahl, offline_mb}; Organisator:innen ändern sie dort
+VORGABEN_BILDER = {"max_anzahl": 60, "offline_mb": 25}
+
+
+def bilder_grenzen(roh):
+    """Grenzen der Bilder aus reise.yaml (roh) mit den Vorgaben; ein Wert, der keine ganze Zahl ab 1 ist, gilt als nicht gesetzt."""
+    eigen = (roh or {}).get("bilder") if isinstance(roh, dict) else None
+    eigen = eigen if isinstance(eigen, dict) else {}
+    return {k: v if isinstance(v := eigen.get(k), int) and not isinstance(v, bool) and v >= 1 else vorgabe
+            for k, vorgabe in VORGABEN_BILDER.items()}
 REGEL_WERTE = {"konflikt": ("offene_frage",),
                "einladen": ("organisator", "mitwirkend")}
 # Regeln des Einarbeiten-Laufs (bis 29.10.2026, ADR-0001 Paket O-3): der Konnektor schreibt direkt, es gibt keinen Lauf
@@ -102,6 +112,10 @@ AKTIONEN = {
     "gegenstand":   {"rolle": "mitwirkend", "baustein": "packliste", "ab": ("alles", "nachlese")},
     "packliste_uebernehmen": {"rolle": "organisator", "baustein": "packliste", "ab": ("alles",)},
     "packen":       {"rolle": "mitwirkend", "baustein": "packliste", "ab": ("alles", "nachlese")},
+    # Bilder Stufe 1 (#455): Bild hinzufügen, ändern, zurückziehen und wiederherstellen ab mitwirkend, auch in der Nachlese;
+    # das Titelbild setzen nur Organisator:innen (der Schreibweg prüft es am Feld titelbild)
+    "bild":         {"rolle": "mitwirkend", "baustein": None, "ab": ("alles", "nachlese")},
+    "titelbild":    {"rolle": "organisator", "baustein": None, "ab": ("alles", "nachlese")},
     "alternative":  {"rolle": "mitwirkend", "baustein": "varianten", "ab": ("alles",)},
     # Paket C: Gespräch für alle. Entscheiden gilt für Wahlstellen (Baustein varianten); eine Antwort auf eine Frage
     # braucht den Baustein fragen; wer einladen darf, steht je Reise in regeln.einladen (hier nur die Vorgabe).
@@ -564,10 +578,24 @@ class Reise:
                 "varianten_titel": quelle.get("varianten_titel", "Varianten"),
                 "start": quelle.get("start")}
 
+    def bilder_pruefen(self):
+        """bilder: {max_anzahl, offline_mb} (#455): nur diese Schlüssel, je eine ganze Zahl ab 1; sonst ein Fehler."""
+        b = self.r.get("bilder")
+        if b is None:
+            return
+        bekannt = ", ".join(VORGABEN_BILDER)
+        if not isinstance(b, dict):
+            self.fehl(texte.satz("pruefung.reise.bilder", k="bilder", w1=bekannt))
+            return
+        for k, v in b.items():
+            if k not in VORGABEN_BILDER or not isinstance(v, int) or isinstance(v, bool) or v < 1:
+                self.fehl(texte.satz("pruefung.reise.bilder", k=f"bilder.{k}", w1=bekannt))
+
     def daten(self):
         """-> Eintrag „reise“ für daten.json; Fehler stehen danach in self.fehler."""
         for k in self.r:
-            if k not in ALTE_ECKDATEN + ("ziel", "zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache"):
+            if k not in ALTE_ECKDATEN + ("ziel", "zeitraum", "status", "personen", "bausteine", "regeln", "darstellung", "verlauf", "sprache",
+                                         "bilder"):
                 self.fehl(texte.satz("pruefung.reise.39", k=k))
         d = self.eckdaten()
         d["verlauf"] = self.verlauf()
@@ -579,5 +607,6 @@ class Reise:
         d["personen"] = self.personen()
         d["bausteine"] = self.bausteine()
         d["regeln"] = self.regeln()
+        self.bilder_pruefen()
         d["verhalten"] = verhalten(d["status"]["wert"])
         return d

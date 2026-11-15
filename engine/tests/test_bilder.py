@@ -20,6 +20,7 @@ Was diese Tests als Schnittstelle festlegen (über die Spec hinaus):
 import base64
 import io
 import json
+import re
 import shutil
 import sys
 import tempfile
@@ -557,9 +558,13 @@ def test_zurueckgezogenes_bild_entfaellt_ohne_fehler_unbekanntes_ist_baufehler(w
 
 def test_nachziehen_stellt_altbestand_um_und_ist_idempotent(wanderung, tmp_path):
     p = wanderung / "inhalt" / "etappen.md"
+    # die Beispielreise im Repo ist schon umgestellt (V24): für den Test den Altbestand wiederherstellen
     p.write_text(p.read_text(encoding="utf-8").replace(
+        "![Skizze: Felsnadeln, Brücke und Fluss](BI-01)", "![Skizze: Felsnadeln, Brücke und Fluss](../medien/skizze-felsen.png)").replace(
         "![Skizze: Felsnadeln, Brücke und Fluss](../medien/skizze-felsen.png)",
         "![Skizze: Felsnadeln, Brücke und Fluss](../medien/skizze-felsen.png)\n\n![Fremd](https://example.org/f.jpg)"), encoding="utf-8")
+    w = wanderung / "inhalt" / "wissen.md"     # ohne Liste auch ohne die Commons-Bilder der Beispielreise im Text
+    w.write_text(re.sub(r"\n!\[[^\]]*\]\(BI-\d+\)\n", "\n", w.read_text(encoding="utf-8")), encoding="utf-8")
     shutil.rmtree(wanderung / "medien" / "bilder", ignore_errors=True)
     (wanderung / "plan" / "bilder.yaml").unlink(missing_ok=True)
     neu.nachziehen(wanderung)
@@ -585,9 +590,13 @@ def test_nachziehen_aendert_stadtwochenende_nicht(stadt):
 
 def test_nachziehen_aendert_die_beispielreise_nicht_mehr(wanderung):
     """Die Beispielreise im Repo ist schon umgestellt (V24): Altbestand steht als BI-, ein Bild mit Commons-Herkunft und ein Titelbild."""
-    stand = {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()}
+    # nur die Dateien, die bilder_nachziehen berührt; volle Idempotenz der Beispielreise: #584
+    def dateien():
+        muster = ("plan/bilder.yaml", "ids.yaml", "inhalt/*.md", "medien/bilder/*")
+        return {f: f.read_bytes() for m in muster for f in wanderung.glob(m) if f.is_file()}
+    stand = dateien()
     neu.nachziehen(wanderung)
-    assert {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()} == stand
+    assert dateien() == stand
     bilder = liste(wanderung)
     assert any("commons" in (b["quelle"] if isinstance(b["quelle"], dict) else {}) for b in bilder)
     assert sum(1 for b in bilder if b.get("titelbild")) == 1
@@ -611,3 +620,154 @@ def test_bilddateien_werden_ausgelagert_und_exportiert(wanderung, tmp_path, monk
     ziel = tmp_path / "wieder"
     rs.materialisieren("beispielreise", ziel)
     assert (ziel / b["dateien"]["klein"]).read_bytes() == (wanderung / b["dateien"]["klein"]).read_bytes()
+
+
+# ---------- Seitentest unter der neuen CSP (V10, AC-6) ----------
+
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_seite_unter_der_csp_ohne_meldung(tmp_path, browser):
+    """Gebaute Beispielreise (Grundkarten als Attrappe wie test_karte_legende): Etappenkarte mit Kacheln und Ebenen-Symbol, Belege,
+    App-Symbol und ein Bild ![…](BI-NN) mit Nennung, in Chromium und WebKit ohne CSP-Meldung in der Konsole und ohne Seitenfehler."""
+    import functools
+    import http.server
+    import os
+    import subprocess
+    import threading
+    from test_karte_legende import gebaut
+    from test_tagesseite import PLAYWRIGHT
+    if not PLAYWRIGHT.exists() or not shutil.which("node"):
+        pytest.skip("Playwright fehlt")
+    gebaut(tmp_path)
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_bilder_csp.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/beispiel/"],
+                             capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == [], e["fehler"]
+    a = e["aus"]
+    assert a["karte"]["marken"] and a["karte"]["kacheln"] and a["karte"]["ebenenSymbol"], a["karte"]
+    assert a["symbol"] and all(a["symbol"]), a["symbol"]
+    assert a["beleg"] == 1, a
+    assert a["bild"] and all(x["breite"] > 0 for x in a["bild"]), a["bild"]
+    assert any("CC BY-SA 4.0" in x["nennung"] for x in a["bild"]), a["bild"]
+
+
+# ---------- Befunde der Gegenprüfung (F001 bis F007) ----------
+
+def reise_yaml_bilder(ordner, wert):
+    p = ordner / "reise.yaml"
+    roh = yaml.safe_load(p.read_text(encoding="utf-8"))
+    roh["bilder"] = wert
+    p.write_text(yaml.safe_dump(roh, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def probebau(ordner):
+    with tempfile.TemporaryDirectory() as t:
+        return bauen.Bauer(ordner, t).daten()
+
+
+def test_f001_bilder_in_reise_yaml_baut_und_hebt_die_grenze(wanderung, monkeypatch):
+    Netz(monkeypatch)
+    vorhanden = liste(wanderung)
+    platzhalter = [{"id": f"BI-{n}", "zu": "reise", "quelle": "reise", "status": "aktiv"} for n in range(100, 160 - len(vorhanden))]
+    p = wanderung / "plan" / "bilder.yaml"
+    p.write_text(yaml.safe_dump({"bilder": vorhanden + platzhalter}, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    assert len([b for b in liste(wanderung) if b["status"] == "aktiv"]) == 60
+    with pytest.raises(sb.Ablehnung):
+        neu_hinzu(wanderung)
+    reise_yaml_bilder(wanderung, {"max_anzahl": 100, "offline_mb": 25})
+    probebau(wanderung)                                                  # der Bau kennt den Schlüssel bilder
+    bid, _ = neu_hinzu(wanderung)                                        # das 61. Bild wird angenommen
+    assert eintrag(wanderung, bid)["status"] == "aktiv"
+
+
+@pytest.mark.parametrize("wert", [{"max_anzahl": 0}, {"offline_mb": "viel"}, {"unbekannt": 1}, "60"])
+def test_f001_falscher_bilder_block_ist_ein_baufehler(wanderung, wert):
+    reise_yaml_bilder(wanderung, wert)
+    assert meldet(bau_meldungen(wanderung), "pruefung.reise.bilder")
+
+
+def test_f002_kaputtes_altbild_bleibt_und_der_rest_wird_umgestellt(wanderung):
+    w = wanderung / "inhalt" / "wissen.md"
+    w.write_text(re.sub(r"\n!\[[^\]]*\]\(BI-\d+\)\n", "\n", w.read_text(encoding="utf-8")), encoding="utf-8")
+    (wanderung / "medien" / "kaputt.png").write_bytes(b"\x89PNG kaputt")
+    text_anhaengen(wanderung, "![Kaputt](../medien/kaputt.png)")
+    p = wanderung / "inhalt" / "etappen.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("(BI-01)", "(../medien/skizze-felsen.png)"), encoding="utf-8")
+    shutil.rmtree(wanderung / "medien" / "bilder")
+    (wanderung / "plan" / "bilder.yaml").unlink()
+    meldungen = neu.nachziehen(wanderung, betrieb=False)
+    assert any("kaputt.png" in m for m in meldungen), meldungen
+    assert "](../medien/kaputt.png)" in w.read_text(encoding="utf-8")
+    neu_ids = [b["id"] for b in liste(wanderung)]
+    assert len(neu_ids) == 1 and f"]({neu_ids[0]})" in p.read_text(encoding="utf-8")
+    assert all((wanderung / f).exists() for f in eintrag(wanderung, neu_ids[0])["dateien"].values())
+    probebau(wanderung)
+    stand = {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()}
+    neu.nachziehen(wanderung, betrieb=False)
+    assert {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()} == stand
+
+
+def test_f003_titelbild_false_entfernt_nur_die_eigene_marke(wanderung, monkeypatch):
+    Netz(monkeypatch)
+    a, _ = neu_hinzu(wanderung, titelbild=True)
+    b, _ = neu_hinzu(wanderung)
+    sb.bild_aendern(wanderung, IDA, {"ziel": b, "titelbild": False})
+    assert [x["id"] for x in liste(wanderung) if x.get("titelbild")] == [a]
+    sb.bild_aendern(wanderung, IDA, {"ziel": a, "titelbild": False})
+    assert [x["id"] for x in liste(wanderung) if x.get("titelbild")] == []
+
+
+def test_f004_zurueckgezogenes_bild_ist_nie_titelbild(wanderung, monkeypatch):
+    Netz(monkeypatch)
+    a, _ = neu_hinzu(wanderung, titelbild=True)
+    sb.bild_aendern(wanderung, KARL, {"ziel": a, "zurueckziehen": True})
+    assert not eintrag(wanderung, a).get("titelbild")
+    with pytest.raises(sb.Ablehnung) as e:
+        sb.bild_aendern(wanderung, IDA, {"ziel": a, "titelbild": True})
+    assert e.value.schluessel == "bild.abgelehnt.zurueckgezogen"
+
+
+@pytest.mark.parametrize("schreibweise", ['BI-50 "Titel"', "bi-50", "BI-50 'Titel'"])
+def test_f005_kennung_mit_titel_oder_klein_wird_aufgeloest(wanderung, tmp_path, schreibweise):
+    b = bild_eintragen(wanderung, "BI-50")
+    text_anhaengen(wanderung, f"![Die Brücke]({schreibweise})")
+    bauen.bauen(wanderung, tmp_path / "dist")
+    seite = (tmp_path / "dist" / "index.html").read_text(encoding="utf-8")
+    assert b["dateien"]["gross"] in seite and 'src=\\"BI-50' not in seite and 'src=\\"bi-50' not in seite
+
+
+def test_f005_unbekannte_kennung_klein_ist_baufehler(wanderung):
+    text_anhaengen(wanderung, "![x](bi-97)")
+    assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_unbekannt")
+
+
+@pytest.mark.parametrize("ziel", ["https://example.org/x.jpg", "//example.org/x.jpg", "/\\example.org/x.jpg", "/a.png",
+                                  "data:image/png;base64,AAAA", "javascript:alert(1)", " https://example.org/y.jpg"])
+def test_f007_nach_nachziehen_baut_jede_abgelehnte_bildquelle(wanderung, ziel):
+    text_anhaengen(wanderung, f"![Alt]({ziel})")
+    assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_fremd") or bau_meldungen(wanderung)
+    neu.nachziehen(wanderung, betrieb=False)
+    probebau(wanderung)
+    assert "![Alt](" not in (wanderung / "inhalt" / "wissen.md").read_text(encoding="utf-8")
+
+
+def test_f007_trockenlauf_nennt_eindeutige_kennungen(wanderung):
+    p = wanderung / "inhalt" / "etappen.md"
+    p.write_text(p.read_text(encoding="utf-8").replace("(BI-01)", "(../medien/skizze-felsen.png)\n\n![Zwei](../medien/icon.svg)"),
+                 encoding="utf-8")
+    shutil.copy(wanderung / "medien" / "skizze-felsen.png", wanderung / "medien" / "zwei.png")
+    p.write_text(p.read_text(encoding="utf-8").replace("../medien/icon.svg", "../medien/zwei.png"), encoding="utf-8")
+    meldungen = neu.bilder_nachziehen(wanderung, schreiben=False)
+    kennungen = re.findall(r"→ (BI-\d+)", " ".join(meldungen))
+    assert len(kennungen) == 2 and len(set(kennungen)) == 2, meldungen

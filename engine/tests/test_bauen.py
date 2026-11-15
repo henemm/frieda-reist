@@ -666,9 +666,9 @@ def test_volllauf_beispiel(tmp_path):
     html = "".join(a.get("intro", "") + a.get("nach", "") + "".join(x["html"] for x in a["bloecke"])
                    for a in d["abschnitte"])
     assert '<sup class="fn">' in html and '<ol class="fussnoten">' in html
-    # Skizze in Etappe 1: Link umgeschrieben, Datei kopiert
-    assert 'src="medien/skizze-felsen.png"' in html and "../medien" not in html
-    assert (tmp_path / "beispiel/medien/skizze-felsen.png").exists()
+    # Skizze in Etappe 1: seit Bilder Stufe 1 (#455) als BI-01 der Bilderliste (große WebP-Fassung), Datei kopiert, ohne Nennung
+    assert 'src="medien/bilder/BI-01-1600.webp"' in html and "../medien" not in html
+    assert (tmp_path / "beispiel/medien/bilder/BI-01-1600.webp").exists()
     assert (tmp_path / "beispiel/index.html").exists()
 
 

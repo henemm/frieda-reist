@@ -42,6 +42,7 @@ except ImportError:
              "Then run:  python3 engine/bauen.py <reise>")
 from reise import Reise, eckdaten_text  # noqa: E402
 from routen import FARBEN, Routen, kartenpunkte_aus_dingen, verhalten_anwenden  # noqa: E402
+import bilder as bildliste  # noqa: E402
 import gpx  # noqa: E402
 import stand as reisestand  # noqa: E402
 import karte as karte_auto  # noqa: E402
@@ -71,6 +72,10 @@ def ebenen_vorgabe():
 # Stichwort am Anfang eines Absatzes im Lesetext („**Charakter.** …“), Rubrik der Gliederung einer Art (docs/ontologie.md)
 STICHWORT = re.compile(r"<p>\s*<strong>([^<]{1,60})</strong>")
 BILD_LINK = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)\)")
+# Bildquelle von einer fremden Adresse (#581): mit Schema oder ab „/“ bzw. „\“ (Browser lesen „/\host“ wie „//host“)
+# Bild der Bilderliste im Text (#455): ![alt](BI-NN), auch mit Titel oder kleingeschrieben (nie ein totes <img src="bi-01">)
+BILD_KENNUNG_IM_TEXT = re.compile(r"!\[([^\]]*)\]\(\s*(BI-\d+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)", re.I)
+FREMDE_BILDQUELLE = re.compile(r"[a-z][a-z0-9+.-]*:|[/\\]", re.I)
 
 
 class BauFehler(Exception):
@@ -143,7 +148,8 @@ def skripte_festlegen(seite):
     seite = re.sub(r'\n<meta http-equiv="Content-Security-Policy" content="[^"]*">', "", seite)   # erneut festlegen (Tests)
     summen = [base64.b64encode(hashlib.sha256(m.encode("utf-8")).digest()).decode()
               for m in re.findall(r"<script>(.*?)</script>", seite, flags=re.S)]
-    regel = "script-src 'self' " + " ".join(f"'sha256-{x}'" for x in summen) + "; object-src 'none'; base-uri 'none'"
+    # img-src (#581): Bilder nur von der eigenen Adresse und als data: (Ebenen-Symbol der Karte im CSS); kein fremdes Bild lädt
+    regel = "script-src 'self' " + " ".join(f"'sha256-{x}'" for x in summen) + "; object-src 'none'; base-uri 'none'; img-src 'self' data:"
     if seite.count("<head>") != 1:
         raise BauFehler(["vorlage.html must contain <head> exactly once."])
     return seite.replace("<head>", f'<head>\n<meta http-equiv="Content-Security-Policy" content="{regel}">', 1)
@@ -173,6 +179,11 @@ class TextPruefung(HTMLParser):
     def __init__(self):
         super().__init__()
         self.fremd = []
+        self.fremde_bilder = []   # Bildquellen von fremden Adressen (#581): nur medien/… und BI-… sind erlaubt
+
+    @staticmethod
+    def bildquelle_fremd(v):
+        return bool(FREMDE_BILDQUELLE.match(re.sub(r"[\x00-\x20\x7f]", "", v or "")))
 
     @classmethod
     def adresse_erlaubt(cls, v):
@@ -184,6 +195,8 @@ class TextPruefung(HTMLParser):
         if tag not in self.TAGS:
             self.fremd.append(f"<{tag}>")
         for k, v in attrs:
+            if tag == "img" and k == "src" and self.bildquelle_fremd(v):
+                self.fremde_bilder.append((v or "")[:80])
             if k in ("href", "src") and not self.adresse_erlaubt(v):
                 self.fremd.append(f"<{tag} {k}={(v or '').split(':', 1)[0].strip()[:20]}:>")
             # Spaltenausrichtung der Tabellen-Erweiterung ist das einzige erlaubte style
@@ -329,6 +342,9 @@ class Bauer:
         self._art_kategorien = {}  # Kategorien aus den Arten der Reise mit gruppe (neue Form)
         self.ids = {}
         self.bilder = {}  # Quelldatei -> relativer Zielpfad
+        self.fassungen = set()  # Quelldateien, die schon fertige WebP-Fassungen der Bilderliste sind: nur kopieren (#455)
+        self.nennungen = {}  # relativer Pfad einer großen Fassung -> HTML der Namensnennung
+        self._bilder = None  # plan/bilder.yaml, beim ersten Gebrauch geladen
         self.grundkarte = None  # PMTiles-Datei der Offline-Karte, falls vorhanden
         self.grundkarten = {}  # regionale Grundkarten der Recherche-Karten: Zielname -> Quelldatei
         self.hinweise = []  # Meldungen, die das Bauen nicht verhindern
@@ -407,12 +423,15 @@ class Bauer:
         pruefung.feed(h)
         if pruefung.fremd:
             self.fehler.append(texte.satz("pruefung.bauen.5", w1=Path(quelldatei).name, w2=', '.join(dict.fromkeys(pruefung.fremd))))
+        for ziel in dict.fromkeys(pruefung.fremde_bilder):
+            self.fehler.append(texte.satz("pruefung.bauen.bild_fremd", w1=Path(quelldatei).name, ziel=ziel))
         h = text_saeubern(h)
         h = tabellen_ordnen(h)
         h = re.sub(r'<a href="(https?://)', r'<a target="_blank" rel="noopener" href="\1', h)
         h = re.sub(r'<img ', '<img loading="lazy" ', h)
         h = re.sub(r'<li><a href="(medien/[^"]+\.(?:jpe?g|png|webp|gif))">([^<]*)</a>',
                    r'<li><a class="bild" target="_blank" href="\1"><img loading="lazy" src="\1" alt=""><span>\2</span></a>', h)
+        h = self.nennungen_setzen(h)
         return self.fussnoten_setzen(h, quelldatei)
 
     def fussnoten_setzen(self, h, quelldatei):
@@ -435,9 +454,61 @@ class Bauer:
         return h + '<ol class="fussnoten">' + "".join(
             f'<li value="{n}" data-fn="{n}">{fussnote_html(noten[n])}</li>' for n in benutzt) + "</ol>"
 
+    # ---------- Bilder der Liste plan/bilder.yaml (#455, V10a) ----------
+    def bild_eintraege(self):
+        """Einträge der Bilderliste je Kennung (einmal gelesen); eine kaputte Liste ist ein Baufehler."""
+        if self._bilder is None:
+            try:
+                self._bilder = {b["id"]: b for b in bildliste.laden(self.reise_dir)}
+            except Exception as e:   # yaml wirft verschiedene Fehlerklassen
+                self.fehler.append(texte.satz("pruefung.bauen.bild_liste", e=type(e).__name__))
+                self._bilder = {}
+        return self._bilder
+
+    def bild_kennung(self, alt, bid, quelldatei):
+        """![alt](BI-NN) -> Markdown-Bild der großen Fassung (wie ein Bild aus medien/); zurückgezogen: entfällt ohne Fehler,
+        unbekannt: Baufehler. Die große Fassung kommt in die Bilderliste des Baus (Kopie und Offline-Liste)."""
+        b = self.bild_eintraege().get(bid)
+        if b is None:
+            self.fehler.append(texte.satz("pruefung.bauen.bild_unbekannt", w1=Path(quelldatei).name, bid=bid))
+            return ""
+        if not bildliste.aktiv(b):
+            return ""
+        rel = str((b.get("dateien") or {}).get("gross") or "")
+        quelle = (self.reise_dir / rel).resolve()
+        if not rel.startswith(bildliste.ORDNER + "/") or not quelle.is_file():
+            self.fehler.append(texte.satz("pruefung.bauen.7", w1=Path(quelldatei).name, ziel=rel or bid))
+            return ""
+        self.bilder[quelle] = rel
+        self.fassungen.add(quelle)
+        self.nennungen[rel] = self.nennung_html(b)
+        return f"![{alt}]({rel})"
+
+    def nennung_html(self, b):
+        """Namensnennung unter einem Bild (V16): Urheber · Lizenz als Link · Commons-Seite; gemeinfrei nur der Urheber; bei
+        quelle: reise keine. Alle Werte maskiert, Links nur mit https."""
+        if b.get("quelle") == "reise":
+            return ""
+        def verweis(url, text):
+            url, text = str(url or ""), htmlmod.escape(str(text or ""))
+            return f'<a target="_blank" rel="noopener" href="{htmlmod.escape(url)}">{text}</a>' if url.startswith("https://") else text
+        teile = [htmlmod.escape(str(b.get("urheber") or ""))]
+        if not bildliste.gemeinfrei(b.get("lizenz")):
+            teile += [verweis(b.get("lizenz_url"), b.get("lizenz")), verweis(b.get("seite"), texte.t(self.eck["sprache"], "inhalt.bild.commons"))]
+        teile = [t for t in teile if t]
+        return '<br><small class="nennung">' + " · ".join(teile) + "</small>" if teile else ""
+
+    def nennungen_setzen(self, h):
+        """Hinter jedes Bild einer Fassung aus medien/bilder/ seine Namensnennung (nach dem Säubern, die Nennung ist maskiert)."""
+        def ersetze(m):
+            return m.group(0) + self.nennungen.get(htmlmod.unescape(m.group(2)), "")
+        return re.sub(r'(<img [^>]*src="(' + re.escape(bildliste.ORDNER) + r'/[^"]+)"[^>]*>)', ersetze, h)
+
     def bilder_umschreiben(self, text, quelldatei):
         def ersetze(m):
             ausruf, alt, ziel = m.groups()
+            if ziel in self.nennungen:   # eben aufgelöstes Bild der Bilderliste (Pfad relativ zur Reise)
+                return m.group(0)
             if not ziel.lower().endswith(BILD_ENDUNGEN) or re.match(r"[a-z]+://", ziel):
                 return m.group(0)
             quelle = (Path(quelldatei).parent / ziel).resolve()
@@ -451,6 +522,7 @@ class Bauer:
                 return m.group(0)
             self.bilder[quelle] = rel.as_posix()
             return f"{ausruf}[{alt}]({rel.as_posix()})"
+        text = BILD_KENNUNG_IM_TEXT.sub(lambda m: self.bild_kennung(m.group(1), m.group(2).upper(), quelldatei), text)
         return BILD_LINK.sub(ersetze, text)
 
     def bloecke(self, sid, body, quelldatei, wo):
@@ -1358,6 +1430,9 @@ class Bauer:
             ziel = self.ziel_dir / rel
             ziel.parent.mkdir(parents=True, exist_ok=True)
             if ziel.exists() and ziel.stat().st_mtime >= quelle.stat().st_mtime:
+                continue
+            if quelle in self.fassungen:   # beim Anlegen schon verkleinert (WebP): nur kopieren
+                shutil.copyfile(quelle, ziel)
                 continue
             with Image.open(quelle) as im:
                 im = ImageOps.exif_transpose(im)

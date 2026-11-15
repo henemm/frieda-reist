@@ -186,7 +186,7 @@ def git_sperren_raeumen(arbeit):
         sys.stderr.write(f"Working copy: stale lock {f.name} removed\n")
 
 
-def vorgang(s, reise, werkzeug, anfrage, start, osm_vorab=None):
+def vorgang(s, reise, werkzeug, anfrage, start, osm_vorab=None, bild_vorab=None):
     """Ein Schreibvorgang über Git -> (Code, Antwort): Sperre der Reise, Arbeitskopie auf origin/main, `anwenden` mit dem Code
     der Arbeitskopie in der Frist. Eine Reise aus FR_SPEICHERREISEN wird abgelehnt, bevor etwas geholt wird. osm_vorab:
     Antwortdatei des Vorab-Abrufs (kartenpunkte_holen), geht als FR_OSM_VORAB an den Unterprozess (alter Code übergeht sie)."""
@@ -222,7 +222,7 @@ def vorgang(s, reise, werkzeug, anfrage, start, osm_vorab=None):
         try:
             r = sb.befehl_mit_frist([sys.executable, str(skript), "anwenden", reise, werkzeug], json.dumps(anfrage), s.rest(),
                                     env=sb.vorab_umgebung({**os.environ, "FR_WURZEL": str(s.wurzel),
-                                                           "FR_SCHREIBKOPIE": str(s.arbeit), "FR_VORGANG": kennung}, osm_vorab))
+                                                           "FR_SCHREIBKOPIE": str(s.arbeit), "FR_VORGANG": kennung}, osm_vorab, bild_vorab))
         except subprocess.TimeoutExpired:
             return nach_abbruch(s, werkzeug, kennung, reise)
         return sb.ausgabe_lesen(r)
