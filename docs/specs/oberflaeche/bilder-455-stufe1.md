@@ -272,36 +272,23 @@ bleibt in `<details>`. Kein Mitglied: kein Bild (gleiche Antwort wie „nicht vo
 
 ## Acceptance Criteria
 
-- [ ] (P1) `image_add` legt aus einer Commons-Datei und aus einer Wikidata-Kennung ein Bild `BI-NN` mit Herkunft, gesäubertem Urheber,
-      Lizenz und beiden WebP-Fassungen an; die Antwort an Claude zeigt eine kleine Vorschau.
-- [ ] (P1) Nur Lizenzen der Positivliste werden angenommen; alle anderen werden mit klarem Katalogtext abgelehnt.
-- [ ] (P1) Ein Bild gehört zu genau einer ID oder zu `reise`; höchstens ein Titelbild; Titelbild nur Organisator:innen,
-      Hinzufügen und Ändern ab mitwirkend.
-- [ ] (P1) Zurückgezogene Bilder werden nirgends gezeigt und bleiben erhalten; die 61. Aufnahme wird abgelehnt; beide Grenzen sind in
-      `reise.yaml` änderbar.
-- [ ] (P1) Der Abruf läuft vor der Schreibsperre, mit Zeitlimit, einer Wiederholung und `instanz.kennung()`; kein Test benutzt das Netz.
-- [ ] (P1) Bildquellen mit `http(s)://` oder `//host` im Text sind ein Baufehler, und der Schreibweg lehnt solche Texte über den
-      Probebau ab; Links bleiben erlaubt. Die Meta-CSP enthält `img-src 'self' data:` (`blob:` nur bedingt nach V10, dann mit Grund im PR-Text), und der Seitentest zeigt Karte, Belege und
-      App-Symbol darunter ohne CSP-Fehler (Chromium und WebKit).
-- [ ] (P1) `neu.py nachziehen` überführt Altbestand in `bilder.yaml` und macht fremde Bilder zu Links, idempotent, im selben PR wie
-      die Sperre; keine vorhandene Reise bricht.
-- [ ] (P1) `![…](BI-NN)` im Text wird schon in P1 als Bild mit Namensnennung nach V16 gezeigt und steht offline bereit; Reisen mit Altbestand sehen nach `nachziehen` aus wie vorher.
-- [ ] (P1) `BI-` und `B-` werden überall unterschieden; `bilder.py` steht in `KN_MODULE` und `SB_MODULE`.
-- [ ] (P1) `test_sicherheit.py`, `test_design.py`, `test_betrieb.py`, `test_texte.py` sind grün; die Tests der einbindenden Instanz
-      laufen mit dem Branch grün (Nachweis im PR-Text).
-- [ ] (P2) Titelbild (V13), Vorschau in der Tagesliste (V13), Kopfbild an der Heimat und Bildreihe (V14), Mini-Vorschau (V14),
-      Bild im Text (V15) und Großansicht (V17) erscheinen mit den dort genannten Seitenverhältnissen, Größen und Stellen, mit
-      Namensnennung nach V16; die Seitentests prüfen jede dieser Stellen.
-- [ ] (P2) Das Stadtwochenende erscheint unverändert ohne Bilder; die Beispielreise zeigt ihre freien Bilder mit Lizenz in
-      `THIRD_PARTY.md`.
-- [ ] (P2) Mit den neuen Bausteinen lädt die Karte weiter ohne CSP-Fehler (Seitentest aus P1 bleibt grün).
-- [ ] (P2) Offline: kleine Fassung aller Bilder und große von Titel-/Kopfbildern vorab; Überschreitung von 25 MB führt zu einer
-      Warnung, nicht zum Abbruch.
-- [ ] (P2) Neue Bausteine stehen in Kopfkommentar, Bausteinseite und `docs/design.md`; alle Texte stehen in allen Sprachdateien.
-- [ ] (P2) Playwright-Tests laufen in Chromium und WebKit grün, auch in Handybreite.
-- [ ] (P3) „Meine Reisen“ zeigt Kacheln mit Titelbild über die angemeldete Route oder Akzentfläche mit App-Symbol; der geheime Link
-      taucht nie auf; Nicht-Mitglieder bekommen kein Bild.
-- [ ] (P3) `docs/konnektor.md`, `docs/design.md`, `docs/ontologie.md` und der ADR-0001-Verlauf sind nachgeführt.
+- **AC-1 (P1):** Given eine Commons-Datei oder eine Wikidata-Kennung mit freier Lizenz / When `image_add` mit `zu` aufgerufen wird / Then entsteht `BI-NN` mit Herkunft, gesäubertem Urheber, Lizenz und beiden WebP-Fassungen, und die Antwort an Claude zeigt eine kleine Vorschau.
+- **AC-2 (P1):** Given eine Lizenz außerhalb der Positivliste (Free Art, NC, ND, GFDL-only, unbekannt) / When `image_add` / Then Ablehnung mit dem passenden Schlüssel `bild.abgelehnt.*` und kein Eintrag.
+- **AC-3 (P1):** Given Rolle `mitwirkend` / When Bild hinzufügen, ändern, zurückziehen oder Titelbild setzen / Then alles außer dem Titelbild gelingt; Given `organisator` / When Titelbild setzen / Then es gibt genau ein Titelbild.
+- **AC-4 (P1):** Given ein zurückgezogenes Bild / When gebaut wird / Then fehlt es überall, bleibt aber in Liste und Ablage; Given 60 aktive Bilder / When ein weiteres / Then Ablehnung, außer `max_anzahl` in `reise.yaml` ist höher.
+- **AC-5 (P1):** Given Commons antwortet mit 429 und dann 200 / When `image_add` / Then gelingt der Abruf vor der Schreibsperre mit Zeitlimit 20 s und User-Agent aus `instanz.kennung()`; kein Test benutzt das Netz.
+- **AC-6 (P1):** Given ein Text mit `![](https://…)` oder `![](//host/…)` / When gebaut oder über den Schreibweg geschrieben wird / Then Fehler mit Katalogtext; Links bleiben erlaubt; die Meta-CSP enthält `img-src 'self' data:` (`blob:` nur nach V10 mit Grund im PR-Text), und der Seitentest zeigt Karte, Belege und App-Symbol ohne CSP-Fehler in Chromium und WebKit.
+- **AC-7 (P1):** Given eine Reise mit `![](medien/x.jpg)` und einem fremden Bild im Text / When `neu.py nachziehen` zweimal läuft / Then Altbestand steht als `BI-NN` mit `quelle: reise` in `bilder.yaml`, das fremde Bild ist ein Link, der zweite Lauf ändert nichts, und der Bau gelingt.
+- **AC-8 (P1):** Given `![…](BI-NN)` im Text / When gebaut wird / Then erscheint das Bild mit Namensnennung nach V16 und seine große Fassung steht in der Offline-Liste des Service Workers.
+- **AC-9 (P1):** Given `BI-03` und `B-03` / When `neu`, `routen` und `schreiben` Kennungen erkennen / Then werden sie nie verwechselt; `bilder.py` steht in `KN_MODULE` und `SB_MODULE`.
+- **AC-10 (P1):** Given der Branch / When die volle Testsuite und die Tests der einbindenden Instanz laufen / Then sind beide grün (Nachweis im PR-Text).
+- **AC-11 (P2):** Given die Beispielreise / When die Seite in Chromium und WebKit (auch 360 px) geöffnet wird / Then zeigen Titelbild, Vorschau in der Tagesliste, Kopfbild an der Heimat, Bildreihe, Mini-Vorschau, Bild im Text und Großansicht die Maße und Stellen aus V13 bis V17 mit Nennung nach V16, ohne Überbreite.
+- **AC-12 (P2):** Given das Stadtwochenende / When gebaut und geöffnet wird / Then enthält es keine Bild-Elemente und keine Bilddaten.
+- **AC-13 (P2):** Given die neuen Bausteine / When die Karte geöffnet wird / Then lädt sie ohne CSP-Fehler (Seitentest aus P1 bleibt grün).
+- **AC-14 (P2):** Given aktive Bilder / When gebaut wird / Then enthält die Offline-Liste die kleine Fassung aller und die große von Titel- und Kopfbildern; Given über `offline_mb` / Then Warnung, der Bau gelingt.
+- **AC-15 (P2):** Given neue Bausteine und Texte / When die Prüfungen von Bausteinseite und Texten laufen / Then stehen sie in Kopfkommentar, Bausteinseite, `docs/design.md` und allen Sprachdateien.
+- **AC-16 (P3):** Given ein Mitglied mit Titelbild / When „Meine Reisen“ geöffnet wird / Then zeigt die Kachel das Bild über `/bild/<reise>/<BI>.webp` (Ordnername, `Cache-Control: private`), ohne Titelbild die Akzentfläche mit App-Symbol; Given Nicht-Mitglied / Then kein Bild; der geheime Link taucht nie auf.
+- **AC-17 (P3):** Given P3 ist ausgeliefert / When die Doku geprüft wird / Then sind `docs/konnektor.md`, `docs/design.md`, `docs/ontologie.md` und der ADR-0001-Verlauf nachgeführt.
 
 ## Definition of Done
 
