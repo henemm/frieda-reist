@@ -306,6 +306,17 @@ bleibt in `<details>`. Kein Mitglied: kein Bild (gleiche Antwort wie „nicht vo
   ADR-0001 (keine neue Grundform) und ADR-0003 (eine Heimat je Grundform); der Verlauf in ADR-0001 hält fest, dass Bilder zu den
   Eigenschaften der Grundformen gehören.
 
+## Known Limitations
+
+- P1 (V7): Wird die Vorbereitung vor der Sperre nicht in `ZEIT_VORAB_VORB` fertig, ruft der Vorgang das Bild selbst ab, dann unter
+  der Sperre (Rückfall wie bei `kartenpunkte_vorab`, Frist 60 s). Der Regelfall läuft vor der Sperre.
+- P1 (V7): Die 15-MB-Grenze gilt für die von Commons gelieferte 1600-px-Fassung; das Original wird nach V7 nie geladen.
+- P1 (V4): Die Vorschau in der Antwort ist die 480-px-Fassung ohne eigene Größengrenze (base64 bei der Beispielreise rund 66 KB);
+  die 64-KB-Grenze betrifft nur eingehende Daten.
+- P1: `bild_hinzufuegen` schreibt die Fassungen vor der Liste; scheitert das Speichern, können unbenutzte Dateien in der Arbeitskopie
+  bleiben; ein eigenes Aufräumen ist Stufe 2 (#582).
+
 ## Changelog
 
 - 2026-11-15: Erste Fassung der Spec (Stufe 1 aus #455 mit #581), drei Pakete.
+- 2026-11-15: Known Limitations aus der Validierung von P1.
