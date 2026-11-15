@@ -1,0 +1,1418 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF..F.FFF      [100%]
+=================================== FAILURES ===================================
+_____ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[Copyrighted] ______
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'Copyrighted'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[CC BY-NC 4.0] _____
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'CC BY-NC 4.0'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_ test_lizenz_positivliste_nimmt_an[CC BY-SA 4.0-https:creativecommons.orglicensesby-sa4.0] _
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'CC BY-SA 4.0', url = 'https:creativecommons.orglicensesby-sa4.0'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https:creativecommons.orgpublicdomainzero1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https:creativecommons.orglicensesby3.0"),
+                                             ("CC BY-SA 4.0", "https:creativecommons.orglicensesby-sa4.0"),
+                                             ("CC BY-SA 2.5", "https:creativecommons.orglicensesby-sa2.5")])
+    def test_lizenz_positivliste_nimmt_an(lizenz, url):
+>       r = bilder_modul().lizenz_pruefen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_ test_lizenz_positivliste_nimmt_an[CC0-https:creativecommons.orgpublicdomainzero1.0] _
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'CC0', url = 'https:creativecommons.orgpublicdomainzero1.0'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https:creativecommons.orgpublicdomainzero1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https:creativecommons.orglicensesby3.0"),
+                                             ("CC BY-SA 4.0", "https:creativecommons.orglicensesby-sa4.0"),
+                                             ("CC BY-SA 2.5", "https:creativecommons.orglicensesby-sa2.5")])
+    def test_lizenz_positivliste_nimmt_an(lizenz, url):
+>       r = bilder_modul().lizenz_pruefen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_ test_lizenz_positivliste_nimmt_an[CC BY-SA 2.5-https:creativecommons.orglicensesby-sa2.5] _
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'CC BY-SA 2.5', url = 'https:creativecommons.orglicensesby-sa2.5'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https:creativecommons.orgpublicdomainzero1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https:creativecommons.orglicensesby3.0"),
+                                             ("CC BY-SA 4.0", "https:creativecommons.orglicensesby-sa4.0"),
+                                             ("CC BY-SA 2.5", "https:creativecommons.orglicensesby-sa2.5")])
+    def test_lizenz_positivliste_nimmt_an(lizenz, url):
+>       r = bilder_modul().lizenz_pruefen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[CC BY-NC-SA 3.0] ____
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'CC BY-NC-SA 3.0'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___________ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[] ___________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = ''
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+____________ test_lizenz_positivliste_nimmt_an[Public domain-None] _____________
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'Public domain', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https:creativecommons.orgpublicdomainzero1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https:creativecommons.orglicensesby3.0"),
+                                             ("CC BY-SA 4.0", "https:creativecommons.orglicensesby-sa4.0"),
+                                             ("CC BY-SA 2.5", "https:creativecommons.orglicensesby-sa2.5")])
+    def test_lizenz_positivliste_nimmt_an(lizenz, url):
+>       r = bilder_modul().lizenz_pruefen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[Free Art License] ___
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'Free Art License'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[None] _________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = None
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[CC BY-ND 4.0] _____
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'CC BY-ND 4.0'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+__________________ test_lizenz_positivliste_nimmt_an[PD-None] __________________
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'PD', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https:creativecommons.orgpublicdomainzero1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https:creativecommons.orglicensesby3.0"),
+                                             ("CC BY-SA 4.0", "https:creativecommons.orglicensesby-sa4.0"),
+                                             ("CC BY-SA 2.5", "https:creativecommons.orglicensesby-sa2.5")])
+    def test_lizenz_positivliste_nimmt_an(lizenz, url):
+>       r = bilder_modul().lizenz_pruefen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[FAL] __________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'FAL'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+____________ test_abruf_mit_user_agent_zeitlimit_und_ohne_original _____________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e39dc10>
+
+    def test_abruf_mit_user_agent_zeitlimit_und_ohne_original(monkeypatch):
+        import instanz
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:185: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________ test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[GFDL] _________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'GFDL'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
+                                        "Copyrighted", "", None])
+    def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____________________ test_urheber_wird_zu_text_gesaeubert _____________________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+    def test_urheber_wird_zu_text_gesaeubert():
+>       t = bilder_modul().urheber_saeubern('<a href="x">Max <b>Muster<b><a><script>alert(1)<script><img src=x onerror=y>')
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:177: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_ test_lizenz_positivliste_nimmt_an[CC BY 3.0-https:creativecommons.orglicensesby3.0] _
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+lizenz = 'CC BY 3.0', url = 'https:creativecommons.orglicensesby3.0'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https:creativecommons.orgpublicdomainzero1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https:creativecommons.orglicensesby3.0"),
+                                             ("CC BY-SA 4.0", "https:creativecommons.orglicensesby-sa4.0"),
+                                             ("CC BY-SA 2.5", "https:creativecommons.orglicensesby-sa2.5")])
+    def test_lizenz_positivliste_nimmt_an(lizenz, url):
+>       r = bilder_modul().lizenz_pruefen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_______________ test_abruf_dauerhaft_gestoert_lehnt_ab[fehler2] ________________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342db5ee0>
+fehler = [TimeoutError(), TimeoutError()]
+
+    @pytest.mark.parametrize("fehler", [[503, 503], [502, 500], [TimeoutError(), TimeoutError()],
+                                        [urllib.error.URLError("weg"), urllib.error.URLError("weg")]])
+    def test_abruf_dauerhaft_gestoert_lehnt_ab(monkeypatch, fehler):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___________ test_abruf_lehnt_ab[meta_gross-bild.abgelehnt.zu_gross] ____________
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f6b9b50>
+fall = 'meta_gross', schluessel = 'bild.abgelehnt.zu_gross'
+
+    @pytest.mark.parametrize("fall, schluessel", [
+        ("ohne_p18", "bild.abgelehnt.nicht_gefunden"),
+        ("fehlt", "bild.abgelehnt.nicht_gefunden"),
+        ("svg", "bild.abgelehnt.kein_rasterbild"),
+        ("pdf", "bild.abgelehnt.kein_rasterbild"),
+        ("kaputt", "bild.abgelehnt.kein_rasterbild"),
+        ("meta_gross", "bild.abgelehnt.zu_gross"),
+    ])
+    def test_abruf_lehnt_ab(monkeypatch, fall, schluessel):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___________ test_abruf_lehnt_ab[fehlt-bild.abgelehnt.nicht_gefunden] ___________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a89e780>
+fall = 'fehlt', schluessel = 'bild.abgelehnt.nicht_gefunden'
+
+    @pytest.mark.parametrize("fall, schluessel", [
+        ("ohne_p18", "bild.abgelehnt.nicht_gefunden"),
+        ("fehlt", "bild.abgelehnt.nicht_gefunden"),
+        ("svg", "bild.abgelehnt.kein_rasterbild"),
+        ("pdf", "bild.abgelehnt.kein_rasterbild"),
+        ("kaputt", "bild.abgelehnt.kein_rasterbild"),
+        ("meta_gross", "bild.abgelehnt.zu_gross"),
+    ])
+    def test_abruf_lehnt_ab(monkeypatch, fall, schluessel):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+____________________ test_abruf_wiederholt_einmal_nach_429 _____________________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e39f350>
+
+    def test_abruf_wiederholt_einmal_nach_429(monkeypatch):
+>       netz = Netz(monkeypatch, fehler=[429])
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:198: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_______________ test_abruf_dauerhaft_gestoert_lehnt_ab[fehler3] ________________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342db7170>
+fehler = [URLError('weg'), URLError('weg')]
+
+    @pytest.mark.parametrize("fehler", [[503, 503], [502, 500], [TimeoutError(), TimeoutError()],
+                                        [urllib.error.URLError("weg"), urllib.error.URLError("weg")]])
+    def test_abruf_dauerhaft_gestoert_lehnt_ab(monkeypatch, fehler):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___________ test_abruf_lehnt_ab[svg-bild.abgelehnt.kein_rasterbild] ____________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a89ffb0>
+fall = 'svg', schluessel = 'bild.abgelehnt.kein_rasterbild'
+
+    @pytest.mark.parametrize("fall, schluessel", [
+        ("ohne_p18", "bild.abgelehnt.nicht_gefunden"),
+        ("fehlt", "bild.abgelehnt.nicht_gefunden"),
+        ("svg", "bild.abgelehnt.kein_rasterbild"),
+        ("pdf", "bild.abgelehnt.kein_rasterbild"),
+        ("kaputt", "bild.abgelehnt.kein_rasterbild"),
+        ("meta_gross", "bild.abgelehnt.zu_gross"),
+    ])
+    def test_abruf_lehnt_ab(monkeypatch, fall, schluessel):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_______ test_bilddatei_ueber_15_mb_wird_vor_der_verkleinerung_abgelehnt ________
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f6badb0>
+
+    def test_bilddatei_ueber_15_mb_wird_vor_der_verkleinerung_abgelehnt(monkeypatch):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:242: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_______________ test_abruf_dauerhaft_gestoert_lehnt_ab[fehler0] ________________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e39f770>
+fehler = [503, 503]
+
+    @pytest.mark.parametrize("fehler", [[503, 503], [502, 500], [TimeoutError(), TimeoutError()],
+                                        [urllib.error.URLError("weg"), urllib.error.URLError("weg")]])
+    def test_abruf_dauerhaft_gestoert_lehnt_ab(monkeypatch, fehler):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___________ test_abruf_lehnt_ab[pdf-bild.abgelehnt.kein_rasterbild] ____________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a9815e0>
+fall = 'pdf', schluessel = 'bild.abgelehnt.kein_rasterbild'
+
+    @pytest.mark.parametrize("fall, schluessel", [
+        ("ohne_p18", "bild.abgelehnt.nicht_gefunden"),
+        ("fehlt", "bild.abgelehnt.nicht_gefunden"),
+        ("svg", "bild.abgelehnt.kein_rasterbild"),
+        ("pdf", "bild.abgelehnt.kein_rasterbild"),
+        ("kaputt", "bild.abgelehnt.kein_rasterbild"),
+        ("meta_gross", "bild.abgelehnt.zu_gross"),
+    ])
+    def test_abruf_lehnt_ab(monkeypatch, fall, schluessel):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_______________ test_abruf_dauerhaft_gestoert_lehnt_ab[fehler1] ________________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e4361b0>
+fehler = [502, 500]
+
+    @pytest.mark.parametrize("fehler", [[503, 503], [502, 500], [TimeoutError(), TimeoutError()],
+                                        [urllib.error.URLError("weg"), urllib.error.URLError("weg")]])
+    def test_abruf_dauerhaft_gestoert_lehnt_ab(monkeypatch, fehler):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:206: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+________________________ test_abruf_wikidata_liest_p18 _________________________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342db6780>
+
+    def test_abruf_wikidata_liest_p18(monkeypatch):
+>       netz = Netz(monkeypatch)
+               ^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:214: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+__________ test_abruf_lehnt_ab[kaputt-bild.abgelehnt.kein_rasterbild] __________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a983dd0>
+fall = 'kaputt', schluessel = 'bild.abgelehnt.kein_rasterbild'
+
+    @pytest.mark.parametrize("fall, schluessel", [
+        ("ohne_p18", "bild.abgelehnt.nicht_gefunden"),
+        ("fehlt", "bild.abgelehnt.nicht_gefunden"),
+        ("svg", "bild.abgelehnt.kein_rasterbild"),
+        ("pdf", "bild.abgelehnt.kein_rasterbild"),
+        ("kaputt", "bild.abgelehnt.kein_rasterbild"),
+        ("meta_gross", "bild.abgelehnt.zu_gross"),
+    ])
+    def test_abruf_lehnt_ab(monkeypatch, fall, schluessel):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+__ test_bild_hinzufuegen_legt_eintrag_mit_herkunft_und_zwei_webp_fassungen_an __
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_hinzufuegen_legt_ein0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f6bbb00>
+
+    def test_bild_hinzufuegen_legt_eintrag_mit_herkunft_und_zwei_webp_fassungen_an(wanderung, monkeypatch):
+        from PIL import Image
+>       Netz(monkeypatch)
+
+teststest_bilder.py:254: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________ test_abruf_lehnt_ab[ohne_p18-bild.abgelehnt.nicht_gefunden] __________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342df48f0>
+fall = 'ohne_p18', schluessel = 'bild.abgelehnt.nicht_gefunden'
+
+    @pytest.mark.parametrize("fall, schluessel", [
+        ("ohne_p18", "bild.abgelehnt.nicht_gefunden"),
+        ("fehlt", "bild.abgelehnt.nicht_gefunden"),
+        ("svg", "bild.abgelehnt.kein_rasterbild"),
+        ("pdf", "bild.abgelehnt.kein_rasterbild"),
+        ("kaputt", "bild.abgelehnt.kein_rasterbild"),
+        ("meta_gross", "bild.abgelehnt.zu_gross"),
+    ])
+    def test_abruf_lehnt_ab(monkeypatch, fall, schluessel):
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:229: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+____ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args2-bild.abgelehnt.ziel] ____
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bild_hinzufuegen_lehnt_ab0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e437830>
+args = {'commons': 'X.jpg', 'zu': 'E-99'}, schluessel = 'bild.abgelehnt.ziel'
+
+    @pytest.mark.parametrize("args, schluessel", [
+        ({"commons": "X.jpg", "wikidata": "Q1", "zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"commons": "X.jpg", "zu": "E-99"}, "bild.abgelehnt.ziel"),
+        ({"commons": "X.jpg", "zu": "Quatsch"}, "bild.abgelehnt.ziel"),
+    ])
+    def test_bild_hinzufuegen_lehnt_ab_ohne_eintrag(wanderung, monkeypatch, args, schluessel):
+>       netz = Netz(monkeypatch)
+               ^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[CC BY-NC 4.0] _____
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_bild_mit_unfreier_lizenz_0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a9809e0>
+lizenz = 'CC BY-NC 4.0'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "CC BY-NC 4.0", "CC BY-ND 4.0", "GFDL", None])
+    def test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise(wanderung, monkeypatch, lizenz):
+>       Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+
+teststest_bilder.py:297: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+____________________________ test_bild_aus_wikidata ____________________________
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_aus_wikidata0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f7144d0>
+
+    def test_bild_aus_wikidata(wanderung, monkeypatch):
+>       Netz(monkeypatch)
+
+teststest_bilder.py:275: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[GFDL] _________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bild_mit_unfreier_lizenz_0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342df4980>
+lizenz = 'GFDL'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "CC BY-NC 4.0", "CC BY-ND 4.0", "GFDL", None])
+    def test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise(wanderung, monkeypatch, lizenz):
+>       Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+
+teststest_bilder.py:297: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+____ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args3-bild.abgelehnt.ziel] ____
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bild_hinzufuegen_lehnt_ab1beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e434aa0>
+args = {'commons': 'X.jpg', 'zu': 'Quatsch'}, schluessel = 'bild.abgelehnt.ziel'
+
+    @pytest.mark.parametrize("args, schluessel", [
+        ({"commons": "X.jpg", "wikidata": "Q1", "zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"commons": "X.jpg", "zu": "E-99"}, "bild.abgelehnt.ziel"),
+        ({"commons": "X.jpg", "zu": "Quatsch"}, "bild.abgelehnt.ziel"),
+    ])
+    def test_bild_hinzufuegen_lehnt_ab_ohne_eintrag(wanderung, monkeypatch, args, schluessel):
+>       netz = Netz(monkeypatch)
+               ^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[CC BY-ND 4.0] _____
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_bild_mit_unfreier_lizenz_1beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a981280>
+lizenz = 'CC BY-ND 4.0'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "CC BY-NC 4.0", "CC BY-ND 4.0", "GFDL", None])
+    def test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise(wanderung, monkeypatch, lizenz):
+>       Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+
+teststest_bilder.py:297: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[None] _________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bild_mit_unfreier_lizenz_1beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342df5340>
+lizenz = None
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "CC BY-NC 4.0", "CC BY-ND 4.0", "GFDL", None])
+    def test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise(wanderung, monkeypatch, lizenz):
+>       Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+
+teststest_bilder.py:297: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args0-bild.abgelehnt.quelle] ___
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_hinzufuegen_lehnt_ab0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f7145f0>
+args = {'commons': 'X.jpg', 'wikidata': 'Q1', 'zu': 'E-01'}
+schluessel = 'bild.abgelehnt.quelle'
+
+    @pytest.mark.parametrize("args, schluessel", [
+        ({"commons": "X.jpg", "wikidata": "Q1", "zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"commons": "X.jpg", "zu": "E-99"}, "bild.abgelehnt.ziel"),
+        ({"commons": "X.jpg", "zu": "Quatsch"}, "bild.abgelehnt.ziel"),
+    ])
+    def test_bild_hinzufuegen_lehnt_ab_ohne_eintrag(wanderung, monkeypatch, args, schluessel):
+>       netz = Netz(monkeypatch)
+               ^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+___ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[Free Art License] ___
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bild_mit_unfreier_lizenz_0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e435580>
+lizenz = 'Free Art License'
+
+    @pytest.mark.parametrize("lizenz", ["Free Art License", "CC BY-NC 4.0", "CC BY-ND 4.0", "GFDL", None])
+    def test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise(wanderung, monkeypatch, lizenz):
+>       Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+
+teststest_bilder.py:297: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+__________________________ test_zu_reise_ist_erlaubt ___________________________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_zu_reise_ist_erlaubt0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8aa7a3c0>
+
+    def test_zu_reise_ist_erlaubt(wanderung, monkeypatch):
+>       Netz(monkeypatch)
+
+teststest_bilder.py:307: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____________ test_titelbild_nur_organisator_und_hoechstens_eines ______________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_titelbild_nur_organisator0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342db7440>
+
+    def test_titelbild_nur_organisator_und_hoechstens_eines(wanderung, monkeypatch):
+>       Netz(monkeypatch)
+
+teststest_bilder.py:326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____________________ test_rechte_in_reise_und_schreibweg ______________________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+    def test_rechte_in_reise_und_schreibweg():
+        alle = rg.BAUSTEINE
+        for w in ("bild_hinzufuegen", "bild_aendern"):
+>           assert w in sb.WERKZEUGE and w in sb.AKTIONEN and sb.AKTIONEN[w] in rg.AKTIONEN
+E           AssertionError: assert ('bild_hinzufuegen' in {'art_definieren': <function art_definieren at 0x7f7a8ac2c040>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x7f7a8ac2c220>, 'wert_eintragen': <function wert_eintragen at 0x7f7a8ac2cb80>, ...})
+E            +  where {'art_definieren': <function art_definieren at 0x7f7a8ac2c040>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x7f7a8ac2c220>, 'wert_eintragen': <function wert_eintragen at 0x7f7a8ac2cb80>, ...} = sb.WERKZEUGE
+
+teststest_bilder.py:317: AssertionError
+___ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args1-bild.abgelehnt.quelle] ___
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_hinzufuegen_lehnt_ab1beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f716360>
+args = {'zu': 'E-01'}, schluessel = 'bild.abgelehnt.quelle'
+
+    @pytest.mark.parametrize("args, schluessel", [
+        ({"commons": "X.jpg", "wikidata": "Q1", "zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"zu": "E-01"}, "bild.abgelehnt.quelle"),
+        ({"commons": "X.jpg", "zu": "E-99"}, "bild.abgelehnt.ziel"),
+        ({"commons": "X.jpg", "zu": "Quatsch"}, "bild.abgelehnt.ziel"),
+    ])
+    def test_bild_hinzufuegen_lehnt_ab_ohne_eintrag(wanderung, monkeypatch, args, schluessel):
+>       netz = Netz(monkeypatch)
+               ^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________ test_mitwirkend_aendert_zieht_zurueck_und_stellt_wieder_her __________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_mitwirkend_aendert_zieht_0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342d9b830>
+
+    def test_mitwirkend_aendert_zieht_zurueck_und_stellt_wieder_her(wanderung, monkeypatch):
+>       Netz(monkeypatch)
+
+teststest_bilder.py:341: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____________________ test_modul_steht_in_der_deploy_liste _____________________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+    def test_modul_steht_in_der_deploy_liste():
+        import re
+        text = (WURZEL  "betrieb"  "deploy.sh").read_text(encoding="utf-8")
+        for liste_ in ("KN_MODULE", "SB_MODULE"):
+            m = re.search(rf"{liste_}=\"?\(?([^\n)]*)", text)
+>           assert m and "bilder.py" in m.group(1), liste_
+E           AssertionError: KN_MODULE
+E           assert (<re.Match object; span=(1854, 2059), match='KN_MODULE="konnektor.py schnittstelle.py reise.py> and 'bilder.py' in 'konnektor.py schnittstelle.py reise.py routen.py packliste.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py texte.py $SPRACHDATEIEN"')
+E            +  where 'konnektor.py schnittstelle.py reise.py routen.py packliste.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py texte.py $SPRACHDATEIEN"' = <built-in method group of re.Match object at 0x7f7a8a8b5990>(1)
+E            +    where <built-in method group of re.Match object at 0x7f7a8a8b5990> = <re.Match object; span=(1854, 2059), match='KN_MODULE="konnektor.py schnittstelle.py reise.py>.group
+
+teststest_bilder.py:394: AssertionError
+________________________ test_vorgabe_der_grenze_ist_60 ________________________
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+    def test_vorgabe_der_grenze_ist_60():
+>       assert rg.VORGABEN_BILDER == {"max_anzahl": 60, "offline_mb": 25}
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reise' has no attribute 'VORGABEN_BILDER'
+
+teststest_bilder.py:373: AttributeError
+_____________________________ test_grenze_je_reise _____________________________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_grenze_je_reise0beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e437200>
+
+    def test_grenze_je_reise(wanderung, monkeypatch):
+>       Netz(monkeypatch)
+
+teststest_bilder.py:357: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+teststest_bilder.py:109: in __init__
+    monkeypatch.setattr(bilder_modul().time, "sleep", lambda s: None)
+                        ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_________________ test_werkzeuge_englisch_mit_deutschem_alias __________________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+    def test_werkzeuge_englisch_mit_deutschem_alias():
+        import konnektor as kn
+        import schnittstelle
+>       assert schnittstelle.NAMEN["image_add"] == "bild_hinzufuegen" and schnittstelle.NAMEN["image_update"] == "bild_aendern"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'image_add'
+
+teststest_bilder.py:427: KeyError
+____________________ test_bi_und_b_werden_nicht_verwechselt ____________________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bi_und_b_werden_nicht_ver0beispielreise')
+
+    def test_bi_und_b_werden_nicht_verwechselt(wanderung):
+>       assert "BI" in neu.ARTEN and "B" in neu.ARTEN
+E       AssertionError: assert ('BI' in ('W', 'F', 'O', 'U', 'A', 'E', ...))
+E        +  where ('W', 'F', 'O', 'U', 'A', 'E', ...) = neu.ARTEN
+
+teststest_bilder.py:379: AssertionError
+__ test_abruf_laeuft_vor_der_sperre_und_der_unterprozess_geht_nicht_ins_netz ___
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342df7c50>
+request = <FixtureRequest for <Function test_abruf_laeuft_vor_der_sperre_und_der_unterprozess_geht_nicht_ins_netz>>
+
+    def test_abruf_laeuft_vor_der_sperre_und_der_unterprozess_geht_nicht_ins_netz(monkeypatch, request):
+        from test_schreiben import IDA as IDA_S, env_mitschneiden, sperre_frei
+        wurzel, _, arbeit, _ = request.getfixturevalue("repo")
+>       b = bilder_modul()
+            ^^^^^^^^^^^^^^
+
+teststest_bilder.py:402: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def bilder_modul():
+>       import bilder
+E       ModuleNotFoundError: No module named 'bilder'
+
+teststest_bilder.py:53: ModuleNotFoundError
+_____________ test_werkzeugliste_der_doku_nennt_die_bildwerkzeuge ______________
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+    def test_werkzeugliste_der_doku_nennt_die_bildwerkzeuge():
+        text = (WURZEL  "docs"  "konnektor.md").read_text(encoding="utf-8")
+>       assert "image_add" in text and "image_update" in text
+E       AssertionError: assert ('image_add' in '# Konnektor: Reisen in der Claude-App\n\nMit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen...rnamen, die zugleich deutsche Wörter sind (von, nach, an, ab, bei, vor, was, art), bleiben im Fließtext unverändert.\n')
+
+teststest_bilder.py:457: AssertionError
+__ test_fremdes_bild_im_text_ist_ein_baufehler[https:example.orgbild.jpg] ___
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_fremdes_bild_im_text_ist_0beispielreise')
+ziel = 'https:example.orgbild.jpg'
+
+    @pytest.mark.parametrize("ziel", ["https:example.orgbild.jpg", "http:example.orgbild.png", "example.orgbild.jpg"])
+    def test_fremdes_bild_im_text_ist_ein_baufehler(wanderung, ziel):
+        text_anhaengen(wanderung, f"![Fremd]({ziel})")
+>       assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_fremd")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:477: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ordner = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_fremdes_bild_im_text_ist_0beispielreise')
+
+    def bau_meldungen(ordner):
+        with tempfile.TemporaryDirectory() as t:
+>           with pytest.raises(bauen.BauFehler) as e:
+E           Failed: DID NOT RAISE BauFehler
+
+teststest_bilder.py:464: Failed
+_____ test_fremdes_bild_im_text_ist_ein_baufehler[example.orgbild.jpg] ______
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_fremdes_bild_im_text_ist_0beispielreise')
+ziel = 'example.orgbild.jpg'
+
+    @pytest.mark.parametrize("ziel", ["https:example.orgbild.jpg", "http:example.orgbild.png", "example.orgbild.jpg"])
+    def test_fremdes_bild_im_text_ist_ein_baufehler(wanderung, ziel):
+        text_anhaengen(wanderung, f"![Fremd]({ziel})")
+>       assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_fremd")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:477: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+testsconftest.py:79: in meldet
+    return any(meldet(a, schluessel, sprache) for a in ausgabe)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+testsconftest.py:79: in <genexpr>
+    return any(meldet(a, schluessel, sprache) for a in ausgabe)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'wissen.md: Bildlink „example.orgbild.jpg“ zeigt auf keine Datei.'
+schluessel = 'pruefung.bauen.bild_fremd', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, , sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.bauen.bild_fremd fehlt im Katalog
+E       assert 'pruefung.bauen.bild_fremd' != 'pruefung.bauen.bild_fremd'
+
+testsconftest.py:82: AssertionError
+_______________ test_konnektor_gibt_vorschau_als_bild_an_claude ________________
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+request = <FixtureRequest for <Function test_konnektor_gibt_vorschau_als_bild_an_claude>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f717050>
+
+    def test_konnektor_gibt_vorschau_als_bild_an_claude(request, monkeypatch):
+        from test_konnektor import ALT_ORGANISATOR, GAST, KARL as KARL_TOKEN, Schreibweg, rpc
+        basis, _ = request.getfixturevalue("schreibweg")
+        namen = lambda token: {t["name"] for t in rpc(basis, token, "toolslist")["tools"]}
+>       assert {"bild_hinzufuegen", "bild_aendern"} <= namen(KARL_TOKEN) and not {"bild_hinzufuegen", "bild_aendern"} & namen(GAST)
+E       AssertionError: assert ({'bild_aender..._hinzufuegen'} <= {'art_definie...anlegen', ...}
+E         
+E         Extra items in the left set:
+E         'bild_aendern'
+E         'bild_hinzufuegen')
+
+teststest_bilder.py:441: AssertionError
+_______________ test_link_bleibt_erlaubt_und_csp_begrenzt_bilder _______________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_link_bleibt_erlaubt_und_c0beispielreise')
+tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_link_bleibt_erlaubt_und_c0')
+
+    def test_link_bleibt_erlaubt_und_csp_begrenzt_bilder(wanderung, tmp_path):
+        text_anhaengen(wanderung, "[Fahrplan](https:example.orgfahrplan) und [anderswo](example.orgx)")
+        bauen.bauen(wanderung, tmp_path  "dist")
+        seite = (tmp_path  "dist"  "index.html").read_text(encoding="utf-8")
+        import re
+        regel = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', seite).group(1)
+>       assert "img-src 'self' data:" in regel
+E       assert "img-src 'self' data:" in "script-src 'self' 'sha256-4zAMi1MoInExpfUxMon4dt5Je5bObYV2ptXaH1KoxI=' 'sha256-WZrIAagEH7+jrwGkWziDamQfESASMKbYFKqBXlKpNo='; object-src 'none'; base-uri 'none'"
+
+teststest_bilder.py:486: AssertionError
+______ test_schreibweg_lehnt_fremdes_bild_im_text_ab[example.orgx.jpg] ______
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+request = <FixtureRequest for <Function test_schreibweg_lehnt_fremdes_bild_im_text_ab[example.orgx.jpg]>>
+ziel = 'example.orgx.jpg'
+
+    @pytest.mark.parametrize("ziel", ["https:example.orgx.jpg", "example.orgx.jpg"])
+    def test_schreibweg_lehnt_fremdes_bild_im_text_ab(request, ziel):
+        from test_schreiben import IDA as IDA_S, deutsch
+        wurzel, _, arbeit, _ = request.getfixturevalue("repo")
+        code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "wissen_schreiben",
+                                     {**IDA_S, "args": {"titel": "Testbild", "text": f"Ein Bild: ![x]({ziel})", "gruppe": "wissen",
+                                                        "quelle": "eigene Beobachtung"}})
+        assert code == 422 and not a["ok"], a
+>       assert meldet(deutsch(a), "pruefung.bauen.bild_fremd"), a
+                      ^^^^^^^^^^
+
+teststest_bilder.py:497: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = {'ok': False, 'fehler': 'The trip cannot be built like this, nothing changed: wissen.md: image link “example.orgx.j..., 'werte': {'meldungen': {'satz': ['', '', ['pruefung.bauen.7', {'w1': 'wissen.md', 'ziel': 'example.orgx.jpg'}]]}}}
+
+    def deutsch(a):
+        """Bestätigung aus dem Unterprozess `anwenden` auf Deutsch: Der Unterprozess setzt "text" im Rückfall der Software (Englisch,
+        conftest.rueckfall_deutsch gilt nur im Testprozess); "text_teile" baut ihn in jeder Sprache, wie der Konnektor."""
+        import texte
+>       return texte.Satz.aus_json(a["text_teile"]).text("de")
+                                   ^^^^^^^^^^^^^^^
+E       KeyError: 'text_teile'
+
+teststest_schreiben.py:2535: KeyError
+----------------------------- Captured stderr call -----------------------------
+Rejected wissen_schreiben 422: The trip cannot be built like this, nothing changed: wissen.md: image link “example.orgx.jpg” points to no file.
+Done wissen_schreiben 422 in 1.1 s
+___ test_schreibweg_lehnt_fremdes_bild_im_text_ab[https:example.orgx.jpg] ___
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+request = <FixtureRequest for <Function test_schreibweg_lehnt_fremdes_bild_im_text_ab[https:example.orgx.jpg]>>
+ziel = 'https:example.orgx.jpg'
+
+    @pytest.mark.parametrize("ziel", ["https:example.orgx.jpg", "example.orgx.jpg"])
+    def test_schreibweg_lehnt_fremdes_bild_im_text_ab(request, ziel):
+        from test_schreiben import IDA as IDA_S, deutsch
+        wurzel, _, arbeit, _ = request.getfixturevalue("repo")
+        code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "wissen_schreiben",
+                                     {**IDA_S, "args": {"titel": "Testbild", "text": f"Ein Bild: ![x]({ziel})", "gruppe": "wissen",
+                                                        "quelle": "eigene Beobachtung"}})
+>       assert code == 422 and not a["ok"], a
+E       AssertionError: {'ok': True, 'text': 'New section W-08 “Testbild” in inhaltwissen.md (group knowledge). Source: eigene Beobachtung.', 'commit': '6205f634330980d813876b744d4056610eec9bb1', 'stand': {'gesichert': 2, 'veroeffentlicht': None}, ...}
+E       assert (200 == 422)
+
+teststest_bilder.py:496: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done wissen_schreiben 200 in 1.6 s
+__________ test_nennung_gemeinfrei_nur_urheber_und_aus_der_reise_ohne __________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nennung_gemeinfrei_nur_ur0beispielreise')
+tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nennung_gemeinfrei_nur_ur0')
+
+    def test_nennung_gemeinfrei_nur_urheber_und_aus_der_reise_ohne(wanderung, tmp_path):
+        bild_eintragen(wanderung, "BI-51", lizenz="CC0", urheber="Erika Frei")
+        bild_eintragen(wanderung, "BI-52", quelle="reise")
+        text_anhaengen(wanderung, "![Frei](BI-51)\n\n![Eigen](BI-52)")
+        bauen.bauen(wanderung, tmp_path  "dist")
+        seite = (tmp_path  "dist"  "index.html").read_text(encoding="utf-8")
+>       assert "Erika Frei" in seite and "creativecommons.orgpublicdomain" not in seite
+E       assert ('Erika Frei' in '<!doctype html>\n<html lang="de" dir="ltr">\n<head>\n<meta http-equiv="Content-Security-Policy" content="script-src \...ine Startfehler-Meldung mehr; bleibt die letzte Anweisung\nwindow.__startFertig = true;\n<script>\n<body>\n<html>\n')
+
+teststest_bilder.py:543: AssertionError
+_______ test_bi_im_text_zeigt_grosse_fassung_mit_nennung_und_im_precache _______
+[gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bi_im_text_zeigt_grosse_f0beispielreise')
+tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bi_im_text_zeigt_grosse_f0')
+
+    def test_bi_im_text_zeigt_grosse_fassung_mit_nennung_und_im_precache(wanderung, tmp_path):
+        b = bild_eintragen(wanderung, "BI-50")
+        text_anhaengen(wanderung, "![Die Brücke](BI-50)")
+        ziel = tmp_path  "dist"
+        bauen.bauen(wanderung, ziel)
+        seite = (ziel  "index.html").read_text(encoding="utf-8")
+>       assert b["dateien"]["gross"] in seite and (ziel  b["dateien"]["gross"]).exists()
+E       assert ('medienbilderBI-50-1600.webp' in '<!doctype html>\n<html lang="de" dir="ltr">\n<head>\n<meta http-equiv="Content-Security-Policy" content="script-src \...ine Startfehler-Meldung mehr; bleibt die letzte Anweisung\nwindow.__startFertig = true;\n<script>\n<body>\n<html>\n')
+
+teststest_bilder.py:530: AssertionError
+___________ test_nachziehen_stellt_altbestand_um_und_ist_idempotent ____________
+[gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nachziehen_stellt_altbest0beispielreise')
+tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nachziehen_stellt_altbest0')
+
+    def test_nachziehen_stellt_altbestand_um_und_ist_idempotent(wanderung, tmp_path):
+        p = wanderung  "inhalt"  "etappen.md"
+        p.write_text(p.read_text(encoding="utf-8").replace(
+            "![Skizze: Felsnadeln, Brücke und Fluss](..medienskizze-felsen.png)",
+            "![Skizze: Felsnadeln, Brücke und Fluss](..medienskizze-felsen.png)\n\n![Fremd](https:example.orgf.jpg)"), encoding="utf-8")
+        shutil.rmtree(wanderung  "medien"  "bilder", ignore_errors=True)
+        (wanderung  "plan"  "bilder.yaml").unlink(missing_ok=True)
+        neu.nachziehen(wanderung)
+        text = p.read_text(encoding="utf-8")
+>       assert "medienskizze-felsen.png" not in text and "](https:example.orgf.jpg)" in text and "![Fremd]" not in text
+E       AssertionError: assert ('medienskizze-felsen.png' not in '# Beispielr...Wasserfall\n'
+E         
+E         'medienskizze-felsen.png' is contained here:
+E           Fluss](..medienskizze-felsen.png)
+E           
+E           ![Fremd](https:example.orgf.jpg)
+E           
+E           Eigene Zeichnung, kein Foto. Sie zeigt das Motiv der Gegend: Sandsteinfelsen, eine Bogenbrücke, darunter der Fluss....
+E         
+E         ...Full output truncated (64 lines hidden), use '-vv' to show)
+
+teststest_bilder.py:567: AssertionError
+___ test_fremdes_bild_im_text_ist_ein_baufehler[http:example.orgbild.png] ___
+[gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_fremdes_bild_im_text_ist_0beispielreise')
+ziel = 'http:example.orgbild.png'
+
+    @pytest.mark.parametrize("ziel", ["https:example.orgbild.jpg", "http:example.orgbild.png", "example.orgbild.jpg"])
+    def test_fremdes_bild_im_text_ist_ein_baufehler(wanderung, ziel):
+        text_anhaengen(wanderung, f"![Fremd]({ziel})")
+>       assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_fremd")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:477: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ordner = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_fremdes_bild_im_text_ist_0beispielreise')
+
+    def bau_meldungen(ordner):
+        with tempfile.TemporaryDirectory() as t:
+>           with pytest.raises(bauen.BauFehler) as e:
+E           Failed: DID NOT RAISE BauFehler
+
+teststest_bilder.py:464: Failed
+__ test_zurueckgezogenes_bild_entfaellt_ohne_fehler_unbekanntes_ist_baufehler __
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_zurueckgezogenes_bild_ent0beispielreise')
+tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_zurueckgezogenes_bild_ent0')
+
+    def test_zurueckgezogenes_bild_entfaellt_ohne_fehler_unbekanntes_ist_baufehler(wanderung, tmp_path):
+        b = bild_eintragen(wanderung, "BI-53", status="zurueckgezogen")
+        text_anhaengen(wanderung, "![Weg](BI-53)")
+        bauen.bauen(wanderung, tmp_path  "dist")
+        assert b["dateien"]["gross"] not in (tmp_path  "dist"  "index.html").read_text(encoding="utf-8")
+        text_anhaengen(wanderung, "![Gibts nicht](BI-98)")
+>       assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_unbekannt")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+
+teststest_bilder.py:553: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ordner = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_zurueckgezogenes_bild_ent0beispielreise')
+
+    def bau_meldungen(ordner):
+        with tempfile.TemporaryDirectory() as t:
+>           with pytest.raises(bauen.BauFehler) as e:
+E           Failed: DID NOT RAISE BauFehler
+
+teststest_bilder.py:464: Failed
+_____________ test_nachziehen_aendert_die_beispielreise_nicht_mehr _____________
+[gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
+
+wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreise')
+
+    def test_nachziehen_aendert_die_beispielreise_nicht_mehr(wanderung):
+        """Die Beispielreise im Repo ist schon umgestellt (V24): Altbestand steht als BI-, ein Bild mit Commons-Herkunft und ein Titelbild."""
+        stand = {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()}
+        neu.nachziehen(wanderung)
+>       assert {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()} == stand
+E       assert {PosixPath('...fen |\n', ...} == {PosixPath('...fen |\n', ...}
+E         
+E         Omitting 21 identical items, use -vv to show
+E         Differing items:
+E         {PosixPath('tmppytest-of-hempytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreiseplanarten.yaml'):...\n    merkmale:\n      gewicht:\n        name: Gewicht\n        typ: zahl\n        einheit: g\n        rolle: summe\n"} != {PosixPath('tmppytest-of-hempytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreiseplanarten.yaml'):...e: grau\n    ausgeblendet: true\n    merkmale:\n      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}\n'}
+E         Use -v to get more diff
+
+teststest_bilder.py:590: AssertionError
+=========================== short test summary info ============================
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[Copyrighted]
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[CC BY-NC 4.0]
+FAILED teststest_bilder.py::test_lizenz_positivliste_nimmt_an[CC BY-SA 4.0-https:creativecommons.orglicensesby-sa4.0]
+FAILED teststest_bilder.py::test_lizenz_positivliste_nimmt_an[CC0-https:creativecommons.orgpublicdomainzero1.0]
+FAILED teststest_bilder.py::test_lizenz_positivliste_nimmt_an[CC BY-SA 2.5-https:creativecommons.orglicensesby-sa2.5]
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[CC BY-NC-SA 3.0]
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[]
+FAILED teststest_bilder.py::test_lizenz_positivliste_nimmt_an[Public domain-None]
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[Free Art License]
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[None]
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[CC BY-ND 4.0]
+FAILED teststest_bilder.py::test_lizenz_positivliste_nimmt_an[PD-None] - Mod...
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[FAL]
+FAILED teststest_bilder.py::test_abruf_mit_user_agent_zeitlimit_und_ohne_original
+FAILED teststest_bilder.py::test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt[GFDL]
+FAILED teststest_bilder.py::test_urheber_wird_zu_text_gesaeubert - ModuleNot...
+FAILED teststest_bilder.py::test_lizenz_positivliste_nimmt_an[CC BY 3.0-https:creativecommons.orglicensesby3.0]
+FAILED teststest_bilder.py::test_abruf_dauerhaft_gestoert_lehnt_ab[fehler2]
+FAILED teststest_bilder.py::test_abruf_lehnt_ab[meta_gross-bild.abgelehnt.zu_gross]
+FAILED teststest_bilder.py::test_abruf_lehnt_ab[fehlt-bild.abgelehnt.nicht_gefunden]
+FAILED teststest_bilder.py::test_abruf_wiederholt_einmal_nach_429 - ModuleNo...
+FAILED teststest_bilder.py::test_abruf_dauerhaft_gestoert_lehnt_ab[fehler3]
+FAILED teststest_bilder.py::test_abruf_lehnt_ab[svg-bild.abgelehnt.kein_rasterbild]
+FAILED teststest_bilder.py::test_bilddatei_ueber_15_mb_wird_vor_der_verkleinerung_abgelehnt
+FAILED teststest_bilder.py::test_abruf_dauerhaft_gestoert_lehnt_ab[fehler0]
+FAILED teststest_bilder.py::test_abruf_lehnt_ab[pdf-bild.abgelehnt.kein_rasterbild]
+FAILED teststest_bilder.py::test_abruf_dauerhaft_gestoert_lehnt_ab[fehler1]
+FAILED teststest_bilder.py::test_abruf_wikidata_liest_p18 - ModuleNotFoundEr...
+FAILED teststest_bilder.py::test_abruf_lehnt_ab[kaputt-bild.abgelehnt.kein_rasterbild]
+FAILED teststest_bilder.py::test_bild_hinzufuegen_legt_eintrag_mit_herkunft_und_zwei_webp_fassungen_an
+FAILED teststest_bilder.py::test_abruf_lehnt_ab[ohne_p18-bild.abgelehnt.nicht_gefunden]
+FAILED teststest_bilder.py::test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args2-bild.abgelehnt.ziel]
+FAILED teststest_bilder.py::test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[CC BY-NC 4.0]
+FAILED teststest_bilder.py::test_bild_aus_wikidata - ModuleNotFoundError: No...
+FAILED teststest_bilder.py::test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[GFDL]
+FAILED teststest_bilder.py::test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args3-bild.abgelehnt.ziel]
+FAILED teststest_bilder.py::test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[CC BY-ND 4.0]
+FAILED teststest_bilder.py::test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[None]
+FAILED teststest_bilder.py::test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args0-bild.abgelehnt.quelle]
+FAILED teststest_bilder.py::test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[Free Art License]
+FAILED teststest_bilder.py::test_zu_reise_ist_erlaubt - ModuleNotFoundError:...
+FAILED teststest_bilder.py::test_titelbild_nur_organisator_und_hoechstens_eines
+FAILED teststest_bilder.py::test_rechte_in_reise_und_schreibweg - AssertionE...
+FAILED teststest_bilder.py::test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args1-bild.abgelehnt.quelle]
+FAILED teststest_bilder.py::test_mitwirkend_aendert_zieht_zurueck_und_stellt_wieder_her
+FAILED teststest_bilder.py::test_modul_steht_in_der_deploy_liste - Assertion...
+FAILED teststest_bilder.py::test_vorgabe_der_grenze_ist_60 - AttributeError:...
+FAILED teststest_bilder.py::test_grenze_je_reise - ModuleNotFoundError: No m...
+FAILED teststest_bilder.py::test_werkzeuge_englisch_mit_deutschem_alias - Ke...
+FAILED teststest_bilder.py::test_bi_und_b_werden_nicht_verwechselt - Asserti...
+FAILED teststest_bilder.py::test_abruf_laeuft_vor_der_sperre_und_der_unterprozess_geht_nicht_ins_netz
+FAILED teststest_bilder.py::test_werkzeugliste_der_doku_nennt_die_bildwerkzeuge
+FAILED teststest_bilder.py::test_fremdes_bild_im_text_ist_ein_baufehler[https:example.orgbild.jpg]
+FAILED teststest_bilder.py::test_fremdes_bild_im_text_ist_ein_baufehler[example.orgbild.jpg]
+FAILED teststest_bilder.py::test_konnektor_gibt_vorschau_als_bild_an_claude
+FAILED teststest_bilder.py::test_link_bleibt_erlaubt_und_csp_begrenzt_bilder
+FAILED teststest_bilder.py::test_schreibweg_lehnt_fremdes_bild_im_text_ab[example.orgx.jpg]
+FAILED teststest_bilder.py::test_schreibweg_lehnt_fremdes_bild_im_text_ab[https:example.orgx.jpg]
+FAILED teststest_bilder.py::test_nennung_gemeinfrei_nur_urheber_und_aus_der_reise_ohne
+FAILED teststest_bilder.py::test_bi_im_text_zeigt_grosse_fassung_mit_nennung_und_im_precache
+FAILED teststest_bilder.py::test_nachziehen_stellt_altbestand_um_und_ist_idempotent
+FAILED teststest_bilder.py::test_fremdes_bild_im_text_ist_ein_baufehler[http:example.orgbild.png]
+FAILED teststest_bilder.py::test_zurueckgezogenes_bild_entfaellt_ohne_fehler_unbekanntes_ist_baufehler
+FAILED teststest_bilder.py::test_nachziehen_aendert_die_beispielreise_nicht_mehr
+64 failed, 3 passed in 5.72s
