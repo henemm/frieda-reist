@@ -839,9 +839,17 @@ class Routen:
         self.eltern_pruefen()
         for tid, t in self.tage.items():
             self.id_anlegen(tid, self.q)
+            # In der Abfolge des Tags darf eine Wahlstelle stehen (#586): dort stehen die Aufenthalte ihrer gewählten Möglichkeit
             for aid in t.get("aufenthalte") or []:
-                if aid not in self.aufenthalte:
+                if ist("wahl", aid):
+                    if aid not in self.wahl:
+                        self.fehl(texte.satz("pruefung.routen.118", tid=tid, el=aid))
+                elif aid not in self.aufenthalte:
                     self.fehl(texte.satz("pruefung.routen.14", tid=tid, aid=aid))
+            # optional: Aufenthalte des Tags, die man auslassen kann (#586); nur solche, die im Tag stehen
+            for aid in t.get("optional") or []:
+                if aid not in (t.get("aufenthalte") or []):
+                    self.fehl(texte.satz("pruefung.routen.tag_optional", tid=tid, aid=aid))
         for vid, w in self.wahl.items():
             self.id_anlegen(vid, self.q)
             if w.get("wann", "planung") not in WANN or (w.get("wann") is not None and w.get("art") in WANN):
@@ -1763,14 +1771,44 @@ class Routen:
     def aufenthalte_des_tages(self, t, nur_offene=False):
         """Aufenthalte ohne Nacht eines Tags: die eigenen (aufenthalte:) und die der gewählten Möglichkeit jeder Wahlstelle des Tags
         (wahl:), wie bei der Nacht (#353). nur_offene: nur die aus einer noch offenen Planungs-Wahlstelle (der Kalender zeigt nur Entschiedenes)."""
-        eigene = [] if nur_offene else [a for a in t.get("aufenthalte") or [] if a in self.aufenthalte]
-        for v in t.get("wahl") or []:
+        def der_wahl(v):
             oid = self.auswahl.get(v)
             w = self.wahl.get(v) or {}
             offen = wann_von(w) == "planung" and not any(self.status(o) == "gewaehlt" for o in w.get("optionen") or [])
-            if oid in self.option and (offen or not nur_offene):
-                eigene +=[a for a in self.option[oid][1].get("aufenthalte") or [] if a in self.aufenthalte and a not in eigene]
+            return [a for a in self.option[oid][1].get("aufenthalte") or [] if a in self.aufenthalte] if oid in self.option and (offen or not nur_offene) else []
+        # Abfolge des Tags (#586): eine Wahlstelle in aufenthalte steht für die Aufenthalte ihrer gewählten Möglichkeit an dieser Stelle;
+        # Wahlstellen nur unter wahl folgen wie bisher am Ende
+        eigene = []
+        for a in t.get("aufenthalte") or []:
+            if ist("wahl", a):
+                eigene += [x for x in der_wahl(a) if x not in eigene]
+            elif not nur_offene and a in self.aufenthalte and a not in eigene:
+                eigene.append(a)
+        for v in t.get("wahl") or []:
+            if v not in (t.get("aufenthalte") or []):
+                eigene += [x for x in der_wahl(v) if x not in eigene]
         return eigene
+
+    def halt_alternativen(self, t):
+        """Alternativen zu den Aufenthalten eines Tags (#586): je Wahlstelle des Tags (in aufenthalte oder wahl), deren gewählte
+        Möglichkeit Aufenthalte hat, die übrigen gültigen Möglichkeiten mit Aufenthalten -> {A-gewählt: [{id, wahl, option, ausloeser}]}.
+        Die Seite zeigt sie eingerückt unter dem gewählten Halt."""
+        aus = {}
+        for v in [a for a in t.get("aufenthalte") or [] if ist("wahl", a)] + list(t.get("wahl") or []):
+            w = self.wahl.get(v) or {}
+            oid = self.auswahl.get(v)
+            if oid not in self.option:
+                continue
+            halt = next((a for a in self.option[oid][1].get("aufenthalte") or [] if a in self.aufenthalte), None)
+            if not halt or halt in aus:
+                continue
+            for o in w.get("optionen") or []:
+                if o.get("id") == oid or o.get("id") not in self.option or self.status(o) in UNGUELTIG:
+                    continue
+                for a in o.get("aufenthalte") or []:
+                    if a in self.aufenthalte:
+                        aus.setdefault(halt, []).append({"id": a, "wahl": v, "option": o["id"], **({"ausloeser": o["ausloeser"]} if o.get("ausloeser") else {})})
+        return aus
 
     def tag_lauf(self, tid, pos, warnen=False):
         """Ein Tag im aktuellen Plan: (Strecken, Nacht, Ort am Abend, Ort am Anfang). Der Anfang ist der Start der
@@ -1858,7 +1896,9 @@ class Routen:
                          "strecken": [{"id": s, "wahl": v} for s, v in strecken],
                          "kennzahlen": self.strecken_summe([s for s, _ in strecken]),
                          "aufenthalte": self.aufenthalte_des_tages(t), "aufenthalte_offen": self.aufenthalte_des_tages(t, nur_offene=True),
-                         "wahlstellen": unterwegs, "nacht": n})
+                         **({"optional": list(t["optional"])} if t.get("optional") else {}),
+                         **({"alternativen": alt} if (alt := self.halt_alternativen(t)) else {}),
+                         "wahlstellen": unterwegs + [a for a in t.get("aufenthalte") or [] if ist("wahl", a) and a not in unterwegs], "nacht": n})
 
         # Tage unter einer offenen Planungs-Wahlstelle sind vorläufig (#77): der Kalender zeigt nur Entschiedenes
         for vid, (a, e) in self.grenzen.items():
@@ -1919,6 +1959,8 @@ class Routen:
                             "strecken": [{"id": s, "wahl": v} for s, v in self.strecken_des_tages(tid, t.get("strecken"))],
                             "wahlstellen": [el for el in t.get("strecken") or [] if ist("wahl", el)] + list(t.get("wahl") or []),
                             "aufenthalte": self.aufenthalte_des_tages(t),
+                            **({"optional": list(t["optional"])} if t.get("optional") else {}),
+                            **({"alternativen": alt} if (alt := self.halt_alternativen(t)) else {}),
                             "nacht": self.nacht(tid, t.get("nacht"))}
         aus = {
             "tage": tage,

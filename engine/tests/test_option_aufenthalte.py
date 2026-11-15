@@ -174,3 +174,22 @@ wahlstellen:
     assert "geoeffnet" in b["fehlt"], "aber das Café braucht seine eigene Pflichtangabe"
     tag = next(x for x in route["tage"] if x["id"] == "T-02")
     assert tag["aufenthalte"] == ["A-01", "A-90"]
+
+
+def test_wahlstelle_in_der_abfolge_des_tags_und_optional():
+    """#586: Steht die Wahlstelle in aufenthalte des Tags, stehen die Aufenthalte ihrer gewählten Möglichkeit an dieser Stelle (nicht
+    am Ende); die anderen Möglichkeiten mit Aufenthalt sind Alternativen zum gewählten Halt; optional geht mit in die Daten des Tags.
+    Ohne Wahlstelle in aufenthalte bleibt es wie bisher (Aufenthalte der Wahl am Ende)."""
+    zweite = ("        strecken: [E-04]\n", "        strecken: [E-04]\n        aufenthalte: [A-91]\n        ausloeser: \"bei Regen\"\n")
+    a91 = ("  A-02:\n    name: \"Stadt Wehlen\"", "  A-91:\n    name: Café am Wasserfall\n    ort: O-03\n    art: besichtigung\n"
+           "    quelle: \"erfunden (Beispiel)\"\n  A-02:\n    name: \"Stadt Wehlen\"")
+    vorher = ("  T-02: {titel: \"Stadt Wehlen → Bastei → Hohnstein\", strecken: [E-20, E-01], wahl: [V-02], aufenthalte: [A-01],",
+              "  T-02: {titel: \"Stadt Wehlen → Bastei → Hohnstein\", strecken: [E-20, E-01], wahl: [V-02], aufenthalte: [V-90, A-01], optional: [A-01],")
+    r = routen([AUFENTHALT, a91, vorher, WAHL, zweite])
+    t = next(x for x in r["tage"] if x["id"] == "T-02")
+    assert t["aufenthalte"] == ["A-90", "A-01"] and t["optional"] == ["A-01"], t
+    assert t["alternativen"] == {"A-90": [{"id": "A-91", "wahl": "V-90", "option": "V-90.b", "ausloeser": "bei Regen"}]}, t
+    assert "V-90" in t["wahlstellen"], t
+    r = routen([AUFENTHALT, TAG, WAHL])
+    t = next(x for x in r["tage"] if x["id"] == "T-03")
+    assert t["aufenthalte"][-1] == "A-90" and "optional" not in t and "alternativen" not in t, t

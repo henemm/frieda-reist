@@ -2807,6 +2807,7 @@ TAG_AENDERN = {"name": "tag_aendern", "description": "@konnektor.werkzeug.tag_ae
                    "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.nacht"},
                    "strecken": {"type": "array", "items": {"type": "string"}}, "wahl": {"type": "array", "items": {"type": "string"}},
                    "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.tag_aendern.aufenthalte"},
+                   "optional": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.tag_aendern.optional"},
                    "grund": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.grund"}},
                    "required": ["ziel"]}}
 WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "@konnektor.werkzeug.wissen_schreiben",

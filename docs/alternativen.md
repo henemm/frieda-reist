@@ -95,6 +95,16 @@ Manche Optionen gehen nur zusammen mit einer anderen (der Bus fährt nur, wenn d
 
 Bei Reiseteilen (Arten der Grundform `folge`) berechnet der Generator das Merkmal **Anschluss**: Passt die Option an ihre Stelle im aktuellen Plan? Verglichen wird, wo der Plan davor endet, mit dem Anfang ihres ersten Tages (Start der ersten Strecke, sonst Ort der Nacht), und wo sie endet, mit dem, was danach kommt (nächster Tag oder Reiseende). Werte: „nahtlos“, „Lücke am Anfang: A → B“, „Lücke am Ende: A → B“, bei einer Option ohne Tage „Lücke: A → B“. Hinter dem Wert (gepunktete Linie) steht, wovon die Rechnung ausgeht. Die Lücken sind dieselben, die der Plan als Warnung meldet, sobald die Option gilt; so sieht man vor der Entscheidung, welche Variante einen fehlenden Weg mitbringt. Optionen ohne `folge` (noch nicht ausgearbeitet) und Wahlstellen außerhalb des aktuellen Plans bekommen keinen Wert.
 
+## Halte eines Fahrtags: Reihenfolge, optional, Alternative (#586)
+
+Ein Fahrtag liest sich als Fahrt (Product Owner, 15.11.2026): Start, die Halte in der Reihenfolge des Tags, Ziel. Die Reihenfolge
+steht in `aufenthalte:` des Tags; dort darf auch eine Wahlstelle stehen (`aufenthalte: [A-01, V-07, A-12]`). Sie steht für den Halt
+ihrer gewählten Möglichkeit, die anderen Möglichkeiten mit Aufenthalt zeigt die Seite eingerückt darunter, mit Auslöser
+(„Falls voll: …“). Ein Ausweich-Ladestopp ist also eine Wahlstelle `wann: unterwegs` mit einer Möglichkeit je Ladestation, kein
+eigener Halt mit „Alternative“ im Namen. `optional: [A-…]` am Tag nennt Halte, die man auslassen kann. Jeder Halt gehört zu einer
+Strecke des Tags (am Start einer Strecke, am Umsteigeort zur nächsten, am Ziel des Tags zur letzten, sonst nach Uhrzeit oder Lage,
+#287); die Reihenfolge des Tags geht vor.
+
 ## Orte als Möglichkeit (#353, Schritt 2)
 
 Ein gewählter Ort ist ein **Ziel ohne Rechenbedeutung** (Entscheidung des Tech Leads, 6.11.2026): Er steht im Wahlstellen-Block des

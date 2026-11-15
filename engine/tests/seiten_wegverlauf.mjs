@@ -11,6 +11,6 @@ const fehler = [];
 p.on("pageerror", e => fehler.push(String(e)));
 await p.goto(basis + "#T-02");
 await p.waitForSelector(".tagseite .wv");
-const verlauf = await p.evaluate(() => [...document.querySelectorAll(".tagseite .wv > div")].map(x => [x.className.replace(/\s+/g, " ").trim(), x.textContent.replace(/\s+/g, " ").trim().slice(0, 160)]));
+const verlauf = await p.evaluate(() => [...document.querySelectorAll(".tagseite .wv > div")].map(x => [x.className.replace(/\s+/g, " ").trim(), x.textContent.replace(/\s+/g, " ").trim().slice(0, 300)]));
 await b.close();
 console.log(JSON.stringify({verlauf, fehler}));

@@ -1820,7 +1820,19 @@ def eltern_aendern(reise_dir, roh, did, was, knoten, wert, geaendert):
                     t["aufenthalte"] = fliess_map({"aufenthalte": liste})["aufenthalte"]
                 else:
                     t.pop("aufenthalte", None)
+                optional_nachfuehren(t)
                 geaendert.append(S("schreiben.antwort.ding.vom_tag_geloest", w1=tid_))
+
+
+def optional_nachfuehren(t):
+    """optional eines Tags (#586) auf die Aufenthalte beschränken, die noch im Tag stehen."""
+    if "optional" not in t:
+        return
+    bleibt = [a for a in t.get("optional") or [] if a in (t.get("aufenthalte") or [])]
+    if bleibt:
+        t["optional"] = fliess_map({"optional": bleibt})["optional"]
+    else:
+        t.pop("optional", None)
 
 
 def zeit_wert(args, feld):
@@ -2925,7 +2937,10 @@ def tag_aendern(reise_dir, wer, args, heute=None):
             else:
                 t.pop("nacht", None)
     for feld, muster, mengen in (("strecken", r"(E-\d+[A-Za-z]?|V-\d+)", {"E": "strecken", "V": "wahlstellen"}),
-                                 ("wahl", r"V-\d+", {"V": "wahlstellen"}), ("aufenthalte", r"A-\d+", {"A": "aufenthalte"})):
+                                 ("wahl", r"V-\d+", {"V": "wahlstellen"}),
+                                 # Abfolge des Tags: Aufenthalte und Wahlstellen an ihrer Stelle (#586); optional: auslassbare Aufenthalte
+                                 ("aufenthalte", r"(A-\d+|V-\d+)", {"A": "aufenthalte", "V": "wahlstellen"}),
+                                 ("optional", r"A-\d+", {"A": "aufenthalte"})):
         if args.get(feld) is None:
             continue
         liste = id_liste(args, feld, muster, roh) or []
@@ -2938,6 +2953,7 @@ def tag_aendern(reise_dir, wer, args, heute=None):
                 t[feld] = fliess_map({feld: liste})[feld]
             else:
                 t.pop(feld, None)
+    optional_nachfuehren(t)
     if not geaendert:
         raise Ablehnung("schreiben.tag_aendern.4", tid=tid)
     grund = text_wert(args, "grund")
@@ -3812,7 +3828,10 @@ def tag_anlegen(reise_dir, wer, args, heute=None):
         if n not in (roh.get({"U": "unterkuenfte", "V": "wahlstellen", "O": "orte"}[n[0]]) or {}):
             raise Ablehnung("schreiben.tag_aendern.3", n=n)
     for feld, muster, mengen in (("strecken", r"(E-\d+[A-Za-z]?|V-\d+)", {"E": "strecken", "V": "wahlstellen"}),
-                                 ("wahl", r"V-\d+", {"V": "wahlstellen"}), ("aufenthalte", r"A-\d+", {"A": "aufenthalte"})):
+                                 ("wahl", r"V-\d+", {"V": "wahlstellen"}),
+                                 # Abfolge des Tags: Aufenthalte und Wahlstellen an ihrer Stelle (#586); optional: auslassbare Aufenthalte
+                                 ("aufenthalte", r"(A-\d+|V-\d+)", {"A": "aufenthalte", "V": "wahlstellen"}),
+                                 ("optional", r"A-\d+", {"A": "aufenthalte"})):
         liste = id_liste(args, feld, muster, roh)
         for x in liste or []:
             if x not in (roh.get(mengen[x[0]]) or {}) and not (feld == "strecken" and x.startswith("E-")):

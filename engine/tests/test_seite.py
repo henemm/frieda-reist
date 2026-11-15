@@ -278,7 +278,7 @@ def test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke(tmp_path, 
     Zeitleiste nach der Strecke, zu der seine Uhrzeit passt, nicht am Ende nach „Ziel“. Erfundene Abwandlung der Beispielreise:
     eine Bäckerei um 08:20, zwischen Abfahrt (08:12) und Ankunft (08:40) der S-Bahn."""
     ersetzen = [("  O-06:\n", "  O-07: {name: Pirna, quelle: \"erfunden (Beispiel)\"}\n  O-06:\n"),
-                ("aufenthalte: [A-01]", "aufenthalte: [A-01, A-90]"),
+                ("aufenthalte: [A-01]", "aufenthalte: [A-90, A-01]"),   # seit #586 gilt die Reihenfolge des Tags
                 ("  A-02:\n    name: \"Stadt Wehlen\"", "  A-90:\n    name: Bäckerei in Pirna\n    ort: O-07\n    art: besichtigung\n    quelle: \"erfunden (Beispiel)\"\n    merkmale:\n"
                  "      zeitraum: {typ: zeitraum, wert: {beginn: \"08:20\", ende: \"08:30\"}, quelle: \"erfunden (Beispiel)\"}\n  A-02:\n    name: \"Stadt Wehlen\"")]
     e = seite_der_variante(tmp_path, browser, skript="seiten_wegverlauf.mjs", routen_ersetzen=ersetzen)
@@ -288,6 +288,37 @@ def test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke(tmp_path, 
     strecke = next(i for i, z in enumerate(e["verlauf"]) if "wv-strecke" in z[0])
     ziel = next(i for i, n in enumerate(namen) if n.startswith("Stadt Wehlen"))   # der Ort nach der S-Bahn
     assert strecke < bak < ziel, e["verlauf"]
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_fahrtag_in_der_reihenfolge_des_tags(tmp_path, browser):
+    """#586 (Product Owner 15.11.2026): Ein Fahrtag liest sich als Fahrt. Die Halte stehen zwischen Start und Ziel in der Reihenfolge
+    des Tags, auch einer am Zielort (Burg Hohnstein steht vor „Ziel“). Eine Wahlstelle in der Abfolge steht für den Halt ihrer
+    gewählten Möglichkeit, die andere Möglichkeit steht mit Auslöser eingerückt darunter; ein optionaler Halt trägt „optional“.
+    Erfundene Abwandlung der Beispielreise."""
+    ort = "    ort: O-07\n    art: besichtigung\n    quelle: \"erfunden (Beispiel)\"\n"
+    ersetzen = [("  O-06:\n", "  O-07: {name: Pirna, quelle: \"erfunden (Beispiel)\"}\n  O-06:\n"),
+                ("aufenthalte: [A-01]", "aufenthalte: [V-90, A-93, A-01], optional: [A-93]"),
+                ("  A-02:\n    name: \"Stadt Wehlen\"", "  A-91:\n    name: Café am Markt\n" + ort + "  A-92:\n    name: Bäckerei am Bahnhof\n" + ort
+                 + "  A-93:\n    name: Aussicht am Hang\n" + ort + "  A-02:\n    name: \"Stadt Wehlen\""),
+                ("  V-02:\n", "  V-90:\n    titel: \"Einkehr unterwegs\"\n    wann: unterwegs\n    optionen:\n"
+                 "      - {id: V-90.a, titel: Café, aufenthalte: [A-91], quelle: \"erfunden (Beispiel)\"}\n"
+                 "      - {id: V-90.b, titel: Bäckerei, aufenthalte: [A-92], ausloeser: \"falls geschlossen\", quelle: \"erfunden (Beispiel)\"}\n  V-02:\n")]
+    e = seite_der_variante(tmp_path, browser, skript="seiten_wegverlauf.mjs", routen_ersetzen=ersetzen)
+    z = e["verlauf"]
+    namen = [x[1] for x in z]
+    def stelle(teil):
+        i = next((i for i, n in enumerate(namen) if teil in n), None)
+        assert i is not None, (teil, namen)
+        return i
+    cafe, aussicht, burg = stelle("Café am Markt"), stelle("Aussicht am Hang"), stelle("Burg Hohnstein")
+    ziel = next(i for i, x in enumerate(z) if "ziel" in x[0].split())
+    assert cafe < aussicht < burg < ziel == len(z) - 1, z
+    assert "falls geschlossen" in namen[cafe] and "Bäckerei am Bahnhof" in namen[cafe], namen[cafe]
+    assert not any(n.startswith("Bäckerei am Bahnhof") for n in namen), namen   # die Alternative steht nur eingerückt
+    assert "optional" in z[aussicht][0].split() and "optional" in namen[aussicht], z[aussicht]
+    assert "optional" not in z[cafe][0].split(), z[cafe]
 
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")

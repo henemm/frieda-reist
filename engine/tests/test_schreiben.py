@@ -927,6 +927,24 @@ def test_tag_aendern_nur_organisator(repo):
     assert not git(arbeit, "status", "--porcelain")
 
 
+def test_tag_aendern_abfolge_mit_wahlstelle_und_optional(repo):
+    """#586: aufenthalte nimmt Aufenthalte und Wahlstellen in der Reihenfolge des Tags; optional nennt auslassbare Aufenthalte
+    des Tags. Fällt ein Aufenthalt aus dem Tag, fällt er auch aus optional."""
+    _, origin, arbeit, _ = repo
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-02", "aufenthalte": ["V-02", "A-01"], "optional": ["A-01"]}})
+    r, _ = routen_auf_main(origin)
+    assert r["tage"]["T-02"]["aufenthalte"] == ["V-02", "A-01"] and r["tage"]["T-02"]["optional"] == ["A-01"]
+    s.vorbereiten()
+    s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-02", "aufenthalte": ["V-02"]}})
+    r, _ = routen_auf_main(origin)
+    assert r["tage"]["T-02"]["aufenthalte"] == ["V-02"] and "optional" not in r["tage"]["T-02"]
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung, match="gibt es nicht"):
+        s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-02", "aufenthalte": ["V-99"]}})
+    assert not git(arbeit, "status", "--porcelain")
+
+
 # ---------- Wissen, Fragen schließen, Personen ----------
 
 def datei_auf_main(origin, rel):

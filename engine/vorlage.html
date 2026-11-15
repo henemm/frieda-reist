@@ -621,6 +621,10 @@ h2.tagkopf .tagtitel{font-size:var(--t-titel);line-height:1.15}
 .wv-ort,.wv-strecke,.wv-aufenthalt{position:relative;padding-left:26px}
 .wv-aufenthalt{margin:.25rem 0 .35rem}
 .wv-aufenthalt .aufenthalt{padding:.35rem .6rem;border-left:3px solid var(--line);border-radius:var(--r-klein)}
+.wv-aufenthalt.optional .aufenthalt{border-left-style:dashed}
+.wv-optional{margin-left:8px;border-style:dashed !important}
+.wv-alternative{font-size:var(--t-klein);margin:.3rem 0 0 14px;padding-left:10px;border-left:2px solid var(--line);color:var(--mut)}
+.wv-alternative b{color:var(--fg);font-weight:600}
 .wv-ort{min-height:22px;display:flex;align-items:center}
 .wv-punkt{position:absolute;left:3px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:2.5px solid var(--acc);background:var(--card);box-sizing:border-box}
 .wv-ort.start .wv-punkt{background:var(--acc)}
@@ -1400,7 +1404,7 @@ function zid(id) {
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
    Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, Rechtszeile (HTML im Fuß)
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -1840,32 +1844,54 @@ function streckeZuAufenthalt(strecken, a) {
   const ab = strecken.map(abstand), best = Math.min(...ab);
   return best === Infinity ? -1 : ab.indexOf(best);
 }
+// Abfolge eines Fahrtags (#586, Product Owner 15.11.2026): Start, Halte in der Reihenfolge des Tags, Ziel. Jeder Halt gehört zu
+// einer Strecke: liegt er am Start einer Strecke, zu ihr; am Umsteigeort (Ziel einer Strecke, nicht der letzten) zur nächsten; am Ziel
+// des Tags zur letzten; sonst nach Uhrzeit oder Lage (#287). Die Reihenfolge des Tags gewinnt: ein Halt steht nie vor einem, der im
+// Tag vor ihm steht. Optionale Halte tragen „optional“, Alternativen (andere Möglichkeiten einer Wahlstelle) stehen eingerückt darunter.
+function haltZeilen(t, a, voll) {
+  const opt = (t.optional || []).includes(a);
+  const h = el("div", {class: "wv-aufenthalt" + (opt ? " optional" : "")}, aufenthaltZeile(a, voll));
+  const z = h.firstChild;
+  if (opt && z) (z.querySelector(".titelzeile") || z).append(chip("neben", T("seite.weg.optional"), {class: "wv-optional"}));
+  for (const x of (t.alternativen || {})[a] || []) {
+    const d = (R.aufenthalte || {})[x.id];
+    if (!d) continue;
+    h.append(el("div", {class: "wv-alternative"}, x.ausloeser ? T("seite.weg.alternative_falls", {ausloeser: x.ausloeser}) : T("seite.weg.alternative"),
+      el("b", {}, heimat(x.id) ? link(x.id, d.name) : d.name)));
+  }
+  return h;
+}
 function wegVerlauf(t, ohneKennung, tagseite) {
   const v = el("div", {class: "wv"}), voll = id => !!tagseite && heimTag(id) === t.id;
-  const rest = new Set(t.aufenthalte || []);
-  const bei = oid => { const z = []; for (const a of [...rest]) if (((R.aufenthalte || {})[a] || {}).ort === oid) { rest.delete(a); z.push(el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(a, voll(a)))); } return z; };
+  const halte = (t.aufenthalte || []).filter(a => (R.aufenthalte || {})[a]);
+  const n = t.strecken.length;
+  if (!n) { for (const a of halte) v.append(haltZeilen(t, a, voll(a))); return v; }
+  const st = t.strecken.map(x => R.strecken[x.id] || {});
+  const teil = a => {
+    const d = R.aufenthalte[a], o = d.ort;
+    if (o) {
+      const i = st.findIndex(s => s.von === o);
+      if (i >= 0) return i;
+      if (st[n - 1].nach === o) return n - 1;
+      const j = st.findIndex(s => s.nach === o);
+      if (j >= 0) return j + 1;
+    }
+    return streckeZuAufenthalt(t.strecken, d);
+  };
+  const zu = t.strecken.map(() => []);
+  let vorher = 0;
+  for (const a of halte) { const i = teil(a); vorher = Math.max(vorher, i < 0 ? vorher : i); zu[vorher].push(a); }
   const ort = (id, art) => el("div", {class: "wv-ort " + art}, el("span", {class: "wv-punkt", "aria-hidden": "true"}),
     el("span", {class: "wv-name"}, art !== "mitte" ? el("span", {class: "wv-etikett"}, art === "start" ? T("seite.weg.start") : T("seite.weg.ziel")) : null, ortName(id)));
   let zuletzt = null;
-  // Aufenthalte, die an keinem Ort der Strecken liegen, ordnen sich nach der Strecke, zu der sie gehören (#287)
-  const imWeg = new Set(t.strecken.flatMap(x => [(R.strecken[x.id] || {}).von, (R.strecken[x.id] || {}).nach]));
-  const zwischen = t.strecken.map(() => []);
-  for (const a of [...rest]) {
-    const d = (R.aufenthalte || {})[a] || {};
-    if (imWeg.has(d.ort)) continue;
-    const i = streckeZuAufenthalt(t.strecken, d);
-    if (i >= 0) { rest.delete(a); zwischen[i].push([minuten(d.beginn), a]); }
-  }
-  zwischen.forEach(z => z.sort((p, q) => (p[0] === null) - (q[0] === null) || p[0] - q[0]));
   t.strecken.forEach((x, i) => {
-    const s = R.strecken[x.id] || {};
-    if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"), ...bei(s.von));
+    const s = st[i];
+    if (s.von && s.von !== zuletzt) v.append(ort(s.von, i === 0 ? "start" : "mitte"));
     v.append(el("div", {class: "wv-strecke" + (s.summiert ? "" : " fahrt")}, streckeZeile(x.id, x.wahl, ohneKennung && ohneKennung(x.id), voll(x.id))));
-    for (const [, a] of zwischen[i]) v.append(el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(a, voll(a))));
-    if (s.nach) { v.append(ort(s.nach, i === t.strecken.length - 1 ? "ziel" : "mitte"), ...bei(s.nach)); zuletzt = s.nach; }
+    for (const a of zu[i]) v.append(haltZeilen(t, a, voll(a)));
+    if (s.nach) { v.append(ort(s.nach, i === n - 1 ? "ziel" : "mitte")); zuletzt = s.nach; }
     else zuletzt = null;
   });
-  for (const a of rest) v.append(el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(a, voll(a))));
   return v;
 }
 // ohneKopf: auf der Tagesseite (der Kopf steht darüber); dort ist der Tageskasten die Fläche, an der man handelt
