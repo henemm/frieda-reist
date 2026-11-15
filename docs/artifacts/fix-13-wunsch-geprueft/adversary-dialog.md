@@ -24,6 +24,11 @@ Tests: 45 passed, 0 failed, 0 übersprungen (docs/artifacts/fix-13-wunsch-geprue
 **Implementierer:** vorlage.html:5279 `(vorschlag && Object.keys(vorschlag).length)`: ein Objekt `{gewaehlt:false}` hat 1 Schlüssel, Python `{"gewaehlt": False}` ist truthy: beide „geprueft“, konsistent (praktisch nie, da der Dienst immer alle Schlüssel liefert). AUSGANG-Einträge (Z. 5285) haben Status "" und kein `vorschlag` → eingebracht und kein erlebt; vorher durch `w.status ? … : "eingebracht"` erzwungen, jetzt durch die Regel selbst, gleiches Ergebnis. BR_AUSGANG (Z. 5287-5290) setzt erlebt, wuSpalte prüft verworfen zuerst → passt_nicht, erlebt danach → erlebt, auch bei Vorschlag. Bei leerem RM-Status ohne Vorschlag und mit erlebt zählt jetzt erlebt (zuvor eingebracht); das verlangt die Spec ausdrücklich.
 **Adversary (Beleg):** Browser-Test test_wunsch_brett (Beispielwunsch mit Status „neu“ plus Vorschlag steht unter „geprüft“; Abhaken ohne Netz bleibt „erlebt“) grün. Kleine Unschärfe: Die Karte zeigt bei Status „neu“ weiterhin das Chip „wird geprüft“ (vorlage.html:5320) in der Spalte „Geprüft“ (LOW, F001).
 
+### Runde 3 (Nachprüfung F001)
+**Adversary:** Der Fix `else if (w.status === "neu" && w.spalte === "eingebracht")` (engine/vorlage.html:5320): Status neu plus erlebt, plus eingeplant, rueckfrage, Wunsch im Ausgang, neu ohne Vorschlag?
+**Implementierer:** wuAlle (engine/vorlage.html:5291) setzt `w.spalte` vor wuKarte. Neu mit Vorschlag: Spalte geprueft, kein Chip (F001 behoben). Neu ohne Vorschlag: eingebracht, Chip bleibt (Test: essen True). Neu plus erlebt oder eingeplant: Spalte erlebt/eingeplant, Chip entfällt; das ist stimmig, die Karte steht nicht mehr in „eingebracht“. rueckfrage: eigener Zweig (Z. 5321), unberührt. Ausgang: `!gesendet` greift im ersten Zweig (Z. 5319), kein „wird geprüft“. Verworfen: kein Chip, Spalte passt_nicht.
+**Adversary (Beleg):** Selektor `.chip.ag-leise` passt zu CHIP leise (vorlage.html:1414, Stil Z. 155); anderes leises Chip erscheint auf Wunschkarten nicht (grep wird_geprueft: nur Z. 5320). test_wunsch_brett prüft `{bahn: False, essen: True, baden: False}` (engine/tests/test_seite.py:521, Erfassung engine/tests/seiten_brett.mjs:39-40). Lauf `-k wunsch_brett`: 2 passed; frühere 45 passed unverändert; Spalten-Test engine/tests/test_brett.py:171 grün. Bestätigt.
+
 ## Findings
 
 Finding:
@@ -34,6 +39,7 @@ Finding:
   Description: Karte eines Wunsches mit Rückmeldestatus „neu“ und Vorschlag zeigt weiter das Chip „wird geprüft“, steht aber jetzt in der Spalte „Geprüft“.
   Spec requirement: Spec „Was ändert sich“ — Wunsch mit Vorschlag steht unter „geprüft“ (Spalte); Chip nicht erwähnt.
   Conflict: Kosmetisch widersprüchlich, kein Datenfehler, nicht von der Spec gefordert.
+  Status: BEHOBEN und in Runde 3 bestätigt (engine/vorlage.html:5320, Test engine/tests/test_seite.py:521)
   Remediation: Chip nur zeigen, wenn kein Vorschlag da ist (`w.status === "neu" && !w.vorschlag`), optional in eigenem Schritt.
 
 ## Confirmations
@@ -58,8 +64,32 @@ Confirmation:
 
 Confirmation:
   AC: Punkt 5 (Browser-Test)
-  Code reference: engine/tests/test_seite.py:486
-  Evidence: Beispielwunsch mit Status „neu“ plus Vorschlag aus plan/wuensche.yaml; Test grün.
+  Code reference: engine/tests/test_seite.py:521
+  Evidence: Chip „wird geprüft“ nur beim Wunsch ohne Vorschlag (seiten_brett.mjs:39); Beispielwunsch mit Status „neu“ plus Vorschlag aus plan/wuensche.yaml; Test grün.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: F001 (Chip)
+  Code reference: engine/vorlage.html:5320
+  Evidence: Chip nur bei Spalte eingebracht; Test erfasst `.chip.ag-leise` je Karte.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: Erfassung im Browser-Test
+  Code reference: engine/tests/seiten_brett.mjs:39
+  Evidence: stand() liefert leise je Wunschtext.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: Spaltenregel Dienst
+  Code reference: engine/rueckmeldungen.py:786
+  Evidence: unverändert, siehe oben.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: Spaltentest
+  Code reference: engine/tests/test_brett.py:171
+  Evidence: test_spalte_mit_vorschlag grün.
   Status: CONFIRMED
 
 ## Herkunft der Vorbedingungen
@@ -71,22 +101,24 @@ kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
 ═══════════════════════════════════════
 VERDICT: VERIFIED
 ═══════════════════════════════════════
-Tests: 45 passed, 0 failed, 0 übersprungen
-Edge cases: geprüft, nur kosmetisches LOW-Finding F001 (Chip „wird geprüft“)
+Tests: 45 passed, 0 failed, 0 übersprungen; Nachlauf -k wunsch_brett 2 passed
+Edge cases: geprüft, F001 (Chip) behoben
 Regressions: None found
 Checklist: 5/5 points proven
 
 ## Geprüfte Dateien
 
 - sha256:8ce1412191615541aedb2f43cd3d0cc9eba7b8076021efee62cf4e003cec1ff1  engine/rueckmeldungen.py
+- sha256:270583f7f53ef57b16d6776f9345040f90df6bc1b475480c6c8eb4087555c83f  engine/tests/seiten_brett.mjs
 - sha256:a8aa6b9ff3aa3043a6f59f7c5083b99adf5f6c1459394ca7140bfd8f93e56a59  engine/tests/test_brett.py
-- sha256:bafaba1070cfd25784833cc81a7a5f88b55ed8231714552911aec013e392dbe9  engine/tests/test_seite.py
-- sha256:6f5cbfa1fae96113c0272cf0a0d75ce79a8f4c0542f20e96df92cb9ad0157414  engine/vorlage.html
+- sha256:6178888fe6e45d59a49d07142ab7f57aeb14b7beaf159452b80068e45fcdf5ea  engine/tests/test_seite.py
+- sha256:347b67cce85b7404a308796714669d4b18f42a8af8dd134e9ca0955418ebb5a3  engine/vorlage.html
 
 ## Prüfbasis
 
 - base: 42b6017f3ff3820c624608387a2890348c574406
 - blob:480e87645c83266349fd0b6486109d683c3c9158  engine/rueckmeldungen.py
+- blob:be6f1048da27d5d4d9b303f4c281facb2fa4ea2b  engine/tests/seiten_brett.mjs
 - blob:316014efcbaefd6198321186c4e2421e735156e8  engine/tests/test_brett.py
-- blob:973c57f803f9c2ac8df459a013eb9d5725423102  engine/tests/test_seite.py
-- blob:6ea4f2efef18eeae5c0dc031c0c9dc32e3c724cf  engine/vorlage.html
+- blob:e28954d65c501d12a177abb1b263215c12fc3bcd  engine/tests/test_seite.py
+- blob:d18dfe4566bffff223fc9038bd43c70a195f8cdd  engine/vorlage.html
