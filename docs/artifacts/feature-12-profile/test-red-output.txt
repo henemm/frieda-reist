@@ -1,0 +1,1083 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.F                                      [100%]
+=================================== FAILURES ===================================
+_________________________ test_grenzen_aus_der_instanz _________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7761ec9c8710>
+
+    def test_grenzen_aus_der_instanz(monkeypatch):
+>       for f in (instanz.grenze_profil_eintraege, instanz.grenze_profil_bereich, instanz.grenze_profil_text):
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'grenze_profil_eintraege'
+
+engine/tests/test_profil.py:141: AttributeError
+______________________ test_pruefungen_ohne_speichern[de] ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f74341760>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x798f6fe5e060>
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_pruefungen_ohne_speichern(zwei, monkeypatch, sprache):
+        """Test 3: leere Pflichtfelder, zu lange Werte, Obergrenze je Konto; Fehler mit Text je Sprache, nichts gespeichert."""
+        u = zwei()
+        falsch = [("", "x", "Gespräch"), ("  ", "x", "Gespräch"), ("Essen", " ", "Gespräch"), ("Essen", "x", ""),
+>                 ("Essen", "x", "   "), ("E" * (instanz.grenze_profil_bereich() + 1), "x", "Gespräch"),
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                  ("Essen", "x" * (instanz.grenze_profil_text() + 1), "Gespräch")]
+E       AttributeError: module 'instanz' has no attribute 'grenze_profil_bereich'
+
+engine/tests/test_profil.py:121: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________ test_eintrag_bekommt_nummer_herkunft_und_datum ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a73112f5760>
+
+    def test_eintrag_bekommt_nummer_herkunft_und_datum(zwei):
+        """Test 1"""
+        u = zwei()
+>       e1 = setzen(u.a)
+             ^^^^^^^^^^^
+
+engine/tests/test_profil.py:96: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-c36b9e5ed600752f', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Isst kein Fleisch'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_____________________ test_fremder_eintrag_nicht_gefunden ______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761eca0b420>
+
+    def test_fremder_eintrag_nicht_gefunden(zwei):
+        """Test 4"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+>       e = setzen(ida)
+            ^^^^^^^^^^^
+
+engine/tests/test_profil.py:155: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-1f41252b0a7dced7', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Isst kein Fleisch'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+______________________ test_pruefungen_ohne_speichern[en] ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e5b4e00>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x798f74140b90>
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_pruefungen_ohne_speichern(zwei, monkeypatch, sprache):
+        """Test 3: leere Pflichtfelder, zu lange Werte, Obergrenze je Konto; Fehler mit Text je Sprache, nichts gespeichert."""
+        u = zwei()
+        falsch = [("", "x", "Gespräch"), ("  ", "x", "Gespräch"), ("Essen", " ", "Gespräch"), ("Essen", "x", ""),
+>                 ("Essen", "x", "   "), ("E" * (instanz.grenze_profil_bereich() + 1), "x", "Gespräch"),
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                  ("Essen", "x" * (instanz.grenze_profil_text() + 1), "Gespräch")]
+E       AttributeError: module 'instanz' has no attribute 'grenze_profil_bereich'
+
+engine/tests/test_profil.py:121: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________________ test_profil_geht_mit_dem_konto ________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761eca0b100>
+
+    def test_profil_geht_mit_dem_konto(zwei):
+        """Test 5"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+>       setzen(karl, text=MARKE)
+
+engine/tests/test_profil.py:170: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-9519301f6f690165', 'email': 'karl@beispiel.invalid', 'name': 'Karl', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Zwiebelallergie-7f3q'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+_____________________ test_nummer_wird_nie_wiederverwendet _____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730bb84ae0>
+
+    def test_nummer_wird_nie_wiederverwendet(zwei):
+        """Test 2"""
+        u = zwei()
+>       setzen(u.a)
+
+engine/tests/test_profil.py:108: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-1c721854abe8b38d', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Isst kein Fleisch'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_________________ test_lesen_deutsch_und_englisch_nur_eigenes __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e5b4680>
+
+    def test_lesen_deutsch_und_englisch_nur_eigenes(zwei):
+        """Test 8"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+>       setzen(ida, text=MARKE)
+
+engine/tests/test_profil.py:214: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-6bb80605e08076b0', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Zwiebelallergie-7f3q'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+__________________ test_zusammenfuehren_nimmt_das_profil_mit ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761eca08ae0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7761e7482090>
+
+    def test_zusammenfuehren_nimmt_das_profil_mit(zwei, monkeypatch):
+        """Test 6: Kennungen bleiben, keine Kollision, die Obergrenze gilt dabei nicht."""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+>       a = [setzen(karl, "Essen", "vegetarisch"), setzen(karl, "Tempo", "gemütlich")]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:184: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-6c2da3ebbdfbc699', 'email': 'karl@beispiel.invalid', 'name': 'Karl', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'vegetarisch', herkunft = 'Gespräch in der Claude-App'
+kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________________________ test_werkzeugliste[de] ____________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730bb84360>, sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_werkzeugliste(zwei, sprache):
+        """Test 11: drei Konto-Werkzeuge ohne reise, englischer Name, deutscher Alias, Beschreibung in beiden Sprachen."""
+        u = zwei()
+        konten.sprache_setzen(u.a["id"], sprache)
+        k = konten.konto(u.a["id"])
+        intern = {w["name"]: w for w in kn.frieda_werkzeuge(k)}
+        for name in WERKZEUGE:
+>           assert name in intern, name
+E           AssertionError: mein_profil
+E           assert 'mein_profil' in {'meine_reisen': {'name': 'meine_reisen', 'description': '@konnektor.werkzeug.meine_reisen', 'inputSchema': {'type': '...: {'sprache': {'type': 'string', 'enum': ['de', 'en'], 'description': 'Sprachkürzel'}}, 'required': ['sprache']}}, ...}
+
+engine/tests/test_profil.py:286: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_alte_datenbank_bekommt_die_tabelle ____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x7761e72039c0>
+
+    def test_alte_datenbank_bekommt_die_tabelle(welt):
+        """Test 7: eine Datenbank von vor der Einführung (ohne Tabelle profil) behält ihre Daten."""
+        welt()
+        with closing(konten.db()) as v, v:
+            v.execute("DROP TABLE IF EXISTS profil")
+            v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES ('k-alt', 'alt@beispiel.invalid', 'Alt', '2026-01-01')")
+        with closing(sqlite3.connect(konten.pfad())) as v:
+            assert not v.execute("SELECT name FROM sqlite_master WHERE name = 'profil'").fetchone()
+        with closing(konten.db()) as v:
+>           assert v.execute("SELECT name FROM sqlite_master WHERE name = 'profil'").fetchone()
+E           assert None
+E            +  where None = <built-in method fetchone of sqlite3.Cursor object at 0x7761ecb71ec0>()
+E            +    where <built-in method fetchone of sqlite3.Cursor object at 0x7761ecb71ec0> = <sqlite3.Cursor object at 0x7761ecb71ec0>.fetchone
+E            +      where <sqlite3.Cursor object at 0x7761ecb71ec0> = <built-in method execute of sqlite3.Connection object at 0x7761e721e200>("SELECT name FROM sqlite_master WHERE name = 'profil'")
+E            +        where <built-in method execute of sqlite3.Connection object at 0x7761e721e200> = <sqlite3.Connection object at 0x7761e721e200>.execute
+
+engine/tests/test_profil.py:203: AssertionError
+____________________________ test_werkzeugliste[en] ____________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730bb856c0>, sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_werkzeugliste(zwei, sprache):
+        """Test 11: drei Konto-Werkzeuge ohne reise, englischer Name, deutscher Alias, Beschreibung in beiden Sprachen."""
+        u = zwei()
+        konten.sprache_setzen(u.a["id"], sprache)
+        k = konten.konto(u.a["id"])
+        intern = {w["name"]: w for w in kn.frieda_werkzeuge(k)}
+        for name in WERKZEUGE:
+>           assert name in intern, name
+E           AssertionError: mein_profil
+E           assert 'mein_profil' in {'meine_reisen': {'name': 'meine_reisen', 'description': '@konnektor.werkzeug.meine_reisen', 'inputSchema': {'type': '... {'sprache': {'type': 'string', 'enum': ['de', 'en'], 'description': 'language code'}}, 'required': ['sprache']}}, ...}
+
+engine/tests/test_profil.py:286: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_________________ test_setzen_nur_bestaetigt_und_mit_herkunft __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e5b4a40>
+
+    def test_setzen_nur_bestaetigt_und_mit_herkunft(zwei):
+        """Test 9"""
+        u = zwei()
+        for args in ({"bereich": "Essen", "text": "vegetarisch", "herkunft": "Gespräch"},
+                     {"bereich": "Essen", "text": "vegetarisch", "herkunft": "Gespräch", "bestaetigt": False},
+                     {"bereich": "Essen", "text": "vegetarisch", "herkunft": "Gespräch", "bestaetigt": "ja"},
+                     {"bereich": "Essen", "text": "vegetarisch", "bestaetigt": True},
+                     {"bereich": "Essen", "text": "vegetarisch", "herkunft": " ", "bestaetigt": True}):
+            text, fehler = werkzeug(u.a, "profil_eintrag_setzen", **args)
+            assert fehler, (args, text)
+>       assert meldet(werkzeug(u.a, "profil_eintrag_setzen", bereich="Essen", text="x", herkunft="Gespräch")[0],
+                      "konnektor.profil.nicht_bestaetigt")
+
+engine/tests/test_profil.py:235: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Unbekanntes Werkzeug profil_eintrag_setzen.'
+schluessel = 'konnektor.profil.nicht_bestaetigt', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.profil.nicht_bestaetigt fehlt im Katalog
+E       assert 'konnektor.profil.nicht_bestaetigt' != 'konnektor.profil.nicht_bestaetigt'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+____________________ test_unbekannte_nummer_verraet_nichts _____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761ec6a0fe0>
+
+    def test_unbekannte_nummer_verraet_nichts(zwei):
+        """Test 12"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+>       e = setzen(ida, text=MARKE)
+            ^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:305: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-69f80378f20269ab', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Zwiebelallergie-7f3q'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+__________________ test_anleitung_frieda_nur_bestaetigtes[en] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730bb85580>, sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_anleitung_frieda_nur_bestaetigtes(zwei, sprache):
+        """Test 13"""
+        u = zwei()
+        text = kn.anleitung_frieda(konten.konto(u.a["id"]), sprache)
+>       assert meldet(text, "konnektor.anleitung.frieda.profil", sprache), text[-2000:]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:322: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Task: You are Frieda, the travel assistant of Ida (signed in as ida@beispiel.invalid). This connector covers all trip...th rueckmeldung_geben. Have the wording confirmed first and send the context along (what you did last, error message).'
+schluessel = 'konnektor.anleitung.frieda.profil', sprache = 'en'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.anleitung.frieda.profil fehlt im Katalog
+E       assert 'konnektor.anleitung.frieda.profil' != 'konnektor.anleitung.frieda.profil'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+__________________ test_schreibgrenze_setzen_ja_entfernen_nie __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e5b4f40>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x798f74124410>
+
+    def test_schreibgrenze_setzen_ja_entfernen_nie(zwei, monkeypatch):
+        """Test 10"""
+        u = zwei()
+        monkeypatch.setenv("FR_GRENZE_SCHREIBEN", "2")
+        text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bereich="Essen", text="vegetarisch", herkunft="Gespräch",
+                                bestaetigt=True)
+>       assert not fehler, text
+E       AssertionError: Unbekanntes Werkzeug profil_eintrag_setzen.
+E       assert not True
+
+engine/tests/test_profil.py:261: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+__________________ test_anleitung_frieda_nur_bestaetigtes[de] __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761ec70b240>, sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_anleitung_frieda_nur_bestaetigtes(zwei, sprache):
+        """Test 13"""
+        u = zwei()
+        text = kn.anleitung_frieda(konten.konto(u.a["id"]), sprache)
+>       assert meldet(text, "konnektor.anleitung.frieda.profil", sprache), text[-2000:]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:322: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Aufgabe: Du bist Frieda, der Reiseassistent von Ida (angemeldet als ida@beispiel.invalid). Dieser Konnektor gilt für ...se. Vorher den Wortlaut bestätigen lassen und den Zusammenhang mitschicken (was du zuletzt getan hast, Fehlermeldung).'
+schluessel = 'konnektor.anleitung.frieda.profil', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.anleitung.frieda.profil fehlt im Katalog
+E       assert 'konnektor.anleitung.frieda.profil' != 'konnektor.anleitung.frieda.profil'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_ test_anleitung_je_reise_nach_baustein[None-konnektor.anleitung.profil_nutzen] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730bb85440>, bausteine = None
+erwartet = 'konnektor.anleitung.profil_nutzen'
+
+    @pytest.mark.parametrize("bausteine,erwartet", [
+        (None, "konnektor.anleitung.profil_nutzen"),
+        (["plan", "profile"], "konnektor.anleitung.profil_nutzen"),
+        (["plan"], "konnektor.anleitung.profil_nicht_nutzen"),
+    ])
+    def test_anleitung_je_reise_nach_baustein(zwei, bausteine, erwartet):
+        """Test 14: an oder ohne bausteine: nutzen und an Wahlstellen als Grund nennen; aus: nicht nutzen. Beide Reisetypen."""
+        u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
+        for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
+            d = kn.daten(reise)
+            schl = konten.mitglied(k["id"], reise)
+            schl = schl["schluessel"] if isinstance(schl, dict) else schl
+            text = kn.anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": "de"}, d)
+            anders = ({"konnektor.anleitung.profil_nutzen", "konnektor.anleitung.profil_nicht_nutzen"} - {erwartet}).pop()
+>           assert meldet(text, erwartet), (reise, text[-1500:])
+                   ^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:341: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Aufgabe: Du hilfst bei der Reise „Beispielreise – Malerweg in vier Tagen“ (Dresden und Sächsische Schweiz, 13.–16.5.2...nhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.'
+schluessel = 'konnektor.anleitung.profil_nutzen', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.anleitung.profil_nutzen fehlt im Katalog
+E       assert 'konnektor.anleitung.profil_nutzen' != 'konnektor.anleitung.profil_nutzen'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_ test_anleitung_je_reise_nach_baustein[bausteine1-konnektor.anleitung.profil_nutzen] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e5b49a0>
+bausteine = ['plan', 'profile'], erwartet = 'konnektor.anleitung.profil_nutzen'
+
+    @pytest.mark.parametrize("bausteine,erwartet", [
+        (None, "konnektor.anleitung.profil_nutzen"),
+        (["plan", "profile"], "konnektor.anleitung.profil_nutzen"),
+        (["plan"], "konnektor.anleitung.profil_nicht_nutzen"),
+    ])
+    def test_anleitung_je_reise_nach_baustein(zwei, bausteine, erwartet):
+        """Test 14: an oder ohne bausteine: nutzen und an Wahlstellen als Grund nennen; aus: nicht nutzen. Beide Reisetypen."""
+        u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
+        for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
+            d = kn.daten(reise)
+            schl = konten.mitglied(k["id"], reise)
+            schl = schl["schluessel"] if isinstance(schl, dict) else schl
+            text = kn.anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": "de"}, d)
+            anders = ({"konnektor.anleitung.profil_nutzen", "konnektor.anleitung.profil_nicht_nutzen"} - {erwartet}).pop()
+>           assert meldet(text, erwartet), (reise, text[-1500:])
+                   ^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:341: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Aufgabe: Du hilfst bei der Reise „Beispielreise – Malerweg in vier Tagen“ (Dresden und Sächsische Schweiz, 13.–16.5.2...nhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.'
+schluessel = 'konnektor.anleitung.profil_nutzen', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.anleitung.profil_nutzen fehlt im Katalog
+E       assert 'konnektor.anleitung.profil_nutzen' != 'konnektor.anleitung.profil_nutzen'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+Note: reise.yaml: Baustein „profile“ ist eingeschaltet, aber noch nicht gebaut (Stufe 3).
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+Note: reise.yaml: Baustein „profile“ ist eingeschaltet, aber noch nicht gebaut (Stufe 3).
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_ test_anleitung_je_reise_nach_baustein[bausteine2-konnektor.anleitung.profil_nicht_nutzen] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761ec6a1580>, bausteine = ['plan']
+erwartet = 'konnektor.anleitung.profil_nicht_nutzen'
+
+    @pytest.mark.parametrize("bausteine,erwartet", [
+        (None, "konnektor.anleitung.profil_nutzen"),
+        (["plan", "profile"], "konnektor.anleitung.profil_nutzen"),
+        (["plan"], "konnektor.anleitung.profil_nicht_nutzen"),
+    ])
+    def test_anleitung_je_reise_nach_baustein(zwei, bausteine, erwartet):
+        """Test 14: an oder ohne bausteine: nutzen und an Wahlstellen als Grund nennen; aus: nicht nutzen. Beide Reisetypen."""
+        u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
+        for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
+            d = kn.daten(reise)
+            schl = konten.mitglied(k["id"], reise)
+            schl = schl["schluessel"] if isinstance(schl, dict) else schl
+            text = kn.anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": "de"}, d)
+            anders = ({"konnektor.anleitung.profil_nutzen", "konnektor.anleitung.profil_nicht_nutzen"} - {erwartet}).pop()
+>           assert meldet(text, erwartet), (reise, text[-1500:])
+                   ^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:341: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Aufgabe: Du hilfst bei der Reise „Beispielreise – Malerweg in vier Tagen“ (Dresden und Sächsische Schweiz, 13.–16.5.2...nhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.'
+schluessel = 'konnektor.anleitung.profil_nicht_nutzen', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.anleitung.profil_nicht_nutzen fehlt im Katalog
+E       assert 'konnektor.anleitung.profil_nicht_nutzen' != 'konnektor.anleitung.profil_nicht_nutzen'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_____________ test_baustein_profile_ohne_hinweis_noch_nicht_gebaut _____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_baustein_profile_ohne_hinweis_noch_nicht_gebaut():
+        """Test 15"""
+>       assert reise_modul.NOCH_NICHT_GEBAUT == {}
+E       AssertionError: assert {'profile': 'Stufe 3'} == {}
+E         
+E         Left contains 1 more item:
+E         {'profile': 'Stufe 3'}
+E         Use -v to get more diff
+
+engine/tests/test_profil.py:349: AssertionError
+_______________ test_fremd_ohne_herkunft_und_get_aendern_nichts ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e7c2e80>
+
+    def test_fremd_ohne_herkunft_und_get_aendern_nichts(zwei):
+        """Test 18"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+        karl_keks, _ = anmelden(u, KARL)
+>       e = setzen(ida, "Essen", "vegetarisch", "Gespräch")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-68f2317dccdc58ed', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'vegetarisch', herkunft = 'Gespräch', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________________ test_karte_mein_profil_nur_eigene[de] _____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730bb84540>, sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_karte_mein_profil_nur_eigene(zwei, sprache):
+        """Test 16"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+        karl_keks, _ = anmelden(u, KARL)
+        konten.sprache_setzen(ida["id"], sprache)
+        konten.sprache_setzen(karl["id"], sprache)
+>       setzen(ida, "Essen", MARKE, "Gespräch in der Claude-App")
+
+engine/tests/test_profil.py:363: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-f696b49787758ad9', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Zwiebelallergie-7f3q'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________________ test_karte_mein_profil_nur_eigene[en] _____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761ec6a27a0>, sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_karte_mein_profil_nur_eigene(zwei, sprache):
+        """Test 16"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+        karl_keks, _ = anmelden(u, KARL)
+        konten.sprache_setzen(ida["id"], sprache)
+        konten.sprache_setzen(karl["id"], sprache)
+>       setzen(ida, "Essen", MARKE, "Gespräch in der Claude-App")
+
+engine/tests/test_profil.py:363: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-9fed0db21e336ce3', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Zwiebelallergie-7f3q'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+______________________ test_kein_formular_zum_neuanlegen _______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e7c2340>
+
+    def test_kein_formular_zum_neuanlegen(zwei):
+        """Test 19"""
+        u = zwei()
+>       setzen(u.a)
+
+engine/tests/test_profil.py:410: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-27b85196e1328433', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Isst kein Fleisch'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________________ test_text_aendern_und_loeschen ________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730b7ed120>
+
+    def test_text_aendern_und_loeschen(zwei):
+        """Test 17"""
+        u = zwei()
+>       e = setzen(u.a, "Essen", "vegetarisch", "Gespräch")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:375: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-825c1be6707626d1', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'vegetarisch', herkunft = 'Gespräch', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_____________________ test_niemand_sonst_sieht_das_profil ______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761ec70a200>
+
+    def test_niemand_sonst_sieht_das_profil(zwei):
+        """Test 20: Karl (mitwirkend) und Organisatorin Ida, Tom (Organisator) und Lea in stadtwochenende."""
+        u = zwei()
+        ida, karl, tom, lea = alle(u)
+>       setzen(karl, "Essen", MARKE, "Gespräch")           # Karl ist mitwirkend: Organisatorin Ida sieht nichts
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:423: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-dd6619e0eff6fb31', 'email': 'karl@beispiel.invalid', 'name': 'Karl', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Zwiebelallergie-7f3q', herkunft = 'Gespräch', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+__________________ test_export_enthaelt_nur_das_eigene_profil __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e7c1300>
+
+    def test_export_enthaelt_nur_das_eigene_profil(zwei):
+        """Test 22"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+>       e = setzen(ida, "Essen", MARKE, "Gespräch in der Claude-App")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:465: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+k = {'id': 'K-8fcfb5c96731807f', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...}
+bereich = 'Essen', text = 'Zwiebelallergie-7f3q'
+herkunft = 'Gespräch in der Claude-App', kw = {}
+
+    def setzen(k, bereich="Essen", text="Isst kein Fleisch", herkunft="Gespräch in der Claude-App", **kw):
+>       return konten.profil_setzen(k["id"], bereich, text, herkunft, **kw)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'profil_setzen'. Did you mean: 'sprache_setzen'?
+
+engine/tests/test_profil.py:61: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+_________________ test_profiltext_nie_in_logs_mails_meldungen __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7a730b7ee340>
+capfd = <_pytest.capture.CaptureFixture object at 0x7a731128eb40>
+
+    def test_profiltext_nie_in_logs_mails_meldungen(zwei, capfd):
+        """Test 21"""
+        u = zwei()
+        ida, karl, _, _ = alle(u)
+        text, fehler = werkzeug(ida, "profil_eintrag_setzen", bereich="Essen", text=MARKE, herkunft="Gespräch", bestaetigt=True)
+>       assert not fehler, text
+E       AssertionError: Unbekanntes Werkzeug profil_eintrag_setzen.
+E       assert not True
+
+engine/tests/test_profil.py:445: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+__________________________ test_datenschutz_art9[de] ___________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x7761ec708720>, sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_datenschutz_art9(zwei, sprache):
+        """Test 23"""
+        u = zwei()
+        s, _, t = abruf(f"{u.kurl}/datenschutz", kopf={"Accept-Language": sprache})
+>       assert s == 200 and meldet(t, "recht.datenschutz.profil", sprache), t[-3000:]
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:481: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt..."><p class="recht"><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>'
+schluessel = 'recht.datenschutz.profil', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.datenschutz.profil fehlt im Katalog
+E       assert 'recht.datenschutz.profil' != 'recht.datenschutz.profil'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+____________________ test_neue_schluessel_in_allen_sprachen ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_neue_schluessel_in_allen_sprachen():
+        """Test 24"""
+        for sprache in texte.SPRACHEN:
+            fehlen = [s for s in NEUE_SCHLUESSEL if s not in texte.sprache(sprache).TEXTE]
+>           assert not fehlen, (sprache, fehlen)
+E           AssertionError: ('de', ['konnektor.werkzeug.mein_profil', 'konnektor.werkzeug.profil_eintrag_setzen', 'konnektor.werkzeug.profil_eintr...', 'konnektor.profil.nicht_bestaetigt', 'konnektor.anleitung.frieda.profil', 'konnektor.anleitung.profil_nutzen', ...])
+E           assert not ['konnektor.werkzeug.mein_profil', 'konnektor.werkzeug.profil_eintrag_setzen', 'konnektor.werkzeug.profil_eintrag_entf...n', 'konnektor.profil.nicht_bestaetigt', 'konnektor.anleitung.frieda.profil', 'konnektor.anleitung.profil_nutzen', ...]
+
+engine/tests/test_profil.py:504: AssertionError
+___________________________ test_reise_yaml_hinweise ___________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise = PosixPath('/tmp/pytest-of-hem/pytest-16172/popen-gw0/test_reise_yaml_hinweise0/reise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16172/popen-gw0/test_reise_yaml_hinweise0')
+capsys = <_pytest.capture.CaptureFixture object at 0x7a730bb63710>
+
+    def test_reise_yaml_hinweise(reise, tmp_path, capsys):
+        mit_reise_yaml(reise, lambda r: r.update(bausteine=["plan", "profile"]))
+        b = bauen.Bauer(reise, tmp_path / "dist")
+        b.daten()
+        # profile ist gebaut (#12): kein Hinweis „noch nicht gebaut“ mehr
+>       assert any("„plan“ ist Kern" in h for h in b.hinweise) and not any("noch nicht gebaut" in h for h in b.hinweise)
+E       assert (True and not True)
+E        +  where True = any(<generator object test_reise_yaml_hinweise.<locals>.<genexpr> at 0x7a730b5da810>)
+E        +  and   True = any(<generator object test_reise_yaml_hinweise.<locals>.<genexpr> at 0x7a730b5da330>)
+
+engine/tests/test_bauen.py:536: AssertionError
+__________________________ test_datenschutz_art9[en] ___________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zwei = <function zwei.<locals>.neu at 0x798f6e7c2340>, sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_datenschutz_art9(zwei, sprache):
+        """Test 23"""
+        u = zwei()
+        s, _, t = abruf(f"{u.kurl}/datenschutz", kopf={"Accept-Language": sprache})
+>       assert s == 200 and meldet(t, "recht.datenschutz.profil", sprache), t[-3000:]
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_profil.py:481: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...<p class="recht"><a href="/impressum">Legal notice</a><a href="/alpha">Alpha notice</a></p></div></main></body></html>'
+schluessel = 'recht.datenschutz.profil', sprache = 'en'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel recht.datenschutz.profil fehlt im Katalog
+E       assert 'recht.datenschutz.profil' != 'recht.datenschutz.profil'
+
+engine/tests/conftest.py:82: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+____________________________ test_doku_nachgezogen _____________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_doku_nachgezogen():
+        """Test 26 und Doku aus AC-13"""
+        kern = (WURZEL / "docs" / "adr" / "0001-kern.md").read_text(encoding="utf-8")
+>       assert re.search(r"Profil\w*.{0,200}lösch|lösch\w*.{0,200}Profil", kern, re.S | re.I), "Verlaufszeile fehlt"
+E       AssertionError: Verlaufszeile fehlt
+E       assert None
+E        +  where None = <function search at 0x798f75d00ea0>('Profil\\w*.{0,200}lösch|lösch\\w*.{0,200}Profil', '# ADR-0001: Der Kern von Frieda Reist\n\nStatus: gilt · Entschieden vom Product Owner am 28.10.2026 in Claude Code · ...baus ist der Recherchebericht „Grundformen in der Software, Arten in der Reise“ (28.10.2026, privat beim Betreiber).\n', (re.DOTALL | re.IGNORECASE))
+E        +    where <function search at 0x798f75d00ea0> = re.search
+E        +    and   re.DOTALL = re.S
+E        +    and   re.IGNORECASE = re.I
+
+engine/tests/test_profil.py:516: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_profil.py::test_grenzen_aus_der_instanz - AttributeE...
+FAILED engine/tests/test_profil.py::test_pruefungen_ohne_speichern[de] - Attr...
+FAILED engine/tests/test_profil.py::test_eintrag_bekommt_nummer_herkunft_und_datum
+FAILED engine/tests/test_profil.py::test_fremder_eintrag_nicht_gefunden - Att...
+FAILED engine/tests/test_profil.py::test_pruefungen_ohne_speichern[en] - Attr...
+FAILED engine/tests/test_profil.py::test_profil_geht_mit_dem_konto - Attribut...
+FAILED engine/tests/test_profil.py::test_nummer_wird_nie_wiederverwendet - At...
+FAILED engine/tests/test_profil.py::test_lesen_deutsch_und_englisch_nur_eigenes
+FAILED engine/tests/test_profil.py::test_zusammenfuehren_nimmt_das_profil_mit
+FAILED engine/tests/test_profil.py::test_werkzeugliste[de] - AssertionError: ...
+FAILED engine/tests/test_profil.py::test_alte_datenbank_bekommt_die_tabelle
+FAILED engine/tests/test_profil.py::test_werkzeugliste[en] - AssertionError: ...
+FAILED engine/tests/test_profil.py::test_setzen_nur_bestaetigt_und_mit_herkunft
+FAILED engine/tests/test_profil.py::test_unbekannte_nummer_verraet_nichts - A...
+FAILED engine/tests/test_profil.py::test_anleitung_frieda_nur_bestaetigtes[en]
+FAILED engine/tests/test_profil.py::test_schreibgrenze_setzen_ja_entfernen_nie
+FAILED engine/tests/test_profil.py::test_anleitung_frieda_nur_bestaetigtes[de]
+FAILED engine/tests/test_profil.py::test_anleitung_je_reise_nach_baustein[None-konnektor.anleitung.profil_nutzen]
+FAILED engine/tests/test_profil.py::test_anleitung_je_reise_nach_baustein[bausteine1-konnektor.anleitung.profil_nutzen]
+FAILED engine/tests/test_profil.py::test_anleitung_je_reise_nach_baustein[bausteine2-konnektor.anleitung.profil_nicht_nutzen]
+FAILED engine/tests/test_profil.py::test_baustein_profile_ohne_hinweis_noch_nicht_gebaut
+FAILED engine/tests/test_profil.py::test_fremd_ohne_herkunft_und_get_aendern_nichts
+FAILED engine/tests/test_profil.py::test_karte_mein_profil_nur_eigene[de] - A...
+FAILED engine/tests/test_profil.py::test_karte_mein_profil_nur_eigene[en] - A...
+FAILED engine/tests/test_profil.py::test_kein_formular_zum_neuanlegen - Attri...
+FAILED engine/tests/test_profil.py::test_text_aendern_und_loeschen - Attribut...
+FAILED engine/tests/test_profil.py::test_niemand_sonst_sieht_das_profil - Att...
+FAILED engine/tests/test_profil.py::test_export_enthaelt_nur_das_eigene_profil
+FAILED engine/tests/test_profil.py::test_profiltext_nie_in_logs_mails_meldungen
+FAILED engine/tests/test_profil.py::test_datenschutz_art9[de] - AssertionErro...
+FAILED engine/tests/test_profil.py::test_neue_schluessel_in_allen_sprachen - ...
+FAILED engine/tests/test_bauen.py::test_reise_yaml_hinweise - assert (True an...
+FAILED engine/tests/test_profil.py::test_datenschutz_art9[en] - AssertionErro...
+FAILED engine/tests/test_profil.py::test_doku_nachgezogen - AssertionError: V...
+34 failed, 1 passed in 17.34s

@@ -532,7 +532,8 @@ def test_reise_yaml_hinweise(reise, tmp_path, capsys):
     mit_reise_yaml(reise, lambda r: r.update(bausteine=["plan", "profile"]))
     b = bauen.Bauer(reise, tmp_path / "dist")
     b.daten()
-    assert any("„plan“ ist Kern" in h for h in b.hinweise) and any("noch nicht gebaut" in h for h in b.hinweise)
+    # profile ist gebaut (#12): kein Hinweis „noch nicht gebaut“ mehr
+    assert any("„plan“ ist Kern" in h for h in b.hinweise) and not any("noch nicht gebaut" in h for h in b.hinweise)
 
 
 def test_alte_regeln_des_einarbeitens_bauen_weiter(reise, tmp_path):
