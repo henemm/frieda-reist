@@ -154,7 +154,7 @@ bleibt in der Ablage.
 gezeigt, ebenso ein Bildlink im Satz auf ein Bild der Reise. Die bestehende Pipeline für JPEG unter `medien/` bleibt unverändert.
 Überschreitung der Offline-Grenze: Warnung (V3).
 
-**V13 (P2) Titelbild.** Bild 16:10 mit großem Radius ganz oben auf der Startseite, darunter klein die Namensnennung, darunter der
+**V13 (P2) Titelbild.** Bild 16:10 mit großem Radius (Token `--radius-gross` der Vorlage, sonst 16 px) ganz oben auf der Startseite, darunter klein die Namensnennung, darunter der
 Reisekopf wie heute. In der Tagesliste steht rechts ein Vorschaubild (44 px) bei Tagen mit Kopfbild; Tage ohne Bild bleiben
 unverändert.
 
@@ -260,7 +260,7 @@ bleibt in `<details>`. Kein Mitglied: kein Bild (gleiche Antwort wie „nicht vo
 - Playwright-Seitentests (neu, Chromium und WebKit): Titelbild mit Nennung, Vorschaubild in der Tagesliste, Kopfbild an Ort, Etappe,
   Tag und Unterkunft (erste Nacht), Bildreihe mit „n Bilder“, Mini-Vorschau an anderer Stelle, Bild im Wissenstext mit Unterschrift
   und Nennung; Großansicht (Öffnen, „Ding · 1 / 3“, Pfeile, Escape, Wischen, Wischen nach unten, Pfeile am Handy ausgeblendet);
-  Karte lädt mit den neuen Bausteinen weiter ohne CSP-Fehler; Handybreite ohne Überbreite; Stadtwochenende
+  Karte lädt mit den neuen Bausteinen weiter ohne CSP-Fehler; Handybreite (360 px) ohne Überbreite; Stadtwochenende
   ohne Bild-Elemente und unverändert.
 
 ### P3
