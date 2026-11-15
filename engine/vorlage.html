@@ -4799,6 +4799,8 @@ function ansichtBausteine(m) {
   if (u) teil("Organismus", "Ding: Aufenthalt als Karte", null, dingKarte(u[0]));
   const auf = Object.keys(R.aufenthalte || {});
   if (auf.length) teil("Organismus", "Ding: Aufenthalt ohne Nacht", "Besichtigung, Essen, Besuch: als Zeile nur in der Zeitleiste des Tags an seinem Ort, auf der Tagesseite dort vollständig (Heimat).", el("div", {class: "wv-aufenthalt"}, aufenthaltZeile(auf[0], true)));
+  if (auf.length) teil("Organismus", "Halt im Fahrtag (haltZeilen)", "Ein Halt der Zeitleiste in der Reihenfolge des Tags; optional gestrichelt mit Chip, darunter eingerückt die Alternativen einer Wahlstelle mit Auslöser (#586).",
+    haltZeilen({optional: [auf[0]], alternativen: auf[1] ? {[auf[0]]: [{id: auf[1]}]} : {}}, auf[0], false));
   if (auf.length) teil("Organismus", "Ding: Aufenthalt ohne Nacht als Karte", "Ohne Tag an seiner Heimat (Seite seines Orts oder Abschnitts): dieselbe Karte wie eine Unterkunft (#328).", dingKarte(auf[0]));
   const fuss = strecken.find(([, x]) => summiertArt(x)), fahrt = strecken.find(([, x]) => x.art && !summiertArt(x));
   teil("Organismus", "Ding: Bewegung als Zeile", null, [fuss, fahrt].filter(Boolean).map(([id]) => el("div", {class: "karte"}, streckeZeile(id))));
