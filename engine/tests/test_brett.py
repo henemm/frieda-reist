@@ -159,10 +159,25 @@ def test_vorschlag_aus_dem_repo(umgebung):
                                                    "erstellt": "2026-10-21T09:15:00+00:00"}) + "\n")
     w = brett(u)["wuensche"][0]
     assert w["vorschlag"]["bezug"] == ["T-05", "V-01"] and w["vorschlag"]["option"] == "V-01.b"
-    assert w["vorschlag"]["gewaehlt"] is False and w["spalte"] == "eingebracht"
+    # Ein Vorschlag heißt: die KI hat den Wunsch geprüft (#13), auch ohne abgeschlossene Rückmeldung
+    assert w["vorschlag"]["gewaehlt"] is False and w["spalte"] == "geprueft"
     # Wählt ein:e Organisator:in die Option, die aus dem Wunsch wurde, ist er eingeplant
     assert rm.spalte({"status": "uebernommen"}, {}, {**w["vorschlag"], "gewaehlt": True}) == "eingeplant"
     assert rm.spalte({"status": "verworfen"}, {"erlebt": {"wer": "Karl"}}, None) == "passt_nicht"
+
+
+def test_spalte_mit_vorschlag():
+    """#13: Wer mit wunsch_vorschlagen einen Vorschlag einträgt, hat den Wunsch geprüft; der Vorrang bleibt."""
+    v = {"bezug": ["T-02", "T-05"], "notiz": "Beispielwert", "gewaehlt": False}
+    assert rm.spalte({}, {}, v) == "geprueft"                                   # Rückmeldung noch offen
+    assert rm.spalte({"status": "offen"}, {}, v) == "geprueft"
+    assert rm.spalte({"status": "uebernommen"}, {}, None) == "geprueft"         # wie bisher
+    assert rm.spalte({}, {}, None) == "eingebracht"
+    assert rm.spalte({}, {}, {}) == "eingebracht"                               # leerer Eintrag ist kein Vorschlag
+    assert rm.spalte({"status": "verworfen"}, {}, v) == "passt_nicht"
+    assert rm.spalte({}, {}, {**v, "gewaehlt": True}) == "eingeplant"
+    assert rm.spalte({}, {"eingeplant": {"wer": "Ida"}}, v) == "eingeplant"
+    assert rm.spalte({}, {"erlebt": {"wer": "Karl"}}, v) == "erlebt"
 
 
 def test_kontingent_anzahl(umgebung):

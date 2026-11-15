@@ -1,0 +1,40 @@
+....FF......                                                             [100%]
+=================================== FAILURES ===================================
+_________________________ test_vorschlag_aus_dem_repo __________________________
+
+umgebung = <function umgebung.<locals>.neu at 0x7e83411e2c00>
+
+    def test_vorschlag_aus_dem_repo(umgebung):
+        u = umgebung()
+        (u.o / "eingang.jsonl").write_text(json.dumps({"id": VORSCHLAG, "name": "Karl", "art": "Wunsch", "ziel": "wuensche",
+                                                       "text": "Kirnitzschtalbahn", "quelle": "",
+                                                       "erstellt": "2026-10-21T09:15:00+00:00"}) + "\n")
+        w = brett(u)["wuensche"][0]
+        assert w["vorschlag"]["bezug"] == ["T-05", "V-01"] and w["vorschlag"]["option"] == "V-01.b"
+        # Ein Vorschlag heißt: die KI hat den Wunsch geprüft (#13), auch ohne abgeschlossene Rückmeldung
+>       assert w["vorschlag"]["gewaehlt"] is False and w["spalte"] == "geprueft"
+E       AssertionError: assert (False is False and 'eingebracht' == 'geprueft'
+E         
+E         - geprueft
+E         + eingebracht)
+
+engine/tests/test_brett.py:163: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+__________________________ test_spalte_mit_vorschlag ___________________________
+
+    def test_spalte_mit_vorschlag():
+        """#13: Wer mit wunsch_vorschlagen einen Vorschlag einträgt, hat den Wunsch geprüft; der Vorrang bleibt."""
+        v = {"bezug": ["T-02", "T-05"], "notiz": "Beispielwert", "gewaehlt": False}
+>       assert rm.spalte({}, {}, v) == "geprueft"                                   # Rückmeldung noch offen
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 'eingebracht' == 'geprueft'
+E         
+E         - geprueft
+E         + eingebracht
+
+engine/tests/test_brett.py:172: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_brett.py::test_vorschlag_aus_dem_repo - AssertionErr...
+FAILED engine/tests/test_brett.py::test_spalte_mit_vorschlag - AssertionError...
+2 failed, 10 passed in 16.34s
