@@ -164,6 +164,12 @@ FR_ADRESSE=https://reisen.example.org
 #FR_BETREIBER_ANSCHRIFT=Musterweg 1, 12345 Beispielstadt
 #FR_BETREIBER_KONTAKT=kontakt@example.org
 
+# Meldungen aus der Claude-App sofort als Issue für die Entwicklung (#587, docs/betrieb.md, „Meldungen an den Betreiber“):
+# Ziel-Repo als <besitzer>/<name>. Nur zusammen mit dem Zugangsschlüssel FR_MELDUNGEN_TOKEN (fein abgestuft, nur dieses
+# Repo, „Issues: Lesen und Schreiben“), der als Geheimnis nie hier steht. Wie beim Impressum sieht der Konnektor diese
+# Datei nicht: Beide Werte gehören in <FR_DIENST>/konten.env. (leer: Ablage und Mail an den Betreiber wie bisher)
+#FR_MELDUNGEN_REPO=beispiel-besitzer/beispiel-software
+
 # Push-Dienste, an die Benachrichtigungen gehen dürfen (Hosts oder Endungen mit Punkt, durch Komma getrennt). Nötig nur
 # für einen Browser, dessen Push-Dienst nicht in der Vorgabe steht (konten.PUSH_DIENSTE: Chrome und Verwandte, Firefox,
 # Safari, Edge); der Wert ersetzt die Vorgabe und gehört in <FR_DIENST>/konten.env. (leer)

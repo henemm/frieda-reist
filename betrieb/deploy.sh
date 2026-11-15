@@ -24,7 +24,7 @@ DIENST="$FR_DIENST"
 SPRACHDATEIEN=""
 for f in "$WURZEL"/engine/texte_??.py "$WURZEL"/engine/texte_???.py; do [ -e "$f" ] && SPRACHDATEIEN="$SPRACHDATEIEN $(basename "$f")"; done
 RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py $SPRACHDATEIEN"
-KN_MODULE="konnektor.py schnittstelle.py reise.py routen.py packliste.py bilder.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py texte.py $SPRACHDATEIEN"
+KN_MODULE="konnektor.py entwicklung.py schnittstelle.py reise.py routen.py packliste.py bilder.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py texte.py $SPRACHDATEIEN"
 # Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): Für eine Reise im Speicher (Stufe 2, #347; #454) läuft auch der
 # Schreibvorgang (`anwenden`: Werkzeuge, Probebau, Reisespeicher) mit dem Code aus <FR_DIENST>, deshalb steht hier jedes
 # Modul, das schreiben.py auch in Funktionen lädt (engine/tests/test_betrieb.py prüft es gegen die Importe), dazu unten

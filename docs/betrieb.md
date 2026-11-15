@@ -55,7 +55,7 @@ Jede Instanz ist für ihre Daten selbst verantwortlich; es wird nichts mit ander
 | Eintrag der Warteliste (Adresse, Sprache, Zeiten) | nur der Betreiber (`konten.py warteliste`, Mein Konto) | mit dem Konto derselben Adresse; ohne Konto und Export folgen später | unbestätigt 7 Tage, bestätigt bis zum Löschen |
 | Namen in Verlauf und Reise-Stand | alle Mitglieder der Reise | beim Löschen des Kontos wird der Name in jeder Reise, in der die Person Mitglied war, durch „gelöschte Person“ ersetzt: im Verlauf des Reisespeichers, in den bekannten Herkunftsmustern aller Versionen und in der Ablage (`reisespeicher.namen_ersetzen`, Ausnahme vom Nur-Anhängen, ADR-0009); Namen in frei geschriebenen Texten nur dort, wo ein Muster greift. Bei Reisen auf dem alten Weg bleibt der Git-Verlauf | mit der Reise |
 | Reise (Pläne, Personen, Entscheidungen) | Mitglieder nach Rolle (`reisend`, `einbringer`, `bestimmer`), nie öffentlich ohne Link | Organisator:innen löschen eine Reise im Reisespeicher auf Mein Konto („Reise löschen …“, zwei Bestätigungen): sofort unsichtbar, nach der Schonfrist (`FR_LOESCHFRIST_TAGE`, Vorgabe 14 Tage) endgültig entfernt, bis dahin „Reise zurückholen“; Reisen auf dem alten Weg nur durch den Betreiber im Reisen-Repo | bis eine Organisator:in sie löscht |
-| Meldungen an den Betreiber (Text, Zusammenhang, Reise, Zeitpunkt, Konto; #530) | nur der Betreiber (Mail an alle Betreiber-Konten, `konten.py meldungen`, `my_trips`); die Person selbst im Export | mit dem Konto (Konto löschen entfernt die Zeilen und die Zählzeilen); bereits zugestellte Mails im Postfach des Betreibers löscht dieser selbst | bis erledigt und höchstens bis zum Löschen des Kontos; eine Meldung, die schon zu einem Issue im privaten Reisen-Repo geführt hat, bleibt dort, bis der Betreiber sie auf Wunsch entfernt |
+| Meldungen an den Betreiber (Text, Zusammenhang, Reise, Zeitpunkt, Konto; #530) | nur der Betreiber (Mail an alle Betreiber-Konten, `konten.py meldungen`, `my_trips`); die Person selbst im Export; öffentlich nur die geprüfte Fassung ohne persönliche Daten als Issue, wenn eingerichtet (#587) | mit dem Konto (Konto löschen entfernt die Zeilen und die Zählzeilen); bereits zugestellte Mails im Postfach des Betreibers löscht dieser selbst | bis erledigt und höchstens bis zum Löschen des Kontos; eine Meldung, die schon zu einem Issue im privaten Reisen-Repo geführt hat, bleibt dort, bis der Betreiber sie auf Wunsch entfernt |
 | Rückmeldungen, Aufgaben, Antworten (Ablage) | Organisator:innen der Reise, Absender sehen ihre eigenen | mit der Reise (nach der Schonfrist) | bis zum Löschen der Reise |
 | Belege zu Buchungen | hochladende Person und Organisator:innen, bei Freigabe alle der Reise | der Dienst löscht keinen einzelnen Beleg, zurückgezogene bleiben als Datei; mit der Reise wird `<FR_ABLAGE>/<reise>/` ganz entfernt | bis zum Löschen der Reise |
 | Sicherungen (Konten-Schnappschuss, Reisespeicher, Archiv der Ablage) | nur der Betreiber | Gelöschtes bleibt bis zur Rotation der Sicherung; nach dem Rückspielen einer alten Sicherung entfernt der tägliche Lauf jede Reise des Löschprotokolls erneut | Ziel höchstens 30 Tage (Aufbewahrung des Server-Backups, Prüfung in `henemm-infra`) |
@@ -223,14 +223,31 @@ Mail-Einrichtung, lehnt die Seite ab und speichert nichts.
 Fehler, Wünsche und Fragen zu Frieda selbst melden Personen mit Konto in der Claude-App (Konto-Werkzeug `report_to_frieda`,
 intern `an_frieda_melden`). Die Meldung liegt in der Kontendatenbank (Tabelle `betreiber_meldungen`); jedes nicht
 gesperrte Konto mit dem Recht `betreiber` bekommt eine Mail in seiner Sprache, „Antworten“ geht an die Adresse der Person
-(Reply-To), Absender bleibt `FR_ABSENDER`. Neue Einstellungen gibt es nicht.
+(Reply-To), Absender bleibt `FR_ABSENDER`.
+
+**Sofort als Issue für die Entwicklung (#587):** Sind `FR_MELDUNGEN_REPO` (Ziel-Repo `<besitzer>/<name>`) und
+`FR_MELDUNGEN_TOKEN` (Zugangsschlüssel) gesetzt, bietet das Werkzeug zusätzlich `public_text` (intern
+`oeffentlicher_text`): eine Fassung ohne Namen, Adressen, echte Orte und Reisetitel, die Frieda im Client schreibt und mit
+der Person abstimmt. Der Konnektor (`engine/entwicklung.py`) prüft sie mit festen Regeln, ohne KI: Mail-Adressen sowie
+Namen des Kontos und der Personen, Titel, Untertitel und Ordner, Orte und Unterkünfte (Name, Adresse) aller Reisen des
+Kontos, als ganzes Wort ohne Unterschied von Groß- und Kleinschreibung, Namen auch je Teil ab drei Zeichen. Ein Treffer
+lehnt mit Katalogtext ab, ohne etwas anzulegen. Sonst legt er das Issue an (Titel `<Art>: <erste Zeile>`, Text als
+Codeblock, damit keine Erwähnungen oder Bilder wirken, Etiketten „aus der App“ und die Art, in der Sprache des ältesten
+Betreiber-Kontos; lehnt GitHub die Etiketten ab, ein zweiter Versuch ohne). Kein Konto, keine Adresse, keine Kennung der
+Instanz im Issue. Die volle Fassung bleibt privat in `betreiber_meldungen`, mit der Adresse des Issues in der Spalte
+`issue` (abgehakt); eine Mail an die Betreiber geht nur, wenn das Anlegen scheitert (Protokollzeile
+`operator report <nr>: issue failed: <Grund>`) oder keine öffentliche Fassung kam. Ohne beide Einstellungen bleibt alles
+wie oben: kein zusätzliches Feld, Ablage und Mail. Beide Werte gehören in `<FR_DIENST>/konten.env` (der Konnektor sieht
+die Einstellungsdatei nicht; den Schlüssel liest er nur aus der Umgebung), danach `systemctl restart <FR_INSTANZ>-konnektor`.
+Der Schlüssel: fein abgestuft (fine-grained), nur dieses Repo, Recht „Issues: Lesen und Schreiben“, sonst nichts.
 
 - Höchstens 10 Meldungen je Konto und Tag (gemeinsames Mailkontingent); abgelehnte zählen nicht.
 - Scheitert eine Mail, bleibt die Meldung gespeichert; im Protokoll des Konnektors steht
   `operator report <nr>: mail failed: <Schlüssel>`. Wiederfinden: `meine_reisen` eines Betreiber-Kontos (offene Meldungen,
   die letzten 20) oder `python3 engine/konten.py meldungen [--alle]`.
-- Abhaken: `python3 engine/konten.py meldung-erledigt <nr> <issue>` mit dem Verweis auf das Issue. Issues zu Meldungen
-  entstehen nur im privaten Reisen-Repo der Instanz, nie im öffentlichen Repo (Name, Adresse und Text sind Personendaten).
+- Abhaken: `python3 engine/konten.py meldung-erledigt <nr> <issue>` mit dem Verweis auf das Issue. Issues mit der vollen
+  Meldung entstehen nur im privaten Reisen-Repo der Instanz, nie im öffentlichen Repo (Name, Adresse und Text sind
+  Personendaten); ins öffentliche Repo kommt nur die geprüfte öffentliche Fassung (#587, oben).
 - Konto löschen entfernt die Meldungen und ihre Zählzeilen; der Export der Person enthält sie (ohne Verweis auf das Issue).
 
 ## Reise-Stand (Epic #223)
@@ -312,6 +329,7 @@ Im Software-Klon (#454) stößt das nur einen Lauf an: Der nächste Lauf von `ve
 | `FR_GRENZE_PROFIL_EINTRAEGE`, `FR_GRENZE_PROFIL_BEREICH`, `FR_GRENZE_PROFIL_TEXT` | `100`, `60`, `500` | Höchstzahl der Einträge im Profil eines Kontos (nur beim Neuanlegen) und Höchstlänge von Bereich und Text eines Eintrags in Zeichen (#12, `docs/konnektor.md`). Ort des Werts wie `FR_GRENZE_REISEN` |
 | `FR_GRENZE_WARTELISTE_TAG` | `20` | Höchstzahl der Bestätigungsmails der Warteliste je Kalendertag (UTC); darüber zeigt die Seite „Heute sind alle Plätze vergeben“ und die Betreiber bekommen einmal am Tag eine Meldung auf Mein Konto (#534, `docs/konten.md`). Grund ist das Mail-Kontingent der Instanz (bei Resend im kostenlosen Tarif 100 Mails pro Tag für alle Dienste zusammen); das Gesamtkontingent beobachtet der Resend-Teil-Check im Monitor. Ort des Werts wie `FR_GRENZE_REISEN` |
 | `FR_GRENZE_CODES_TAG` | `30` | Höchstzahl der Anmeldecodes je Kalendertag (UTC) an Adressen ohne Konto und ohne offene Einladung; darüber geht an solche Adressen keine Mail mehr hinaus (die Antwort der Seite bleibt gleich), Konten und Eingeladene bekommen ihren Code immer. |
+| `FR_MELDUNGEN_REPO`, `FR_MELDUNGEN_TOKEN` | leer (aus) | Meldungen aus der Claude-App sofort als Issue für die Entwicklung (#587, „Meldungen an den Betreiber“): Ziel-Repo `<besitzer>/<name>` und ein fein abgestufter Zugangsschlüssel nur mit „Issues: Lesen und Schreiben“ auf diesem Repo. Beide in `<FR_DIENST>/konten.env`, der Schlüssel nie in einer Datei im Repo; fehlt einer, bleibt es bei Ablage und Mail |
 | `FR_BETREIBER_NAME`, `FR_BETREIBER_ANSCHRIFT`, `FR_BETREIBER_KONTAKT` | leer | Betreiber der Instanz im Impressum (`/impressum`, #383): Name, Anschrift (eine Zeile) und Kontakt, alle drei Pflicht, kein Telefon. Fehlt einer, zeigt das Impressum „nicht eingerichtet“; Warteliste und Anmeldung bleiben nutzbar. Der Konnektor läuft mit `ProtectHome=yes` und ohne `FR_WURZEL`, sieht also `betrieb/einstellungen.env` des Reisen-Repos nicht; er liest die Werte über `engine/instanz.py` aus der Umgebung der Unit, und die kommt aus `<FR_DIENST>/konten.env` (600, Zeilen `NAME=wert`; danach `systemctl restart <FR_INSTANZ>-konnektor`). Echte Angaben nur dort, nie im öffentlichen Repo |
 
 Die Skripte setzen daraus die Umgebung der Software (`RM_ABLAGE`, `KN_SEITEN`, `KN_BASIS`, dazu `FR_KONNEKTOR`; die Unit des Konnektors zusätzlich `KN_SCHREIBDIENST`; ältere Units setzen noch `KN_ZUGAENGE`, dessen Ordner gilt dann als `FR_KONNEKTOR`, #421). Ausdrücklich gesetzte Werte bleiben. Fehlt etwas, etwa bei einem Aufruf von Hand wie `python3 engine/rueckmeldungen.py liste <reise>` in der Wurzel des Reisen-Repos, leitet `engine/instanz.py` die Ordner nach derselben Ordnung ab, notfalls aus der Einstellungsdatei. Die Software selbst kennt keine Instanz, ihre letzte Vorgabe ist `/srv/frieda`.

@@ -105,7 +105,7 @@ PARAMETER = {
     "grund": "reason", "grundform": "basic_form", "gruppe": "group", "hilfe": "help", "hinweis": "hint", "kategorie": "category", "kennzahlen": "figures", "abschnitte": "sections",
     "kommentar": "comment", "koordinaten": "coordinates", "kurz": "short", "lesetext": "reading_text", "merkmal": "attribute",
     "merkmale": "attributes", "minus": "cons", "nach": "after", "nach_buchung": "visible_after_booking", "lang": "long_text", "vorlage": "template", "nacht": "night", "neu": "new", "neuer_name": "new_name",
-    "neuer_titel": "new_title", "notiz": "note", "nummer": "number", "nummeriert": "numbered", "ohne_route": "without_route",
+    "neuer_titel": "new_title", "notiz": "note", "nummer": "number", "nummeriert": "numbered", "oeffentlicher_text": "public_text", "ohne_route": "without_route",
     "optionen": "options", "ort": "place", "orte": "places", "personen": "people", "pfad": "path", "plus": "pros", "preis": "price", "preise": "prices", "zahlung": "payment",
     "prioritaet": "priority", "punkte": "points", "quelle": "source", "regeln": "rules", "reist": "travels", "rolle": "role",
     "rubrik": "heading", "schliesst_aus": "excludes", "schluessel": "key", "siehe": "see", "sprache": "language",

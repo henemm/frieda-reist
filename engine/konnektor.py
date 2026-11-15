@@ -54,6 +54,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import anmeldung  # noqa: E402
+import entwicklung  # noqa: E402
 import instanz  # noqa: E402
 import karte  # noqa: E402
 import kalender  # noqa: E402
@@ -231,8 +232,28 @@ def an_frieda_melden_werkzeug(sprache, reisen):
            "zusammenhang": {"type": "string", "description": b(".zusammenhang")}}
     if reisen:
         eig["reise"] = {"type": "string", "enum": list(reisen), "description": b(".reise")}
-    return {"name": "an_frieda_melden", "description": b(""),
+    beschreibung = b("")
+    if entwicklung.eingerichtet():   # #587: nur mit Anbindung an die Entwicklung; ohne sie bleibt das Werkzeug wie zuvor
+        eig["oeffentlicher_text"] = {"type": "string", "description": b(".oeffentlicher_text")}
+        beschreibung += " " + b(".entwicklung")
+    return {"name": "an_frieda_melden", "description": beschreibung,
             "inputSchema": {"type": "object", "properties": eig, "required": ["text", "art"]}}
+
+
+def angaben_des_kontos(k):
+    """Persönliche Angaben aus Konto und Reisen des Kontos für die Prüfung der öffentlichen Fassung (#587).
+    -> (Angaben, die nur ganz zählen, Namen von Personen, die auch je Teil zählen)."""
+    werte, namen = [k.get("email")], [k.get("name")]
+    for reise, _, d in reisen_des_kontos(k):
+        r = (d or {}).get("reise") or {}
+        werte += [reise, r.get("titel"), r.get("untertitel")]
+        namen += [p.get("name") for p in personen_der_reise(reise, d)]
+        route = (d or {}).get("route") or {}
+        for teil in ("orte", "unterkuenfte"):
+            for x in (route.get(teil) or {}).values():
+                if isinstance(x, dict):
+                    werte += [x.get("name"), x.get("adresse")]
+    return werte, namen
 
 
 def personen_der_reise(reise, d):
@@ -2406,10 +2427,32 @@ def frieda_werkzeug(k, name, args):
         reise = args.get("reise")
         if reise and reise not in [r for r, _, _ in reisen_des_kontos(k)]:
             return texte.t(sprache, "konnektor.frieda_werkzeug.1"), True
+        oeffentlich = args.get("oeffentlicher_text")
+        oeffentlich = oeffentlich.strip() if isinstance(oeffentlich, str) else ""
+        anlegen, angelegt = None, []
+        if oeffentlich and entwicklung.eingerichtet():   # #587: öffentliche Fassung -> Issue für die Entwicklung
+            if len(oeffentlich) > konten.BETREIBER_MELDUNG_MAX:
+                return texte.t(sprache, "konto.betreiber_meldung.zu_lang", max=konten.BETREIBER_MELDUNG_MAX), True
+            funde = entwicklung.persoenliche_angaben(oeffentlich, *angaben_des_kontos(k))
+            if funde:
+                return texte.t(sprache, "konnektor.an_frieda_melden.persoenlich", funde=", ".join(funde)), True
+
+            def anlegen():
+                bs, art = konten.betreiber_sprache(), args.get("art")
+                erste = oeffentlich.splitlines()[0]
+                adresse = entwicklung.issue_anlegen(
+                    texte.t(bs, "konto.betreiber_meldung.issue_titel", art=art, text=erste),
+                    entwicklung.text_fuer_issue(oeffentlich, texte.t(bs, "konto.betreiber_meldung.issue_fuss")),
+                    [texte.t(bs, "konto.betreiber_meldung.issue_etikett"), texte.datenwert(bs, art)])
+                angelegt.append(adresse)
+                return adresse
         try:
-            nr = konten.an_betreiber_melden(k, args.get("art"), args.get("text"), reise or None, args.get("zusammenhang"))
+            nr = konten.an_betreiber_melden(k, args.get("art"), args.get("text"), reise or None, args.get("zusammenhang"),
+                                            issue_anlegen=anlegen)
         except konten.KontoFehler as f:
             return f.text(sprache), True
+        if angelegt:
+            return texte.t(sprache, "konnektor.an_frieda_melden.issue", nr=nr, adresse=angelegt[0]), False
         return texte.t(sprache, "konnektor.an_frieda_melden.angekommen", nr=nr), False
     if name in ("mein_profil", "profil_eintrag_setzen", "profil_eintrag_entfernen"):
         return profil_werkzeug(k, name, args)

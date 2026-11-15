@@ -880,9 +880,12 @@ def freischalten(kid, ja=True):
 # eine Mail an jedes Betreiber-Konto mit der Adresse der Person als Antwortadresse. Abgehakt wird mit dem Verweis auf das
 # Issue im privaten Reisen-Repo der Instanz (konten.py meldung-erledigt).
 
-def an_betreiber_melden(k, art, text, reise=None, zusammenhang=None):
+def an_betreiber_melden(k, art, text, reise=None, zusammenhang=None, issue_anlegen=None):
     """Meldung des Kontos an den Betreiber ablegen und mailen. -> Nummer der Meldung oder KontoFehler.
-    Die Zeile ist gespeichert, bevor Mails gehen; ein Mailfehler verliert die Meldung nicht (Zeile auf stderr)."""
+    Die Zeile ist gespeichert, bevor Mails gehen; ein Mailfehler verliert die Meldung nicht (Zeile auf stderr).
+    issue_anlegen (#587): Aufruf ohne Argumente, der aus der öffentlichen Fassung ein Issue für die Entwicklung anlegt und
+    dessen Adresse liefert. Gelingt er, ist die Meldung damit abgehakt und es geht keine Mail; scheitert er (Ausnahme oder
+    keine Adresse), geht die Mail wie ohne ihn."""
     text = (text if isinstance(text, str) else "").strip()
     zusammenhang = (zusammenhang if isinstance(zusammenhang, str) else "").strip()
     if not text:
@@ -901,6 +904,15 @@ def an_betreiber_melden(k, art, text, reise=None, zusammenhang=None):
         v.execute("INSERT INTO versand VALUES (?, ?)", (schluessel, _jetzt()))
         betreiber = [_konto_dict(z) for z in v.execute(
             "SELECT * FROM konten WHERE gesperrt = 0 AND ',' || rechte || ',' LIKE '%,betreiber,%' ORDER BY angelegt, id")]
+    if issue_anlegen is not None:
+        try:
+            adresse = issue_anlegen()
+        except Exception as f:   # jeder Fehler beim Anlegen: die Meldung geht wie ohne Anbindung per Mail
+            sys.stderr.write(f"operator report {nr}: issue failed: {type(f).__name__}: {f}\n")
+            adresse = None
+        if adresse:
+            betreiber_meldung_erledigt(nr, adresse)
+            return nr
     for b in betreiber:
         if not recht(b, "betreiber"):
             continue
@@ -914,6 +926,17 @@ def an_betreiber_melden(k, art, text, reise=None, zusammenhang=None):
         except KontoFehler as f:
             sys.stderr.write(f"operator report {nr}: mail failed: {f.schluessel}\n")
     return nr
+
+
+def betreiber_sprache():
+    """Sprache des ältesten nicht gesperrten Betreiber-Kontos (Etiketten und Fußtext der Issues, #587), sonst der Rückfall."""
+    with closing(db()) as v:
+        for z in v.execute("SELECT * FROM konten WHERE gesperrt = 0 AND ',' || rechte || ',' LIKE '%,betreiber,%' "
+                           "ORDER BY angelegt, id"):
+            b = _konto_dict(z)
+            if recht(b, "betreiber") and b.get("sprache") in texte.SPRACHEN:
+                return b["sprache"]
+    return texte.VORGABE_REISE
 
 
 def betreiber_meldungen(alle=False):
