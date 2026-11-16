@@ -59,3 +59,16 @@ arten:
       lage_haltestellen: {name: Location of the stops, typ: text}
       anzahl_halte: {name: Number of stops, typ: zahl}
       weitere_abfahrten: {name: Further departures, typ: text, veraenderlich: true}
+  aktivitaet:
+    grundform: aufenthalt
+    name: Activity
+    farbe: lila
+    symbol: ticket
+    beschreibung: "Something you do during a day without staying the night: exercise, workshop, guided tour, course, appointment. Every stay already has a time (from–to) and a long description (reading text)."
+    merkmale:
+      anbieter: {name: Provider, typ: text, hilfe: "who offers or leads it"}
+      treffpunkt: {name: Meeting point, typ: text, veraenderlich: true, hilfe: "where exactly to meet"}
+      preis: {name: Price, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "for everyone together, with currency"}
+      anmeldung: {name: Registration, typ: text, veraenderlich: true, hilfe: "needed? how and by when"}
+      mitbringen: {name: Bring along, typ: text, hilfe: "what you need to have with you"}
+      webseite: {name: Website, typ: link}

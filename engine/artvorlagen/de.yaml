@@ -60,3 +60,16 @@ arten:
       lage_haltestellen: {name: Lage der Haltestellen, typ: text}
       anzahl_halte: {name: Anzahl Halte, typ: zahl}
       weitere_abfahrten: {name: Weitere Abfahrten, typ: text, veraenderlich: true}
+  aktivitaet:
+    grundform: aufenthalt
+    name: Aktivität
+    farbe: lila
+    symbol: ticket
+    beschreibung: "Was man an einem Tag tut, ohne dort zu übernachten: Übung, Workshop, Führung, Kurs, Termin. Uhrzeit (von–bis) und eine lange Beschreibung (Lesetext) hat jeder Aufenthalt ohnehin."
+    merkmale:
+      anbieter: {name: Anbieter, typ: text, hilfe: "wer es anbietet oder leitet"}
+      treffpunkt: {name: Treffpunkt, typ: text, veraenderlich: true, hilfe: "wo genau man sich trifft"}
+      preis: {name: Preis, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "für alle zusammen, mit Währung"}
+      anmeldung: {name: Anmeldung, typ: text, veraenderlich: true, hilfe: "nötig? wie und bis wann"}
+      mitbringen: {name: Mitbringen, typ: text, hilfe: "was man dabeihaben muss"}
+      webseite: {name: Webseite, typ: link}
