@@ -945,6 +945,26 @@ def test_tag_aendern_abfolge_mit_wahlstelle_und_optional(repo):
     assert not git(arbeit, "status", "--porcelain")
 
 
+def test_ding_aendern_titel_benennt_halt_unterkunft_und_ort_um(repo):
+    """#590: Der Konnektor bietet titel für den neuen Namen an. Bei Halten (A-…), Unterkünften und Orten heißt das Feld name;
+    titel wurde dort still verworfen („Nichts zu ändern“). Jetzt benennt titel jedes Ding um, auch zusammen mit Merkmalen, und
+    neuer_name benennt auch eine Strecke um."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "A-01", "titel": "Burg Hohnstein (Museum)"}})
+    r, _ = routen_auf_main(origin)
+    assert r["aufenthalte"]["A-01"]["name"] == "Burg Hohnstein (Museum)" and "titel" not in r["aufenthalte"]["A-01"]
+    s.vorbereiten()
+    s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "U-03", "titel": "Gasthof am Markt", "hinweis": "erfunden"}})
+    s.vorbereiten()
+    s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "O-03", "titel": "Hohnstein (Ort)"}})
+    s.vorbereiten()
+    s.schreiben("beispielreise", "ding_aendern", {**IDA, "args": {"ziel": "E-01", "neuer_name": "Malerweg, erste Etappe"}})
+    r, _ = routen_auf_main(origin)
+    assert r["unterkuenfte"]["U-03"]["name"] == "Gasthof am Markt" and r["orte"]["O-03"]["name"] == "Hohnstein (Ort)"
+    assert r["strecken"]["E-01"]["titel"] == "Malerweg, erste Etappe"
+
+
 # ---------- Wissen, Fragen schließen, Personen ----------
 
 def datei_auf_main(origin, rel):

@@ -1952,6 +1952,13 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
         raise Ablehnung("schreiben.ding_aendern.3")
     if args.get("neuer_name") is not None:   # der Konnektor nimmt name als Vornamen der sprechenden Person; der neue Name heißt dort neuer_name
         args = {**args, "name": args["neuer_name"]}
+    # Der Konnektor bietet für den neuen Namen titel an (#590): bei einer Strecke heißt das Feld titel, sonst name; neuer_name gilt
+    # ebenso für Strecken. Ohne diese Zuordnung ging titel an Halten, Unterkünften und Orten still verloren.
+    if was == "strecke":
+        if args.get("titel") is None and args.get("neuer_name") is not None:
+            args = {**args, "titel": args["neuer_name"]}
+    elif args.get("titel") is not None and args.get("neuer_name") is None:
+        args = {**args, "name": args["titel"]}
     geaendert = []
     zeit_neu = {}
     # quelle ändert die Herkunft des Dings nur, wenn sie allein kommt; mit anderen Angaben gehört sie diesen (#508)
