@@ -1626,6 +1626,7 @@ TEXTE = {
     "schreiben.kartenansicht.feld.uebersicht": "Übersicht",
     "konnektor.feld.uebersicht": "Arten, deren Übersicht hier steht (alle Dinge der Art mit den Merkmalen „nötig“ und „gut zu wissen“ als Spalten, jede Zeile führt zum Ding); eine leere Liste nimmt die Übersicht weg",
     "konnektor.zeige.uebersicht": "Übersicht der Arten, die hier steht: {w1} (aus den Daten der Reise, nicht aus dem Text).",
+    "konnektor.zeige.seite_zurueck": "Hinweis: Gesichert ist Reise-Stand {gesichert}, diese Ausgabe zeigt die Seite mit Stand {sichtbar}. Was seitdem eingetragen wurde, steht erst nach dem Veröffentlichen hier (veroeffentlichung_pruefen zeigt, wann).",
     "schreiben.art_definieren.1": "„bezeichnung“ fehlt (die Art braucht einen Namen, z. B. Refugi).",
     "schreiben.art_definieren.10": "Die Art „{w1}“ ({key}) gibt es schon, und nichts daran soll sich ändern. Merkmale ändert merkmal_definieren.",
     "schreiben.art_definieren.2": "„{key}“ taugt nicht als Schlüssel einer Art: erlaubt sind nur Kleinbuchstaben, Ziffern und Unterstrich, kein Bindestrich und kein Leerzeichen. Vorschlag: „{w2}“.",

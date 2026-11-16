@@ -550,6 +550,19 @@ def stand_text(reise):
     return "\n".join(z)
 
 
+def seite_zurueck(reise):
+    """zeige liest die veröffentlichte Seite (daten.json). Ist ein neuerer Stand gesichert als veröffentlicht, sagt ein Satz das,
+    damit ein eben eingetragener Wert nicht als verloren gilt (#604). Ohne Reise-Stand (unbekannt) kein Satz. -> Text oder ""."""
+    try:
+        z = reisestand.lesen(reise)
+    except (OSError, ValueError, TypeError, KeyError):
+        return ""
+    g, v = z["gesichert"]["nummer"], z["veroeffentlicht"]["nummer"]
+    if isinstance(g, int) and isinstance(v, int) and g > v:
+        return "\n\n" + tk("konnektor.zeige.seite_zurueck", gesichert=g, sichtbar=v)
+    return ""
+
+
 # Doppelte Merkmale erkennen (Paket 3, #18): Ein neuer Schlüssel aus einem Vorschlag, der einem bestehenden Merkmal der
 # Art entspricht (z. B. „oeffnung“ neben „geoeffnet“), soll zusammengeführt statt neu angelegt werden. Nur generisch
 # (Schreibweise, Wortstamm) und über die Zweitnamen „auch“, die die Reise in arten.yaml angibt; keine Wortliste in der
@@ -3357,7 +3370,7 @@ def werkzeug(zugang, name, args):
                 + (wuensche_kurz(reise) if "wuensche" in (zustand_von(d)[1] or []) else "")), False
     if name == "zeige":
         t, fehler = h.zeige(str(args.get("id", "")).strip())
-        return (fehler, True) if fehler else (t, False)
+        return (fehler, True) if fehler else (t + seite_zurueck(reise), False)
     if name == "suche":
         begriff = str(args.get("begriff", "")).strip()
         return (h.suche(begriff), False) if begriff else (tk("konnektor.ausgabe.werkzeug.4"), True)

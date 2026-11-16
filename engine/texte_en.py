@@ -1625,6 +1625,7 @@ TEXTE = {
     "schreiben.kartenansicht.feld.uebersicht": "overview",
     "konnektor.feld.uebersicht": "Kinds whose overview stands here (all things of the kind with the attributes “needed” and “good to know” as columns, each row leads to the thing); an empty list removes the overview",
     "konnektor.zeige.uebersicht": "Overview of the kinds standing here: {w1} (from the data of the trip, not from the text).",
+    "konnektor.zeige.seite_zurueck": "Note: trip state {gesichert} is saved, this output shows the page at state {sichtbar}. What was entered since appears here only after publishing (veroeffentlichung_pruefen shows when).",
     "schreiben.art_definieren.1": "“bezeichnung” is missing (the kind needs a name, e.g. Refuge).",
     "schreiben.art_definieren.10": "The kind “{w1}” ({key}) already exists and nothing about it is to change. Attributes are changed by merkmal_definieren.",
     "schreiben.art_definieren.2": "“{key}” is not suitable as the key of a kind: only lower case letters, digits and underscore are allowed, no hyphen and no space. Suggestion: “{w2}”.",

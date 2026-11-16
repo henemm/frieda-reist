@@ -24,6 +24,11 @@ Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt
                                                   veroeffentlichen.sh: materialisieren, nachziehen, Probebau, ein Vorgang;
                                                   Exit 0 umgestellt oder nichts umzustellen, 2 Bau rot, 1 nochmal versuchen
 
+  neu.py umbrechen <reise-ordner> [--schreiben]   Listen, die der Schreibweg bis #594/#601 in eine Zeile gezogen hat (Hinweise,
+  neu.py umbrechen <reise> --speicher <ordner> [--schreiben] [--wer Name]
+                                                  Lesetexte der Dinge, Tagestexte), wieder umbrechen (#604); ohne --schreiben
+                                                  nur die Vorschau, im Speicher ein Vorgang mit den alten Texten im Grund
+
 IDs werden nie neu vergeben: ids.yaml hält je Art die höchste je vergebene Nummer fest. Die nächste ID liegt über
 dieser Marke und über jeder Nummer, die irgendwo in der Reise steht (auch im Verlauf von Verworfenem).
 """
@@ -311,6 +316,85 @@ def pruefen(reise_dir):
         except Exception as e:   # unerwartet: trotzdem lesbar melden statt eines Python-Fehlers
             return False, [texte.satz("pruefung.neu_pruefen.6", w1=type(e).__name__, e=e)]
     return True, []
+
+
+UMBRECHEN_GRUPPEN = ("unterkuenfte", "aufenthalte", "orte", "strecken")
+
+
+def umbrechen(reise_dir, schreiben=False):
+    """Geplättete Langtexte wieder umbrechen (#604): Hinweise und Lesetexte der Dinge und Tagestexte, die bis #594/#601 der
+    Schreibweg in eine Zeile gezogen hat (textform.umbrechen). Ohne schreiben nur die Vorschau; mit schreiben in
+    plan/routen.yaml. Kein Inhalt ändert sich außer den Umbrüchen. -> Liste (Stelle, Feld, alt, neu)."""
+    import schreiben as sb
+    import textform
+    from ruamel.yaml.scalarstring import LiteralScalarString
+    roh = sb.routen_laden(reise_dir)
+    stellen = []
+    for gruppe in UMBRECHEN_GRUPPEN:
+        for did, d in (roh.get(gruppe) or {}).items():
+            if not isinstance(d, dict):
+                continue
+            if isinstance(d.get("hinweis"), str):
+                stellen.append((did, "hinweis", d, "hinweis"))
+            if isinstance(d.get("lesetext"), dict) and isinstance(d["lesetext"].get("text"), str):
+                stellen.append((did, "lesetext", d["lesetext"], "text"))
+    for tid, t in (roh.get("tage") or {}).items():
+        if isinstance(t, dict) and isinstance(t.get("text"), str):
+            stellen.append((tid, "text", t, "text"))
+    aus = []
+    for wo, feld, knoten, k in stellen:
+        alt = str(knoten[k]).strip()
+        neu_ = textform.umbrechen(alt)
+        if neu_ == alt:
+            continue
+        aus.append((wo, feld, alt, neu_))
+        if schreiben:   # wie der Schreibweg: Lesetext als Block, alles andere in Anführungszeichen
+            knoten[k] = LiteralScalarString(neu_ + "\n") if feld == "lesetext" else sb.skalar(k, neu_)
+    if schreiben and aus:
+        sb.routen_speichern(reise_dir, roh)
+    return aus
+
+
+def umbrechen_text(aenderungen):
+    """Vorschau oder Bericht von umbrechen() als Zeilen (englisch, wie die übrigen Befehle)."""
+    z = []
+    for wo, feld, alt, neu_ in aenderungen:
+        z += [f"{wo} {feld}:", f"  before: {alt}", "  after:"] + [f"    {x}" for x in neu_.split("\n")]
+    return z
+
+
+def umbrechen_speicher(reise, ordner, schreiben=False, wer="Software-Umbrechen"):
+    """umbrechen() für eine Reise im Reisespeicher (#604): materialisieren nach ordner, umbrechen, Probebau, dann genau ein
+    Vorgang (Werkzeug umbrechen); sein Grund nennt jede Stelle mit dem alten Text, der alte Stand bleibt im Speicher.
+    -> (Exit, Zeilen): 0 umgebrochen, Vorschau oder nichts zu tun, 2 Probebau rot (nichts geschrieben), 1 Wettlauf mit dem
+    Schreibweg (nochmal aufrufen)."""
+    import reisespeicher as rs
+    ordner = Path(ordner)
+    for _ in range(NACHZIEHEN_VERSUCHE):
+        basis = rs.materialisieren(reise, ordner)
+        aenderungen = umbrechen(ordner, schreiben=schreiben)
+        zeilen = umbrechen_text(aenderungen)
+        if not aenderungen:
+            return 0, ["Nothing to break into lines."]
+        if not schreiben:
+            return 0, zeilen + [f"{len(aenderungen)} text(s) would change; write with --schreiben."]
+        try:
+            probebau(ordner)
+        except Exception as e:   # jeder Fehler des Baus sperrt: nichts eintragen
+            gruende = list(getattr(e, "meldungen", None) or [e])
+            return 2, [f"ERROR: build of {reise} after breaking into lines failed, nothing written:"] + [f" - {g}" for g in gruende]
+        grund = "\n".join(f"{wo} {feld} (#604), before: {alt}" for wo, feld, alt, _ in aenderungen)
+        try:
+            v = rs.ordner_als_vorgang(reise, ordner, basis, wer=wer, werkzeug="umbrechen",
+                                      titel=f"line breaks restored ({len(aenderungen)})", grund=grund,
+                                      kennung=f"umbrechen:{reise}:{basis}", rolle="")
+        except rs.StandGeaendert:
+            continue
+        except (rs.VorgangVorhanden, rs.NichtsGeaendert):
+            return 0, ["Nothing to break into lines."]
+        rs.stand_datei(ordner).write_text(f"{v.stand}\n", encoding="utf-8")
+        return 0, zeilen + [f"written, state {v.stand}"]
+    return 1, [f"ERROR: {reise} changed {NACHZIEHEN_VERSUCHE} times meanwhile, call again."]
 
 
 def aufraeumen(reise_dir):
@@ -1670,6 +1754,12 @@ def main(argv):
     p.add_argument("reise", type=Path)
     au = sub.add_parser("aufraeumen", help="list values against the rules for clean data (#476), changes nothing")
     au.add_argument("reise", type=Path)
+    ub = sub.add_parser("umbrechen", help="restore line breaks of lists flattened before #594/#601 (hints, reading texts of "
+                                          "things, day texts); preview unless --schreiben (#604)")
+    ub.add_argument("reise", help="trip folder, or with --speicher the name of a trip in the trip store")
+    ub.add_argument("--speicher", type=Path, metavar="ORDNER", help="trip in the trip store: working folder, replaced")
+    ub.add_argument("--schreiben", action="store_true", help="write the change (store: one operation with the old texts)")
+    ub.add_argument("--wer", default="Software-Umbrechen", help="name in the history of the store")
     g = sub.add_parser("arten-ableiten", help="derive plan/arten.yaml from the existing data of the trip (package O-2)")
     g.add_argument("reise", type=Path)
     g.add_argument("--name", action="append", default=[], help="art=display name, e.g. ferry=Ferry")
@@ -1709,6 +1799,16 @@ def main(argv):
             m = nachziehen(x.reise, dict(t.split("=", 1) for t in x.strecke))
             print("\n".join(m) if m else "Nothing to bring up to date.")
             return 1 if any(t.startswith("OPEN") for t in m) else 0
+        if x.befehl == "umbrechen":
+            if x.speicher:
+                rc, zeilen = umbrechen_speicher(x.reise, x.speicher, x.schreiben, x.wer)
+            else:
+                a = umbrechen(Path(x.reise), schreiben=x.schreiben)
+                rc, zeilen = 0, (umbrechen_text(a) + ([f"{len(a)} text(s) changed."] if x.schreiben else
+                                                     [f"{len(a)} text(s) would change; write with --schreiben."])) if a \
+                    else ["Nothing to break into lines."]
+            print("\n".join(zeilen))
+            return rc
         if x.befehl == "aufraeumen":
             m = aufraeumen(x.reise)
             print("\n".join(m) if m else "Nothing to tidy up.")
