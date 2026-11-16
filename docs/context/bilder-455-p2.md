@@ -67,3 +67,51 @@ Privates Artefakt `https://claude.ai/artifact/3FirFRujJz9jyTirqAFr1p` (Variante 
 - Bild im Text: Nennung aus P1 ist HTML im Text; Umbau zu `figure` im Bau (`nennung`) statt in der Vorlage, damit offline/ohne JS gleich.
 - Offline-Grenze: Summe der Precache-Bilddateien gegen `reise.yaml` `bilder.offline_mb` (Default 25), nur Warnung.
 - Wackelige Browsertests (#565, #568) nicht mit neuen Fehlern verwechseln.
+
+## Analysis
+
+### Type
+Feature (Paket P2 der freigegebenen Spec, keine neue Produktentscheidung)
+
+### Affected Files (with changes)
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `beispiel/reisen/beispielreise/plan/bilder.yaml`, `medien/bilder/` | MODIFY/CREATE | Schritt 0: neue echte freie Commons-Bilder (über `bilder.holen`/`fassungen_schreiben` aus P1) als Kopfbilder an Ort (Gruppe mit 3 Bildern für „Ding · 1 / 3“ und Bildreihe), Tag, Unterkunft (erste Nacht), Etappe; nur CC0/CC BY/CC BY-SA |
+| `THIRD_PARTY.md` | MODIFY | je neues Bild eine Zeile (Datei, Urheber, Lizenz, Seite) |
+| `engine/bauen.py` | MODIFY (~+120) | `daten()["bilder"]` nur bei aktiven Bildern (Schlüssel fehlt sonst, AC-12); Eintrag `{id, zu, klein, gross, alt, bildunterschrift, titel, nennung:{urheber, lizenz, lizenz_url, seite}|null}` als Daten, nicht HTML; alle Fassungen kopieren (`self.bilder`), Precache getrennt (`self.vorab`: alle kleinen + große von Titel/Kopfbild = erstes Bild je Ding); Warnung bei Summe > `bilder.offline_mb`; Bild im Text als `<figure>` mit `<button class="bild text" data-bild>` + `figcaption.bildtext` + `.nennung` (ersetzt `<br><small class="nennung">`/`nennungen_setzen`); Bildlink im Satz `[Text](BI-NN)` → Link mit `data-bild` (öffnet Großansicht) |
+| `engine/vorlage.html` | MODIFY (~+1200–1500) | Atome `.bild`, `.nennung`, `.mini`; Molekül `.galerie`; Organismus Großansicht; `bilderZu(id)`, `bildEl`, `miniEl`, `galerieEl`, `kopfBild`, Großansicht; Stellen `ansichtReise`, `tagZeile`, `ansichtTag`, `ansichtOrt`, `ansichtAbschnitt`, `dingKarte`/`nachtZeile`; Bausteinseite, Kopfkommentar, `GRUNDFORMEN` falls nötig; Lesen immer `(D.bilder || [])` |
+| `engine/sw.vorlage.js` | MODIFY (nur Kommentar) | Logik bleibt: Nicht-Vorgeladenes speichert `ausSpeicher` beim Ansehen; Kopfkommentar „alle Bilder vorab“ korrigieren |
+| `engine/texte_*.py` | MODIFY | Seitentexte (n Bilder, Schließen, Großansicht, vorheriges/nächstes Bild, Zähler), Bauwarnung Offline-Grenze, Bildunterschrift-Rahmen; Ausnahmelisten nicht länger |
+| `docs/design.md` | MODIFY | neue Bausteine (V19) |
+| `engine/tests/test_bilder.py`, `test_pwa.py` | MODIFY | Daten an die Vorlage, Precache-Auswahl, Warnung > 25 MB, Stadtwochenende ohne `bilder`; AC-8-Tests aus P1 auf `figure` umstellen |
+| `engine/tests/test_seite_bilder.py` | CREATE | Playwright Chromium + WebKit, 360 px, CSP, Großansicht, Stadtwochenende |
+
+### Scope Assessment
+- Files: ~12
+- Estimated LoC: +1600/-30 (überwiegend Vorlage), Tests zusätzlich
+- Risk Level: MEDIUM (große Oberflächenänderung, aber additiv; Reisen ohne Bilder bleiben unberührt)
+
+### Technical Approach
+Schnitt in Schritte ≤250 Produktivzeilen, je Schritt Test zuerst:
+0. Beispielbilder ergänzen (Daten + `THIRD_PARTY.md`, eigener Commit).
+1. Bau/Daten: `bilder` in `daten()`, Trennung Kopie/Precache (`self.vorab`), Offline-Warnung. Die JPEG-Pipeline unter `medien/` bleibt unverändert (kritischster Punkt: `self.bilder` heißt heute „kopieren“ und „vorab“ zugleich; Aufräumen in `pwa_schreiben` bleibt auf allen kopierten Dateien).
+2. Bild im Text als `figure` im Bau (+ Bildlink im Satz), P1-Tests anpassen.
+3. Atome/Hilfsfunktionen in der Vorlage.
+4. Titelbild + Mini in der Tagesliste.
+5. Kopfbild Ort (+ Bildreihe), Tag, Etappe, Unterkunft (Heimat erste Nacht, sonst `nachtZeile` mit Mini).
+6. Großansicht: (a) modales `<dialog>` per `showModal()` (Fokusfalle, Escape vom Browser), Zähler „Ding · i / n“, Schließen, Tastatur, Fokusrückgabe zusätzlich selbst per `opener.focus()` (WebKit); (b) Pointer-Wischen, nach unten schließen, Pfeile ≤560 px aus. Dialog wird erst beim ersten Öffnen erzeugt (AC-12: kein Element bei Reisen ohne Bilder). Klick per Delegation auf `[data-bild]`, keine Inline-Handler (CSP).
+7. Bausteinseite, `GRUNDFORMEN`, `docs/design.md`, restliche Texte.
+8. Seitentests komplett + SW-Kommentar.
+
+### Entscheidungen (Tech Lead)
+- `bilder` fehlt in `daten.json`, wenn keine aktiven Bilder (anders als `packliste: null`), weil AC-12 „keine Bilddaten“ verlangt; kein bestehender Test vergleicht `daten.json` des Stadtwochenendes.
+- Neue echte Commons-Bilder statt Wiederverwendung vorhandener Dateien unter neuen IDs (V24 „echte freie Bilder“, glaubwürdige Gruppe, ehrliche Offline-Summe).
+- Bildlink im Satz (V12) = `[Text](BI-NN)`: heute ohne Code (`BILD_KENNUNG_IM_TEXT` erfasst nur `![…]`); wird in Schritt 2 mitgebaut, Ziel ist die große Fassung, Klick öffnet die Großansicht.
+- Spec V13 nennt `--radius-gross`; in der Vorlage heißt der Token `--r-gross` (18 px, vorhanden) → in der Spec-Ergänzung von P2 angleichen.
+
+### Dependencies
+- Upstream: P1 (`engine/bilder.py`: `laden`, `aktiv`, `gemeinfrei`, `holen`, `fassungen_schreiben`; `bild_kennung`, `nennung_html`).
+- Downstream: P3 (Kachel „Meine Reisen“ nutzt das Titelbild aus `bilder`), Instanz-Tests vor dem Vorspulen (Seitendaten, Texte).
+
+### Open Questions
+- keine Produktfrage offen (Entwurf Variante A freigegeben 15.11.2026; Spec freigegeben).
