@@ -172,7 +172,8 @@ class TextPruefung(HTMLParser):
     Stilen, Klassen oder Bausteinen umgeht das Designsystem. Sammelt, was nicht vorgesehen ist."""
     TAGS = {"p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "a", "img", "em", "strong", "code", "pre",
             "blockquote", "hr", "br", "table", "thead", "tbody", "tr", "th", "td"}
-    ATTRIBUTE = {"a": {"href", "title"}, "img": {"src", "alt", "title"}, "th": {"style"}, "td": {"style"}}
+    # ol start: eine nummerierte Liste, die nicht bei 1 beginnt („3. …“), erzeugt Markdown mit sane_lists (#593) so (#597)
+    ATTRIBUTE = {"a": {"href", "title"}, "img": {"src", "alt", "title"}, "th": {"style"}, "td": {"style"}, "ol": {"start"}}
 
     # Adressen in Links und Bildern: nur diese Schemata, sonst relativ (medien/…, #…). javascript:, data: und
     # Ähnliches würden beim Antippen Code im Namen der Leser:in ausführen.
@@ -203,6 +204,9 @@ class TextPruefung(HTMLParser):
                 self.fremd.append(f"<{tag} {k}={(v or '').split(':', 1)[0].strip()[:20]}:>")
             # Spaltenausrichtung der Tabellen-Erweiterung ist das einzige erlaubte style
             if k == "style" and re.fullmatch(r"text-align: (left|right|center);", v or ""):
+                continue
+            if tag == "ol" and k == "start" and not re.fullmatch(r"\d{1,6}", v or ""):
+                self.fremd.append(f"<{tag} {k}>")
                 continue
             if k not in self.ATTRIBUTE.get(tag, ()):
                 self.fremd.append(f"<{tag} {k}>")

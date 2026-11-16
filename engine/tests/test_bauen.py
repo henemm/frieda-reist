@@ -736,3 +736,26 @@ def test_lesetext_stichworte_gegen_gliederung(tmp_path):
     assert any(h.startswith("E-01: Stichwort „Abends“") and "Charakter, Verlauf" in h for h in b.hinweise), b.hinweise
     weg = next(x for x in d["abschnitte"] if x["id"] == "E-01")["bloecke"][0]
     assert weg["ebene"] == "weg" and "<strong>Charakter.</strong>" in weg["html"]
+
+
+def test_nummerierte_liste_ab_drei_baut(reise, tmp_path):
+    """#597: Seit sane_lists (#593) wird „3. …“ zu <ol start="3">; die Prüfung kannte start nicht, und eine Reise mit
+    einer solchen Liste wurde nicht mehr gebaut."""
+    e = reise / "inhalt/e.md"
+    e.write_text(e.read_text(encoding="utf-8") + "\n\n3. Dritte Etappe\n4. Vierte Etappe\n", encoding="utf-8")
+    d = baue(reise, tmp_path)
+    assert any('<ol start="3">' in json.dumps(a, ensure_ascii=False).replace('\\"', '"') for a in d["abschnitte"])
+
+
+@pytest.mark.parametrize("wert", ["3", "12"])
+def test_listenbeginn_als_zahl_erlaubt(wert):
+    p = bauen.TextPruefung()
+    p.feed(f'<ol start="{wert}"><li>x</li></ol>')
+    assert not p.fremd
+
+
+@pytest.mark.parametrize("wert", ["x", "3;", "", "1 onclick"])
+def test_listenbeginn_ohne_zahl_bleibt_fremd(wert):
+    p = bauen.TextPruefung()
+    p.feed(f'<ol start="{wert}"><li>x</li></ol>')
+    assert p.fremd
