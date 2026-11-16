@@ -1327,7 +1327,7 @@ function langtext(text, attrs) {
   const {tag = "div", class: zusatz, einzeilig, ...rest} = attrs || {};
   if (text == null || String(text).trim() === "") return null;
   const e = el(tag, {class: "langtext" + (zusatz ? " " + zusatz : ""), ...rest});
-  if (MD) e.innerHTML = einzeilig ? MD.renderInline(String(text)) : MD.render(String(text));
+  if (MD) e.innerHTML = (einzeilig ? MD.renderInline(String(text)) : MD.render(String(text))).trim();
   else { e.classList.add("roh"); e.textContent = String(text); }
   return e;
 }

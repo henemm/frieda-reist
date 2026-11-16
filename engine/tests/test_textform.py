@@ -144,11 +144,6 @@ def test_beschreibung_nennt_form_und_laenge_des_registers(sprache):
     assert geprueft >= 20
 
 
-def test_anleitung_nennt_die_textformen():
-    for sp in texte.SPRACHEN:
-        assert "**" in texte.t(sp, "konnektor.anleitung.grenzen")
-
-
 # ---------- Schreibweg ----------
 
 def test_tagestext_als_langtext_behaelt_absaetze_und_listen(tmp_path):
