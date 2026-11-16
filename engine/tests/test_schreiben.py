@@ -3047,11 +3047,12 @@ def test_arten_aus_den_vorlagen(repo):
     s = schreiber(repo)
     with pytest.raises(sb.Ablehnung, match="gibt es hier schon"):
         s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"vorlage": True, "arten": ["hotel"]}})
-    a = s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"vorlage": True, "arten": ["flug", "refugi"]}})
+    a = s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"vorlage": True, "arten": ["flug", "refugi", "aktivitaet"]}})
     assert "den Vorlagen von Frieda" in a["text"], a["text"]
     arten, _ = arten_auf_main(origin)
     assert arten["flug"]["grundform"] == "bewegung" and arten["flug"]["merkmale"]["flugnummer"]["name"] == "Flugnummer"
     assert arten["refugi"]["merkmale"]["charakter"]["lang"] is True and arten["hotel"]["name"] == "Hotel"
+    assert arten["aktivitaet"]["grundform"] == "aufenthalt" and arten["aktivitaet"]["name"] == "Aktivität"
     # ohne Auswahl: alle, die es hier noch nicht gibt; die Beispielreise hat die übrigen (hotel, bahn, bus) schon
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="gibt es hier schon"):

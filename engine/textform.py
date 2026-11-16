@@ -19,7 +19,7 @@ KURZ, LANG, DOKUMENT = "kurz", "lang", "dokument"
 # Feld -> (Form, Höchstlänge in Zeichen). Der Name ist fachlich (Grundform.Feld), nicht der Name eines Werkzeugs: mehrere
 # Werkzeuge teilen sich ein Feld (day_create und day_update schreiben beide tag.text).
 FELDER = {
-    "tag.text": (LANG, 2000),
+    "tag.text": (LANG, 4000),
     "wahlstelle.text": (LANG, 2000),
     "option.text": (LANG, 2000),
     "plan.text": (LANG, 2000),

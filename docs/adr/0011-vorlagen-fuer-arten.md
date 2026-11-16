@@ -8,7 +8,7 @@ ADR-0001, Punkt 2 („Kein Katalog in der Software“): Welche Arten und Merkmal
 
 ## Entscheidung
 
-1. Frieda bringt **Vorlagen** für häufige Arten mit: Hotel, Refugi, Flug, Bahn, Bus. Eine Vorlage enthält nur die Definition (Grundform, Name, Farbe, Symbol, buchbar, Merkmale mit Name, Typ, Werteliste, veränderlich, Rolle, `nach_buchung`, `lang`, Hilfe), **keine Werte**.
+1. Frieda bringt **Vorlagen** für häufige Arten mit: Hotel, Refugi, Flug, Bahn, Bus; seit 16.11.2026 auch Aktivität (Aufenthalt ohne Nacht wie Übung, Workshop, Führung, Kurs, Termin; Product Owner, #593). Eine Vorlage enthält nur die Definition (Grundform, Name, Farbe, Symbol, buchbar, Merkmale mit Name, Typ, Werteliste, veränderlich, Rolle, `nach_buchung`, `lang`, Hilfe), **keine Werte**.
 2. Eine Vorlage ist ein **Angebot**. In eine Reise kommt sie nur, wenn eine Organisator:in sie mit `arten_uebernehmen` (`vorlage: true`) übernimmt. Danach ist sie eine Kopie der Reise, frei änderbar, ohne Verweis zurück. Keine Reise bekommt eine Vorlage von selbst.
 3. Der Code setzt weiterhin **keine Art und kein Merkmal voraus**: Seite, Prüfungen, Wächter und Konnektor richten sich nur nach der Definition der Reise. Feste Felder der Grundformen (Abfahrt, Ankunft, Adresse, Buchungslink) stehen nicht in den Vorlagen.
 4. Die Vorlagen liegen je Sprache in `engine/artvorlagen/<sprache>.yaml` (Form wie `plan/arten.yaml`); fehlt eine Sprache, gilt die Vorgabesprache. Eine neue Sprache bringt ihre Datei mit (ADR-0006).

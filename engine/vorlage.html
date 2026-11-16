@@ -1983,7 +1983,7 @@ function aufenthaltZeile(id, voll) {
   if (!voll) return z;
   const l = lageZeile(a, true);
   if (l) z.append(l);
-  if (a.lesetext) z.append(el("div", {html: a.lesetext}));   // Lesetext (#334), nur voll
+  if (a.lesetext) z.append(reiseText(a.lesetext));   // Lesetext (#334), nur voll
   // Stand-Leiter (31.10.2026): wie die Unterkunft (planungsTeil)
   const krit = (R.merkmale || {})[a.art] || [], st = buchungsStand(a);
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
@@ -2156,7 +2156,7 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   if (lage) k.append(lage);
   if (u.kontakt || u.buchungslink) k.append(el("div", {class: "z"}, el("b", {}, T("seite.label.kontakt")), kontaktText(u) || "–", " ", webLink(u.buchungslink)));
   // Lesetext des Dings (#334): sichtbar an der Heimat, gegliedert nach der Art; nur hier, nie in einer Zeile oder Kachel
-  if (u.lesetext) k.append(el("div", {html: u.lesetext}));
+  if (u.lesetext) k.append(reiseText(u.lesetext));
   const bs = buchungenBei(id).filter(b => buchungGiltAm(b, datum, nachtDing));
   // Der Stand steht einmal: Mit Buchung hier trägt sie ihn, sonst der Chip
   const marke = bs.length ? null : standChip(st);

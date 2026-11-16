@@ -353,7 +353,7 @@ class Bauer:
         self.grundkarten = {}  # regionale Grundkarten der Recherche-Karten: Zielname -> Quelldatei
         self.hinweise = []  # Meldungen, die das Bauen nicht verhindern
         self.fussnoten = {}  # Quelldatei -> {Nummer: Definition}
-        self.md = markdown.Markdown(extensions=["tables"])
+        self.md = markdown.Markdown(extensions=["tables", "sane_lists"])
         pfad = self.reise_dir / "reise.json"
         if not pfad.exists():
             raise BauFehler([texte.satz("pruefung.bauen.datei_fehlt", pfad=pfad)])
