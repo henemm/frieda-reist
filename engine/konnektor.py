@@ -2801,9 +2801,10 @@ FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "@konnektor.werkzeug.fr
                      "text": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.text"},
                      "bis": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.bis"},
                      "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.frage_anlegen.bezug"}}, "required": ["text"]}}
+TAGESTEXT_FELD = {"type": "string", "description": "@konnektor.feld.tagestext"}   # Markdown wie Lesetexte (#593)
 TAG_AENDERN = {"name": "tag_aendern", "description": "@konnektor.werkzeug.tag_aendern",
                "inputSchema": {"type": "object", "properties": {
-                   "ziel": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.ziel"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                   "ziel": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.ziel"}, "titel": {"type": "string"}, "text": TAGESTEXT_FELD,
                    "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.nacht"},
                    "strecken": {"type": "array", "items": {"type": "string"}}, "wahl": {"type": "array", "items": {"type": "string"}},
                    "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.tag_aendern.aufenthalte"},
@@ -2896,7 +2897,7 @@ WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
 # ---------- Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen (docs/abgleich-2026-10-29.md) ----------
 TAG_ANLEGEN = {"name": "tag_anlegen", "description": "@konnektor.werkzeug.tag_anlegen",
                "inputSchema": {"type": "object", "properties": {
-                   "titel": {"type": "string"}, "text": {"type": "string"}, "nach": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nach"},
+                   "titel": {"type": "string"}, "text": TAGESTEXT_FELD, "nach": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nach"},
                    "vor": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.vor"}, "ohne_route": {"type": "boolean"},
                    "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nacht"}, "strecken": {"type": "array", "items": {"type": "string"}},
                    "wahl": {"type": "array", "items": {"type": "string"}}, "aufenthalte": {"type": "array", "items": {"type": "string"}},

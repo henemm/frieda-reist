@@ -62,6 +62,9 @@ main{max-width:var(--breite);margin:0 auto;padding:14px 14px 0;overflow-wrap:bre
 main :is(p,ul,ol,blockquote,dl):not(:where(.karte,.ding,.wm,.option,.steckbrief,.wm-karte,.fnbox) *){max-width:var(--lese)}
 a{color:var(--acc)}
 main code{overflow-wrap:anywhere}
+/* Tagestext (#593): Markdown; Überschriften darin eine Stufe unter den Abschnitten der Tagesseite */
+.pico .tagestext :is(h1,h2,h3,h4,h5,h6){--pico-font-size:var(--t-text);font-size:var(--t-text);margin:1em 0 .25em}
+.pico .tagestext>:last-child{margin-bottom:0}
 details{margin:0 0 10px}
 summary{cursor:pointer}
 .ziel{scroll-margin-top:calc(70px + env(safe-area-inset-top))}
@@ -2073,7 +2076,7 @@ function tagKarte(t, ohneKopf, vorschau) {
   for (const [, z] of vorn) { z[0].classList.add("vorn"); k.append(...z.filter(Boolean)); }
   if (t.strecken.length || (t.aufenthalte || []).length) k.append(wegVerlauf(t, tagseite ? id => !!etappeZu(id) : null, tagseite));
   for (const [w, z] of wahlZeilen) if (!vorn.some(([x]) => x === w)) k.append(...z.filter(Boolean));
-  if (t.text) k.append(el("div", {class: "z"}, t.text));
+  if (t.text) k.append(el("div", {class: "z tagestext", html: t.text_html || ""}));
   if (t.nacht) {
     // Die Buchung der Unterkunft steht in der Unterkunftskarte des Abschnitts „Nacht“ der Tagesseite (ADR-0003)
     k.append(...[].concat(nachtZeile(t.nacht, false, t.datum, ohneKopf)).filter(Boolean));
@@ -4297,7 +4300,7 @@ function ansichtTag(m, tid) {
   if (R.plaene.length && !mit.length && !(imPlan && imPlan.alt)) kopf.append(chip("offen", T("seite.tag.variante_innerhalb")));
   if (kopf.childNodes.length) m.append(kopf);
   const etappen = t.strecken.map(s => etappeZu(s.id)).filter(Boolean);
-  if (t.text || !t.strecken.length) m.append(el("h3", {}, T("seite.plan.uebersicht")), t.text ? el("p", {}, t.text) : el("p", {class: "meldung"}, T("seite.tag.noch_kein_programm")));
+  if (t.text || !t.strecken.length) m.append(el("h3", {}, T("seite.plan.uebersicht")), t.text ? el("div", {class: "tagestext", html: t.text_html || ""}) : el("p", {class: "meldung"}, T("seite.tag.noch_kein_programm")));
   const seite = el("div", {class: "tagseite"});
   // Oben: Tageskasten und Karte (Etappen; sonst Strecken mit eigenem Track, Beschreibung über „siehe“)
   // Automatische Karte (K6, K17): eine Karte des Tages mit allen Strecken und Punkten, für jede Art von Strecke

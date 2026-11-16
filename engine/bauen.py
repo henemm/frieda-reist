@@ -353,7 +353,7 @@ class Bauer:
         self.grundkarten = {}  # regionale Grundkarten der Recherche-Karten: Zielname -> Quelldatei
         self.hinweise = []  # Meldungen, die das Bauen nicht verhindern
         self.fussnoten = {}  # Quelldatei -> {Nummer: Definition}
-        self.md = markdown.Markdown(extensions=["tables"])
+        self.md = markdown.Markdown(extensions=["tables", "sane_lists"])
         pfad = self.reise_dir / "reise.json"
         if not pfad.exists():
             raise BauFehler([texte.satz("pruefung.bauen.datei_fehlt", pfad=pfad)])
@@ -822,6 +822,7 @@ class Bauer:
                 self.karte_bauen(r_cfg, route, lesetexte)
                 self.lage_ergaenzen(route)
                 self.dinge_lesetext(route, r_rel)
+                self.tagestexte(route, r_rel)
             if route:
                 for art in ("tagesplan", "unterkuenfte"):
                     if art not in r_cfg:
@@ -1407,6 +1408,14 @@ class Bauer:
                 for wort in STICHWORT.findall(b["html"]):
                     if wort.strip().rstrip(".:").strip().casefold() not in namen:
                         self.hinweise.append(texte.satz("pruefung.bauen.72", eid=eid, w1=wort.strip().rstrip('.:'), art=art, w2=', '.join(r['name'] for r in rubriken)))
+
+    def tagestexte(self, route, r_rel):
+        """Text eines Tags ist Markdown wie ein Lesetext (#593): text_html für die Seite, text als Klartext für Suche und
+        Zeilen."""
+        for t in route.get("tage") or []:
+            if str(t.get("text") or "").strip():
+                t["text_html"] = self.html(str(t["text"]), self.reise_dir / r_rel)
+                t["text"] = " ".join(ohne_tags(t["text_html"]).split())
 
     def dinge_lesetext(self, route, r_rel):
         """Lesetext an Unterkunft und Aufenthalt (Feld lesetext in routen.yaml, #334) als HTML mit Herkunftszeile; ein fettes

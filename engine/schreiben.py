@@ -1217,6 +1217,15 @@ PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "vo
 PLAIN_MUSTER = re.compile(r"^[^\W\d_][\w .\-]*\Z")
 
 
+def tagestext(args):
+    """Text eines Tags: Markdown mit Absätzen, Listen und Überschriften wie Lesetexte (#593), geprüft wie jeder sichtbare
+    Text (#476). -> str oder None."""
+    v = text_wert(args, "text", laenge=4000, absaetze=True)
+    if v:
+        sauber(v, "text")
+    return v
+
+
 def skalar(k, v):
     """Text so schreiben, wie die Dateien es von Hand tun: Namen, IDs und Schlüssel ohne, Fließtext mit Anführungszeichen."""
     from ruamel.yaml.scalarstring import DoubleQuotedScalarString
@@ -2745,8 +2754,8 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
         if not re.fullmatch(r"F-\d+", frage):
             raise Ablehnung("schreiben.ding_anlegen.5")
         d["frage"] = frage
-    if (t := text_wert(args, "text", laenge=2000)):
-        d["text"] = t
+    if (t := tagestext(args)):
+        d["text"] = skalar("text", t)
     optionen = args.get("optionen")
     if not isinstance(optionen, list) or not optionen:
         raise Ablehnung("schreiben.wahlstelle_anlegen.4")
@@ -2923,7 +2932,7 @@ def tag_aendern(reise_dir, wer, args, heute=None):
     geaendert = []
     for feld in ("titel", "text"):
         if args.get(feld) is not None:
-            v = text_wert(args, feld, laenge=2000 if feld == "text" else 200) or ""
+            v = (tagestext(args) if feld == "text" else text_wert(args, feld, laenge=200)) or ""
             if v != (t.get(feld) or ""):
                 geaendert.append(wechsel(feld, t.get(feld) or "", v, quotiert=True))
                 if v:
@@ -3826,8 +3835,8 @@ def tag_anlegen(reise_dir, wer, args, heute=None):
     from ruamel.yaml.comments import CommentedSeq
     roh = routen_laden(reise_dir)
     d = {"titel": text_wert(args, "titel", pflicht=True, laenge=200)}
-    if (t := text_wert(args, "text", laenge=2000)):
-        d["text"] = t
+    if (t := tagestext(args)):
+        d["text"] = skalar("text", t)
     n = str(args.get("nacht") or "").strip()
     if n:
         if not re.fullmatch(r"(U-\d+|V-\d+|O-\d+)", n):
