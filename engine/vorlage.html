@@ -1884,9 +1884,9 @@ function nachtZeile(n, ohneLinks, datum, verweis, mitBild) {
   const uid = nachtUnterkunft(n);
   const u = uid && R.unterkuenfte[uid];
   const kat = nachtKat(n), ort = n.an_bord ? "" : ortName(n.ort);
-  const titel = n.an_bord ? T("seite.nacht.an_bord") : u ? u.name : akt ? akt.titel : n.hinweis || ort;
+  const titel = n.an_bord ? T("seite.nacht.an_bord") : u ? u.name : akt ? akt.titel : mdKlar(n.hinweis) || ort;
   const unter = [kat && kat !== "offen" && kat !== "unterwegs" ? artName(kat) : (nachtTyp(n) !== "offen" ? nachtTyp(n) : ""), ort !== titel ? ort : "",
-    titel !== n.hinweis ? n.hinweis : "", !u && !akt && !n.an_bord ? T("seite.nacht.unterkunft_offen") : ""].filter(Boolean);
+    titel !== mdKlar(n.hinweis) ? mdKlar(n.hinweis) : "", !u && !akt && !n.an_bord ? T("seite.nacht.unterkunft_offen") : ""].filter(Boolean);
   const offen = wahlOffen(w);
   // Stand-Leiter (31.10.2026): ein Stand je Nacht, die weiteste Stufe (offen → entschieden → angefragt → gebucht). Ist die
   // Unterkunft angefragt oder gebucht, steht dieser Stand statt „entschieden“; gebucht entfällt der Vergleich (er bleibt
@@ -1946,7 +1946,7 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   const krit = (R.merkmale || {})[s.art_schluessel] || [], st = buchungsStand(s);
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   const teil = planungsTeil(!!(st && st.gebucht), krit, s.merkmale, [
-    s.hinweis ? el("div", {class: "z klein"}, s.hinweis) : null,
+    langtext(s.hinweis, {class: "z klein"}),
     s.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + s.quelle) : null,
     (s.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + s.fehlt.map(x => name[x] || x).join(", ")) : null]);
   if (teil.sichtbar) z.append(teil.sichtbar);
@@ -1988,7 +1988,7 @@ function aufenthaltZeile(id, voll) {
   const krit = (R.merkmale || {})[a.art] || [], st = buchungsStand(a);
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   const teil = planungsTeil(!!(st && st.gebucht), krit, a.merkmale, [
-    a.hinweis ? el("div", {class: "z klein"}, a.hinweis) : null,
+    langtext(a.hinweis, {class: "z klein"}),
     a.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + a.quelle) : null,
     (a.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + a.fehlt.map(x => name[x] || x).join(", ")) : null]);
   if (teil.sichtbar) z.append(teil.sichtbar);
@@ -2151,7 +2151,7 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   const k = el("div", {class: "karte ziel", id, "data-ziel": id}, kopfBild(id), dingEtikett(etikett, u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
   // Die Art steht im Etikett; der Ort nur, wenn ihn die Nacht oder die Seite nicht schon nennt
   if (u.ort && !ohneOrt && !(nacht && nacht.ort === u.ort)) k.append(el("div", {class: "z"}, ortName(u.ort)));
-  if (gebucht && u.hinweis) k.append(el("div", {class: "z"}, u.hinweis));
+  if (gebucht && u.hinweis) k.append(langtext(u.hinweis, {class: "z"}));
   const lage = lageZeile(u, !nachtDing, gebucht);
   if (lage) k.append(lage);
   if (u.kontakt || u.buchungslink) k.append(el("div", {class: "z"}, el("b", {}, T("seite.label.kontakt")), kontaktText(u) || "–", " ", webLink(u.buchungslink)));
@@ -2172,7 +2172,7 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   const krit = (R.merkmale || {})[u.art] || [];
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   const teil = planungsTeil(gebucht, krit, u.merkmale, [naechte,
-    u.hinweis && !gebucht ? el("div", {class: "z"}, u.hinweis) : null,
+    !gebucht ? langtext(u.hinweis, {class: "z"}) : null,
     u.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + u.quelle) : null,
     (u.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + u.fehlt.map(x => name[x] || x).join(", ")) : null, mehr]);
   if (teil.sichtbar) k.append(teil.sichtbar);
@@ -2204,7 +2204,7 @@ function kurzDaten(id) {
         fakten: [[null, [s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ")]],
         extra: [kennzahlLeiste(s.kennzahlen, !!s.art && !summiertArt(s))], marken: s.buchung ? [buchungChip(s)] : []};
     } else d = {etikett: o && o.art && artDef(o.art) ? artName(o.art) : T("seite.etikett.ort"), art: "ort", titel: (o && o.name) || titelZu(id) || id,
-      fakten: [[null, o && o.ausserhalb ? T("seite.ort.ausserhalb") : ""], [null, (o && o.hinweis) || ""]]};
+      fakten: [[null, o && o.ausserhalb ? T("seite.ort.ausserhalb") : ""], [null, langtext(o && o.hinweis)]]};
   } else if (form === "buchung") {
     const b = R.buchungen[id], zu = b.status === "storniert";
     d = {etikett: T("seite.etikett.buchung"), art: "ticket", titel: b.titel || (b.fuer || []).map(x => titelZu(x) || x).join(", "),
@@ -3228,7 +3228,7 @@ function karteZeichnen(plaene, info, box, ansicht) {
       const z = [];
       for (const p of plaene) for (const d of p.tage) if (d.nacht && d.nacht.ort === oid)
         z.push(el("span", {}, planMarke(p), T("seite.karte.nacht_im_plan", {plan: p.kurz, nr: d.nr, datum: datumText(d.datum, d.wochentag)}), link(d.id, nachtName(d.nacht))));
-      if ((R.orte[oid] || {}).hinweis) z.push(R.orte[oid].hinweis);
+      if ((R.orte[oid] || {}).hinweis) z.push(mdKlar(R.orte[oid].hinweis));
       zeigeInfo(ortName(oid), z.length ? z : [T("seite.karte.keine_uebernachtung")]);
     });
   }
@@ -3243,7 +3243,7 @@ function karteZeichnen(plaene, info, box, ansicht) {
     if (!linienPunkte.has(pk.lage.join(","))) continue;
     const mk = L.marker(pk.lage, {icon: L.divIcon({className: "rh-ort rh-punkt", iconSize: [26, 26]}), title: pk.name, alt: pk.name}).addTo(karte);
     etikett(mk, pk.name, pk.label, "klein");
-    mk.on("click keypress", () => zeigeInfo(pk.name, [pk.hinweis || ""]));
+    mk.on("click keypress", () => zeigeInfo(pk.name, [mdKlar(pk.hinweis)]));
   }
   // Namen, die sich überdecken, ausblenden; Übernachtungsorte zuerst (danach Wegpunkte, Gipfel)
   const namen = [];
@@ -3476,7 +3476,7 @@ function wissenKarte(bid) {
 }
 function wissenPopup(bid, i, p) {
   const d = el("div", {}, el("b", {}, `${i + 1} · ${p.name}`), el("div", {class: "pk"}, katDef(p.kat).einzahl || katDef(p.kat).name));
-  if (p.hinweis) d.append(el("div", {}, p.hinweis));
+  if (p.hinweis) d.append(el("div", {}, mdKlar(p.hinweis)));
   // Apple Karten: von dort lässt sich der Ort in einen eigenen Reiseführer legen (25.10.2026)
   d.append(el("div", {class: "kartenlinks"},
     el("a", {href: `https://maps.apple.com/?ll=${p.lage[0]},${p.lage[1]}&q=${encodeURIComponent(p.name)}`, target: "_blank", rel: "noopener"}, T("seite.karte.apple_oeffnen")),
@@ -4704,7 +4704,7 @@ function indexBauen() {
   if (R) {
     for (const t of R.tage) add(t.id, T("seite.tag.nr_titel", {nr: t.nr, titel: t.titel}), T("seite.suche.tagesplan"),
       [mdKlar(t.text), ...t.strecken.map(s => (R.strecken[s.id] || {}).titel), t.nacht && ortName(t.nacht.ort)].filter(Boolean).join(" · "));
-    for (const [id, u] of Object.entries(R.unterkuenfte)) add(id, u.name, T("seite.suche.unterkuenfte"), [artName(u.art), ortName(u.ort), u.kontakt, u.hinweis, ...Object.values(u.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
+    for (const [id, u] of Object.entries(R.unterkuenfte)) add(id, u.name, T("seite.suche.unterkuenfte"), [artName(u.art), ortName(u.ort), u.kontakt, mdKlar(u.hinweis), ...Object.values(u.merkmale || {}).map(v => v.wert)].filter(Boolean).join(" · "));
     for (const p of PLAN_FEST ? [] : R.plaene) add(p.id, `${p.kurz}: ${p.titel}`, T("seite.suche.varianten"), [...p.plus, ...p.minus].join(" · "));
     for (const w of R.wahlstellen) {
       add(w.id, w.titel, T("seite.suche.entscheidungen"), mdKlar(w.text));

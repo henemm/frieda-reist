@@ -155,7 +155,7 @@ def eintraege(daten, aufgaben=None):
             a = aufenth.get(aid)
             if not a or aid in (t.get("aufenthalte_offen") or []):
                 continue
-            text = "\n".join(x for x in (a.get("zeit"), a.get("hinweis")) if x) + _buchung_text(r, a.get("buchung_id"), sprache)
+            text = "\n".join(x for x in (a.get("zeit"), textform.klartext(a.get("hinweis"))) if x) + _buchung_text(r, a.get("buchung_id"), sprache)
             e = {"sorte": "aufenthalte", "id": aid, "uid": f"{aid}-{tag.isoformat()}", "titel": a.get("name") or aid, "ort": lage(a), "text": text.strip()}
             b, ende = _spanne(tag, a.get("beginn"), a.get("ende"))
             if b:
@@ -179,7 +179,7 @@ def eintraege(daten, aufgaben=None):
             aus.append({"sorte": "unterkuenfte", "id": uid, "uid": uid if len(stuecke) == 1 else f"{uid}-{von.isoformat()}",
                         "titel": tx("uebernachtung", w1=u.get("name", uid)), "tag": von, "bis": bis, "ort": lage(u),
                         "text": tx("naechte", n=n) + _buchung_text(r, u.get("buchung_id"), sprache)
-                        + (f"\n{u['kontakt']}" if u.get("kontakt") else "") + (f"\n{u['hinweis']}" if u.get("hinweis") else "")})
+                        + (f"\n{u['kontakt']}" if u.get("kontakt") else "") + (f"\n{textform.klartext(u['hinweis'])}" if u.get("hinweis") else "")})
 
     # Fristen: Buchungen (nicht storniert) und offene Aufgaben
     for bid, b in (r.get("buchungen") or {}).items():

@@ -1221,7 +1221,7 @@ TEXTE = {
     "konnektor.feld.allgemein.grund": "why, in one sentence; goes into the history",
     "konnektor.feld.allgemein.titel": "name as shown on the page; short, one line, no IDs",
     "konnektor.feld.allgemein.neuer_titel": "new name; short, one line",
-    "konnektor.feld.allgemein.hinweis": "short note on one line shown with the thing",
+    "konnektor.feld.ding_hinweis": "note shown with the thing: what one needs to know there",
     "konnektor.feld.allgemein.prioritaet": "how urgent: high, normal (default) or low",
     "konnektor.feld.allgemein.farbe": "colour of the plan on the map and in tables (a to d)",
     "konnektor.feld.allgemein.plus": "options (V-….x) this plan chooses in addition",

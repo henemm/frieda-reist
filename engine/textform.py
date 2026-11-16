@@ -35,6 +35,7 @@ FELDER = {
     "wunsch.kommentar": (LANG, 500),
     "antwort.text": (LANG, 4000),
     "merkmal.lang": (LANG, 2000),
+    "ding.hinweis": (LANG, 1000),
     "wissen.text": (DOKUMENT, 6000),
     "wissen.aendern": (DOKUMENT, 12000),
     "lesetext.text": (DOKUMENT, 12000),

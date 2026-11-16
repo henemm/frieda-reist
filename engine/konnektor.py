@@ -2781,7 +2781,7 @@ DING_ANLEGEN = {"name": "ding_anlegen", "description": "@konnektor.werkzeug.ding
                     "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.titel"},
                     "quelle": QUELLE_FELD,
                     "merkmale": {**MERKMALE_FELD, "description": "@konnektor.werkzeug.ding_anlegen.merkmale"},
-                    "hinweis": {"type": "string"},
+                    "hinweis": textform.schema("ding.hinweis", "@konnektor.feld.ding_hinweis"),
                     "geprueft": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.geprueft"}},
                     "required": ["was", "titel", "quelle"]}}
 # item_update (ADR-0007, Schritt c): Felder und Merkmale eines Dings in einem Werkzeug; value_set, location_set und track_attach
@@ -2792,7 +2792,7 @@ DING_AENDERN = {"name": "ding_aendern", "description": "@konnektor.werkzeug.ding
                     "titel": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.titel"},
                     "art": {"type": "string"},
                     "an": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.an"},
-                    "hinweis": {"type": "string"},
+                    "hinweis": textform.schema("ding.hinweis", "@konnektor.feld.ding_hinweis"),
                     "quelle": {"type": "string", "description": "@konnektor.werkzeug.ding_aendern.quelle"},
                     "merkmale": {**MERKMALE_FELD, "description": "@konnektor.werkzeug.ding_aendern.merkmale"},
                     "geprueft": {"type": "string", "description": "@konnektor.werkzeug.ding_anlegen.geprueft"},

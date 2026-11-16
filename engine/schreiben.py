@@ -1556,7 +1556,7 @@ def ding_anlegen(reise_dir, wer, args, heute=None):
     roh = routen_laden(reise_dir)
     arten = route.get("arten") or {}
     quelle = text_wert(args, "quelle", pflicht=True)
-    hinweis = text_wert(args, "hinweis")
+    hinweis = text_wert(args, "hinweis", textfeld="ding.hinweis")
     d = {}
     fest = {}   # feste Merkmale der Grundform aus der Anfrage: Eingabename -> Wert (ADR-0007, Schritt b)
     if was == "ort":
@@ -2063,7 +2063,8 @@ def _ding_aendern_felder(reise_dir, wer, args, heute=None):
             knoten[feld] = True
             continue
         else:
-            v = text_wert(args, feld, laenge=600 if feld == "quelle" else MAX_TEXT) or ""
+            v = (text_wert(args, feld, textfeld="ding.hinweis") if feld == "hinweis"
+                 else text_wert(args, feld, laenge=600 if feld == "quelle" else MAX_TEXT)) or ""
         if feld in ("beginn", "ende"):   # Merkmal zeitraum (ADR-0007): beide zusammen am Schluss
             zeit_neu[feld] = v
             continue

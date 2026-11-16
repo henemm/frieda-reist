@@ -1222,7 +1222,7 @@ TEXTE = {
     "konnektor.feld.allgemein.grund": "warum, in einem Satz; steht im Verlauf",
     "konnektor.feld.allgemein.titel": "Name, wie er auf der Seite steht; kurz, eine Zeile, ohne Kennungen",
     "konnektor.feld.allgemein.neuer_titel": "neuer Name; kurz, eine Zeile",
-    "konnektor.feld.allgemein.hinweis": "kurzer Hinweis in einer Zeile, der an der Sache steht",
+    "konnektor.feld.ding_hinweis": "Hinweis, der an der Sache steht: was man dort wissen muss",
     "konnektor.feld.allgemein.prioritaet": "wie dringend: hoch, normal (Vorgabe) oder niedrig",
     "konnektor.feld.allgemein.farbe": "Farbe des Plans auf Karte und in Tabellen (a bis d)",
     "konnektor.feld.allgemein.plus": "Optionen (V-….x), die dieser Plan zusätzlich wählt",
