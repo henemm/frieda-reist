@@ -1,7 +1,8 @@
 # Bilder dieser Reise (BI-…): Herkunft, Lizenz, Zuordnung und Fassungen (medien/bilder/).
 # Gepflegt im Gespräch im AI-Client (bild_hinzufuegen, bild_aendern); gelöscht wird nie, zurückgezogene Bilder bleiben erhalten.
-# Beispielwerte (erfunden ist nur die Reise): BI-01 ist die eigene Skizze (Altbestand, quelle: reise); BI-02 und BI-03 sind echte
-# freie Bilder aus Wikimedia Commons, Urheber und Lizenz aus deren Angaben (THIRD_PARTY.md).
+# Beispielwerte (erfunden ist nur die Reise): BI-01 ist die eigene Skizze (Altbestand, quelle: reise); BI-02 bis BI-09 sind echte
+# freie Bilder aus Wikimedia Commons, Urheber und Lizenz aus deren Angaben (THIRD_PARTY.md). BI-04 bis BI-06 sind die Gruppe am
+# Ort Hohnstein (O-03), BI-07 das Kopfbild des zweiten Tags, BI-08 der Etappe E-02, BI-09 des (erfundenen) Hotels der ersten Nacht.
 bilder:
 - id: BI-01
   zu: E-01
@@ -53,4 +54,118 @@ bilder:
   hoehe: 1067
   hinzugefuegt:
     datum: 2026-11-15
+    wer: Ida
+- id: BI-04
+  zu: O-03
+  quelle:
+    commons: 20081018800DR Hohnstein (Sächsische Schweiz).jpg
+  urheber: Jörg Blobelt
+  lizenz: CC BY-SA 4.0
+  lizenz_url: https://creativecommons.org/licenses/by-sa/4.0
+  seite: https://commons.wikimedia.org/wiki/File:20081018800DR_Hohnstein_(S%C3%A4chsische_Schweiz).jpg
+  bildunterschrift: Hohnstein vom Hockstein aus
+  alt: Kleinstadt mit Kirche und Burg auf einem bewaldeten Bergrücken
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-04-480.webp
+    gross: medien/bilder/BI-04-1600.webp
+  breite: 1600
+  hoehe: 926
+  hinzugefuegt:
+    datum: 2026-11-16
+    wer: Ida
+- id: BI-05
+  zu: O-03
+  quelle:
+    commons: Burg Hohnstein (Juni 2026) 3.jpg
+  urheber: Romzig
+  lizenz: CC0
+  lizenz_url: https://creativecommons.org/publicdomain/zero/1.0/deed.en
+  seite: https://commons.wikimedia.org/wiki/File:Burg_Hohnstein_(Juni_2026)_3.jpg
+  bildunterschrift: Die Burg Hohnstein vom Ritterfelsen
+  alt: Burg auf einem Sandsteinfelsen über dem Wald
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-05-480.webp
+    gross: medien/bilder/BI-05-1600.webp
+  breite: 1600
+  hoehe: 1067
+  hinzugefuegt:
+    datum: 2026-11-16
+    wer: Ida
+- id: BI-06
+  zu: O-03
+  quelle:
+    commons: Burg Hohnstein (Juni 2026) 6.jpg
+  urheber: Romzig
+  lizenz: CC0
+  lizenz_url: https://creativecommons.org/publicdomain/zero/1.0/deed.en
+  seite: https://commons.wikimedia.org/wiki/File:Burg_Hohnstein_(Juni_2026)_6.jpg
+  bildunterschrift: Das Schloss der Burg am Abend
+  alt: Renaissancebau der Burg im Abendlicht
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-06-480.webp
+    gross: medien/bilder/BI-06-1600.webp
+  breite: 1600
+  hoehe: 1067
+  hinzugefuegt:
+    datum: 2026-11-16
+    wer: Ida
+- id: BI-07
+  zu: T-02
+  quelle:
+    commons: Amselgrund Hohnstein.jpg
+  urheber: Lukas Beck
+  lizenz: CC BY-SA 4.0
+  lizenz_url: https://creativecommons.org/licenses/by-sa/4.0
+  seite: https://commons.wikimedia.org/wiki/File:Amselgrund_Hohnstein.jpg
+  bildunterschrift: Im Amselgrund
+  alt: Wanderweg in einer bewaldeten Schlucht zwischen Sandsteinwänden
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-07-480.webp
+    gross: medien/bilder/BI-07-1600.webp
+  breite: 1600
+  hoehe: 1200
+  hinzugefuegt:
+    datum: 2026-11-16
+    wer: Ida
+- id: BI-08
+  zu: E-02
+  quelle:
+    commons: Brandaussicht (Juni 2026) 1.jpg
+  urheber: Romzig
+  lizenz: CC0
+  lizenz_url: https://creativecommons.org/publicdomain/zero/1.0/deed.en
+  seite: https://commons.wikimedia.org/wiki/File:Brandaussicht_(Juni_2026)_1.jpg
+  bildunterschrift: Blick von der Brandaussicht
+  alt: Weiter Blick über bewaldete Täler und Tafelberge
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-08-480.webp
+    gross: medien/bilder/BI-08-1600.webp
+  breite: 1600
+  hoehe: 1067
+  hinzugefuegt:
+    datum: 2026-11-16
+    wer: Ida
+- id: BI-09
+  zu: U-01
+  quelle:
+    commons: 20040711620DR Dresden Terrassenufer Brühlsche Terrasse.jpg
+  urheber: Jörg Blobelt
+  lizenz: CC BY-SA 4.0
+  lizenz_url: https://creativecommons.org/licenses/by-sa/4.0
+  seite: https://commons.wikimedia.org/wiki/File:20040711620DR_Dresden_Terrassenufer_Br%C3%BChlsche_Terrasse.jpg
+  bildunterschrift: Am Terrassenufer (das Hotel selbst ist erfunden)
+  alt: Elbufer in Dresden mit der Brühlschen Terrasse
+  status: aktiv
+  dateien:
+    klein: medien/bilder/BI-09-480.webp
+    gross: medien/bilder/BI-09-1600.webp
+  breite: 1600
+  hoehe: 976
+  hinzugefuegt:
+    datum: 2026-11-16
     wer: Ida
