@@ -46,7 +46,8 @@ await p.evaluate(() => document.querySelectorAll("img[src^='medien/bilder/']").f
 await p.waitForFunction(() => [...document.querySelectorAll("img[src^='medien/bilder/']")].every(i => i.complete), null, {timeout: 15000});
 aus.bild = await p.evaluate(() => [...document.querySelectorAll("img[src^='medien/bilder/']")].map(i => ({
   src: i.getAttribute("src"), breite: i.naturalWidth,
-  nennung: (i.parentElement.querySelector("small.nennung") || {}).textContent || ""})));
+  // P2 (V15): das Bild steht in <figure>, die Nennung in dessen figcaption
+  nennung: ((i.closest("figure") || document.createElement("i")).querySelector("figcaption .nennung") || {}).textContent || ""})));
 await ctx.close();
 await b.close();
 console.log(JSON.stringify({fehler, aus}));

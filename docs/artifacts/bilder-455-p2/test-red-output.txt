@@ -1,0 +1,546 @@
+bringing up nodes...
+bringing up nodes...
+
+.FF.FFFFF.FFFFF.FFFFFFFF.FFFFFF                                          [100%]
+=================================== FAILURES ===================================
+_______ test_p2_daten_enthalten_nur_aktive_bilder_mit_nennung_als_daten ________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw1/test_p2_daten_enthalten_nur_ak0/beispielreise')
+
+    def test_p2_daten_enthalten_nur_aktive_bilder_mit_nennung_als_daten(wanderung):
+        """V12: daten()["bilder"] je aktivem Bild id, zu, klein, gross, alt, bildunterschrift, titel, nennung; Nennung als Daten
+        (kein HTML), bei quelle: reise null, gemeinfrei nur der Urheber; zurückgezogene fehlen; Reihenfolge der Liste."""
+        bild_eintragen(wanderung, "BI-60", zu="O-01", status="zurueckgezogen")
+        bild_eintragen(wanderung, "BI-61", zu="O-01", lizenz="CC0", urheber="Erika Frei")
+        felder_setzen(wanderung, "BI-61", alt="Ein Felsen", bildunterschrift="Der Felsen")
+        d = probebau(wanderung)
+>       assert "bilder" in d, "daten() liefert keinen Schlüssel bilder"
+E       AssertionError: daten() liefert keinen Schlüssel bilder
+E       assert 'bilder' in {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische Schweiz, 13.–16.5....i>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...}
+
+engine/tests/test_bilder.py:824: AssertionError
+________________ test_p2_bildlink_im_satz_wird_als_bild_gezeigt ________________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw3/test_p2_bildlink_im_satz_wird_0/beispielreise')
+
+    def test_p2_bildlink_im_satz_wird_als_bild_gezeigt(wanderung):
+        """V12: [Text](BI-NN) im Satz: der Linktext bleibt im Satz, nach dem Absatz folgt dasselbe figure wie bei ![…](BI-NN);
+        zurückgezogen: reiner Text ohne Fehler; unbekannt: Baufehler."""
+        bild_eintragen(wanderung, "BI-55")
+        bild_eintragen(wanderung, "BI-56", status="zurueckgezogen")
+        text_anhaengen(wanderung, "Vom Hockstein sieht man [die alte Brücke](BI-55) gut. Früher stand dort [ein Turm](BI-56).")
+        d = probebau(wanderung)
+        absatz = next(s for s in zeichenketten(d) if "Vom Hockstein sieht man" in s)
+>       assert "die alte Brücke" in absatz and 'href="BI-55"' not in absatz, absatz
+E       AssertionError: <p>Vom Hockstein sieht man <a href="BI-55">die alte Brücke</a> gut. Früher stand dort <a href="BI-56">ein Turm</a>.</p>
+E         <p>Der Hockstein ist ein 291 m hoher Sandsteinberg über dem Polenztal, westlich davon liegt Hohnstein. Am bequemsten erreicht man ihn über eine Steinbrücke von 1821, ein zweiter Zugang führt durch die Wolfsschlucht. Er liegt auf der 2. Etappe des Malerwegs.<sup class="fn"><button type="button" data-fn="4" aria-label="Nachweis 4">4</button></sup> Dass die Wolfsschlucht steiler und bei Nässe heikler ist, ist eine Annahme (Wahlstelle V-02).</p><ol class="fussnoten"><li value="4" data-fn="4">Hockstein (Sächsische Schweiz) (Wikipedia) · <a target="_blank" rel="noopener" href="https://de.wikipedia.org/wiki/Hockstein_(S%C3%A4chsische_Schweiz)">de.wikipedia.org</a> · 26.10.2026</li></ol>
+E       assert ('die alte Brücke' in '<p>Vom Hockstein sieht man <a href="BI-55">die alte Brücke</a> gut. Früher stand dort <a href="BI-56">ein Turm</a>.</..." href="https://de.wikipedia.org/wiki/Hockstein_(S%C3%A4chsische_Schweiz)">de.wikipedia.org</a> · 26.10.2026</li></ol>' and 'href="BI-55"' not in '<p>Vom Hock...26</li></ol>'
+E         
+E         'href="BI-55"' is contained here:
+E           <p>Vom Hockstein sieht man <a href="BI-55">die alte Brücke</a> gut. Früher stand dort <a href="BI-56">ein Turm</a>.</p>
+E         ?                               ++++++++++++
+E           <p>Der Hockstein ist ein 291 m hoher Sandsteinberg über dem Polenztal, westlich davon liegt Hohnstein. Am bequemsten erreicht man ihn über eine Steinbrücke von 1821, ein zweiter Zugang führt durch die Wolfsschlucht. Er liegt auf der 2. Etappe des Malerwegs.<sup class="fn"><button type="button" data-fn="4" aria-label="Nachweis 4">4</button></sup> Dass die Wolfsschlucht steiler und bei Näs...
+E         
+E         ...Full output truncated (1 line hidden), use '-vv' to show)
+
+engine/tests/test_bilder.py:898: AssertionError
+_________ test_p2_bild_im_text_ist_ein_figure_mit_bildtext_und_nennung _________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw2/test_p2_bild_im_text_ist_ein_f0/beispielreise')
+
+    def test_p2_bild_im_text_ist_ein_figure_mit_bildtext_und_nennung(wanderung):
+        """V15: ![…](BI-NN) wird im Bau zu <figure> mit button.bild.text[data-bild] und figcaption mit .bildtext und .nennung (V16);
+        die P1-Zeile <br><small class="nennung"> gibt es nicht mehr."""
+        bild_eintragen(wanderung, "BI-50")
+        felder_setzen(wanderung, "BI-50", bildunterschrift="Die Brücke am Morgen", alt="Steinbrücke")
+        bild_eintragen(wanderung, "BI-51", lizenz="CC0", urheber="Erika Frei")
+        bild_eintragen(wanderung, "BI-52", quelle="reise")
+        text_anhaengen(wanderung, "![Die Brücke](BI-50)\n\n![Frei](BI-51)\n\n![Eigen](BI-52)")
+        d = probebau(wanderung)
+        f = figur(d, "BI-50")
+>       assert f, 'kein <figure> mit data-bild="BI-50"'
+E       AssertionError: kein <figure> mit data-bild="BI-50"
+E       assert None
+
+engine/tests/test_bilder.py:876: AssertionError
+_________ test_p2_precache_kleine_alle_grosse_nur_titel_kopf_und_text __________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw3/test_p2_precache_kleine_alle_g0/beispielreise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw3/test_p2_precache_kleine_alle_g0')
+
+    def test_p2_precache_kleine_alle_grosse_nur_titel_kopf_und_text(wanderung, tmp_path):
+        """V20, AC-5 (AC-14): __DATEIEN__ enthält alle kleinen Fassungen und die großen von Titel- und Kopfbildern (erstes Bild je
+        Ding) und von Bildern im Text, übrige große nicht; kopiert werden alle Fassungen."""
+        bild_eintragen(wanderung, "BI-62", zu="O-02")
+        bild_eintragen(wanderung, "BI-63", zu="O-02")
+        ziel = tmp_path / "dist"
+        bauen.bauen(wanderung, ziel)
+        dateien = set(sw_dateien(ziel))
+        gruppen = aktive_gruppen(liste(wanderung))
+        alle = [b for g in gruppen.values() for b in g]
+>       assert {b["dateien"]["klein"] for b in alle} <= dateien, {b["dateien"]["klein"] for b in alle} - dateien
+E       AssertionError: {'medien/bilder/BI-01-480.webp', 'medien/bilder/BI-02-480.webp', 'medien/bilder/BI-03-480.webp', 'medien/bilder/BI-62-480.webp', 'medien/bilder/BI-63-480.webp'}
+E       assert {'medien/bild...-63-480.webp'} <= {'', 'icon-18...ex.html', ...}
+E         
+E         Extra items in the left set:
+E         'medien/bilder/BI-63-480.webp'
+E         'medien/bilder/BI-02-480.webp'
+E         'medien/bilder/BI-01-480.webp'
+E         'medien/bilder/BI-62-480.webp'
+E         'medien/bilder/BI-03-480.webp'
+
+engine/tests/test_bilder.py:921: AssertionError
+_______ test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe _______
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+    def test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe():
+        """AC-8 (V24): echte freie Bilder (CC0, CC BY, CC BY-SA, gemeinfrei) mit je genau einer Zeile in THIRD_PARTY.md (Datei,
+        Urheber, Lizenz, Seite); ein Titelbild, ein Ort mit 3 Bildern, Kopfbilder aus Commons an Tag, Etappe und Unterkunft."""
+        bilder = liste(WANDERUNG)
+        zeilen = (WURZEL / "THIRD_PARTY.md").read_text(encoding="utf-8").splitlines()
+        for b in bilder:
+            if b["quelle"] == "reise":
+                continue
+            assert re.fullmatch(r"CC0( 1\.0)?|CC BY(-SA)? \d\.\d( [a-z]{2,})?", b["lizenz"]) or bilder_modul().gemeinfrei(b["lizenz"]), \
+                (b["id"], b["lizenz"])
+            treffer = [z for z in zeilen if re.match(rf"\|\s*{b['id']}\b", z)]
+            assert len(treffer) == 1, (b["id"], treffer)
+            z = treffer[0]
+            assert b["quelle"]["commons"] in z and b["urheber"] in z and b["lizenz"] in z and b["seite"] in z, z
+            for f in b["dateien"].values():
+                assert (WANDERUNG / f).is_file(), f
+        gruppen = aktive_gruppen(bilder)
+        assert sum(1 for b in bilder if b.get("titelbild")) == 1
+>       assert any(z.startswith("O-") and len(g) >= 3 for z, g in gruppen.items()), sorted(gruppen)
+E       AssertionError: ['E-01', 'W-05', 'reise']
+E       assert False
+E        +  where False = any(<generator object test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe.<locals>.<genexpr> at 0x76ad4e3784a0>)
+
+engine/tests/test_bilder.py:983: AssertionError
+___________ test_p2_warnung_ueber_offline_grenze_und_der_bau_gelingt ___________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw1/test_p2_warnung_ueber_offline_0/beispielreise')
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw1/test_p2_warnung_ueber_offline_0')
+
+    def test_p2_warnung_ueber_offline_grenze_und_der_bau_gelingt(wanderung, tmp_path):
+        """V3, AC-6 (AC-14): Summe der Vorab-Bilddateien über bilder.offline_mb -> Warnung mit Katalogtext
+        (pruefung.bauen.bilder_offline), der Bau gelingt; unter der Grenze keine Warnung."""
+        import os
+        b = bild_eintragen(wanderung, "BI-64", zu="O-03")
+        (wanderung / b["dateien"]["klein"]).write_bytes(os.urandom(1_500_000))
+        reise_yaml_bilder(wanderung, {"offline_mb": 1})
+        bau = bauen.Bauer(wanderung, tmp_path / "dist")
+        bau.schreiben(bau.daten())
+        assert (tmp_path / "dist" / "index.html").exists()
+>       assert meldet(bau.hinweise, "pruefung.bauen.bilder_offline"), bau.hinweise
+E       AssertionError: []
+E       assert False
+E        +  where False = meldet([], 'pruefung.bauen.bilder_offline')
+E        +    where [] = <bauen.Bauer object at 0x7b4c293d8f50>.hinweise
+
+engine/tests/test_bilder.py:958: AssertionError
+_____________________ test_p2_neue_texte_in_allen_sprachen _____________________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+    def test_p2_neue_texte_in_allen_sprachen():
+        import texte
+        for kuerzel in texte.SPRACHEN:
+            katalog = texte.sprache(kuerzel).TEXTE
+            fehlt = [k for k in NEUE_TEXTE if k not in katalog]
+>           assert fehlt == [], (kuerzel, fehlt)
+E           AssertionError: ('de', ['seite.bild.anzahl', 'seite.bild.schliessen', 'seite.bild.grossansicht', 'seite.bild.vorheriges', 'seite.bild.naechstes', 'seite.bild.zaehler', ...])
+E           assert ['seite.bild....zaehler', ...] == []
+E             
+E             Left contains 7 more items, first extra item: 'seite.bild.anzahl'
+E             Use -v to get more diff
+
+engine/tests/test_bilder.py:999: AssertionError
+___________________ test_p2_bausteine_an_allen_vier_stellen ____________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+    def test_p2_bausteine_an_allen_vier_stellen():
+        """V19: neue Bausteine im Kopfkommentar (damit prüft test_design Bausteinseite und docs/design.md), Stile mit den Maßen des
+        Entwurfs, Token --r-gross statt --radius-gross; der Kopfkommentar des Service Workers sagt nicht mehr, alle Bilder würden
+        bei der Installation vorab gespeichert."""
+        from test_design import DESIGN, VORLAGE, bausteine
+        namen = {n for l in bausteine().values() for n in l}
+        fehlt = [n for n in ("bildEl", "miniEl", "galerieEl", "kopfBild") if n not in namen]
+>       assert fehlt == [], fehlt
+E       AssertionError: ['bildEl', 'miniEl', 'galerieEl', 'kopfBild']
+E       assert ['bildEl', 'm...', 'kopfBild'] == []
+E         
+E         Left contains 4 more items, first extra item: 'bildEl'
+E         Use -v to get more diff
+
+engine/tests/test_bilder.py:1012: AssertionError
+_______________ test_seite_unter_der_csp_ohne_meldung[chromium] ________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw0/test_seite_unter_der_csp_ohne_0')
+browser = 'chromium'
+
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_seite_unter_der_csp_ohne_meldung(tmp_path, browser):
+        """Gebaute Beispielreise (Grundkarten als Attrappe wie test_karte_legende): Etappenkarte mit Kacheln und Ebenen-Symbol, Belege,
+        App-Symbol und ein Bild ![…](BI-NN) mit Nennung, in Chromium und WebKit ohne CSP-Meldung in der Konsole und ohne Seitenfehler."""
+        import functools
+        import http.server
+        import os
+        import subprocess
+        import threading
+        from test_karte_legende import gebaut
+        from test_tagesseite import PLAYWRIGHT
+        if not PLAYWRIGHT.exists() or not shutil.which("node"):
+            pytest.skip("Playwright fehlt")
+        gebaut(tmp_path)
+    
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_bilder_csp.mjs"), str(PLAYWRIGHT),
+                                  f"http://127.0.0.1:{s.server_address[1]}/beispiel/"],
+                                 capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+        finally:
+            s.shutdown()
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert e["fehler"] == [], e["fehler"]
+        a = e["aus"]
+        assert a["karte"]["marken"] and a["karte"]["kacheln"] and a["karte"]["ebenenSymbol"], a["karte"]
+        assert a["symbol"] and all(a["symbol"]), a["symbol"]
+        assert a["beleg"] == 1, a
+        assert a["bild"] and all(x["breite"] > 0 for x in a["bild"]), a["bild"]
+>       assert any("CC BY-SA 4.0" in x["nennung"] for x in a["bild"]), a["bild"]
+E       AssertionError: [{'src': 'medien/bilder/BI-03-1600.webp', 'breite': 1600, 'nennung': ''}]
+E       assert False
+E        +  where False = any(<generator object test_seite_unter_der_csp_ohne_meldung.<locals>.<genexpr> at 0x77bb14f65150>)
+
+engine/tests/test_bilder.py:662: AssertionError
+________________ test_seite_unter_der_csp_ohne_meldung[webkit] _________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw0/test_seite_unter_der_csp_ohne_1')
+browser = 'webkit'
+
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_seite_unter_der_csp_ohne_meldung(tmp_path, browser):
+        """Gebaute Beispielreise (Grundkarten als Attrappe wie test_karte_legende): Etappenkarte mit Kacheln und Ebenen-Symbol, Belege,
+        App-Symbol und ein Bild ![…](BI-NN) mit Nennung, in Chromium und WebKit ohne CSP-Meldung in der Konsole und ohne Seitenfehler."""
+        import functools
+        import http.server
+        import os
+        import subprocess
+        import threading
+        from test_karte_legende import gebaut
+        from test_tagesseite import PLAYWRIGHT
+        if not PLAYWRIGHT.exists() or not shutil.which("node"):
+            pytest.skip("Playwright fehlt")
+        gebaut(tmp_path)
+    
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_bilder_csp.mjs"), str(PLAYWRIGHT),
+                                  f"http://127.0.0.1:{s.server_address[1]}/beispiel/"],
+                                 capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+        finally:
+            s.shutdown()
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert e["fehler"] == [], e["fehler"]
+        a = e["aus"]
+        assert a["karte"]["marken"] and a["karte"]["kacheln"] and a["karte"]["ebenenSymbol"], a["karte"]
+        assert a["symbol"] and all(a["symbol"]), a["symbol"]
+        assert a["beleg"] == 1, a
+        assert a["bild"] and all(x["breite"] > 0 for x in a["bild"]), a["bild"]
+>       assert any("CC BY-SA 4.0" in x["nennung"] for x in a["bild"]), a["bild"]
+E       AssertionError: [{'src': 'medien/bilder/BI-03-1600.webp', 'breite': 1600, 'nennung': ''}]
+E       assert False
+E        +  where False = any(<generator object test_seite_unter_der_csp_ohne_meldung.<locals>.<genexpr> at 0x77bb1c81e330>)
+
+engine/tests/test_bilder.py:662: AssertionError
+____________ test_ohne_seitenfehler_und_ohne_csp_meldung[chromium] _____________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_ohne_seitenfehler_und_ohne_csp_meldung(ergebnis):
+        """AC-4 (AC-13): keine CSP-Meldung, kein Seitenfehler; die Großansicht trägt keine Inline-Handler."""
+        e, _ = ergebnis
+        assert e["fehler"] == [], e["fehler"]
+>       assert e["aus"]["anzahl"] > 0, "daten.json ohne bilder"
+E       AssertionError: daten.json ohne bilder
+E       assert 0 > 0
+
+engine/tests/test_seite_bilder.py:68: AssertionError
+____________ test_titelbild_vor_dem_reisekopf_mit_nennung[chromium] ____________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_titelbild_vor_dem_reisekopf_mit_nennung(ergebnis):
+        """AC-1: Titelbild 16:10, Radius --r-gross, mit Nennung, vor dem Reisekopf."""
+        e, _ = ergebnis
+        t = e["aus"]["reise"]["titel"]
+>       assert t, "kein .bild.titel in der Reise"
+E       AssertionError: kein .bild.titel in der Reise
+E       assert None
+
+engine/tests/test_seite_bilder.py:77: AssertionError
+_______ test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[chromium] _______
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild(ergebnis):
+        """AC-1: Mini (44 px) in der Tagesliste nur bei Tagen mit Kopfbild."""
+        e, _ = ergebnis
+        gruppen, tage = e["aus"]["gruppen"], e["aus"]["reise"]["tage"]
+        assert tage, "keine Tagesliste"
+>       assert any(z.startswith("T-") for z in gruppen), "kein Tag mit Bild in der Beispielreise"
+E       AssertionError: kein Tag mit Bild in der Beispielreise
+E       assert False
+E        +  where False = any(<generator object test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild.<locals>.<genexpr> at 0x7b4c21b252f0>)
+
+engine/tests/test_seite_bilder.py:89: AssertionError
+__ test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[chromium] ___
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe(ergebnis):
+        """AC-1: Kopfbild 16:9 an Ort, Etappe, Tag und Unterkunft; am Ort mit mehreren Bildern die Bildreihe 72 × 54 mit „n Bilder“."""
+        e, _ = ergebnis
+        gruppen, kopf = e["aus"]["gruppen"], e["aus"]["kopf"]
+        for vorsilbe in ("O-", "E-", "T-", "U-"):
+>           assert any(z.startswith(vorsilbe) for z in kopf), (vorsilbe, sorted(gruppen))
+E           AssertionError: ('O-', [])
+E           assert False
+E            +  where False = any(<generator object test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe.<locals>.<genexpr> at 0x7b4c21c15e00>)
+
+engine/tests/test_seite_bilder.py:102: AssertionError
+__________ test_unterkunft_kopfbild_nur_an_der_ersten_nacht[chromium] __________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_unterkunft_kopfbild_nur_an_der_ersten_nacht(ergebnis):
+        """AC-1, ADR-0003: Kopfbild der Unterkunft nur an ihrer Heimat (erste Nacht), an anderen Nächten nur ein Mini."""
+        e, daten = ergebnis
+        unterkuenfte = [zu for zu in e["aus"]["gruppen"] if zu.startswith("U-")]
+>       assert unterkuenfte
+E       assert []
+
+engine/tests/test_seite_bilder.py:119: AssertionError
+____ test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[chromium] _____
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung(ergebnis):
+        """AC-2: Bild im Wissenstext und Bildlink im Satz erscheinen als Bild mit Unterschrift und Nennung (V16)."""
+        e, _ = ergebnis
+        text = e["aus"]["text"]
+>       assert len(text) >= 2, text
+E       AssertionError: []
+E       assert 0 >= 2
+E        +  where 0 = len([])
+
+engine/tests/test_seite_bilder.py:132: AssertionError
+_________ test_grossansicht_zaehler_tasten_fokus_und_wischen[chromium] _________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_grossansicht_zaehler_tasten_fokus_und_wischen(ergebnis):
+        """AC-2: Großansicht modal mit „Ding · i / n“, Pfeiltasten wechseln, Escape schließt mit Fokusrückgabe, Wischen waagerecht
+        wechselt, nach unten schließt; vor dem ersten Öffnen gibt es kein #gross."""
+        e, _ = ergebnis
+        assert e["aus"]["grossVorher"] is False
+        g = e["aus"]["gross"]
+>       assert g, "keine Gruppe mit 3 Bildern an einem Ort"
+E       AssertionError: keine Gruppe mit 3 Bildern an einem Ort
+E       assert None
+
+engine/tests/test_seite_bilder.py:144: AssertionError
+__________ test_handy_360_ohne_ueberbreite_und_ohne_pfeile[chromium] ___________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_handy_360_ohne_ueberbreite_und_ohne_pfeile(ergebnis):
+        """AC-2: bei 360 px keine Überbreite (Tagesliste, Bildreihe, Karten, Tage); bis 560 px sind die Pfeile ausgeblendet."""
+        e, _ = ergebnis
+        h = e["aus"]["handy"]
+        zu_breit = {k: v for k, v in h["ueberbreite"].items() if v > 0}
+        assert zu_breit == {}, zu_breit
+>       assert h.get("pfeile") and all(d == "none" for d in h["pfeile"]), h.get("pfeile")
+E       AssertionError: None
+E       assert (None)
+E        +  where None = <built-in method get of dict object at 0x77bb1503c380>('pfeile')
+E        +    where <built-in method get of dict object at 0x77bb1503c380> = {'ueberbreite': {'#plan': 0, '#wissen': 0, 'T-01': 0, 'T-02': 0, ...}}.get
+
+engine/tests/test_seite_bilder.py:163: AssertionError
+________ test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[webkit] ________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild(ergebnis):
+        """AC-1: Mini (44 px) in der Tagesliste nur bei Tagen mit Kopfbild."""
+        e, _ = ergebnis
+        gruppen, tage = e["aus"]["gruppen"], e["aus"]["reise"]["tage"]
+        assert tage, "keine Tagesliste"
+>       assert any(z.startswith("T-") for z in gruppen), "kein Tag mit Bild in der Beispielreise"
+E       AssertionError: kein Tag mit Bild in der Beispielreise
+E       assert False
+E        +  where False = any(<generator object test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild.<locals>.<genexpr> at 0x7b4c21b27920>)
+
+engine/tests/test_seite_bilder.py:89: AssertionError
+___ test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[webkit] ____
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe(ergebnis):
+        """AC-1: Kopfbild 16:9 an Ort, Etappe, Tag und Unterkunft; am Ort mit mehreren Bildern die Bildreihe 72 × 54 mit „n Bilder“."""
+        e, _ = ergebnis
+        gruppen, kopf = e["aus"]["gruppen"], e["aus"]["kopf"]
+        for vorsilbe in ("O-", "E-", "T-", "U-"):
+>           assert any(z.startswith(vorsilbe) for z in kopf), (vorsilbe, sorted(gruppen))
+E           AssertionError: ('O-', [])
+E           assert False
+E            +  where False = any(<generator object test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe.<locals>.<genexpr> at 0x7b4c21da3a00>)
+
+engine/tests/test_seite_bilder.py:102: AssertionError
+_____________ test_ohne_seitenfehler_und_ohne_csp_meldung[webkit] ______________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_ohne_seitenfehler_und_ohne_csp_meldung(ergebnis):
+        """AC-4 (AC-13): keine CSP-Meldung, kein Seitenfehler; die Großansicht trägt keine Inline-Handler."""
+        e, _ = ergebnis
+        assert e["fehler"] == [], e["fehler"]
+>       assert e["aus"]["anzahl"] > 0, "daten.json ohne bilder"
+E       AssertionError: daten.json ohne bilder
+E       assert 0 > 0
+
+engine/tests/test_seite_bilder.py:68: AssertionError
+_____________ test_titelbild_vor_dem_reisekopf_mit_nennung[webkit] _____________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_titelbild_vor_dem_reisekopf_mit_nennung(ergebnis):
+        """AC-1: Titelbild 16:10, Radius --r-gross, mit Nennung, vor dem Reisekopf."""
+        e, _ = ergebnis
+        t = e["aus"]["reise"]["titel"]
+>       assert t, "kein .bild.titel in der Reise"
+E       AssertionError: kein .bild.titel in der Reise
+E       assert None
+
+engine/tests/test_seite_bilder.py:77: AssertionError
+___________ test_unterkunft_kopfbild_nur_an_der_ersten_nacht[webkit] ___________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_unterkunft_kopfbild_nur_an_der_ersten_nacht(ergebnis):
+        """AC-1, ADR-0003: Kopfbild der Unterkunft nur an ihrer Heimat (erste Nacht), an anderen Nächten nur ein Mini."""
+        e, daten = ergebnis
+        unterkuenfte = [zu for zu in e["aus"]["gruppen"] if zu.startswith("U-")]
+>       assert unterkuenfte
+E       assert []
+
+engine/tests/test_seite_bilder.py:119: AssertionError
+_____ test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[webkit] ______
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung(ergebnis):
+        """AC-2: Bild im Wissenstext und Bildlink im Satz erscheinen als Bild mit Unterschrift und Nennung (V16)."""
+        e, _ = ergebnis
+        text = e["aus"]["text"]
+>       assert len(text) >= 2, text
+E       AssertionError: []
+E       assert 0 >= 2
+E        +  where 0 = len([])
+
+engine/tests/test_seite_bilder.py:132: AssertionError
+__________ test_grossansicht_zaehler_tasten_fokus_und_wischen[webkit] __________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_grossansicht_zaehler_tasten_fokus_und_wischen(ergebnis):
+        """AC-2: Großansicht modal mit „Ding · i / n“, Pfeiltasten wechseln, Escape schließt mit Fokusrückgabe, Wischen waagerecht
+        wechselt, nach unten schließt; vor dem ersten Öffnen gibt es kein #gross."""
+        e, _ = ergebnis
+        assert e["aus"]["grossVorher"] is False
+        g = e["aus"]["gross"]
+>       assert g, "keine Gruppe mit 3 Bildern an einem Ort"
+E       AssertionError: keine Gruppe mit 3 Bildern an einem Ort
+E       assert None
+
+engine/tests/test_seite_bilder.py:144: AssertionError
+___________ test_handy_360_ohne_ueberbreite_und_ohne_pfeile[webkit] ____________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+
+ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
+
+    def test_handy_360_ohne_ueberbreite_und_ohne_pfeile(ergebnis):
+        """AC-2: bei 360 px keine Überbreite (Tagesliste, Bildreihe, Karten, Tage); bis 560 px sind die Pfeile ausgeblendet."""
+        e, _ = ergebnis
+        h = e["aus"]["handy"]
+        zu_breit = {k: v for k, v in h["ueberbreite"].items() if v > 0}
+        assert zu_breit == {}, zu_breit
+>       assert h.get("pfeile") and all(d == "none" for d in h["pfeile"]), h.get("pfeile")
+E       AssertionError: None
+E       assert (None)
+E        +  where None = <built-in method get of dict object at 0x77bb150f8dc0>('pfeile')
+E        +    where <built-in method get of dict object at 0x77bb150f8dc0> = {'ueberbreite': {'#plan': 0, '#wissen': 0, 'T-01': 0, 'T-02': 0, ...}}.get
+
+engine/tests/test_seite_bilder.py:163: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_bilder.py::test_p2_daten_enthalten_nur_aktive_bilder_mit_nennung_als_daten
+FAILED engine/tests/test_bilder.py::test_p2_bildlink_im_satz_wird_als_bild_gezeigt
+FAILED engine/tests/test_bilder.py::test_p2_bild_im_text_ist_ein_figure_mit_bildtext_und_nennung
+FAILED engine/tests/test_bilder.py::test_p2_precache_kleine_alle_grosse_nur_titel_kopf_und_text
+FAILED engine/tests/test_bilder.py::test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe
+FAILED engine/tests/test_bilder.py::test_p2_warnung_ueber_offline_grenze_und_der_bau_gelingt
+FAILED engine/tests/test_bilder.py::test_p2_neue_texte_in_allen_sprachen - As...
+FAILED engine/tests/test_bilder.py::test_p2_bausteine_an_allen_vier_stellen
+FAILED engine/tests/test_bilder.py::test_seite_unter_der_csp_ohne_meldung[chromium]
+FAILED engine/tests/test_bilder.py::test_seite_unter_der_csp_ohne_meldung[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_ohne_seitenfehler_und_ohne_csp_meldung[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_titelbild_vor_dem_reisekopf_mit_nennung[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_unterkunft_kopfbild_nur_an_der_ersten_nacht[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_grossansicht_zaehler_tasten_fokus_und_wischen[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_handy_360_ohne_ueberbreite_und_ohne_pfeile[chromium]
+FAILED engine/tests/test_seite_bilder.py::test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_ohne_seitenfehler_und_ohne_csp_meldung[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_titelbild_vor_dem_reisekopf_mit_nennung[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_unterkunft_kopfbild_nur_an_der_ersten_nacht[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_grossansicht_zaehler_tasten_fokus_und_wischen[webkit]
+FAILED engine/tests/test_seite_bilder.py::test_handy_360_ohne_ueberbreite_und_ohne_pfeile[webkit]
+26 failed, 5 passed in 25.53s

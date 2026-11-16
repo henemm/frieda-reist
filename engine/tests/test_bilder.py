@@ -771,3 +771,247 @@ def test_f007_trockenlauf_nennt_eindeutige_kennungen(wanderung):
     meldungen = neu.bilder_nachziehen(wanderung, schreiben=False)
     kennungen = re.findall(r"→ (BI-\d+)", " ".join(meldungen))
     assert len(kennungen) == 2 and len(set(kennungen)) == 2, meldungen
+
+
+# ---------- P2: Daten an die Seite, Bild im Text, Offline in zwei Stufen, Beispielbilder (#455, Spec bilder-455-p2) ----------
+
+def felder_setzen(ordner, bid, **felder):
+    p = ordner / "plan" / "bilder.yaml"
+    roh = yaml.safe_load(p.read_text(encoding="utf-8"))
+    for b in roh["bilder"]:
+        if b["id"] == bid:
+            b.update(felder)
+    p.write_text(yaml.safe_dump(roh, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def zeichenketten(x):
+    """Alle Zeichenketten in den Seitendaten (die Texte der Abschnitte stehen als HTML darin)."""
+    if isinstance(x, str):
+        yield x
+    elif isinstance(x, dict):
+        for v in x.values():
+            yield from zeichenketten(v)
+    elif isinstance(x, (list, tuple)):
+        for v in x:
+            yield from zeichenketten(v)
+
+
+def figur(daten, bid):
+    """Das <figure> mit data-bild="bid" aus den Texten der Seite, sonst None."""
+    for s in zeichenketten(daten):
+        for m in re.finditer(r"<figure\b[^>]*>.*?</figure>", s, flags=re.S):
+            if f'data-bild="{bid}"' in m.group(0):
+                return m.group(0)
+    return None
+
+
+def aktive_gruppen(bilder):
+    """{zu: [aktive Bilder in der Reihenfolge der Liste]}; das erste je Ding ist sein Kopfbild."""
+    gruppen = {}
+    for b in bilder:
+        if b.get("status", "aktiv") == "aktiv":
+            gruppen.setdefault(b["zu"], []).append(b)
+    return gruppen
+
+
+def test_p2_daten_enthalten_nur_aktive_bilder_mit_nennung_als_daten(wanderung):
+    """V12: daten()["bilder"] je aktivem Bild id, zu, klein, gross, alt, bildunterschrift, titel, nennung; Nennung als Daten
+    (kein HTML), bei quelle: reise null, gemeinfrei nur der Urheber; zurückgezogene fehlen; Reihenfolge der Liste."""
+    bild_eintragen(wanderung, "BI-60", zu="O-01", status="zurueckgezogen")
+    bild_eintragen(wanderung, "BI-61", zu="O-01", lizenz="CC0", urheber="Erika Frei")
+    felder_setzen(wanderung, "BI-61", alt="Ein Felsen", bildunterschrift="Der Felsen")
+    d = probebau(wanderung)
+    assert "bilder" in d, "daten() liefert keinen Schlüssel bilder"
+    erwartet = [b for b in liste(wanderung) if b.get("status", "aktiv") == "aktiv"]
+    assert [x["id"] for x in d["bilder"]] == [b["id"] for b in erwartet]
+    assert "BI-60" not in [x["id"] for x in d["bilder"]]
+    for x, b in zip(d["bilder"], erwartet):
+        assert {"id", "zu", "klein", "gross", "alt", "bildunterschrift", "titel", "nennung"} <= set(x), x
+        assert x["zu"] == b["zu"] and x["klein"] == b["dateien"]["klein"] and x["gross"] == b["dateien"]["gross"]
+        assert x["klein"].startswith("medien/bilder/") and x["gross"].startswith("medien/bilder/")
+        assert x["titel"] is bool(b.get("titelbild"))
+        if b["quelle"] == "reise":
+            assert x["nennung"] is None, x
+        else:
+            assert isinstance(x["nennung"], dict) and set(x["nennung"]) <= {"urheber", "lizenz", "lizenz_url", "seite"}, x
+            assert not any("<" in str(v) for v in x["nennung"].values()), x["nennung"]
+            assert x["nennung"]["urheber"] == b["urheber"]
+    frei = next(x for x in d["bilder"] if x["id"] == "BI-61")
+    assert {k: v for k, v in frei["nennung"].items() if v} == {"urheber": "Erika Frei"}, frei["nennung"]
+    assert frei["alt"] == "Ein Felsen" and frei["bildunterschrift"] == "Der Felsen"
+    cc = next(x for x in d["bilder"] if x["id"] == "BI-03")
+    assert cc["nennung"]["lizenz"] == "CC BY-SA 4.0" and cc["nennung"]["seite"].startswith("https://commons.wikimedia.org/")
+
+
+def test_p2_stadtwochenende_ohne_bilddaten_und_ohne_bilddateien(stadt, tmp_path):
+    """AC-3 (AC-12): ohne aktive Bilder fehlt der Schlüssel bilder ganz, und es gibt keine Bilddateien (Schutz gegen Rückschritt)."""
+    ziel = tmp_path / "dist"
+    bauen.bauen(stadt, ziel)
+    roh = (ziel / "daten.json").read_text(encoding="utf-8")
+    assert "bilder" not in json.loads(roh)
+    assert not (ziel / "medien" / "bilder").exists() or not any((ziel / "medien" / "bilder").iterdir())
+    assert 'data-bild=' not in roh
+
+
+def test_p2_nur_zurueckgezogene_bilder_heisst_keine_bilddaten(wanderung):
+    """AC-3: eine Reise, deren Bilder alle zurückgezogen sind, trägt keinen Schlüssel bilder (wie eine ohne Bilder)."""
+    (wanderung / "plan" / "bilder.yaml").unlink()
+    for name in ("wissen.md", "etappen.md"):
+        p = wanderung / "inhalt" / name
+        p.write_text(re.sub(r"!?\[[^\]]*\]\(BI-\d+\)", "", p.read_text(encoding="utf-8")), encoding="utf-8")
+    bild_eintragen(wanderung, "BI-01", zu="E-01", status="zurueckgezogen")
+    assert "bilder" not in probebau(wanderung)
+
+
+def test_p2_bild_im_text_ist_ein_figure_mit_bildtext_und_nennung(wanderung):
+    """V15: ![…](BI-NN) wird im Bau zu <figure> mit button.bild.text[data-bild] und figcaption mit .bildtext und .nennung (V16);
+    die P1-Zeile <br><small class="nennung"> gibt es nicht mehr."""
+    bild_eintragen(wanderung, "BI-50")
+    felder_setzen(wanderung, "BI-50", bildunterschrift="Die Brücke am Morgen", alt="Steinbrücke")
+    bild_eintragen(wanderung, "BI-51", lizenz="CC0", urheber="Erika Frei")
+    bild_eintragen(wanderung, "BI-52", quelle="reise")
+    text_anhaengen(wanderung, "![Die Brücke](BI-50)\n\n![Frei](BI-51)\n\n![Eigen](BI-52)")
+    d = probebau(wanderung)
+    f = figur(d, "BI-50")
+    assert f, 'kein <figure> mit data-bild="BI-50"'
+    knopf = re.search(r"<button\b[^>]*>", f).group(0)
+    assert 'class="bild text"' in knopf and 'data-bild="BI-50"' in knopf and "aria-label=" in knopf, knopf
+    assert "<img" in f and "medien/bilder/BI-50-1600.webp" in f and "<figcaption" in f
+    assert re.search(r'class="bildtext"[^>]*>[^<]*Die Brücke am Morgen', f), f
+    assert re.search(r'class="nennung"', f) and "Max Muster" in f and "CC BY-SA 4.0" in f, f
+    assert "creativecommons.org/licenses/by-sa/4.0" in f and "commons.wikimedia.org/wiki/File:Basteibruecke.jpg" in f
+    frei = figur(d, "BI-51")
+    assert frei and "Erika Frei" in frei and "creativecommons.org" not in frei and "commons.wikimedia.org" not in frei, frei
+    eigen = figur(d, "BI-52")
+    assert eigen and 'class="nennung"' not in eigen, eigen
+    assert not any('<small class="nennung">' in s for s in zeichenketten(d))
+
+
+def test_p2_bildlink_im_satz_wird_als_bild_gezeigt(wanderung):
+    """V12: [Text](BI-NN) im Satz: der Linktext bleibt im Satz, nach dem Absatz folgt dasselbe figure wie bei ![…](BI-NN);
+    zurückgezogen: reiner Text ohne Fehler; unbekannt: Baufehler."""
+    bild_eintragen(wanderung, "BI-55")
+    bild_eintragen(wanderung, "BI-56", status="zurueckgezogen")
+    text_anhaengen(wanderung, "Vom Hockstein sieht man [die alte Brücke](BI-55) gut. Früher stand dort [ein Turm](BI-56).")
+    d = probebau(wanderung)
+    absatz = next(s for s in zeichenketten(d) if "Vom Hockstein sieht man" in s)
+    assert "die alte Brücke" in absatz and 'href="BI-55"' not in absatz, absatz
+    f = figur(d, "BI-55")
+    assert f and 'class="bild text"' in f and "medien/bilder/BI-55-1600.webp" in f, f
+    assert f in absatz and absatz.index("die alte Brücke") < absatz.index(f), "figure folgt nicht nach dem Absatz"
+    assert "ein Turm" in absatz and 'data-bild="BI-56"' not in absatz and 'href="BI-56"' not in absatz
+    text_anhaengen(wanderung, "Und [das hier](BI-97) gibt es nicht.")
+    assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_unbekannt")
+
+
+def sw_dateien(ziel):
+    return json.loads(re.search(r"const DATEIEN = (\[.*\]);", (ziel / "sw.js").read_text(encoding="utf-8")).group(1))
+
+
+def test_p2_precache_kleine_alle_grosse_nur_titel_kopf_und_text(wanderung, tmp_path):
+    """V20, AC-5 (AC-14): __DATEIEN__ enthält alle kleinen Fassungen und die großen von Titel- und Kopfbildern (erstes Bild je
+    Ding) und von Bildern im Text, übrige große nicht; kopiert werden alle Fassungen."""
+    bild_eintragen(wanderung, "BI-62", zu="O-02")
+    bild_eintragen(wanderung, "BI-63", zu="O-02")
+    ziel = tmp_path / "dist"
+    bauen.bauen(wanderung, ziel)
+    dateien = set(sw_dateien(ziel))
+    gruppen = aktive_gruppen(liste(wanderung))
+    alle = [b for g in gruppen.values() for b in g]
+    assert {b["dateien"]["klein"] for b in alle} <= dateien, {b["dateien"]["klein"] for b in alle} - dateien
+    kopf = {g[0]["dateien"]["gross"] for g in gruppen.values()} | {b["dateien"]["gross"] for b in alle if b.get("titelbild")}
+    assert kopf <= dateien, kopf - dateien
+    im_text = set(re.findall(r"\]\((BI-\d+)\)", "".join(f.read_text(encoding="utf-8") for f in (wanderung / "inhalt").glob("*.md"))))
+    uebrige = {b["dateien"]["gross"] for b in alle if b["dateien"]["gross"] not in kopf and b["id"] not in im_text}
+    assert "medien/bilder/BI-63-1600.webp" in uebrige
+    assert uebrige.isdisjoint(dateien), uebrige & dateien
+    for b in alle:
+        assert (ziel / b["dateien"]["klein"]).exists() and (ziel / b["dateien"]["gross"]).exists(), b["id"]
+
+
+def test_p2_jpeg_pipeline_unter_medien_bleibt_und_alles_wird_aufgeraeumt(wanderung, tmp_path):
+    """AC-5: ein Bild aus medien/ (nicht der Bilderliste) wird wie vorher verkleinert, ausgeliefert und vorab geladen;
+    nicht mehr gebrauchte Dateien in der Ablage der Seite werden entfernt (Schutz gegen Rückschritt)."""
+    from PIL import Image
+    Image.new("RGB", (2400, 1600), "green").save(wanderung / "medien" / "foto-p2.jpg", "JPEG")
+    text_anhaengen(wanderung, "![Foto](../medien/foto-p2.jpg)")
+    ziel = tmp_path / "dist"
+    (ziel / "medien" / "bilder").mkdir(parents=True)
+    (ziel / "medien" / "bilder" / "BI-99-480.webp").write_bytes(b"alt")
+    bauen.bauen(wanderung, ziel)
+    assert "medien/foto-p2.jpg" in sw_dateien(ziel)
+    with Image.open(ziel / "medien" / "foto-p2.jpg") as im:
+        assert im.width == 1600
+    assert not (ziel / "medien" / "bilder" / "BI-99-480.webp").exists()
+
+
+def test_p2_warnung_ueber_offline_grenze_und_der_bau_gelingt(wanderung, tmp_path):
+    """V3, AC-6 (AC-14): Summe der Vorab-Bilddateien über bilder.offline_mb -> Warnung mit Katalogtext
+    (pruefung.bauen.bilder_offline), der Bau gelingt; unter der Grenze keine Warnung."""
+    import os
+    b = bild_eintragen(wanderung, "BI-64", zu="O-03")
+    (wanderung / b["dateien"]["klein"]).write_bytes(os.urandom(1_500_000))
+    reise_yaml_bilder(wanderung, {"offline_mb": 1})
+    bau = bauen.Bauer(wanderung, tmp_path / "dist")
+    bau.schreiben(bau.daten())
+    assert (tmp_path / "dist" / "index.html").exists()
+    assert meldet(bau.hinweise, "pruefung.bauen.bilder_offline"), bau.hinweise
+    reise_yaml_bilder(wanderung, {"offline_mb": 25})
+    bau = bauen.Bauer(wanderung, tmp_path / "dist2")
+    bau.schreiben(bau.daten())
+    assert not meldet(bau.hinweise, "pruefung.bauen.bilder_offline"), bau.hinweise
+
+
+def test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe():
+    """AC-8 (V24): echte freie Bilder (CC0, CC BY, CC BY-SA, gemeinfrei) mit je genau einer Zeile in THIRD_PARTY.md (Datei,
+    Urheber, Lizenz, Seite); ein Titelbild, ein Ort mit 3 Bildern, Kopfbilder aus Commons an Tag, Etappe und Unterkunft."""
+    bilder = liste(WANDERUNG)
+    zeilen = (WURZEL / "THIRD_PARTY.md").read_text(encoding="utf-8").splitlines()
+    for b in bilder:
+        if b["quelle"] == "reise":
+            continue
+        assert re.fullmatch(r"CC0( 1\.0)?|CC BY(-SA)? \d\.\d( [a-z]{2,})?", b["lizenz"]) or bilder_modul().gemeinfrei(b["lizenz"]), \
+            (b["id"], b["lizenz"])
+        treffer = [z for z in zeilen if re.match(rf"\|\s*{b['id']}\b", z)]
+        assert len(treffer) == 1, (b["id"], treffer)
+        z = treffer[0]
+        assert b["quelle"]["commons"] in z and b["urheber"] in z and b["lizenz"] in z and b["seite"] in z, z
+        for f in b["dateien"].values():
+            assert (WANDERUNG / f).is_file(), f
+    gruppen = aktive_gruppen(bilder)
+    assert sum(1 for b in bilder if b.get("titelbild")) == 1
+    assert any(z.startswith("O-") and len(g) >= 3 for z, g in gruppen.items()), sorted(gruppen)
+    for vorsilbe in ("T-", "E-", "U-"):
+        assert any(z.startswith(vorsilbe) and g[0]["quelle"] != "reise" for z, g in gruppen.items()), (vorsilbe, sorted(gruppen))
+
+
+# ---------- P2: Texte und Bausteine (AC-7) ----------
+
+NEUE_TEXTE = ("seite.bild.anzahl", "seite.bild.schliessen", "seite.bild.grossansicht", "seite.bild.vorheriges",
+              "seite.bild.naechstes", "seite.bild.zaehler", "pruefung.bauen.bilder_offline")
+
+
+def test_p2_neue_texte_in_allen_sprachen():
+    import texte
+    for kuerzel in texte.SPRACHEN:
+        katalog = texte.sprache(kuerzel).TEXTE
+        fehlt = [k for k in NEUE_TEXTE if k not in katalog]
+        assert fehlt == [], (kuerzel, fehlt)
+    de = texte.sprache("de").TEXTE
+    assert "{n}" in de["seite.bild.anzahl"], de["seite.bild.anzahl"]
+    assert {"{ding}", "{i}", "{n}"} <= set(re.findall(r"\{\w+\}", de["seite.bild.zaehler"])), de["seite.bild.zaehler"]
+
+
+def test_p2_bausteine_an_allen_vier_stellen():
+    """V19: neue Bausteine im Kopfkommentar (damit prüft test_design Bausteinseite und docs/design.md), Stile mit den Maßen des
+    Entwurfs, Token --r-gross statt --radius-gross; der Kopfkommentar des Service Workers sagt nicht mehr, alle Bilder würden
+    bei der Installation vorab gespeichert."""
+    from test_design import DESIGN, VORLAGE, bausteine
+    namen = {n for l in bausteine().values() for n in l}
+    fehlt = [n for n in ("bildEl", "miniEl", "galerieEl", "kopfBild") if n not in namen]
+    assert fehlt == [], fehlt
+    for klasse in (".bild", ".bild.titel", ".bild.kopf", ".bild.text", ".nennung", ".bildtext", ".mini", ".galerie", "#gross"):
+        assert re.search(re.escape(klasse) + r"\s*[{,]", VORLAGE), klasse
+    assert "--radius-gross" not in VORLAGE
+    assert "Großansicht" in DESIGN
+    assert not re.search(r"alle Bilder werden[^.]*vorab", (WURZEL / "engine" / "sw.vorlage.js").read_text(encoding="utf-8"))
