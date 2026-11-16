@@ -244,3 +244,89 @@ def test_seite_zeigt_langtext_als_markdown_ohne_html(tmp_path):
     v = e["V-01"]
     assert v["fremd"] == 0 and "<img" in v["text"] and ["_blank", "noopener"] in v["links"], v
     assert e["bausteine"]["li"] >= 2 and e["bausteine"]["fett"] >= 1
+
+
+# ---------- Hinweis eines Dings (Aufenthalt, Unterkunft, Ort, Strecke) ist Langtext ----------
+
+HINWEIS = "Ablauf (erfunden, Beispielwert):\n\n1. **Schwelle:** kurz innehalten\n2. **Intention:** ein Wort für den Tag\n3. *Weg* mit Blick ins Tal"
+DING_JE_REISE = {"beispielreise": "A-01", "stadtwochenende": "U-01"}
+
+
+def test_hinweis_im_register_nicht_kuerzer_als_bisher():
+    """Bisher galt MAX_TEXT; eine kleinere Grenze machte bestehende Hinweise beim nächsten Ändern ungültig."""
+    assert textform.form("ding.hinweis") == textform.LANG and textform.laenge("ding.hinweis") >= sb.MAX_TEXT
+
+
+@pytest.mark.parametrize("reise", DING_JE_REISE)
+def test_hinweis_aendern_behaelt_zeilen_und_liste(tmp_path, reise):
+    q = kopie(tmp_path, reise)
+    did = DING_JE_REISE[reise]
+    sb.ding_aendern(q, IDA, {"ziel": did, "hinweis": HINWEIS + "   \n\n\n", "quelle": "erfunden (Test)"})
+    gruppe = "aufenthalte" if did.startswith("A-") else "unterkuenfte"
+    assert routen(q)[gruppe][did]["hinweis"] == HINWEIS
+    bauen.Bauer(q, tmp_path / "web").daten()
+
+
+def test_hinweis_anlegen_behaelt_zeilen_und_liste(tmp_path):
+    q = kopie(tmp_path, "stadtwochenende")
+    sb.ding_anlegen(q, IDA, {"was": "ort", "titel": "Marktplatz", "quelle": "erfunden (Test)", "hinweis": HINWEIS})
+    o = next(o for o in routen(q)["orte"].values() if o.get("name") == "Marktplatz")
+    assert o["hinweis"] == HINWEIS
+    bauen.Bauer(q, tmp_path / "web").daten()
+
+
+@pytest.mark.parametrize("text, wort", [("## Morgens\nLos", "Überschriften"), ("<b>fett</b>", "HTML")])
+def test_hinweis_lehnt_ab_was_ein_langtext_nicht_kann(tmp_path, text, wort):
+    q = kopie(tmp_path)
+    with pytest.raises(sb.Ablehnung, match=wort):
+        sb.ding_aendern(q, IDA, {"ziel": "A-01", "hinweis": text})
+
+
+def test_alter_hinweis_mit_html_und_raute_bleibt_baubar(tmp_path):
+    """Bestehende Hinweise prüft nur ein neuer Schreibvorgang; Bauen und Veröffentlichen bleiben grün."""
+    q = kopie(tmp_path)
+    p = q / "plan" / "routen.yaml"
+    alt = p.read_text(encoding="utf-8")
+    assert "erfundenes Beispiel; Burg über dem Polenztal" in alt
+    p.write_text(alt.replace("erfundenes Beispiel; Burg über dem Polenztal", "erfundenes Beispiel; <b>Burg</b> ## über dem Polenztal", 1),
+                 encoding="utf-8")
+    d = bauen.Bauer(q, tmp_path / "web").daten()
+    assert "<b>Burg</b>" in json.dumps(d, ensure_ascii=False)
+
+
+def test_kalender_zeigt_hinweis_ohne_auszeichnung(tmp_path):
+    import kalender
+    q = kopie(tmp_path, "stadtwochenende")
+    sb.ding_aendern(q, IDA, {"ziel": "U-01", "hinweis": HINWEIS, "quelle": "erfunden (Test)"})
+    d = bauen.Bauer(q, tmp_path / "web").daten()
+    e = next(e for e in kalender.eintraege(d) if e.get("id") == "U-01")
+    assert "**" not in e["text"] and "1. Schwelle: kurz innehalten" in e["text"] and "\n2. Intention:" in e["text"]
+
+
+@pytest.mark.skipif(not _browser(), reason="Playwright fehlt")
+@pytest.mark.parametrize("reise", DING_JE_REISE)
+def test_seite_zeigt_hinweis_als_langtext(tmp_path, reise):
+    """Der Hinweis steht an der Heimat des Dings mit Fettem und nummerierter Liste; nirgends im Hauptbereich stehen Sternchen."""
+    from playwright_pfad import PLAYWRIGHT
+    q = kopie(tmp_path, reise)
+    did = DING_JE_REISE[reise]
+    sb.ding_aendern(q, IDA, {"ziel": did, "hinweis": HINWEIS, "quelle": "erfunden (Test)"})
+    bauen.bauen(q, tmp_path / "seiten" / "r")
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+    s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "seiten")))
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    try:
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_langtext.mjs"), str(PLAYWRIGHT),
+                              f"http://127.0.0.1:{s.server_address[1]}/r/", did],
+                             capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": "chromium"})
+    finally:
+        s.shutdown()
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    e = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert e["fehler"] == []
+    h = e[did]
+    assert h["ol"] >= 3 and h["fett"] >= 2 and not h["sterne"] and not h["main_sterne"], h

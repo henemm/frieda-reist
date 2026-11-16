@@ -20,9 +20,10 @@ for (const a of anker) {
     const text = lt.map(e => e.textContent).join(" | ");
     return {anzahl: lt.length, li: lt.reduce((n, e) => n + e.querySelectorAll("li").length, 0),
             fett: lt.reduce((n, e) => n + e.querySelectorAll("strong").length, 0),
+            ol: lt.reduce((n, e) => n + e.querySelectorAll("ol > li").length, 0),
             links: lt.flatMap(e => [...e.querySelectorAll("a[href^='http']")].map(x => [x.getAttribute("target"), x.getAttribute("rel")])),
             fremd: lt.reduce((n, e) => n + e.querySelectorAll("img, script, h1, h2, h3, table, iframe").length, 0),
-            sterne: /\*\*/.test(text), text};
+            sterne: /\*\*/.test(text), main_sterne: /\*\*/.test(document.querySelector("#main").textContent), text};
   });
   await p.close();
 }
