@@ -135,6 +135,16 @@ def test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung(ergebnis):
     assert any(x["bildtext"].strip() for x in text), text
 
 
+def test_jedes_bild_genau_einmal_verpackt(ergebnis):
+    """F001: kein figure im figure oder im Knopf, jeder button[data-bild] trägt genau ein img, je figure höchstens ein figcaption
+    (Wissenstext und Tagesseiten mit Etappentext)."""
+    e, _ = ergebnis
+    v = e["aus"]["verpackung"]
+    assert sum(x["knoepfe"] for x in v.values()) >= 3, v
+    falsch = {z: x for z, x in v.items() if x["verschachtelt"] or x["knopfOhneEinBild"] or x["figcaptions"]}
+    assert falsch == {}, falsch
+
+
 def test_grossansicht_zaehler_tasten_fokus_und_wischen(ergebnis):
     """AC-2: Großansicht modal mit „Ding · i / n“, Pfeiltasten wechseln, Escape schließt mit Fokusrückgabe, Wischen waagerecht
     wechselt, nach unten schließt; vor dem ersten Öffnen gibt es kein #gross."""

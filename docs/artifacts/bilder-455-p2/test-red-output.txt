@@ -4,7 +4,7 @@ bringing up nodes...
 .FF.FFFFF.FFFFF.FFFFFFFF.FFFFFF                                          [100%]
 =================================== FAILURES ===================================
 _______ test_p2_daten_enthalten_nur_aktive_bilder_mit_nennung_als_daten ________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw1/test_p2_daten_enthalten_nur_ak0/beispielreise')
 
@@ -21,7 +21,7 @@ E       assert 'bilder' in {'reise': {'titel': 'Beispielreise – Malerweg in vi
 
 engine/tests/test_bilder.py:824: AssertionError
 ________________ test_p2_bildlink_im_satz_wird_als_bild_gezeigt ________________
-[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
 
 wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw3/test_p2_bildlink_im_satz_wird_0/beispielreise')
 
@@ -47,7 +47,7 @@ E         ...Full output truncated (1 line hidden), use '-vv' to show)
 
 engine/tests/test_bilder.py:898: AssertionError
 _________ test_p2_bild_im_text_ist_ein_figure_mit_bildtext_und_nennung _________
-[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 
 wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw2/test_p2_bild_im_text_ist_ein_f0/beispielreise')
 
@@ -67,7 +67,7 @@ E       assert None
 
 engine/tests/test_bilder.py:876: AssertionError
 _________ test_p2_precache_kleine_alle_grosse_nur_titel_kopf_und_text __________
-[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
 
 wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw3/test_p2_precache_kleine_alle_g0/beispielreise')
 tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw3/test_p2_precache_kleine_alle_g0')
@@ -95,7 +95,7 @@ E         'medien/bilder/BI-03-480.webp'
 
 engine/tests/test_bilder.py:921: AssertionError
 _______ test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe _______
-[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
 
     def test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe():
         """AC-8 (V24): echte freie Bilder (CC0, CC BY, CC BY-SA, gemeinfrei) mit je genau einer Zeile in THIRD_PARTY.md (Datei,
@@ -122,7 +122,7 @@ E        +  where False = any(<generator object test_p2_beispielbilder_frei_mit_
 
 engine/tests/test_bilder.py:983: AssertionError
 ___________ test_p2_warnung_ueber_offline_grenze_und_der_bau_gelingt ___________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 wanderung = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw1/test_p2_warnung_ueber_offline_0/beispielreise')
 tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw1/test_p2_warnung_ueber_offline_0')
@@ -145,7 +145,7 @@ E        +    where [] = <bauen.Bauer object at 0x7b4c293d8f50>.hinweise
 
 engine/tests/test_bilder.py:958: AssertionError
 _____________________ test_p2_neue_texte_in_allen_sprachen _____________________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
     def test_p2_neue_texte_in_allen_sprachen():
         import texte
@@ -161,7 +161,7 @@ E             Use -v to get more diff
 
 engine/tests/test_bilder.py:999: AssertionError
 ___________________ test_p2_bausteine_an_allen_vier_stellen ____________________
-[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 
     def test_p2_bausteine_an_allen_vier_stellen():
         """V19: neue Bausteine im Kopfkommentar (damit prüft test_design Bausteinseite und docs/design.md), Stile mit den Maßen des
@@ -179,7 +179,7 @@ E         Use -v to get more diff
 
 engine/tests/test_bilder.py:1012: AssertionError
 _______________ test_seite_unter_der_csp_ohne_meldung[chromium] ________________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw0/test_seite_unter_der_csp_ohne_0')
 browser = 'chromium'
@@ -226,7 +226,7 @@ E        +  where False = any(<generator object test_seite_unter_der_csp_ohne_me
 
 engine/tests/test_bilder.py:662: AssertionError
 ________________ test_seite_unter_der_csp_ohne_meldung[webkit] _________________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-16806/popen-gw0/test_seite_unter_der_csp_ohne_1')
 browser = 'webkit'
@@ -273,7 +273,7 @@ E        +  where False = any(<generator object test_seite_unter_der_csp_ohne_me
 
 engine/tests/test_bilder.py:662: AssertionError
 ____________ test_ohne_seitenfehler_und_ohne_csp_meldung[chromium] _____________
-[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -287,7 +287,7 @@ E       assert 0 > 0
 
 engine/tests/test_seite_bilder.py:68: AssertionError
 ____________ test_titelbild_vor_dem_reisekopf_mit_nennung[chromium] ____________
-[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -301,7 +301,7 @@ E       assert None
 
 engine/tests/test_seite_bilder.py:77: AssertionError
 _______ test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[chromium] _______
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -317,7 +317,7 @@ E        +  where False = any(<generator object test_mini_in_der_tagesliste_nur_
 
 engine/tests/test_seite_bilder.py:89: AssertionError
 __ test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[chromium] ___
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -333,7 +333,7 @@ E            +  where False = any(<generator object test_kopfbilder_16_9_an_ort_
 
 engine/tests/test_seite_bilder.py:102: AssertionError
 __________ test_unterkunft_kopfbild_nur_an_der_ersten_nacht[chromium] __________
-[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -346,7 +346,7 @@ E       assert []
 
 engine/tests/test_seite_bilder.py:119: AssertionError
 ____ test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[chromium] _____
-[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -361,7 +361,7 @@ E        +  where 0 = len([])
 
 engine/tests/test_seite_bilder.py:132: AssertionError
 _________ test_grossansicht_zaehler_tasten_fokus_und_wischen[chromium] _________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -377,7 +377,7 @@ E       assert None
 
 engine/tests/test_seite_bilder.py:144: AssertionError
 __________ test_handy_360_ohne_ueberbreite_und_ohne_pfeile[chromium] ___________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -395,7 +395,7 @@ E        +    where <built-in method get of dict object at 0x77bb1503c380> = {'u
 
 engine/tests/test_seite_bilder.py:163: AssertionError
 ________ test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[webkit] ________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -411,7 +411,7 @@ E        +  where False = any(<generator object test_mini_in_der_tagesliste_nur_
 
 engine/tests/test_seite_bilder.py:89: AssertionError
 ___ test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[webkit] ____
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -427,7 +427,7 @@ E            +  where False = any(<generator object test_kopfbilder_16_9_an_ort_
 
 engine/tests/test_seite_bilder.py:102: AssertionError
 _____________ test_ohne_seitenfehler_und_ohne_csp_meldung[webkit] ______________
-[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -441,7 +441,7 @@ E       assert 0 > 0
 
 engine/tests/test_seite_bilder.py:68: AssertionError
 _____________ test_titelbild_vor_dem_reisekopf_mit_nennung[webkit] _____________
-[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -455,7 +455,7 @@ E       assert None
 
 engine/tests/test_seite_bilder.py:77: AssertionError
 ___________ test_unterkunft_kopfbild_nur_an_der_ersten_nacht[webkit] ___________
-[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -468,7 +468,7 @@ E       assert []
 
 engine/tests/test_seite_bilder.py:119: AssertionError
 _____ test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[webkit] ______
-[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -483,7 +483,7 @@ E        +  where 0 = len([])
 
 engine/tests/test_seite_bilder.py:132: AssertionError
 __________ test_grossansicht_zaehler_tasten_fokus_und_wischen[webkit] __________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 
@@ -499,7 +499,7 @@ E       assert None
 
 engine/tests/test_seite_bilder.py:144: AssertionError
 ___________ test_handy_360_ohne_ueberbreite_und_ohne_pfeile[webkit] ____________
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/sleepy-puzzling-owl/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
 
 ergebnis = ({'fehler': [], 'aus': {'anzahl': 0, 'gruppen': {}, 'grossVorher': False, 'reise': {'titel': None, 'tage': [{'tag': 'T...>\n<li>Gehzeiten und Höhenmeter sind aus schematischen Tracks gerechnet (Beispielwerte)</li>\n</ul>', ...}, ...], ...})
 

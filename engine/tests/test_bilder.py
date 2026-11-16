@@ -904,6 +904,26 @@ def test_p2_bildlink_im_satz_wird_als_bild_gezeigt(wanderung):
     assert meldet(bau_meldungen(wanderung), "pruefung.bauen.bild_unbekannt")
 
 
+def test_p2_jedes_bild_im_text_genau_einmal_verpackt(wanderung):
+    """F001 (Gegenprüfung): je Bild im Text und je Bildlink genau ein figure mit genau einem button[data-bild], darin genau ein
+    img, und genau ein figcaption; nie ein figure im figure oder im Knopf (auch die Bilder der Beispielreise, BI-01 und BI-03)."""
+    bild_eintragen(wanderung, "BI-57")
+    felder_setzen(wanderung, "BI-57", bildunterschrift="Unterschrift")
+    bild_eintragen(wanderung, "BI-58")
+    text_anhaengen(wanderung, "![Brücke](BI-57)\n\nVom Hockstein sieht man [die Brücke](BI-58) gut.")
+    html = "".join(zeichenketten(probebau(wanderung)))
+    for bid in ("BI-01", "BI-03", "BI-57", "BI-58"):
+        knoepfe = re.findall(rf'<button\b[^>]*data-bild="{bid}"[^>]*>(.*?)</button>', html, flags=re.S)
+        assert len(knoepfe) == 1, (bid, knoepfe)
+        assert knoepfe[0].count("<img") == 1 and "<figure" not in knoepfe[0] and "<button" not in knoepfe[0], (bid, knoepfe[0])
+        f = figur({"x": html}, bid)
+        assert f.count("<figure") == 1 and f.count("<figcaption") <= 1, (bid, f)
+    assert html.count("<figure") == html.count("</figure>")
+    assert not re.search(r"<figure\b(?:(?!</figure>).)*<figure\b", html, flags=re.S), "figure im figure"
+    assert sum(html.count(f'data-bild="{b}"') for b in ("BI-57", "BI-58")) == 2
+    assert figur({"x": html}, "BI-57").count("<figcaption") == 1
+
+
 def sw_dateien(ziel):
     return json.loads(re.search(r"const DATEIEN = (\[.*\]);", (ziel / "sw.js").read_text(encoding="utf-8")).group(1))
 

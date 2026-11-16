@@ -92,8 +92,9 @@ for (const t of tage) {
   }, Object.fromEntries(Object.entries(gruppen).filter(([zu]) => zu.startsWith("U-")).map(([zu, g]) => [zu, [datei(g[0].klein), datei(g[0].gross)]])));
 }
 
-// Bild im Text und Bildlink im Satz (Wissen)
-await gehe(p, basis + "#wissen");
+// Bild im Text und Bildlink im Satz (Wissen): #wissen ist nur die Liste, der Text steht an der Seite seines Abschnitts (W-…)
+const wissenText = "#" + ((D.abschnitte || []).find(a => a.typ === "wissen" && JSON.stringify(a).includes("data-bild=")) || {id: "wissen"}).id;
+await gehe(p, basis + wissenText);
 await bilderLaden(p);
 aus.text = await p.evaluate(() => [...document.querySelectorAll("#main figure button.bild.text[data-bild]")].map(k => {
   const fig = k.closest("figure"), r = fig.getBoundingClientRect(), vorher = fig.previousElementSibling;
@@ -101,6 +102,15 @@ aus.text = await p.evaluate(() => [...document.querySelectorAll("#main figure bu
     nennung: (fig.querySelector("figcaption .nennung") || {}).textContent || "", breite: Math.round(r.width),
     nachSatz: vorher ? vorher.textContent.slice(-200) : ""};
 }));
+// F001: jedes Bild genau einmal verpackt: kein figure im figure, jeder button[data-bild] mit genau einem img, je figure höchstens
+// ein figcaption (Wissenstext und die Tagesseiten, auf denen Etappentexte mit Bildern stehen)
+const verpackung = q => q.evaluate(() => ({
+  verschachtelt: document.querySelectorAll("#main figure figure, #main button[data-bild] figure, #main button[data-bild] button").length,
+  knopfOhneEinBild: [...document.querySelectorAll("#main button[data-bild]")].filter(k => k.querySelectorAll("img").length !== 1).length,
+  figcaptions: [...document.querySelectorAll("#main figure")].filter(f => f.querySelectorAll("figcaption").length > 1).length,
+  knoepfe: document.querySelectorAll("#main button[data-bild]").length}));
+aus.verpackung = {[wissenText]: await verpackung(p)};
+for (const t of tage) { await gehe(p, basis + "#" + t.id); aus.verpackung[t.id] = await verpackung(p); }
 
 // Großansicht an einer Gruppe mit mindestens 3 Bildern
 const gross = Object.entries(gruppen).find(([zu, g]) => zu.startsWith("O-") && g.length >= 3);
@@ -152,7 +162,7 @@ await ctx.close();
 // Handy: 360 px ohne Überbreite, Pfeile der Großansicht ausgeblendet
 const [ctx2, h] = await kontext(360, 780);
 aus.handy = {ueberbreite: {}};
-for (const ziel of ["#plan", "#wissen", ...Object.keys(gruppen).filter(z => /^(O|E|T|U)-/.test(z)), ...tage.map(t => t.id)]) {
+for (const ziel of ["#plan", "#wissen", wissenText, ...Object.keys(gruppen).filter(z => /^(O|E|T|U)-/.test(z)), ...tage.map(t => t.id)]) {
   await gehe(h, basis + ziel.replace(/^(?!#)/, "#"));
   await bilderLaden(h);
   aus.handy.ueberbreite[ziel] = await h.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

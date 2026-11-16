@@ -215,8 +215,30 @@ button.zid.hat-rm .zid-blase{fill:var(--acc2)}
 @media (max-width:1099px),(pointer:coarse){
   details:not([open])>summary .zid-box,.vorschau .zid-box{display:none}
 }
+/* ---------- Atome Bild, Nennung, Bildtext, Mini (#455, Entwurf Variante A) ----------
+   Bild: Knopf, der die Großansicht öffnet; Titelbild 16:10 mit großem Radius, Kopfbild 16:9, Bild im Text im Seitenverhältnis
+   des Bildes in Spaltenbreite. Das Bild füllt den Knopf (cover), nur im Text bestimmt es die Höhe. */
+.pico button.bild{all:unset;box-sizing:border-box;display:block;position:relative;width:100%;overflow:hidden;cursor:zoom-in;border-radius:var(--r);background:var(--line)}
+.pico button.bild:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.pico button.bild img{display:block;border-radius:0;position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pico .bild.titel{aspect-ratio:16/10;border-radius:var(--r-gross)}
+.pico .bild.kopf{aspect-ratio:16/9}
+.pico .bild.text{aspect-ratio:auto}
+.pico button.bild.text img{position:static;height:auto}
+.pico figure{margin:0 0 12px}
+.pico figcaption{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.pico .nennung{font-size:var(--t-etikett);line-height:1.35;color:var(--mut);overflow-wrap:anywhere}
+.pico .nennung a{color:var(--mut)}
+.pico .bildtext{font-size:var(--t-klein)}
+.pico .mini{display:block;flex:none;width:44px;height:44px;overflow:hidden;border-radius:var(--r-klein);background:var(--line)}
+.pico .mini img{display:block;width:100%;height:100%;object-fit:cover;border-radius:0}
 
 /* ==================== 4 Moleküle ==================== */
+/* ---------- Molekül Bildreihe (#455): weitere Bilder eines Dings, 72 × 54, mit „n Bilder“ ---------- */
+.pico .galerie{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px}
+.pico .galerie button.bild{width:72px;height:54px;flex:none;border-radius:var(--r-klein)}
+.pico .galerie .mehr{font-size:var(--t-klein);color:var(--mut)}
+.kopfbild.titel figure{margin-bottom:16px}
 /* ---------- Fläche: Karte und aufklappbarer Block ---------- */
 .karte{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:0 0 10px;color:inherit;text-decoration:none}
 a.karte:active{background:var(--acc2)}
@@ -754,8 +776,13 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 .tz-marken{margin-top:4px}
 .pico .tz-marken .chip{font-size:var(--t-etikett);white-space:normal;border-radius:var(--r-klein);text-align:left}
 .achse .tagzeile:focus-visible,.achse .tagzeile.zurueck-hier{background:var(--acc2)}
+/* Tag mit Kopfbild: rechts eine eigene Spalte für das Mini (44 px, #455); Tage ohne Bild behalten ihr Raster */
+.tagzeile.mit-bild{grid-template-columns:3.5rem minmax(0,1fr) auto auto 44px}
+.achse .tagzeile.mit-bild{grid-template-columns:20px 3.4rem minmax(0,1fr) 44px}
+.tagzeile>.mini{grid-column:-2;grid-row:1 / span 3;align-self:center}
 @media (min-width:1100px){
   .achse .tagzeile{grid-template-columns:20px 3.4rem minmax(0,1.25fr) 8.5rem minmax(0,1fr);align-items:start}
+  .achse .tagzeile.mit-bild{grid-template-columns:20px 3.4rem minmax(0,1.25fr) 8.5rem minmax(0,1fr) 44px}
   .reise-links .kartenbox{height:24rem;min-height:0}
   .achse .tz-titel{grid-column:3}
   .achse .tz-zeit{grid-column:4;grid-row:1;padding-top:1px}
@@ -901,6 +928,25 @@ details.pack-klapper>summary .pack-summe{margin:0 0 0 auto}
 .pack-fortschritt{font-size:var(--t-klein);font-weight:400;color:var(--mut)}
 .pico details.pack-weg{margin:14px 0 0;max-width:var(--lese)}
 .pico details.pack-weg>summary{color:var(--mut);font-size:var(--t-klein);padding-block:12px}
+/* ---------- Organismus Großansicht (#gross, #455): dunkler Grund, oben Zähler und Schließen, Mitte Pfeile und Bild, unten
+   Bildunterschrift und Nennung; Abstände mit safe-area. Außerhalb von .pico (eigene Knöpfe). Über dem Bild nimmt die Seite
+   die Geste ganz (touch-action: none), sonst bräche der Browser das Wischen nach unten als Rollen ab. */
+#gross{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;box-sizing:border-box;
+  padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+  background:rgba(8,10,9,.94);color:#eceee9;font-family:var(--font-text);touch-action:pan-y;container:gross / inline-size}
+#gross[open]{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px}
+#gross::backdrop{background:transparent}
+#gross .gross-oben{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:var(--t-klein)}
+#gross .gross-mitte{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:0;touch-action:none}
+#gross .gross-mitte img{grid-column:2;grid-row:1;width:100%;height:100%;min-height:0;object-fit:contain;border-radius:0;user-select:none;-webkit-user-drag:none}
+#gross button{background:transparent;color:inherit;border:1px solid rgba(236,238,233,.35);border-radius:var(--r-pille);padding:6px 14px;font:inherit;cursor:pointer}
+#gross button:focus-visible{outline:2px solid #eceee9;outline-offset:2px}
+#gross .pfeil{width:var(--knopf);height:var(--knopf);padding:0;font-size:var(--t-titel);line-height:1}
+#gross .pfeil.allein{visibility:hidden}
+#gross .gross-unten{display:flex;flex-direction:column;gap:2px;align-items:center;text-align:center;font-size:var(--t-klein)}
+#gross .nennung,#gross .nennung a{font-size:var(--t-etikett);color:#c3c8c2}
+/* Bis 560 px Breite der Seite keine Pfeile (Inhalt 540 px nach 2 × 10 px Rand): am Handy wischt man */
+@container gross (max-width:540px){#gross .pfeil{display:none}}
 /* ==================== 6 Vorlagen: Teile der Ansichten ==================== */
 .zurueck{display:inline-block;margin:0 0 8px;padding:6px 0;text-decoration:none;font-weight:600}
 a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);text-decoration:none}
@@ -1402,9 +1448,9 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip
-   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, Rechtszeile (HTML im Fuß)
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe
+   Atome: T, zahlText, symbol, chip, etikett (CSS), merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip, bildEl, miniEl, bildNennung
+   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, Rechtszeile (HTML im Fuß)
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe, grossAnsicht
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -1420,6 +1466,102 @@ function chip(zustand, text, attrs) {
   const {href, class: zusatz, ...rest} = attrs || {};
   return el(href ? "a" : "span", {class: "chip" + (CHIP[zustand] ?? (zustand ? " " + zustand : "")) + (zusatz ? " " + zusatz : ""), href, ...rest}, text);
 }
+
+/* ---------- Bilder der Reise (#455, Stufe 1 P2; docs/design.md „Bilder“) ----------
+   D.bilder fehlt bei einer Reise ohne aktive Bilder; dann zeichnet keiner dieser Bausteine etwas. Je Ding (zu) ist das erste Bild
+   der Liste sein Kopfbild, es steht nur an der Heimat des Dings (ADR-0003); anderswo höchstens ein Mini. Die Nennung kommt als
+   Daten und wird hier als Text und Link gesetzt, nie als HTML (V9, V16). */
+const BILDER = D.bilder || [];
+const bilderZu = id => BILDER.filter(b => b.zu === id);
+const bildDing = zu => zu === "reise" ? D.reise.titel : titelZu(zu) || zu;
+// Atom Nennung: Urheber · Lizenz (Link) · Commons-Seite; gemeinfrei nur der Urheber, aus der Reise selbst keine
+function bildNennung(b) {
+  const n = b.nennung;
+  if (!n) return null;
+  const link = (url, text) => url ? el("a", {href: url, target: "_blank", rel: "noopener"}, text) : text;
+  const teile = [n.urheber, n.lizenz ? link(n.lizenz_url, n.lizenz) : null, n.seite ? link(n.seite, T("seite.bild.commons")) : null].filter(Boolean);
+  return teile.length ? el("span", {class: "nennung"}, teile.flatMap((t, i) => i ? [" · ", t] : [t])) : null;
+}
+// Atom Bild: Knopf, der die Großansicht öffnet (data-bild, kein Inline-Handler). art: titel (16:10), kopf (16:9), "" (Bildreihe);
+// Titel- und Kopfbild zeigen die große Fassung (vorab geladen, V20), die Bildreihe die kleine
+function bildEl(b, art) {
+  const gross = art === "titel" || art === "kopf";
+  return el("button", {type: "button", class: "bild" + (art ? " " + art : ""), "data-bild": b.id,
+    "aria-label": T("seite.bild.grossansicht", {name: b.alt || b.bildunterschrift || bildDing(b.zu)})},
+    el("img", {src: gross ? b.gross : b.klein, alt: b.alt || "", loading: art === "titel" ? null : "lazy", decoding: "async"}));
+}
+// Atom Mini: kleine Vorschau (44 px) in einer Zeile, die selbst ein Link ist (Tagesliste, Nacht ohne Heimat); kein Knopf
+function miniEl(b) {
+  return b ? el("span", {class: "mini", "aria-hidden": "true"}, el("img", {src: b.klein, alt: "", loading: "lazy", decoding: "async"})) : null;
+}
+// Molekül Bildreihe: die weiteren Bilder eines Dings (72 × 54) und „n Bilder“
+function galerieEl(gruppe) {
+  return gruppe.length > 1 ? el("div", {class: "galerie"}, gruppe.slice(1).map(b => bildEl(b, "")),
+    el("span", {class: "mehr"}, T("seite.bild.anzahl", {n: gruppe.length}))) : null;
+}
+// Molekül Kopfbild: erstes Bild eines Dings mit Nennung, darunter die Bildreihe; art titel für das Titelbild der Reise
+function kopfBild(id, art = "kopf") {
+  const gruppe = art === "titel" ? BILDER.filter(b => b.titel) : bilderZu(id);
+  if (!gruppe.length) return null;
+  const nennung = bildNennung(gruppe[0]);
+  return el("div", {class: "kopfbild " + art}, el("figure", {}, bildEl(gruppe[0], art), nennung ? el("figcaption", {}, nennung) : null),
+    art === "titel" ? null : galerieEl(gruppe));
+}
+// Organismus Großansicht (V17): modaler Dialog, erst beim ersten Öffnen erzeugt (Reisen ohne Bilder tragen ihn nie, AC-12).
+// Gruppe = Bilder desselben Dings; Pfeiltasten und Wischen wechseln, Escape und Wischen nach unten schließen, der Fokus geht
+// danach an den Auslöser zurück (WebKit gibt ihn nicht verlässlich selbst zurück)
+let GROSS = null;
+function grossAnsicht(gruppe, i, ausloeser) {
+  if (!GROSS) GROSS = (() => {
+    const zaehler = el("span", {class: "zaehler", id: "gross-zaehler"}), img = el("img", {alt: ""});
+    const knopf = (klasse, text, label) => el("button", {type: "button", class: klasse, "aria-label": label}, text);
+    const zu = knopf("schliessen", T("seite.bild.schliessen") + " ✕", null);
+    const zurueck = knopf("pfeil", "‹", T("seite.bild.vorheriges")), vor = knopf("pfeil", "›", T("seite.bild.naechstes"));
+    const text = el("div", {class: "bildtext"}), nennung = el("div", {});
+    const d = el("dialog", {id: "gross", "aria-labelledby": "gross-zaehler"},
+      el("div", {class: "gross-oben"}, zaehler, " ", zu), el("div", {class: "gross-mitte"}, zurueck, img, vor), el("div", {class: "gross-unten"}, text, nennung));
+    const g = {d};
+    g.zeigen = () => {
+      const b = g.gruppe[g.i];
+      zaehler.textContent = T("seite.bild.zaehler", {ding: bildDing(b.zu), i: g.i + 1, n: g.gruppe.length});
+      img.src = b.gross;
+      img.alt = b.alt || "";
+      text.textContent = b.bildunterschrift || "";
+      nennung.replaceChildren(...[bildNennung(b)].filter(Boolean));
+      for (const p of [zurueck, vor]) p.classList.toggle("allein", g.gruppe.length < 2);
+    };
+    const wechseln = s => { g.i = (g.i + s + g.gruppe.length) % g.gruppe.length; g.zeigen(); };
+    zu.addEventListener("click", () => d.close());
+    zurueck.addEventListener("click", () => wechseln(-1));
+    vor.addEventListener("click", () => wechseln(1));
+    d.addEventListener("keydown", e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); wechseln(e.key === "ArrowLeft" ? -1 : 1); } });
+    d.addEventListener("close", () => { if (g.ausloeser && g.ausloeser.isConnected) g.ausloeser.focus(); });
+    let start = null;
+    d.addEventListener("pointerdown", e => { start = e.target.closest("button") ? null : {x: e.clientX, y: e.clientY}; });
+    d.addEventListener("pointercancel", () => { start = null; });
+    d.addEventListener("pointerup", e => {
+      if (!start) return;
+      const dx = e.clientX - start.x, dy = e.clientY - start.y;
+      start = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) wechseln(dx < 0 ? 1 : -1);
+      else if (dy > 80 && dy > Math.abs(dx)) d.close();
+    });
+    document.body.append(d);
+    return g;
+  })();
+  Object.assign(GROSS, {gruppe, i, ausloeser});
+  GROSS.zeigen();
+  if (!GROSS.d.open) GROSS.d.showModal();
+  return GROSS.d;
+}
+document.addEventListener("click", e => {
+  const k = e.target.closest("[data-bild]");
+  const b = k && BILDER.find(x => x.id === k.dataset.bild);
+  if (!b) return;
+  e.preventDefault();
+  const gruppe = bilderZu(b.zu);
+  grossAnsicht(gruppe, Math.max(0, gruppe.indexOf(b)), k);
+});
 
 function zeilenKarte(spalten, z) {
   const k = el("div", {class: "karte ziel", id: z.id, "data-ziel": z.id});
@@ -1695,7 +1837,8 @@ function nachtUnterkunft(n) {
   return n.unterkunft && R.unterkuenfte[n.unterkunft] ? n.unterkunft : akt && (akt.unterkuenfte || []).find(x => R.unterkuenfte[x]);
 }
 // Die Zeile trägt keine Kennung als Sprungziel: Heimat der Wahl der Nacht ist der Abschnitt „Nacht“ der Tagesseite (#214)
-function nachtZeile(n, ohneLinks, datum, verweis) {
+// mitBild: Nacht außerhalb der Heimat der Unterkunft (nachtAbschnitt): ein Mini ihres Kopfbilds, die Karte steht an der Heimat (V14)
+function nachtZeile(n, ohneLinks, datum, verweis, mitBild) {
   const w = n.wahl && wahlZu.get(n.wahl);
   const kand = w ? w.optionen.filter(o => !weg(o.status)) : [];
   const akt = w && (kand.find(o => o.aktiv) || kand[0]);
@@ -1713,7 +1856,7 @@ function nachtZeile(n, ohneLinks, datum, verweis) {
   const zustand = weiter ? standChip(bst) : !w || w.wann !== "planung" ? null : offen && ohneLinks ? chip("offen", T("seite.wahl.offen_n", {n: kand.length})) : wahlZustand(w);
   const kennung = ohneLinks ? null : w ? zid(w.id) : uid ? zid(uid) : null;
   const einstieg = w && !ohneLinks && !(bst && bst.gebucht) ? wahlEinstieg(w, false, datum, verweis ? "#" + w.id : null) : null;
-  const zeile = el("div", {class: "ding nacht"},
+  const zeile = el("div", {class: "ding nacht"}, mitBild && uid ? miniEl(bilderZu(uid)[0]) : null,
     el("div", {class: "ding-text"}, dingEtikett(T("seite.etikett.nacht"), kat !== "offen" ? kat : null, "nacht"),
       el("span", {class: "ding-titel"}, !ohneLinks && u ? link(uid, titel) : titel),
       unter.length ? el("span", {class: "ding-unter"}, unter.join(" · ")) : null,
@@ -1965,7 +2108,8 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   const datum = tid && tag.datum, st = buchungsStandAm(u, id, datum, nachtDing), gebucht = !!(st && st.gebucht);
   // Check-in-Ansicht (#463): gebucht steht der Teaser (hinweis) gleich unter dem Namen, nicht in „Aus der Planung“
   const etikett = nachtDing ? artName(u.art) || T("seite.etikett.unterkunft") : [artName(u.art), u.zeit, uhrText(u)].filter(Boolean).join(" · ");
-  const k = el("div", {class: "karte ziel", id, "data-ziel": id}, dingEtikett(etikett, u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
+  // Die Karte steht nur an der Heimat des Dings (erste Nacht, ADR-0003): dort oben sein Kopfbild (V14)
+  const k = el("div", {class: "karte ziel", id, "data-ziel": id}, kopfBild(id), dingEtikett(etikett, u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
   // Die Art steht im Etikett; der Ort nur, wenn ihn die Nacht oder die Seite nicht schon nennt
   if (u.ort && !ohneOrt && !(nacht && nacht.ort === u.ort)) k.append(el("div", {class: "z"}, ortName(u.ort)));
   if (gebucht && u.hinweis) k.append(el("div", {class: "z"}, u.hinweis));
@@ -3517,12 +3661,14 @@ function tagZeile(t) {
   const marken = [...(rand ? [] : t.fixpunkte || []).map(f => chip("leise", f)),
     ...wahl.map(w => chip(w.wann === "unterwegs" ? "unterwegs" : w.offen ? "offen" : "plan",
       (w.wann === "unterwegs" ? T("seite.wahl.unterwegs_label") : T("seite.label.wahl")) + w.titel.replace(REGEL.tagNr, "")))];
-  return el("a", {class: "tagzeile vorschau", href: "#" + t.id, "data-tag": t.id},
+  const bild = bilderZu(t.id)[0];   // Tag mit Kopfbild: rechts ein Mini (V13); ohne Bild bleibt die Zeile, wie sie war
+  return el("a", {class: "tagzeile vorschau" + (bild ? " mit-bild" : ""), href: "#" + t.id, "data-tag": t.id},
     el("span", {class: "tz-punkt", "aria-hidden": "true"}),
     el("span", {class: "tz-datum"}, t.nr != null ? el("b", {}, String(t.nr)) : null, t.datum ? datumText(t.datum, t.wochentag) : null),
     el("span", {class: "tz-titel"}, el("span", {class: "tz-name"}, t.titel), marken.length ? el("span", {class: "chips tz-marken"}, marken) : null),
     el("span", {class: "tz-zeit"}, [m ? dauer(m) : ohneZeit ? T("seite.tag.angaben_fehlen") : "", km ? kmText(km) : ""].filter(Boolean).join(" · ")),
-    s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null);
+    s ? el("span", {class: "tz-nacht"}, symbol("unterkunft", "etikett-sym"), el("span", {class: "tz-unterkunft"}, s.name), s.text ? chip(s.zustand, s.text) : null) : null,
+    miniEl(bild));
 }
 // Kennzahlen der ganzen Reise aus der Summe des Plans: mit Wanderdaten Tage, Gehzeit, Strecke, Höhenmeter; sonst Tage,
 // Nächte, Orte. Ob es Wanderdaten gibt, sagt summe.mit_kennzahlen; fehlende Angaben heißen so statt einer Null.
@@ -3706,6 +3852,8 @@ function ansichtReise(m, p) {
   const r = el("div", {class: "reise reise-links"}), rechts = el("div", {class: "reise reise-rechts"});
   aussen.append(r, rechts);
   m.append(aussen);
+  const titelbild = kopfBild(null, "titel");   // ganz oben, darunter klein die Nennung, darunter der Reisekopf (V13)
+  if (titelbild) r.append(titelbild);
   r.append(el("div", {class: "reisekopf"}, el("h2", {}, VARIANTEN_TITEL), reiseZaehler(p)));
   const an = reiseEnde("anreise", p.tage[0]);
   if (an) r.append(an);
@@ -4053,6 +4201,8 @@ function tagEbenen(t, etappen) {
   for (const a of etappen) {
     // Der Kopf der Etappe ist ihr Sprungziel (#E-…): ihre Heimat ist dieser Tag (ETAPPE_TAG)
     weg.append(Object.assign(ebeneKopf(a.name || a.titel, zid(a.id)), ETAPPE_TAG.get(a.id) === t.id ? {id: a.id} : {}));
+    const bild = ETAPPE_TAG.get(a.id) === t.id ? kopfBild(a.id) : null;   // Kopfbild der Etappe nur an ihrer Heimat (V14)
+    if (bild) weg.append(bild);
     for (const [, b] of teile.weg.filter(([x]) => x === a)) {
       const text = el("div", {class: "weg-text ziel", id: b.id, "data-ziel": b.id}, reiseText(b.html, kz(a)));
       weg.append(wegKurz(text));
@@ -4105,7 +4255,7 @@ function nachtAbschnitt(t) {
     const karte = uid && (!erste || erste === t.id);
     if (karte) s.append(dingKarte(uid, t.id, alle));
     // Gehört die Nacht zu einer Buchung mit Zeitraum, die früher beginnt, nennt der Verweis ihre Nummer (#463)
-    else if (uid) s.append(nachtZeile(n, false, t.datum, true), el("p", {class: "meldung"},
+    else if (uid) s.append(nachtZeile(n, false, t.datum, true, true), el("p", {class: "meldung"},
       st && st.bid && ((R.buchungen || {})[st.bid] || {}).anreise && R.buchungen[st.bid].nummer ? T("seite.tag.alles_zur_buchung", {nummer: R.buchungen[st.bid].nummer})
         : erste !== (R.unterkuenfte[uid].naechte || [])[0] ? T("seite.tag.alles_zum_aufenthalt") : T("seite.tag.alles_zur_unterkunft"),
       link(erste === (R.unterkuenfte[uid].naechte || [])[0] ? uid : erste, T("seite.tag.nr_pfeil", {nr: (R.tage.find(x => x.id === erste) || {}).nr || ""}))));
@@ -4136,6 +4286,8 @@ function ansichtTag(m, tid) {
   }
   // Zurück immer zur Reise, an dieselbe Zeile (ADR-0003 Punkt 4, #214)
   m.append(el("a", {class: "zurueck", href: "#varianten"}, "← " + VARIANTEN_TITEL));
+  const bild = kopfBild(tid);   // Kopfbild über der großen Tageszahl (V14)
+  if (bild) m.append(bild);
   m.append(tagKopf("h2", {class: "ziel", id: tid, "data-ziel": tid}, imPlan && imPlan.nr, imPlan && imPlan.datum, imPlan && imPlan.wochentag, t.titel, tid));
   const kopf = el("div", {class: "chips"});
   if (imPlan && imPlan.alt) kopf.append(chip("offen", T("seite.tag.alternative") + imPlan.alt.titel, {href: "#" + imPlan.alt.id}));
@@ -4191,6 +4343,8 @@ function ansichtOrt(m, a) {
   const p = PLAN_FEST || planZu(PLAN_ZULETZT), inPlan = ortPlaene(a.id).length > 0;
   m.append(inPlan || p ? el("a", {class: "zurueck", href: "#" + (p ? p.id : "varianten")}, "← " + (p ? `${p.kurz}: ${p.titel}` : T("seite.plan.alle_plaene")))
     : el("a", {class: "zurueck", href: "#orte"}, T("seite.ort.alle_orte_zurueck")));
+  const bild = kopfBild(a.id);   // Kopfbild über dem Namen, weitere Bilder als Bildreihe (V14)
+  if (bild) m.append(bild);
   m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
   const liegt = ortLiegtIn(a.id);
   if (liegt) m.append(liegt);
@@ -4461,14 +4615,17 @@ function ansichtGruppe(m, typ, titel) {
 function ansichtAbschnitt(m, a) {
   const zurueck = TYP_REITER[a.typ] || START;
   m.append(el("a", {class: "zurueck", href: "#" + zurueck}, T("seite.nav.zurueck")));
+  const bild = kopfBild(a.id);   // Etappe: über den Kennzahlen; Ort ohne Route: über dem Namen (V14)
   if (istEtappe(a)) {
     m.append(el("h2", {class: "ziel", id: a.id, "data-ziel": a.id}, a.titel, zid(a.id)));
+    if (bild) m.append(bild);
     const s = etappeTeil(a);
     s.querySelector("section").removeAttribute("id");
     m.append(s);
   } else if (a.typ === "ort") {
     // Ortsseite (ADR-0008, Schritt d): unter dem Titel „liegt in“ und die Karte des Orts, nach dem Text die Orte darin
     const s = abschnittInhalt(a), h = s.querySelector("h2"), oben = el("div", {});
+    if (bild) h.before(bild);
     const liegt = ortLiegtIn(a.id);
     if (liegt) oben.append(liegt);
     ortKarte(oben, a.id);
@@ -4608,6 +4765,19 @@ function ansichtBausteine(m) {
     fall("Zeitpunkt einer Bewegung", [zeitText("18:05"), " · ", zeitText("2027-05-13T20:15+02:00")]));
   teil("Atom", "Zahl", T("seite.bausteine.zahl.beschreibung"), fall("1234.5", zahlText(1234.5, {useGrouping: true})), fall("12.4 km", zahlText(12.4) + " km"));
   teil("Atom", "Nummer zum Kopieren", "Buchungsnummer als Chip mit Kopier-Knopf (#475); ohne Zwischenablage wird die Nummer markiert.", nummerChip("MUSTER-123"));
+  // Bilder der Reise (#455): nur mit Bildern dieser Reise; eine Reise ohne Bilder zeigt hier nur den Hinweis
+  const bsGruppe = BILDER.length ? bilderZu(BILDER.reduce((a, b) => bilderZu(b.zu).length > bilderZu(a.zu).length ? b : a).zu) : [];
+  if (bsGruppe.length) {
+    const b0 = bsGruppe[0], auf = el("button", {type: "button", class: "klein"}, "Großansicht öffnen");
+    auf.addEventListener("click", () => grossAnsicht(bsGruppe, 0, auf));
+    teil("Atom", "Bild", "Knopf, der die Großansicht öffnet: Titelbild 16:10 (Radius --r-gross), Kopfbild 16:9; im Text im Seitenverhältnis des Bildes.",
+      fall("Titelbild", bildEl(BILDER.find(b => b.titel) || b0, "titel")), fall("Kopfbild", bildEl(b0, "kopf")));
+    teil("Atom", "Nennung", "Urheber · Lizenz (Link) · Commons-Seite; gemeinfrei nur der Urheber, Bilder aus der Reise ohne Nennung.", bildNennung(b0));
+    teil("Atom", "Mini", "44 × 44 px in einer Zeile, die selbst ein Link ist (Tagesliste, Nacht außerhalb der Heimat der Unterkunft).", miniEl(b0));
+    teil("Molekül", "Bildreihe", "Die weiteren Bilder eines Dings, 72 × 54, mit der Zahl aller Bilder.", galerieEl(bsGruppe));
+    teil("Molekül", "Kopfbild", "Erstes Bild eines Dings an seiner Heimat (Ort, Etappe, Tag, Unterkunft an der ersten Nacht) mit Nennung und Bildreihe.", kopfBild(b0.zu));
+    teil("Organismus", "Großansicht", "Dunkler Dialog mit „Ding · i / n“, Pfeilen (bis 560 px ausgeblendet), Wischen, Escape; der Fokus kehrt zum Auslöser zurück.", auf);
+  } else teil("Atom", "Bild", "Diese Reise hat keine Bilder; Bild, Nennung, Mini, Bildreihe, Kopfbild und Großansicht erscheinen nur mit Bildern.");
   teil("Atom", "Zahlmarke", "Die Zahl der Einträge einer Gruppe oder eines Kapitels; im Gruppentitel (Molekül).",
     el("div", {class: "chips"}, zahlMarke(3)), gruppenTitel("Gruppe (Muster)", 2));
   teil("Atom", "Zustand Buchung", "Der Buchungsstand eines Dings als Chip (Molekül Buchungsstand: gebucht, nicht gebucht, angefragt; mit Buchung führt er zu ihr).",

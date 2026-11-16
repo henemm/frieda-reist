@@ -2,8 +2,10 @@
  *
  * Bewährtes Muster für Service Worker, mit diesen Lehren:
  *  - Liegt unter /<reise>-<token>/sw.js, Scope ist genau dieser Pfad.
- *  - Seite, Daten und alle Bilder werden bei der Installation vorab gespeichert, damit das
- *    Handbuch unterwegs ohne Netz vollständig ist (Karten, Höhenprofile).
+ *  - Seite, Daten und die Bilder aus DATEIEN werden bei der Installation vorab gespeichert, damit das
+ *    Handbuch unterwegs ohne Netz vollständig ist (Karten, Höhenprofile). Von den Bildern der Reise (#455, V20) stehen
+ *    dort die kleinen Fassungen aller und die großen von Titel-, Kopf- und Textbildern; die übrigen großen Fassungen
+ *    speichert der Worker erst beim Ansehen (ausSpeicher), nach einer neuen Version beim nächsten Ansehen erneut.
  *  - /api/ (Rückmeldungen, api/stand mit dem Reise-Stand auf dem Server, Epic #223) geht nie über den Speicher; ohne Netz
  *    sammelt die Seite selbst. So sieht die Seite einen neuen Reise-Stand, auch wenn der Worker noch den alten hält.
  *  - Eine neue Version wartet, bis man auf der Seite „Aktualisieren“ tippt. Sofortiges Übernehmen

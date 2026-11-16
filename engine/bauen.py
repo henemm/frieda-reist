@@ -40,7 +40,7 @@ except ImportError:
     sys.exit("Parts of the software are missing. Set up once:\n"
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
              "Then run:  python3 engine/bauen.py <reise>")
-from reise import Reise, eckdaten_text  # noqa: E402
+from reise import Reise, bilder_grenzen, eckdaten_text  # noqa: E402
 from routen import FARBEN, Routen, kartenpunkte_aus_dingen, verhalten_anwenden  # noqa: E402
 import bilder as bildliste  # noqa: E402
 import gpx  # noqa: E402
@@ -75,6 +75,8 @@ BILD_LINK = re.compile(r"(!?)\[([^\]]*)\]\(([^)\s]+)\)")
 # Bildquelle von einer fremden Adresse (#581): mit Schema oder ab „/“ bzw. „\“ (Browser lesen „/\host“ wie „//host“)
 # Bild der Bilderliste im Text (#455): ![alt](BI-NN), auch mit Titel oder kleingeschrieben (nie ein totes <img src="bi-01">)
 BILD_KENNUNG_IM_TEXT = re.compile(r"!\[([^\]]*)\]\(\s*(BI-\d+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)", re.I)
+# Bildlink im Satz (#455, V12): [Text](BI-NN) zeigt das Bild nach dem Absatz, der Text bleibt im Satz
+BILDLINK_IM_TEXT = re.compile(r"(?<!!)\[([^\]]*)\]\(\s*(BI-\d+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\s*\)", re.I)
 FREMDE_BILDQUELLE = re.compile(r"[a-z][a-z0-9+.-]*:|[/\\]", re.I)
 
 
@@ -343,7 +345,9 @@ class Bauer:
         self.ids = {}
         self.bilder = {}  # Quelldatei -> relativer Zielpfad
         self.fassungen = set()  # Quelldateien, die schon fertige WebP-Fassungen der Bilderliste sind: nur kopieren (#455)
-        self.nennungen = {}  # relativer Pfad einer großen Fassung -> HTML der Namensnennung
+        self.nennungen = {}  # relativer Pfad einer großen Fassung im Text -> Eintrag der Bilderliste (wird zum figure, V15)
+        self.im_text = set()  # große Fassungen, die im Text stehen: immer vorab geladen (V10a)
+        self.spaeter = set()  # große Fassungen ohne Titel- oder Kopfbild: lädt der Service Worker erst beim Ansehen (V20)
         self._bilder = None  # plan/bilder.yaml, beim ersten Gebrauch geladen
         self.grundkarte = None  # PMTiles-Datei der Offline-Karte, falls vorhanden
         self.grundkarten = {}  # regionale Grundkarten der Recherche-Karten: Zielname -> Quelldatei
@@ -431,7 +435,7 @@ class Bauer:
         h = re.sub(r'<img ', '<img loading="lazy" ', h)
         h = re.sub(r'<li><a href="(medien/[^"]+\.(?:jpe?g|png|webp|gif))">([^<]*)</a>',
                    r'<li><a class="bild" target="_blank" href="\1"><img loading="lazy" src="\1" alt=""><span>\2</span></a>', h)
-        h = self.nennungen_setzen(h)
+        h = self.figuren_setzen(h)
         return self.fussnoten_setzen(h, quelldatei)
 
     def fussnoten_setzen(self, h, quelldatei):
@@ -465,44 +469,88 @@ class Bauer:
                 self._bilder = {}
         return self._bilder
 
-    def bild_kennung(self, alt, bid, quelldatei):
-        """![alt](BI-NN) -> Markdown-Bild der großen Fassung (wie ein Bild aus medien/); zurückgezogen: entfällt ohne Fehler,
-        unbekannt: Baufehler. Die große Fassung kommt in die Bilderliste des Baus (Kopie und Offline-Liste)."""
+    def bild_kennung(self, alt, bid, quelldatei, link=False):
+        """![alt](BI-NN) -> Markdown-Bild der großen Fassung, das figuren_setzen nach dem Säubern zum figure macht (V15); ein
+        Bildlink [Text](BI-NN) (link) behält den Text im Satz, das Bild folgt nach dem Absatz (V12). Zurückgezogen: das Bild
+        entfällt ohne Fehler (vom Link bleibt der Text), unbekannt: Baufehler. Die große Fassung wird kopiert und vorab geladen."""
         b = self.bild_eintraege().get(bid)
+        rest = alt if link else ""
         if b is None:
             self.fehler.append(texte.satz("pruefung.bauen.bild_unbekannt", w1=Path(quelldatei).name, bid=bid))
-            return ""
+            return rest
         if not bildliste.aktiv(b):
-            return ""
+            return rest
         rel = str((b.get("dateien") or {}).get("gross") or "")
         quelle = (self.reise_dir / rel).resolve()
         if not rel.startswith(bildliste.ORDNER + "/") or not quelle.is_file():
             self.fehler.append(texte.satz("pruefung.bauen.7", w1=Path(quelldatei).name, ziel=rel or bid))
-            return ""
+            return rest
         self.bilder[quelle] = rel
         self.fassungen.add(quelle)
-        self.nennungen[rel] = self.nennung_html(b)
-        return f"![{alt}]({rel})"
+        self.nennungen[rel] = b
+        self.im_text.add(rel)
+        return f"{rest}![{alt}]({rel})"
+
+    def nennung_daten(self, b):
+        """Namensnennung als Daten (V16): {urheber, lizenz, lizenz_url, seite}; gemeinfrei nur der Urheber; bei quelle: reise
+        oder ohne Angaben None. Links nur mit https."""
+        if b.get("quelle") == "reise":
+            return None
+        def https(url):
+            return str(url) if str(url or "").startswith("https://") else None
+        n = {"urheber": str(b.get("urheber") or "")}
+        if not bildliste.gemeinfrei(b.get("lizenz")):
+            n.update(lizenz=str(b.get("lizenz") or ""), lizenz_url=https(b.get("lizenz_url")), seite=https(b.get("seite")))
+        return n if any(n.values()) else None
 
     def nennung_html(self, b):
-        """Namensnennung unter einem Bild (V16): Urheber · Lizenz als Link · Commons-Seite; gemeinfrei nur der Urheber; bei
-        quelle: reise keine. Alle Werte maskiert, Links nur mit https."""
-        if b.get("quelle") == "reise":
-            return ""
+        """Namensnennung im Text (V16): Urheber · Lizenz als Link · Commons-Seite; alle Werte maskiert."""
+        n = self.nennung_daten(b) or {}
         def verweis(url, text):
-            url, text = str(url or ""), htmlmod.escape(str(text or ""))
-            return f'<a target="_blank" rel="noopener" href="{htmlmod.escape(url)}">{text}</a>' if url.startswith("https://") else text
-        teile = [htmlmod.escape(str(b.get("urheber") or ""))]
-        if not bildliste.gemeinfrei(b.get("lizenz")):
-            teile += [verweis(b.get("lizenz_url"), b.get("lizenz")), verweis(b.get("seite"), texte.t(self.eck["sprache"], "inhalt.bild.commons"))]
-        teile = [t for t in teile if t]
-        return '<br><small class="nennung">' + " · ".join(teile) + "</small>" if teile else ""
+            text = htmlmod.escape(str(text or ""))
+            return f'<a target="_blank" rel="noopener" href="{htmlmod.escape(url)}">{text}</a>' if url and text else text
+        teile = [htmlmod.escape(n.get("urheber") or ""), verweis(n.get("lizenz_url"), n.get("lizenz"))]
+        if n.get("seite"):
+            teile.append(verweis(n["seite"], texte.t(self.eck["sprache"], "inhalt.bild.commons")))
+        return " · ".join(t for t in teile if t)
 
-    def nennungen_setzen(self, h):
-        """Hinter jedes Bild einer Fassung aus medien/bilder/ seine Namensnennung (nach dem Säubern, die Nennung ist maskiert)."""
-        def ersetze(m):
-            return m.group(0) + self.nennungen.get(htmlmod.unescape(m.group(2)), "")
-        return re.sub(r'(<img [^>]*src="(' + re.escape(bildliste.ORDNER) + r'/[^"]+)"[^>]*>)', ersetze, h)
+    def figur(self, m):
+        """<img> einer großen Fassung im Text -> <figure> mit Knopf für die Großansicht, Bildunterschrift und Nennung (V15);
+        None, wenn das Bild nicht aus der Bilderliste kommt."""
+        b = self.nennungen.get(htmlmod.unescape(m.group(1)))
+        if b is None:
+            return None
+        e = htmlmod.escape
+        alt_text = re.search(r'\balt="([^"]*)"', m.group(0))
+        alt = str(b.get("alt") or "") or htmlmod.unescape(alt_text.group(1) if alt_text else "")
+        label = texte.t(self.eck["sprache"], "seite.bild.grossansicht", name=alt or b["id"])
+        masse = "".join(f' {k}="{b[w]}"' for k, w in (("width", "breite"), ("height", "hoehe"))
+                        if isinstance(b.get(w), int) and not isinstance(b.get(w), bool))
+        knopf = (f'<button type="button" class="bild text" data-bild="{e(b["id"])}" aria-label="{e(label)}">'
+                 f'<img loading="lazy" src="{m.group(1)}" alt="{e(alt)}"{masse}></button>')
+        unter = [f'<span class="bildtext">{e(str(b["bildunterschrift"]))}</span>'] if b.get("bildunterschrift") else []
+        nennung = self.nennung_html(b)
+        unter += [f'<span class="nennung">{nennung}</span>'] if nennung else []
+        return "<figure>" + knopf + (f"<figcaption>{''.join(unter)}</figcaption>" if unter else "") + "</figure>"
+
+    def figuren_setzen(self, h):
+        """Bilder der Liste im gesäuberten Text -> figure (erst nach dem Säubern: figure und button sind im Reisetext nicht
+        erlaubt). Ein figure darf nicht in einem Absatz stehen: Es folgt dem Absatz, der Text bleibt; ein leerer Absatz entfällt."""
+        bild = re.compile(r'<img [^>]*src="(' + re.escape(bildliste.ORDNER) + r'/[^"]+)"[^>]*>')
+        def absatz(m):
+            figuren = []
+            def heraus(i):
+                f = self.figur(i)
+                figuren.append(f) if f else None
+                return "" if f else i.group(0)
+            innen = bild.sub(heraus, m.group(1))
+            if not figuren:
+                return m.group(0)
+            return (f"<p>{innen}</p>" if innen.strip() else "") + "".join(figuren)
+        h = re.sub(r"<p>(.*?)</p>", absatz, h, flags=re.S)
+        # Bilder außerhalb eines Absatzes (Liste, Tabelle) an ihrer Stelle; ein schon gesetztes figure bleibt unberührt (F001)
+        teile = re.split(r"(<figure>.*?</figure>)", h, flags=re.S)
+        return "".join(t if t.startswith("<figure>") else bild.sub(lambda i: self.figur(i) or i.group(0), t) for t in teile)
 
     def bilder_umschreiben(self, text, quelldatei):
         def ersetze(m):
@@ -523,6 +571,7 @@ class Bauer:
             self.bilder[quelle] = rel.as_posix()
             return f"{ausruf}[{alt}]({rel.as_posix()})"
         text = BILD_KENNUNG_IM_TEXT.sub(lambda m: self.bild_kennung(m.group(1), m.group(2).upper(), quelldatei), text)
+        text = BILDLINK_IM_TEXT.sub(lambda m: self.bild_kennung(m.group(1), m.group(2).upper(), quelldatei, link=True), text)
         return BILD_LINK.sub(ersetze, text)
 
     def bloecke(self, sid, body, quelldatei, wo):
@@ -811,8 +860,10 @@ class Bauer:
         kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
         if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
             self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
         if self.fehler:
             raise BauFehler(list(dict.fromkeys(self.fehler)))
+        # Bilder der Reise (#455, V12): nur mit aktiven Bildern, sonst fehlt der Schlüssel ganz (keine Bilddaten, AC-12)
         return {
             # Eckdaten, Darstellung, Status, Personen, Bausteine, Regeln aus reise.yaml (engine/reise.py)
             "reise": self.eck,
@@ -825,7 +876,43 @@ class Bauer:
             "wissen_karte": wissen_karte,
             "kategorien": kategorien,
             "wunsch_vorschlaege": wunsch_vorschlaege,
+            **({"bilder": bilder} if bilder else {}),
         }
+
+    def bilder_daten(self):
+        """Aktive Bilder der Liste für die Seite (V12), in der Reihenfolge der Liste; das erste Bild eines Dings ist sein Kopfbild.
+        Beide Fassungen werden kopiert; die große eines Bildes, das weder Titel- noch Kopfbild ist, lädt der Service Worker
+        erst beim Ansehen (V20). Nennung als Daten, nicht als HTML."""
+        aus, mit_kopf = [], set()
+        for b in self.bild_eintraege().values():
+            if not bildliste.aktiv(b):
+                continue
+            d = b.get("dateien") or {}
+            klein, gross = str(d.get("klein") or ""), str(d.get("gross") or "")
+            fehlt = [r or b["id"] for r in (klein, gross) if not r.startswith(bildliste.ORDNER + "/") or not (self.reise_dir / r).is_file()]
+            if fehlt:   # ohne Datei kein Bild auf der Seite; ein Fehler ist es erst, wenn der Text es zeigen will (bild_kennung)
+                self.hinweise += [texte.satz("pruefung.bauen.7", w1=bildliste.LISTE, ziel=r) for r in dict.fromkeys(fehlt)]
+                continue
+            for r in (klein, gross):
+                quelle = (self.reise_dir / r).resolve()
+                self.bilder[quelle] = r
+                self.fassungen.add(quelle)
+            zu, titel = str(b.get("zu") or ""), bool(b.get("titelbild"))
+            if zu in mit_kopf and not titel:
+                self.spaeter.add(gross)
+            mit_kopf.add(zu)
+            aus.append({"id": b["id"], "zu": zu, "klein": klein, "gross": gross, "alt": str(b.get("alt") or ""),
+                        "bildunterschrift": str(b.get("bildunterschrift") or ""), "titel": titel,
+                        "breite": b.get("breite"), "hoehe": b.get("hoehe"), "nennung": self.nennung_daten(b)})
+        return aus
+
+    def bilder_offline_pruefen(self, dateien):
+        """Summe der vorab geladenen Bilddateien gegen bilder.offline_mb aus reise.yaml (V3): darüber eine Warnung, der Bau gelingt."""
+        summe = sum((self.ziel_dir / f).stat().st_size for f in dateien
+                    if f.lower().endswith(BILD_ENDUNGEN) and (self.ziel_dir / f).is_file())
+        grenze = bilder_grenzen(self.reise_roh)["offline_mb"]
+        if summe > grenze * 1024 * 1024:
+            self.hinweise.append(texte.satz("pruefung.bauen.bilder_offline", mb=round(summe / 1024 / 1024, 1), grenze=grenze))
 
     def packliste_bauen(self, routen, rel):
         """plan/packliste.yaml der Reise prüfen und aufbereiten (engine/packliste.py, ADR-0010) -> dict oder None (keine Datei und keine
@@ -1518,8 +1605,11 @@ class Bauer:
             for f in (ziel / "medien").rglob("*"):
                 if f.is_file() and f not in gewollt:
                     f.unlink()
+        # Vorab: alle Bilder außer den großen Fassungen ohne Titel- oder Kopfbild (V20, die lädt der Worker beim Ansehen)
+        vorab = sorted(set(self.bilder.values()) - (self.spaeter - self.im_text))
+        self.bilder_offline_pruefen(vorab)
         dateien = ["", "index.html", "manifest.json", *vendor.values(), *(f"icon-{g}.png" for g in ICON_GROESSEN),
-                   *sorted(set(self.bilder.values())), *(["grundkarte.pmtiles"] if self.grundkarte else []), *sorted(self.grundkarten)]
+                   *vorab, *(["grundkarte.pmtiles"] if self.grundkarte else []), *sorted(self.grundkarten)]
         # Je Datei ein Inhalts-Hash: Eine neue Version übernimmt unveränderte Dateien (vor allem die großen
         # Grundkarten) aus dem bisherigen Speicher, statt sie neu zu laden (Issue #64).
         stand = {f: datei_hash(ziel / f) for f in dateien[1:]}
