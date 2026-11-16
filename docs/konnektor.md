@@ -84,6 +84,10 @@ Gelesen wird die veröffentlichte Seite (`<seiten>/<reise>/daten.json`). Der Kon
 
 Aufgaben liegen live in `<ablage>/<reise>/aufgaben.json`, nicht im Repo. Der Rückmeldedienst ist ihr einziger Schreiber (`GET/POST /<reise>/aufgaben`, `PATCH /<reise>/aufgaben/<AG-id>`). Der Konnektor und die Webseite schreiben beide über ihn. In Claude Code zeigt `python3 engine/rueckmeldungen.py aufgaben <reise> [--alle]` sie an.
 
+## Jedes Feld sagt, was es kann (#594, Product Owner 16.11.2026)
+
+Der AI-Client erfährt aus der Beschreibung jedes Felds, wofür es da ist und wie es am besten genutzt wird. Für Textfelder kommt der zweite Teil aus dem Register der Textformen (`engine/textform.py`, docs/design.md „Textformen“): Eigenschaften, die mit `textform.schema("<feld>", "@<zweck>")` angelegt sind, bekommen in `lokalisiert` hinter den Zweck die Form und die Höchstlänge („Langtext bis 2000 Zeichen, Markdown: Absätze, Aufzählungen, **fett**, *kursiv*, Links; keine Überschriften, Tabellen, Bilder, HTML.“); die Markierung `x-textform` geht nicht nach außen. Der Schreibweg prüft mit denselben Werten, Beschreibung und Prüfung laufen also nie auseinander. Die Grundanleitung nennt die drei Formen einmal (`konnektor.anleitung.grenzen`). `engine/tests/test_textform.py` prüft, dass jedes lange Textfeld eines Werkzeugs eine Form hat und jede Eigenschaft eine Beschreibung.
+
 ## Karte aus dem Plan (Epic #225, 2.11.2026)
 
 Ist der Baustein `karte` an, baut Frieda die Karte aus allem mit Koordinaten: Orte (`punkt`), Unterkünfte und Aufenthalte (`punkt`, ADR-0004). Es braucht mindestens zwei Punkte; `plan/karte.yaml` ist nur noch eine Überschreibung für handgepflegte Karten (`docs/ontologie.md`, „Karte“). So entsteht eine Karte allein im Gespräch:

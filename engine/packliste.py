@@ -32,6 +32,7 @@ import datetime
 import re
 
 import texte
+import textform
 from routen import SUMMEN_ROLLEN, ist
 
 GEGENSTAND_STATUS = ("entfaellt",)       # aktiv ist, wer keinen Status hat
@@ -39,7 +40,7 @@ FELDER = ("id", "art", "titel", "merkmale", "an", "wer", "notiz", "status", "ver
 ELTERN = ("strecke", "aufenthalt", "unterkunft", "ort")   # Elternbezug eines Gegenstands (kein Tag, ADR-0007)
 DATEI = "packliste.yaml"
 MAX_TITEL = 120
-MAX_NOTIZ = 500
+MAX_NOTIZ = textform.laenge("gegenstand.notiz")   # Langtext (#594)
 
 
 def betrag(text):

@@ -89,6 +89,7 @@ import stand as reisestand  # noqa: E402
 import konten  # noqa: E402
 import reise as rg  # noqa: E402
 import texte  # noqa: E402
+import textform  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent
 # Wunsch: Idee für die Reise (Ort, Erlebnis, Essen) ohne feste Stelle, ziel = WUNSCH_ZIEL (25.10.2026)
@@ -96,7 +97,7 @@ ARTEN = {"Kommentar", "Frage", "Korrektur", "Ergänzung", "Antwort", "Wunsch"}
 WUNSCH_ZIEL = "wuensche"
 # konflikt: Entscheidung widerspricht einer anderen (reise.konflikte); wartet auf eine offene Frage, wird nicht eingearbeitet
 STATUSWERTE = {"neu", "uebernommen", "verworfen", "rueckfrage", "konflikt"}
-LAENGE = {"ziel": 80, "text": 4000, "quelle": 300, "name": 80}
+LAENGE = {"ziel": 80, "text": textform.laenge("rueckmeldung.text"), "quelle": 300, "name": 80}   # text: Langtext (#594)
 ZIEL_MUSTER = re.compile(r"^[A-Za-z0-9][\w.\-]{0,79}$", re.ASCII)
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}\Z")
 RID_MUSTER = re.compile(r"^R-\d{8}-\d{6}-[0-9a-f]{4}\Z")
@@ -110,7 +111,8 @@ KONTEXT_STAND_MAX = 999999   # Kontext der Rückmeldung (#449): ansicht, abschni
 AG_MUSTER = re.compile(r"^AG-\d{2,}\Z")
 AG_STATUS = ("offen", "in_arbeit", "erledigt", "entfaellt")
 AG_PRIO = ("hoch", "normal", "niedrig")
-AG_LAENGE = {"titel": 200, "zustaendig": 80, "notiz": 2000, "kommentar": 500, "name": 80}
+AG_LAENGE = {"titel": 200, "zustaendig": 80, "notiz": textform.laenge("aufgabe.notiz"), "kommentar": textform.laenge("aufgabe.kommentar"),
+             "name": 80}   # notiz, kommentar: Langtext (#594)
 AG_FELDER = ("titel", "bezug", "zustaendig", "prioritaet", "ab", "frist", "notiz", "status")
 MAX_BEZUG = 10
 MAX_AUFGABEN = 2000
@@ -1304,7 +1306,7 @@ class Dienst(BaseHTTPRequestHandler):
             # Status setzen (O-3, rueckmeldung_erledigen): nur der Konnektor, der die Organisator:in erkannt hat
             if ident["art"] != "dienst":
                 return self._antwort(403, {"fehler": texte.satz("dienst.do_patch.3")})
-            kommentar = str(roh.get("kommentar") or "").strip()[:LAENGE["text"]]
+            kommentar = str(roh.get("kommentar") or "").strip()[:textform.laenge("rueckmeldung.kommentar")]
             with _sperre:
                 e, fehler = status_setzen(t[0], t[2], str(roh.get("status") or ""), kommentar, roh.get("name"))
             return self._antwort(400 if fehler else 200, {"fehler": fehler} if fehler else {"id": t[2], **e})

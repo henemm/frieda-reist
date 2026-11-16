@@ -1500,6 +1500,8 @@ class Routen:
             out["gilt"] = gilt
         if d["typ"] == "link":
             out["link"] = True   # die Seite zeigt den Wert als Link, überall gleich
+        if d.get("lang") and d["typ"] in (None, "text"):
+            out["lang"] = True   # Langtext (#594): die Seite zeigt den Wert mit dem Baustein Langtext
         if d["typ"] in LAGE_TYPEN:
             out["typ"] = d["typ"]   # die Seite zeigt den Wert mit dem Baustein seines Typs (merkmalWert)
             out["wert"] = w if d["typ"] in ("koordinaten", "zeitraum") else str(w)

@@ -462,7 +462,7 @@ buchungen:
 
 tage:
   T-01: {titel: "Ankunft und Stadttag in Dresden", nacht: U-01, text: "Ankunft mittags mit dem Zug, Nachmittag in der Altstadt (Frauenkirche, Elbufer). Siehe Ortsseite O-01."}
-  T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], aufenthalte: [A-01], nacht: V-03, text: "Erster Wandertag. Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme)."}
+  T-02: {titel: "Stadt Wehlen → Bastei → Hohnstein", strecken: [E-20, E-01], wahl: [V-02], aufenthalte: [A-01], nacht: V-03, text: "**Erster Wandertag.** Früh fahren: An der Bastei ist es ab dem späten Vormittag voll (Annahme).\n\nMitnehmen (Beispielwert):\n- 2 Liter Wasser je Person\n- Stirnlampe für den Abstieg"}
   T-03: {titel: "Hohnstein → Brand → Altendorf", wahl: [V-06], strecken: [E-02], nacht: U-04}
   T-04: {titel: "Altendorf → Schrammsteine → Bad Schandau, Zug nach Dresden", strecken: [E-03, E-21]}
   T-05: {titel: "Altendorf → Schrammsteine → Lichtenhainer Wasserfall, Kirnitzschtalbahn, Zug nach Dresden", strecken: [E-04, E-22, E-21]}

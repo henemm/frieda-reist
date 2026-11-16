@@ -8,6 +8,7 @@ Unter `engine/vendor/` liegen Bibliotheken und Schriften, die unverändert mitge
 | protomaps-leaflet | 5.1.0 | BSD-3-Clause | `engine/vendor/protomaps-leaflet-LICENSE` |
 | Pico CSS | 2.1.1 | MIT | `engine/vendor/pico-LICENSE.md` |
 | Lucide Icons | 1.55.0 | ISC | `engine/vendor/lucide-1.55.0/LICENSE` |
+| markdown-it | 14.1.0 | MIT | `engine/vendor/markdown-it-LICENSE` (zeigt Langtexte auf der Seite, #594) |
 | Source Sans 3 | – | SIL Open Font License 1.1 | `engine/vendor/fonts/source-sans-3-OFL.txt` |
 
 Python-Pakete (`engine/requirements.txt`, nicht mitgeliefert): Markdown (BSD), nh3 (MIT, säubert das HTML der Reisetexte; bringt die Rust-Bibliothek ammonia mit, MIT oder Apache-2.0), PyYAML (MIT), Pillow (MIT-CMU), CairoSVG (LGPL-3.0), pytest (MIT), pyspellchecker (MIT, nur in den Tests: erkennt deutsche Wörter in englischen Texten), icalendar (BSD-2-Clause, nur in den Tests: prüft die Kalenderdateien unabhängig), pywebpush (MPL-2.0, nur im Push-Dienst `engine/push.py`; bringt py-vapid und http-ece (MPL-2.0), cryptography (Apache-2.0 oder BSD), requests (Apache-2.0) und aiohttp (Apache-2.0) mit).

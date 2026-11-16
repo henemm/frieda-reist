@@ -66,6 +66,7 @@ import rueckmeldungen as rm  # noqa: E402
 import schnittstelle  # noqa: E402
 import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
+import textform  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
 from routen import FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
@@ -190,14 +191,50 @@ def tkd(schluessel, /, **werte):
 def lokalisiert(werkzeuge, sprache):
     """Kopie der Werkzeugliste, in der jede Beschreibung der Form "@schlüssel" durch den Text des Katalogs in der Sprache ersetzt ist
     (ADR-0006): Namen, Schemata und Hinweise bleiben gleich, nur die Beschreibungen folgen der Sprache der Person."""
+    werkzeuge = beschreibungen_ergaenzen(werkzeuge)
     def gehe(x):
         if isinstance(x, dict):
+            if "x-textform" in x:   # Feld aus dem Register der Textformen (#594): Form und Länge an die Beschreibung, Markierung heraus
+                beschreibung = textform_beschreibung(x, sprache)
+                x = {k: v for k, v in x.items() if k != "x-textform"} | {"description": beschreibung}
             return {k: (texte.t(sprache, v[1:]) if k == "description" and isinstance(v, str) and v.startswith("@") else gehe(v))
                     for k, v in x.items()}
         if isinstance(x, list):
             return [gehe(e) for e in x]
         return x
     return gehe(werkzeuge)
+
+
+def beschreibungen_ergaenzen(werkzeuge):
+    """Jedes Feld sagt dem AI-Client, wofür es da ist (#594): Eigenschaften ohne description bekommen den Text
+    konnektor.feld.<werkzeug>.<feld>, sonst den allgemeinen konnektor.feld.allgemein.<feld> (grund, titel, status …), wenn der
+    Katalog einen hat. engine/tests/test_textform.py prüft, dass danach keine Eigenschaft ohne Beschreibung bleibt."""
+    katalog = getattr(texte.sprache(texte.VORGABE_REISE), "TEXTE", {}) or {}
+    def fuelle(w):
+        if not isinstance(w, dict) or not isinstance(w.get("inputSchema"), dict):
+            return w
+        eig = w["inputSchema"].get("properties") or {}
+        neu = {}
+        for k, e in eig.items():
+            if isinstance(e, dict) and not e.get("description"):
+                for schluessel in (f"konnektor.feld.{w.get('name')}.{k}", f"konnektor.feld.allgemein.{k}"):
+                    if schluessel in katalog:
+                        e = {**e, "description": "@" + schluessel}
+                        break
+            neu[k] = e
+        return {**w, "inputSchema": {**w["inputSchema"], "properties": neu}} if eig else w
+    return [fuelle(w) for w in werkzeuge] if isinstance(werkzeuge, list) else werkzeuge
+
+
+def textform_beschreibung(eig, sprache):
+    """Beschreibung eines Textfelds für den AI-Client (#594): sein Zweck (description), dann was es kann und wie lang es sein darf,
+    aus engine/textform.py, damit Beschreibung und Prüfung nie auseinanderlaufen."""
+    feld = eig["x-textform"]
+    form = "einzeilig" if feld in textform.EINZEILIG else textform.form(feld)
+    zweck = eig.get("description")
+    zweck = texte.t(sprache, zweck[1:]) if isinstance(zweck, str) and zweck.startswith("@") else zweck
+    form_text = texte.t(sprache, "konnektor.textform." + form, n=textform.laenge(feld))
+    return f"{zweck.rstrip(' .')}. {form_text}" if zweck else form_text
 
 
 def aufruf_intern(werkzeuge, name, args):
@@ -2618,7 +2655,7 @@ WERKZEUGE = [
      "inputSchema": {"type": "object", "properties": {
          "ziel": {**ZIEL_FELD, "description": "@konnektor.werkzeug.rueckmeldung_geben.ziel"},
          "art": {"type": "string", "enum": sorted(rm.ARTEN)},
-         "text": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.text"},
+         "text": textform.schema("rueckmeldung.text", "@konnektor.werkzeug.rueckmeldung_geben.text"),
          "quelle": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_geben.quelle"}},
          "required": ["art", "text"]}},
 ]
@@ -2645,7 +2682,7 @@ AG_EIGENSCHAFTEN = {
     "prioritaet": {"type": "string", "enum": list(rm.AG_PRIO)},
     "ab": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.ab"},
     "frist": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.frist"},
-    "notiz": {"type": "string", "description": "@konnektor.feld.ag_eigenschaften.notiz"},
+    "notiz": textform.schema("aufgabe.notiz", "@konnektor.feld.ag_eigenschaften.notiz"),
 }
 WERKZEUGE += [
     {"name": "aufgaben", "description": "@konnektor.werkzeug.aufgaben",
@@ -2662,7 +2699,7 @@ WERKZEUGE += [
          "id": {"type": "string", "description": "@konnektor.werkzeug.aufgabe_aendern.id"},
          "status": {"type": "string", "enum": list(rm.AG_STATUS)},
          **AG_EIGENSCHAFTEN,
-         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.aufgabe_aendern.kommentar"}}, "required": ["id"]}},
+         "kommentar": textform.schema("aufgabe.kommentar", "@konnektor.werkzeug.aufgabe_aendern.kommentar")}, "required": ["id"]}},
 ]
 WERKZEUGE += [
     {"name": "wuensche", "description": "@konnektor.werkzeug.wuensche",
@@ -2675,7 +2712,7 @@ WERKZEUGE += [
          "eingeplant": {"type": "boolean"},
          "bezug": {"type": "array", "items": {"type": "string"},
                    "description": "@konnektor.werkzeug.wunsch_aendern.bezug"},
-         "kommentar": {"type": "string", "description": "@konnektor.werkzeug.wunsch_aendern.kommentar"}}, "required": ["id"]}},
+         "kommentar": textform.schema("wunsch.kommentar", "@konnektor.werkzeug.wunsch_aendern.kommentar")}, "required": ["id"]}},
 ]
 # Ontologie der Reise im Gespräch (ADR-0001, O-3; docs/ontologie.md): die Software kennt nur die Form, die Reise ihre Arten
 ART_DEFINIEREN = {"name": "art_definieren", "description": "@konnektor.werkzeug.art_definieren",
@@ -2770,7 +2807,7 @@ LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "@konnektor.werkzeug.
                       "grund": {"type": "string"}},
                       "required": ["ziel", "quelle"]}}
 OPTION_FELDER = {"titel": {"type": "string", "description": "@konnektor.feld.option_felder.titel"},
-                 "text": {"type": "string", "description": "@konnektor.feld.option_felder.text"},
+                 "text": textform.schema("option.text", "@konnektor.feld.option_felder.text"),
                  "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.unterkuenfte"},
                  "strecken": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.strecken"},
                  "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.aufenthalte"},
@@ -2793,17 +2830,17 @@ WAHLSTELLE_ANLEGEN = {"name": "wahlstelle_anlegen", "description": "@konnektor.w
                           "titel": {"type": "string"}, "wann": {"type": "string", "enum": ["planung", "unterwegs"], "description": "@konnektor.werkzeug.wahlstelle_anlegen.wann"},
                           "an": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.wahlstelle_anlegen.an"},
                           "art": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_anlegen.art"},
-                          "frage": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_anlegen.frage"}, "text": {"type": "string"},
+                          "frage": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_anlegen.frage"}, "text": textform.schema("wahlstelle.text", "@konnektor.feld.wahlstelle_text"),
                           "optionen": {"type": "array", "items": {"type": "object", "properties": OPTION_FELDER, "required": ["titel", "quelle"]}}},
                           "required": ["titel", "optionen"]}}
 FRAGE_ANLEGEN = {"name": "frage_anlegen", "description": "@konnektor.werkzeug.frage_anlegen",
                  "inputSchema": {"type": "object", "properties": {
-                     "text": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.text"},
+                     "text": textform.schema("frage.text", "@konnektor.werkzeug.frage_anlegen.text"),
                      "bis": {"type": "string", "description": "@konnektor.werkzeug.frage_anlegen.bis"},
                      "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.frage_anlegen.bezug"}}, "required": ["text"]}}
 TAG_AENDERN = {"name": "tag_aendern", "description": "@konnektor.werkzeug.tag_aendern",
                "inputSchema": {"type": "object", "properties": {
-                   "ziel": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.ziel"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                   "ziel": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.ziel"}, "titel": {"type": "string"}, "text": textform.schema("tag.text", "@konnektor.feld.tag_text"),
                    "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_aendern.nacht"},
                    "strecken": {"type": "array", "items": {"type": "string"}}, "wahl": {"type": "array", "items": {"type": "string"}},
                    "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.tag_aendern.aufenthalte"},
@@ -2814,7 +2851,7 @@ WISSEN_SCHREIBEN = {"name": "wissen_schreiben", "description": "@konnektor.werkz
                     "inputSchema": {"type": "object", "properties": {
                         "titel": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.titel"},
                         "abschnitt": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.abschnitt"},
-                        "text": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.text"},
+                        "text": textform.schema("wissen.text", "@konnektor.werkzeug.wissen_schreiben.text"),
                         "quelle": QUELLE_FELD,
                         "gruppe": {"type": "string", "enum": ["wissen", "praxis", "quelle"], "description": "@konnektor.werkzeug.wissen_schreiben.gruppe"},
                         "datei": {"type": "string", "description": "@konnektor.werkzeug.wissen_schreiben.datei"},
@@ -2828,7 +2865,7 @@ RUECKMELDUNG_ERLEDIGEN = {"name": "rueckmeldung_erledigen", "description": "@kon
                           "inputSchema": {"type": "object", "properties": {
                               "id": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_erledigen.id"},
                               "status": {"type": "string", "enum": ["uebernommen", "verworfen", "rueckfrage"]},
-                              "kommentar": {"type": "string", "description": "@konnektor.werkzeug.rueckmeldung_erledigen.kommentar"}}, "required": ["id", "status", "kommentar"]}}
+                              "kommentar": textform.schema("rueckmeldung.kommentar", "@konnektor.werkzeug.rueckmeldung_erledigen.kommentar")}, "required": ["id", "status", "kommentar"]}}
 REISE_STATUS_SETZEN = {"name": "reise_status_setzen", "description": "@konnektor.werkzeug.reise_status_setzen",
                        "inputSchema": {"type": "object", "properties": {
                            "status": {"type": "string", "enum": ["idee", "planung", "fest", "unterwegs", "danach", "archiv"]},
@@ -2854,7 +2891,7 @@ BUCHUNG_FELDER_SCHEMA = {
     "bezahlt": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.bezahlt"},
     "frist": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.frist"},
     "frist_was": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.frist_was"},
-    "storno": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.storno"},
+    "storno": textform.schema("buchung.storno", "@konnektor.feld.buchung_felder_schema.storno"),
     "storno_bis": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.storno_bis"},
     "gebucht_am": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.gebucht_am"},
     "anreise": {"type": "string", "description": "@konnektor.feld.buchung_felder_schema.anreise"},
@@ -2873,7 +2910,7 @@ BUCHUNG_FELDER_SCHEMA = {
                 "description": "@konnektor.feld.buchung_felder_schema.je_ding"},
     "merkmale": {"type": "object", "additionalProperties": {"type": ["string", "number"]},
                  "description": "@konnektor.feld.buchung_felder_schema.merkmale"},
-    "notiz": {"type": "string"}}
+    "notiz": textform.schema("buchung.notiz", "@konnektor.feld.buchung_notiz")}
 BUCHUNG_ANLEGEN = {"name": "buchung_anlegen", "description": "@konnektor.werkzeug.buchung_anlegen",
                    "inputSchema": {"type": "object", "properties": {
                        "fuer": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.buchung_anlegen.fuer"},
@@ -2896,7 +2933,7 @@ WERT_SCHEMA_EINTRAG = {"type": "object", "properties": {
 # ---------- Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen (docs/abgleich-2026-10-29.md) ----------
 TAG_ANLEGEN = {"name": "tag_anlegen", "description": "@konnektor.werkzeug.tag_anlegen",
                "inputSchema": {"type": "object", "properties": {
-                   "titel": {"type": "string"}, "text": {"type": "string"}, "nach": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nach"},
+                   "titel": {"type": "string"}, "text": textform.schema("tag.text", "@konnektor.feld.tag_text"), "nach": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nach"},
                    "vor": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.vor"}, "ohne_route": {"type": "boolean"},
                    "nacht": {"type": "string", "description": "@konnektor.werkzeug.tag_anlegen.nacht"}, "strecken": {"type": "array", "items": {"type": "string"}},
                    "wahl": {"type": "array", "items": {"type": "string"}}, "aufenthalte": {"type": "array", "items": {"type": "string"}},
@@ -2908,7 +2945,7 @@ TERMIN_SETZEN = {"name": "termin_setzen", "description": "@konnektor.werkzeug.te
                      "grund": {"type": "string"}}, "required": ["datum", "titel"]}}
 WAHLSTELLE_AENDERN = {"name": "wahlstelle_aendern", "description": "@konnektor.werkzeug.wahlstelle_aendern",
                       "inputSchema": {"type": "object", "properties": {
-                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_aendern.ziel"}, "titel": {"type": "string"}, "text": {"type": "string"},
+                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.wahlstelle_aendern.ziel"}, "titel": {"type": "string"}, "text": textform.schema("wahlstelle.text", "@konnektor.feld.wahlstelle_text"),
                           "wann": {"type": "string", "enum": ["planung", "unterwegs"]}, "art": {"type": "string"},
                           "an": {"type": "array", "items": {"type": "string"}}, "frage": {"type": "string"},
                           "stufen": {"type": "object", "additionalProperties": True},
@@ -2919,12 +2956,12 @@ OPTION_AENDERN = {"name": "option_aendern", "description": "@konnektor.werkzeug.
                       "favorisiert": {"type": "boolean"}}, "required": ["ziel"]}}
 WISSEN_AENDERN = {"name": "wissen_aendern", "description": "@konnektor.werkzeug.wissen_aendern",
                   "inputSchema": {"type": "object", "properties": {
-                      "ziel": {"type": "string", "description": "@konnektor.werkzeug.wissen_aendern.ziel"}, "text": {"type": "string"}, "quelle": QUELLE_FELD,
+                      "ziel": {"type": "string", "description": "@konnektor.werkzeug.wissen_aendern.ziel"}, "text": textform.schema("wissen.aendern", "@konnektor.feld.wissen_aendern_text"), "quelle": QUELLE_FELD,
                       "neuer_titel": {"type": "string"}, "uebersicht": UEBERSICHT_FELD,
                       "grund": {"type": "string"}}, "required": ["ziel", "grund"]}}
 LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "@konnektor.werkzeug.lesetext_schreiben",
                       "inputSchema": {"type": "object", "properties": {
-                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.ziel"}, "text": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.text"},
+                          "ziel": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.ziel"}, "text": textform.schema("lesetext.text", "@konnektor.werkzeug.lesetext_schreiben.text"),
                           "quelle": QUELLE_FELD}, "required": ["ziel", "text", "quelle"]}}
 REISE_AENDERN = {"name": "reise_aendern", "description": "@konnektor.werkzeug.reise_aendern",
                  "inputSchema": {"type": "object", "properties": {
@@ -2970,7 +3007,7 @@ GEGENSTAND_ANLEGEN = {"name": "gegenstand_anlegen", "description": "@konnektor.w
                           "merkmale": GEGENSTAND_MERKMALE_FELD,
                           "an": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.an"},
                           "wer": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.wer"},
-                          "notiz": {"type": "string", "description": "@konnektor.werkzeug.gegenstand.notiz"},
+                          "notiz": textform.schema("gegenstand.notiz", "@konnektor.werkzeug.gegenstand.notiz"),
                           "grund": {"type": "string"}},
                           "required": ["art", "titel"]}}
 GEGENSTAND_AENDERN = {"name": "gegenstand_aendern", "description": "@konnektor.werkzeug.gegenstand_aendern",
@@ -2980,7 +3017,7 @@ GEGENSTAND_AENDERN = {"name": "gegenstand_aendern", "description": "@konnektor.w
                           "titel": {"type": "string"}, "merkmale": GEGENSTAND_MERKMALE_FELD,
                           "an": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.an"},
                           "wer": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.wer"},
-                          "notiz": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.notiz"},
+                          "notiz": textform.schema("gegenstand.notiz", "@konnektor.werkzeug.gegenstand_aendern.notiz"),
                           "status": {"type": "string", "enum": ["entfaellt", "aktiv"], "description": "@konnektor.werkzeug.gegenstand_aendern.status"},
                           "grund": {"type": "string", "description": "@konnektor.werkzeug.gegenstand_aendern.grund"}},
                           "required": ["ziel"]}}
@@ -3015,7 +3052,7 @@ START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.wer
                          "start_datum": {"type": "string"}, "start_ort": {"type": "string", "description": "O-…"},
                          "ende_datum": {"type": "string"}, "ende_ort": {"type": "string", "description": "O-…"},
                          "grund": {"type": "string"}}, "required": ["grund"]}}
-PLAN_FELDER_SCHEMA = {"kurz": {"type": "string", "description": "@konnektor.feld.plan_felder_schema.kurz"}, "titel": {"type": "string"}, "text": {"type": "string"},
+PLAN_FELDER_SCHEMA = {"kurz": {"type": "string", "description": "@konnektor.feld.plan_felder_schema.kurz"}, "titel": {"type": "string"}, "text": textform.schema("plan.text", "@konnektor.feld.plan_text"),
                       "farbe": {"type": "string", "enum": ["a", "b", "c", "d"]},
                       "auswahl": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.plan_felder_schema.auswahl"},
                       "plus": {"type": "array", "items": {"type": "string"}}, "minus": {"type": "array", "items": {"type": "string"}}}
@@ -3038,7 +3075,7 @@ WUNSCH_VORSCHLAGEN = {"name": "wunsch_vorschlagen", "description": "@konnektor.w
                       "inputSchema": {"type": "object", "properties": {
                           "wunsch": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.wunsch"},
                           "bezug": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.werkzeug.wunsch_vorschlagen.bezug"},
-                          "notiz": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.notiz"},
+                          "notiz": textform.schema("wunsch.notiz", "@konnektor.werkzeug.wunsch_vorschlagen.notiz"),
                           "option": {"type": "string", "description": "@konnektor.werkzeug.wunsch_vorschlagen.option"}}, "required": ["wunsch", "notiz"]}}
 BELEG_ANLEGEN = {"name": "beleg_anlegen", "description": "@konnektor.werkzeug.beleg_anlegen",
                  "inputSchema": {"type": "object", "properties": {
@@ -3073,7 +3110,7 @@ ENTSCHEIDEN = {"name": "entscheiden", "description": "@konnektor.werkzeug.entsch
 FRAGE_BEANTWORTEN = {"name": "frage_beantworten", "description": "@konnektor.werkzeug.frage_beantworten",
                      "inputSchema": {"type": "object", "properties": {
                          "frage": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.frage"},
-                         "antwort": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.antwort"},
+                         "antwort": textform.schema("antwort.text", "@konnektor.werkzeug.frage_beantworten.antwort"),
                          "quelle": {"type": "string", "description": "@konnektor.werkzeug.frage_beantworten.quelle"}}, "required": ["frage", "antwort"]}}
 WERKZEUGE += [{"name": "personen", "description": "@konnektor.werkzeug.personen",
                "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}}]

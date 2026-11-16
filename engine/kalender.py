@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import texte  # noqa: E402
+import textform  # noqa: E402
 
 PRODID = "-//Frieda Reist//Kalender//DE"
 AG_OFFEN = ("offen", "in_arbeit")
@@ -140,7 +141,7 @@ def eintraege(daten, aufgaben=None):
         elif n.get("ort") and not n.get("wahl"):
             zeilen.append(tx("nacht_in", w1=ort_name(n["ort"])))
         if t.get("text"):
-            zeilen += ["", t["text"]]
+            zeilen += ["", textform.klartext(t["text"])]   # Langtext ohne Auszeichnung (#594)
         aus.append({"sorte": "tage", "id": t["id"], "uid": t["id"], "titel": tx("tag", nr=t.get("nr"), titel=t.get("titel") or "").rstrip(": "),
                     "tag": tag, "bis": tag + datetime.timedelta(days=1), "ort": ort_name(t.get("end_ort")),
                     "text": "\n".join(zeilen)})
@@ -200,7 +201,7 @@ def eintraege(daten, aufgaben=None):
         if a.get("status") in AG_OFFEN and (d := _datum(a.get("frist"))):
             aus.append({"sorte": "aufgaben", "zustaendig": a.get("zustaendig") or "", "id": a["id"], "uid": f"{a['id']}-frist", "titel": tx("aufgabe_faellig", titel=a.get("titel", a["id"])),
                         "tag": d, "bis": d + datetime.timedelta(days=1),
-                        "text": "\n".join(x for x in (tx("zustaendig", w1=a["zustaendig"]) if a.get("zustaendig") else "", a.get("notiz")) if x)})
+                        "text": "\n".join(x for x in (tx("zustaendig", w1=a["zustaendig"]) if a.get("zustaendig") else "", textform.klartext(a.get("notiz"))) if x)})
     return aus
 
 
@@ -216,7 +217,7 @@ def _buchung_text(r, bid, sprache=None):
              + (tx("buchung_nummer", w1=b["nummer"]) if b.get("nummer") else "")
              + (tx("buchung_bei", w1=b["bei"]) if b.get("bei") else "")]
     if b.get("storno") or b.get("storno_bis"):
-        teile.append(tx("storno", w1=" · ".join(x for x in (b.get("storno"), tx("storno_bis", w1=b["storno_bis"]) if b.get("storno_bis") else "") if x)))
+        teile.append(tx("storno", w1=" · ".join(x for x in (textform.klartext(b.get("storno"), eine_zeile=True), tx("storno_bis", w1=b["storno_bis"]) if b.get("storno_bis") else "") if x)))
     return "\n" + "\n".join(teile)
 
 

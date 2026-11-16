@@ -1627,6 +1627,7 @@ class Bauer:
 
 VENDOR = {"pico-2.1.1.conditional.jade.min.css": "pico-2.1.1.min.css",   # Pico CSS (MIT), Issue #25
           "leaflet-1.9.4.js": "leaflet-1.9.4.js", "leaflet-1.9.4.css": "leaflet-1.9.4.css",   # Leaflet (BSD-2), Issue #27
+          "markdown-it-14.1.0.min.js": "markdown-it-14.1.0.min.js",   # markdown-it (MIT): Baustein Langtext, #594
           # Schrift Source Sans 3 (OFL, @fontsource-variable 5.3.1) für Titel und Text, Gesicht „Freundlich“ (#52)
           **{f"fonts/source-sans-3-{z}-wght-normal.woff2": f"source-sans-3-{z}-wght-normal.woff2" for z in ("latin", "latin-ext")}}
 # Offline-Grundkarte: protomaps-leaflet zeichnet die PMTiles-Vektorkarte in Leaflet (BSD-3), nur wenn eine Grundkarte da ist

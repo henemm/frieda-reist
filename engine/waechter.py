@@ -46,6 +46,7 @@ import konten  # noqa: E402
 import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import texte  # noqa: E402
+import textform  # noqa: E402
 from routen import ZAHLUNG_OFFEN, buchung_termine  # noqa: E402
 
 UNGUELTIG = ("verworfen", "ersetzt")      # Optionen, die niemand mehr nachschlagen muss
@@ -256,7 +257,7 @@ def buchungsfristen(d, heute, vorlauf):
             if 0 <= rest <= vorlauf:
                 neu.append({"schluessel": f"storno:{b['id']}:{b['storno_bis']}", "wiederholen": None,
                             "text": tw(d, "storno_buchung", w1=tw(d, "heute") if rest == 0 else tw(d, "bis", w1=datum_de(b["storno_bis"], sp)),
-                                       w2=titel, w3=f" ({b['storno']})" if b.get("storno") else "")})
+                                       w2=titel, w3=f" ({textform.klartext(b['storno'], eine_zeile=True)})" if b.get("storno") else "")})
         for m in neu:
             m.update({"an": an, "art": "erinnerung", "ziel": b["id"], "bezug": b["id"]})
         aus += neu

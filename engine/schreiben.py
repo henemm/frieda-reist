@@ -61,6 +61,7 @@ import kartendienst  # noqa: E402
 import konten  # noqa: E402
 import stand as reisestand  # noqa: E402
 import texte  # noqa: E402
+import textform  # noqa: E402
 
 REISE_MUSTER = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}\Z")
 SCHLUESSEL_MUSTER = re.compile(r"^[a-z][a-z0-9_]*\Z")
@@ -223,10 +224,20 @@ def schreibkopie(w=None):
     return Path(os.environ.get("FR_SCHREIBKOPIE") or f"{w}-schreiben")
 
 
-def text_wert(args, feld, pflicht=False, laenge=MAX_TEXT, absaetze=False):
+def text_wert(args, feld, pflicht=False, laenge=MAX_TEXT, absaetze=False, textfeld=None):
     """Ein Textfeld der Anfrage, bereinigt -> str oder None (fehlt oder leer). absaetze: für Lesetexte und Wissen bleiben
     Zeilen und Absätze, damit Tabellen und Listen im Markdown ankommen (#274); bereinigt wird nur am Zeilenende, mehrere
-    Leerzeilen werden eine. Sonst wird jeder Weißraum ein Leerzeichen."""
+    Leerzeilen werden eine. Sonst wird jeder Weißraum ein Leerzeichen.
+    textfeld: Name im Register der Textformen (engine/textform.py, #594); Form und Länge kommen dann von dort. Ein Langtext
+    behält Absätze und Zeilen (außer er steht in einer Zeile, textform.EINZEILIG), darf nur, was ein Langtext kann, und ist
+    sauber (#476)."""
+    if textfeld:
+        form, laenge = textform.FELDER[textfeld]
+        absaetze = textfeld not in textform.EINZEILIG
+        v = text_wert(args, feld, pflicht=pflicht, laenge=laenge, absaetze=absaetze)
+        if v and form == textform.LANG:
+            langtext_pruefen(v, feld)
+        return v
     v = args.get(feld)
     if v is None or (isinstance(v, str) and not v.strip()):
         if pflicht:
@@ -281,6 +292,13 @@ def sauber(v, feld):
             raise Ablehnung("schreiben.sauber." + schluessel, feld=feld, fund=m.group(0))
     if feld in ("ab_was", "frist_was") and (m := ZEIT_IM_TEXT.search(t)):
         raise Ablehnung("schreiben.sauber.zeit", feld=feld, fund=m.group(0))
+
+
+def langtext_pruefen(v, feld):
+    """Langtext (#594): nur Absätze, Aufzählungen, fett, kursiv, Links; sauber wie jeder sichtbare Text, zeilenweise gesucht."""
+    if (fund := textform.langtext_fund(v)):
+        raise Ablehnung("schreiben.langtext." + fund[0], feld=feld, fund=fund[1])
+    sauber(v, feld)
 
 
 def bool_wert(args, feld):
@@ -1016,7 +1034,15 @@ def wert_eintraege(args, k, definition, heute, herkunft=True):
             wert = "ja" if wert else "nein"
         if wert is None or str(wert).strip() == "":
             raise Ablehnung("schreiben.wert_eintraege.1", k=k)
-        wert = " ".join(str(wert).split()) if not isinstance(wert, (int, float)) else wert
+        if isinstance(wert, (int, float)):
+            pass
+        elif definition.get("lang") and definition.get("typ") in (None, "text"):
+            wert = textform.bereinigen(wert)   # langes Text-Merkmal ist Langtext (#594): Absätze und Listen bleiben
+            if len(wert) > textform.laenge("merkmal.lang"):
+                raise Ablehnung("schreiben.text_wert.3", feld=k, laenge=textform.laenge("merkmal.lang"))
+            langtext_pruefen(wert, "wert")
+        else:
+            wert = " ".join(str(wert).split())
         if definition.get("typ") == "auswahl" and str(wert) not in [str(v) for v in definition.get("werte") or []]:
             raise Ablehnung("schreiben.wert_eintraege.2", k=k, wert=wert, w3=', '.join(map(str, definition.get('werte') or [])))
         if definition.get("typ") == "link":
@@ -2611,7 +2637,7 @@ def frage_zeile(reise_dir, text, bis=None):
 
 def frage_anlegen(reise_dir, wer, args, heute=None):
     """Eine offene Frage (F-…) anlegen: etwas, das zu klären oder zu entscheiden ist. -> (Titel, Text)."""
-    text = text_wert(args, "text", pflicht=True, laenge=1000)
+    text = text_wert(args, "text", pflicht=True, textfeld="frage.text")
     bis = text_wert(args, "bis", laenge=60)
     bezug = id_liste(args, "bezug", r"(T-\d+|E-\d+[A-Za-z]?|U-\d+|O-\d+|V-\d+(\.[a-z])?|W-\d+(\.[\w-]+)?)", routen_laden(reise_dir))
     if bezug:
@@ -2627,7 +2653,7 @@ def option_bauen(roh, route, vid, o, wer, heute, bereich):
     if not isinstance(o, dict):
         raise Ablehnung("schreiben.option_bauen.1")
     d = {"id": None, "titel": text_wert(o, "titel", pflicht=True, laenge=200)}
-    if (t := text_wert(o, "text", laenge=2000)):
+    if (t := text_wert(o, "text", textfeld="option.text")):
         d["text"] = t
     for f in ("plus", "minus"):
         if (l := liste_wert(o, f, laenge=10)):
@@ -2745,7 +2771,7 @@ def wahlstelle_anlegen(reise_dir, wer, args, heute=None):
         if not re.fullmatch(r"F-\d+", frage):
             raise Ablehnung("schreiben.ding_anlegen.5")
         d["frage"] = frage
-    if (t := text_wert(args, "text", laenge=2000)):
+    if (t := text_wert(args, "text", textfeld="wahlstelle.text")):
         d["text"] = t
     optionen = args.get("optionen")
     if not isinstance(optionen, list) or not optionen:
@@ -2923,7 +2949,7 @@ def tag_aendern(reise_dir, wer, args, heute=None):
     geaendert = []
     for feld in ("titel", "text"):
         if args.get(feld) is not None:
-            v = text_wert(args, feld, laenge=2000 if feld == "text" else 200) or ""
+            v = (text_wert(args, feld, textfeld="tag.text") if feld == "text" else text_wert(args, feld, laenge=200)) or ""
             if v != (t.get(feld) or ""):
                 geaendert.append(wechsel(feld, t.get(feld) or "", v, quotiert=True))
                 if v:
@@ -3014,7 +3040,7 @@ def wissen_schreiben(reise_dir, wer, args, heute=None):
     import json
     import neu
     heute = heute or datetime.date.today()
-    text = text_wert(args, "text", pflicht=True, laenge=6000, absaetze=True)
+    text = text_wert(args, "text", pflicht=True, textfeld="wissen.text")
     quelle = text_wert(args, "quelle", pflicht=True)
     gruppe = (text_wert(args, "gruppe", laenge=20) or "wissen").lower()
     if gruppe not in neu.GRUPPEN:
@@ -3356,6 +3382,13 @@ def reise_anlegen(reisen_dir, wer, args, heute=None):
 
 # ---------- Buchung (B-…, #76, Product Owner 29.10.2026): eigenes Ding zu Unterkunft, Aufenthalt oder Strecke ----------
 
+def buchung_text(args, k):
+    """Textfeld einer Buchung: storno und notiz sind Langtext (#594), die übrigen kurz."""
+    if k in ("storno", "notiz"):
+        return text_wert(args, k, textfeld="buchung." + k)
+    return text_wert(args, k, laenge=BUCHUNG_TEXTE[k])
+
+
 def zeitpunkt_wert(args, feld):
     """frist und ab einer Buchung (#472): Datum JJJJ-MM-TT oder Zeitpunkt JJJJ-MM-TTTHH:MM (auch mit Leerzeichen statt T)
     -> date, Text „JJJJ-MM-TTTHH:MM“, None (fehlt) oder "" (leer: entfernen)."""
@@ -3554,7 +3587,7 @@ def buchung_je_ding(args, fuer):
             raise Ablehnung("schreiben.je_ding.form", w1=", ".join(JE_DING_FELDER))
         e = {}
         for f in JE_DING_FELDER:
-            w = zeitpunkt_wert(felder, f) if f in ("ab", "frist") else text_wert(felder, f, laenge=BUCHUNG_TEXTE[f])
+            w = zeitpunkt_wert(felder, f) if f in ("ab", "frist") else buchung_text(felder, f)
             if w not in (None, ""):
                 e[f] = w
         if e:
@@ -3612,7 +3645,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
             continue
         if k == "bezahlt" and zahlung:   # der Zahlstand steht vor seinen Einzelheiten
             d["zahlung"] = zahlung
-        if (v := text_wert(args, k, laenge=laenge)):
+        if (v := buchung_text(args, k)):
             d[k] = v
     for k in ("frist", "storno_bis", "gebucht_am", "ab", "anreise", "abreise"):
         v = zeitpunkt_wert(args, k) if k in ("frist", "ab") else datum_wert(args, k)
@@ -3626,7 +3659,7 @@ def buchung_anlegen(reise_dir, wer, args, heute=None):
         d["preise"] = preise
     d["wer"] = wer["name"]
     d["quelle"] = quelle
-    if (notiz := text_wert(args, "notiz")):
+    if (notiz := text_wert(args, "notiz", textfeld="buchung.notiz")):
         d["notiz"] = notiz
     grund = text_wert(args, "grund")
     bid = neue_id(reise_dir, "B")
@@ -3716,7 +3749,7 @@ def buchung_aendern(reise_dir, wer, args, heute=None):
         setze("status", status.lower(), "Status")
     for k, laenge in BUCHUNG_TEXTE.items():
         if k in args and args.get(k) is not None:
-            setze(k, text_wert(args, k, laenge=laenge) or "")
+            setze(k, buchung_text(args, k) or "")
     if "quelle" in args and args.get("quelle") is not None:
         q = text_wert(args, "quelle", laenge=600)
         if not q:
@@ -3826,7 +3859,7 @@ def tag_anlegen(reise_dir, wer, args, heute=None):
     from ruamel.yaml.comments import CommentedSeq
     roh = routen_laden(reise_dir)
     d = {"titel": text_wert(args, "titel", pflicht=True, laenge=200)}
-    if (t := text_wert(args, "text", laenge=2000)):
+    if (t := text_wert(args, "text", textfeld="tag.text")):
         d["text"] = t
     n = str(args.get("nacht") or "").strip()
     if n:
@@ -3944,7 +3977,7 @@ def wahlstelle_aendern(reise_dir, wer, args, heute=None):
     geaendert = []
     for feld, laenge in (("titel", 200), ("text", 2000)):
         if args.get(feld) is not None:
-            v = text_wert(args, feld, laenge=laenge) or ""
+            v = text_wert(args, feld, **({"textfeld": "wahlstelle.text"} if feld == "text" else {"laenge": laenge})) or ""
             if feld == "titel" and not v:
                 raise Ablehnung("schreiben.wahlstelle_aendern.2")
             if v != (w.get(feld) or ""):
@@ -4042,7 +4075,7 @@ def option_aendern(reise_dir, wer, args, heute=None):
     geaendert = []
     for feld, laenge in (("titel", 200), ("text", 2000), ("ausloeser", 600), ("quelle", 600)):
         if args.get(feld) is not None:
-            v = text_wert(args, feld, laenge=laenge) or ""
+            v = text_wert(args, feld, **({"textfeld": "option.text"} if feld == "text" else {"laenge": laenge})) or ""
             if feld in ("titel", "quelle") and not v:
                 raise Ablehnung("schreiben.option_aendern.2", feld=feld)
             if v != (knoten.get(feld) or ""):
@@ -4149,7 +4182,7 @@ def wissen_aendern(reise_dir, wer, args, heute=None):
     start, ende = abschnitt_grenzen(zeilen, titel)
     if start is None:
         raise Ablehnung("schreiben.wissen_aendern.3", titel=titel, datei=datei)
-    text = text_wert(args, "text", laenge=12000, absaetze=True)
+    text = text_wert(args, "text", textfeld="wissen.aendern")
     neuer_titel = text_wert(args, "neuer_titel", laenge=120)
     grund = text_wert(args, "grund", pflicht=True)
     uebersicht = uebersicht_wert(reise_dir, args)
@@ -4202,7 +4235,7 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
         return ding_lesetext_schreiben(reise_dir, wer, args, eid, heute)
     if not re.fullmatch(r"E-\d+[A-Za-z]?", eid):
         raise Ablehnung("schreiben.lesetext_schreiben.1")
-    text = text_wert(args, "text", pflicht=True, laenge=12000, absaetze=True)
+    text = text_wert(args, "text", pflicht=True, textfeld="lesetext.text")
     quelle = text_wert(args, "quelle", pflicht=True)
     cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
     d_rel = cfg.get("etappen_dossier")
@@ -4244,7 +4277,7 @@ def lesetext_schreiben(reise_dir, wer, args, heute=None):
 def ding_lesetext_schreiben(reise_dir, wer, args, did, heute):
     """Lesetext einer Unterkunft oder eines Aufenthalts (#334): Feld lesetext am Ding in routen.yaml ({text, quelle,
     geschrieben, wer}); die Karte des Dings an seiner Heimat zeigt ihn. Rubriken der Art des Dings. Ersetzt einen alten Text."""
-    text = text_wert(args, "text", pflicht=True, laenge=12000, absaetze=True)
+    text = text_wert(args, "text", pflicht=True, textfeld="lesetext.text")
     quelle = text_wert(args, "quelle", pflicht=True)
     route = route_stand(reise_dir)
     d = (route.get("unterkuenfte" if did.startswith("U-") else "aufenthalte") or {}).get(did)
@@ -4272,7 +4305,7 @@ def ort_lesetext_schreiben(reise_dir, wer, args, oid, heute):
     auf der Ortsseite oben. Unterabschnitte (### …) und Fußnoten bleiben. Fehlt der Abschnitt, kommt er ans Ende des ersten
     Ortsdossiers; fehlt das Dossier, entsteht inhalt/orte.md und wird in reise.json eingetragen. Rubriken der Art des Orts."""
     import json
-    text = text_wert(args, "text", pflicht=True, laenge=12000, absaetze=True)
+    text = text_wert(args, "text", pflicht=True, textfeld="lesetext.text")
     quelle = text_wert(args, "quelle", pflicht=True)
     route = route_stand(reise_dir)
     o = (route.get("orte") or {}).get(oid)
@@ -4431,7 +4464,7 @@ def plan_felder(args, roh, route, d, geaendert=None):
     optionen_ids = {x["id"]: w["id"] for w in route.get("wahlstellen") or [] for x in w["optionen"]}
     for feld, laenge in (("kurz", 40), ("titel", 200), ("text", 2000)):
         if args.get(feld) is not None:
-            v = text_wert(args, feld, laenge=laenge) or ""
+            v = text_wert(args, feld, **({"textfeld": "plan.text"} if feld == "text" else {"laenge": laenge})) or ""
             if feld != "text" and not v:
                 raise Ablehnung("schreiben.option_aendern.2", feld=feld)
             if v != (d.get(feld) or ""):
@@ -4634,7 +4667,7 @@ def wunsch_vorschlagen(reise_dir, wer, args, heute=None):
     rid = (text_wert(args, "wunsch", pflicht=True, laenge=40) or "").strip()
     if not re.fullmatch(r"R-\d{8}-\d{6}-[0-9a-z]{4}", rid):
         raise Ablehnung("schreiben.wunsch_vorschlagen.1")
-    notiz = text_wert(args, "notiz", pflicht=True, laenge=600)
+    notiz = text_wert(args, "notiz", pflicht=True, textfeld="wunsch.notiz")
     roh_r = routen_laden(reise_dir)
     bezug = id_liste(args, "bezug", r"(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.[\w-]+)?)", roh_r) or []
     for x in bezug:
@@ -4812,7 +4845,7 @@ def gegenstand_anlegen(reise_dir, wer, args, heute=None):
     traeger = text_wert(args, "wer", laenge=80)
     if traeger:
         d["wer"] = gegenstand_person(reise_dir, traeger)
-    if (notiz := text_wert(args, "notiz")):
+    if (notiz := text_wert(args, "notiz", textfeld="gegenstand.notiz")):
         d["notiz"] = notiz
     grund = text_wert(args, "grund")
     gid = neue_id(reise_dir, "G")
@@ -4944,7 +4977,7 @@ def gegenstand_aendern(reise_dir, wer, args, heute=None):
         traeger = text_wert(args, "wer", laenge=80)
         feld("wer", gegenstand_person(reise_dir, traeger) if traeger else "", S("schreiben.gegenstand.wort.wer"))
     if args.get("notiz") is not None:
-        feld("notiz", text_wert(args, "notiz"), S("schreiben.gegenstand.wort.notiz"))
+        feld("notiz", text_wert(args, "notiz", textfeld="gegenstand.notiz"), S("schreiben.gegenstand.wort.notiz"))
     defs = {x["id"]: x for x in krit}
     for k, e in gegenstand_merkmale(args, krit, heute).items():
         name = defs[k]["name"]
