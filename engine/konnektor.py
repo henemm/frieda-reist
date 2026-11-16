@@ -1138,6 +1138,10 @@ class Handbuch:
         z = self.lesetext_zeilen({"art_schluessel": d.get("art")})
         if d.get("lesetext"):
             z += ["", tk("konnektor.ausgabe.lesetext_ding"), text(d["lesetext"])]
+            h = d.get("lesetext_herkunft") or {}
+            if h.get("quelle"):   # steht seit #607 nicht mehr im Text
+                z.append(tk("konnektor.ausgabe.lesetext_herkunft", quelle=h["quelle"], datum=datum_de(h["geschrieben"]) if h.get("geschrieben") else "–",
+                            wer=h.get("wer") or "–"))
         return z
 
     def merkmale(self, ziel, bereich):

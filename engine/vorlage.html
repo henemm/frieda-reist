@@ -1488,7 +1488,7 @@ function zid(id) {
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
    Atome: T, zahlText, symbol, chip, etikett (CSS), langtext, merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip, bildEl, miniEl, bildNennung
-   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, Rechtszeile (HTML im Fuß)
+   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, quelleZeilen, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe, grossAnsicht
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
@@ -1989,7 +1989,7 @@ function aufenthaltZeile(id, voll) {
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   const teil = planungsTeil(!!(st && st.gebucht), krit, a.merkmale, [
     langtext(a.hinweis, {class: "z klein"}),
-    a.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + a.quelle) : null,
+    ...quelleZeilen(a),
     (a.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + a.fehlt.map(x => name[x] || x).join(", ")) : null]);
   if (teil.sichtbar) z.append(teil.sichtbar);
   for (const b of bs) z.append(buchungBlock(b, id));
@@ -2127,6 +2127,13 @@ function tagKarte(t, ohneKopf, vorschau) {
 // Stand-Leiter (Product Owner 31.10.2026): die Merkmale eines Dings nach seinem Stand. Vor der Buchung stehen alle in den offenen
 // Einzelheiten. Ab der Buchung gilt die Buchung: Merkmale, die die Reise mit nach_buchung markiert (z. B. „Charakter“), bleiben
 // sichtbar, alle übrigen stehen zugeklappt „Aus der Planung“ (mit Nächten, Hinweis, Herkunft und den anderen Möglichkeiten).
+// Herkunft eines Dings in den Einzelheiten, klein: seine Quelle und, wenn sie abweicht, die des Lesetexts. Unter dem Lesetext
+// selbst steht keine Herkunft mehr (#607, Product Owner 17.11.2026).
+function quelleZeilen(d) {
+  const lq = (d.lesetext_herkunft || {}).quelle;
+  return [d.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + d.quelle) : null,
+    lq && lq !== d.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle_lesetext") + lq) : null];
+}
 function planungsTeil(gebucht, krit, werte, weitere) {
   const bleibt = gebucht ? krit.filter(x => x.nach_buchung) : [];
   // gebucht ohne Herkunft auf dem ersten Blick (#475): sie steht in den Einzelheiten
@@ -2173,7 +2180,7 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   const teil = planungsTeil(gebucht, krit, u.merkmale, [naechte,
     !gebucht ? langtext(u.hinweis, {class: "z"}) : null,
-    u.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + u.quelle) : null,
+    ...quelleZeilen(u),
     (u.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + u.fehlt.map(x => name[x] || x).join(", ")) : null, mehr]);
   if (teil.sichtbar) k.append(teil.sichtbar);
   for (const b of bs) k.append(buchungBlock(b, id));
@@ -4979,6 +4986,8 @@ function ansichtBausteine(m) {
   const mitHerkunft = R.wahlstellen.flatMap(w => w.optionen.map(o => [w, o])).find(([w, o]) => Object.values(o.merkmale || {}).some(x => x.quelle));
   teil("Molekül", "Herkunftszeile", "Herkunft aller gezeigten Werte einer Möglichkeit einmal, leise (Vergleich, #58); Quellen mit Prüfdatum, Notizen für sich.",
     mitHerkunft ? herkunftZeile(mitHerkunft[0].kriterien, mitHerkunft[1].merkmale) : herkunftZeile([{id: "m"}], {m: {wert: "inklusive", quelle: "Muster", geprueft: "2026-10-23"}}));
+  teil("Molekül", "Quelle eines Dings", "Klein in den Einzelheiten: die Quelle des Dings und nur, wenn sie abweicht, die des Lesetexts; unter dem Lesetext steht keine Herkunft (#607).",
+    el("div", {}, ...quelleZeilen({quelle: "Muster (Beispiel)", lesetext_herkunft: {quelle: "anderes Muster (Beispiel)"}})));
   const mitHero = R.wahlstellen.flatMap(w => w.optionen.map(o => [w, o])).find(([w, o]) => heroKriterium(w) && heroZeile(w, o.merkmale));
   teil("Molekül", "Hero-Zeile", "Das Merkmal mit der Rolle hero steht in jeder Möglichkeit ganz oben über die ganze Breite (Vergleich, #343).",
     mitHero ? heroZeile(mitHero[0], mitHero[1].merkmale) : el("div", {class: "hero"}, el("span", {class: "hero-name"}, "Einschätzung"), el("span", {class: "hero-text"}, "Muster: ein, zwei Sätze, was das Haus besonders macht und für wen es passt.")));

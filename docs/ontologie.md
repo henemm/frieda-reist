@@ -222,7 +222,7 @@ arten:
       ankommen:  {name: Ankommen, hilfe: "Wann man ankommt und was am Ziel bleibt"}
 ```
 
-- **Am Aufenthalt** (Unterkunft und Aufenthalt ohne Nacht, #334, Product Owner 6.11.2026: die allgemeinste Form, ohne eigenes Dossier je Grundform): ein Feld am Ding in `routen.yaml`, mit Herkunft wie jede Aussage. Der Bau zeigt ihn mit einer Herkunftszeile auf der Karte des Dings an seiner Heimat, nie in einer Zeile oder Kachel. Preis, Frühstück und andere Fakten bleiben Merkmale.
+- **Am Aufenthalt** (Unterkunft und Aufenthalt ohne Nacht, #334, Product Owner 6.11.2026: die allgemeinste Form, ohne eigenes Dossier je Grundform): ein Feld am Ding in `routen.yaml`, mit Herkunft wie jede Aussage. Der Bau zeigt ihn auf der Karte des Dings an seiner Heimat, nie in einer Zeile oder Kachel. Seine Herkunft steht nicht unter dem Text, sondern klein in den Einzelheiten: eine Zeile „Quelle“, und nur wenn sie abweicht, dazu „Quelle des Lesetexts“; `zeige` im Konnektor nennt sie mit Datum und Person (#607, Product Owner 17.11.2026). Preis, Frühstück und andere Fakten bleiben Merkmale.
 
   ```yaml
   unterkuenfte:

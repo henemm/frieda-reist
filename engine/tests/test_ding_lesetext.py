@@ -35,7 +35,8 @@ def schreib(q, ziel, text, quelle="erfunden (Test)"):
 def test_beispielreise_unterkunft_mit_lesetext_im_bau(tmp_path):
     d = bauen.bauen(kopie(tmp_path), tmp_path / "web")
     lt = d["route"]["unterkuenfte"]["U-02"]["lesetext"]
-    assert "<strong>Das Haus.</strong>" in lt and "Herkunft: erfunden (Beispiel)" in lt and "Ida" in lt
+    assert "<strong>Das Haus.</strong>" in lt and "Herkunft" not in lt and "geschrieben am" not in lt   # #607: nicht im Text
+    assert d["route"]["unterkuenfte"]["U-02"]["lesetext_herkunft"] == {"quelle": "erfunden (Beispiel)", "geschrieben": "2026-11-06", "wer": "Ida"}
     assert "lesetext" not in d["route"]["unterkuenfte"]["U-01"]
 
 
@@ -74,6 +75,7 @@ def test_stadtwochenende_aufenthalt_mit_gliederung(tmp_path):
     _, t = h.eintraege["A-02"]
     assert meldet(t, "konnektor.lesetext_zeilen.1") and "- Sammlung: Was es zu sehen gibt" in t
     assert meldet(t, "konnektor.ausgabe.lesetext_ding") and "Stadtgeschichte in drei Stockwerken" in t
+    assert meldet(t, "konnektor.ausgabe.lesetext_herkunft") and "erfunden (Test)" in t and "Ida" in t   # Herkunft für den AI-Client (#607)
 
 
 def test_unbekanntes_ding(tmp_path):
@@ -148,7 +150,10 @@ def test_seite_zeigt_lesetext_auf_der_karte_des_dings(tmp_path):
     schreib(q, "A-01", "**Rundgang.** Über den Burghof zum Turm (Test).")
     e = seiten(tmp_path, q, "U-02=altes Bürgerhaus am Markt", "A-01=Über den Burghof zum Turm")
     for did in ("U-02", "A-01"):
-        assert e[did]["karte"] and e[did]["imDing"] and e[did]["fett"] >= 1 and e[did]["herkunft"] and e[did]["mal"] == 1, (did, e)
+        assert e[did]["karte"] and e[did]["imDing"] and e[did]["fett"] >= 1 and not e[did]["herkunftImText"] and e[did]["mal"] == 1, (did, e)
+    # gleiche Quelle von Ding und Lesetext: eine Zeile; abweichend: dazu die Quelle des Lesetexts (#607)
+    assert e["U-02"]["quellen"] == ["Quelle: erfunden (Beispiel)"], e["U-02"]
+    assert e["A-01"]["quellen"] == ["Quelle: erfunden (Beispiel)", "Quelle des Lesetexts: erfunden (Test)"], e["A-01"]
     s = kopie(tmp_path / "s", "stadtwochenende")
     schreib(s, "A-02", "**Sammlung.** Stadtgeschichte in drei Stockwerken (Test).")
     e = seiten(tmp_path / "s", s, "A-02=Stadtgeschichte in drei Stockwerken")

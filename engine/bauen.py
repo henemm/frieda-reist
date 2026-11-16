@@ -1413,21 +1413,19 @@ class Bauer:
                         self.hinweise.append(texte.satz("pruefung.bauen.72", eid=eid, w1=wort.strip().rstrip('.:'), art=art, w2=', '.join(r['name'] for r in rubriken)))
 
     def dinge_lesetext(self, route, r_rel):
-        """Lesetext an Unterkunft und Aufenthalt (Feld lesetext in routen.yaml, #334) als HTML mit Herkunftszeile; ein fettes
-        Stichwort, das keine Rubrik der Art ist, ist ein Hinweis (wie bei Strecke und Ort). Ohne Gliederung der Art frei."""
-        arten, sprache = route.get("arten") or {}, self.eck["sprache"]
+        """Lesetext an Unterkunft und Aufenthalt (Feld lesetext in routen.yaml, #334) als HTML; ein fettes Stichwort, das keine
+        Rubrik der Art ist, ist ein Hinweis (wie bei Strecke und Ort). Ohne Gliederung der Art frei. Die Herkunft steht nicht im
+        Text, sondern daneben in lesetext_herkunft {quelle, geschrieben, wer}: Die Seite nennt sie klein in den Einzelheiten,
+        der Konnektor bei zeige (#607, Product Owner 17.11.2026)."""
+        arten = route.get("arten") or {}
         for gruppe in ("unterkuenfte", "aufenthalte"):
             for did, d in (route.get(gruppe) or {}).items():
                 lt = d.get("lesetext")
                 if not isinstance(lt, dict):
                     continue
-                datum = lt.get("geschrieben")
-                try:
-                    datum = texte.datum(datetime.date.fromisoformat(datum), sprache) if datum else ""
-                except ValueError:
-                    pass
-                herkunft = texte.t(sprache, "inhalt.schreiben.herkunft.geschrieben", quelle=lt["quelle"], datum=datum or "–", wer=lt.get("wer") or "–")
-                d["lesetext"] = self.html(lt["text"] + "\n\n" + herkunft, self.reise_dir / r_rel)
+                d["lesetext_herkunft"] = {"quelle": lt["quelle"], "geschrieben": str(lt.get("geschrieben") or "") or None,
+                                          "wer": lt.get("wer")}
+                d["lesetext"] = self.html(lt["text"], self.reise_dir / r_rel)
                 rubriken = (arten.get(d.get("art")) or {}).get("lesetext")
                 if not rubriken:
                     continue
