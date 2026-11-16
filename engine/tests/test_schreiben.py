@@ -1867,6 +1867,15 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="steht nicht im Etappen-Dossier"):
         s.schreiben("beispielreise", "lesetext_schreiben", {**KARL, "args": {"ziel": "E-20", "text": "x", "quelle": "y"}})
+    # Leerer Text entfernt den Lesetext (#605): Grund Pflicht, der alte Text steht im Verlauf (Commit)
+    s.vorbereiten()
+    a = s.schreiben("beispielreise", "lesetext_schreiben", {**KARL, "args": {"ziel": "E-01", "text": "", "grund": "steht jetzt am Tag (Test)"}})
+    assert meldet(a["text"], "schreiben.antwort.lesetext.entfernt") and "Früh in Hohnstein." in a["text"]
+    verlauf = git(origin, "log", "-1", "--format=%B", "main")
+    assert "Früh in Hohnstein." in verlauf and "steht jetzt am Tag (Test)" in verlauf
+    dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
+    abschnitt = dossier[dossier.index("## E-01 "):dossier.index("## E-02 ")]
+    assert "### Zusammenfassung" not in abschnitt and "### Eckdaten" in abschnitt
 
 
 def test_reise_aendern_und_plaene(repo):

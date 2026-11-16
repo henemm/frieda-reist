@@ -2962,7 +2962,8 @@ WISSEN_AENDERN = {"name": "wissen_aendern", "description": "@konnektor.werkzeug.
 LESETEXT_SCHREIBEN = {"name": "lesetext_schreiben", "description": "@konnektor.werkzeug.lesetext_schreiben",
                       "inputSchema": {"type": "object", "properties": {
                           "ziel": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.ziel"}, "text": textform.schema("lesetext.text", "@konnektor.werkzeug.lesetext_schreiben.text"),
-                          "quelle": QUELLE_FELD}, "required": ["ziel", "text", "quelle"]}}
+                          "quelle": QUELLE_FELD, "grund": {"type": "string", "description": "@konnektor.werkzeug.lesetext_schreiben.grund"}},
+                      "required": ["ziel", "text"]}}   # leerer text entfernt (#605): dann grund statt quelle
 REISE_AENDERN = {"name": "reise_aendern", "description": "@konnektor.werkzeug.reise_aendern",
                  "inputSchema": {"type": "object", "properties": {
                      "titel": {"type": "string"}, "untertitel": {"type": "string"}, "kurz": {"type": "string"},

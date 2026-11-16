@@ -4226,16 +4226,18 @@ def rubriken_pruefen(text, rubriken, ziel):
 def lesetext_schreiben(reise_dir, wer, args, heute=None):
     """Den Lesetext einer Etappe (Abschnitt „Zusammenfassung“ im Etappen-Dossier, Ebene „Der Weg“) oder eines Orts (Text unter
     „## O-… Name“ im Ortsdossier, ADR-0008, #334) schreiben oder ersetzen, gegliedert nach den Rubriken der Art (je Absatz
-    „**Rubrik.** …“); Herkunft Pflicht. -> (Titel, Text)."""
+    „**Rubrik.** …“); Herkunft Pflicht. Ein leerer text entfernt den Lesetext (#605, lesetext_entfernen). -> (Titel, Text)."""
     import json
     heute = heute or datetime.date.today()
     eid = (text_wert(args, "ziel", pflicht=True, laenge=12) or "").strip().upper()
-    if re.fullmatch(r"O-\d+[A-Za-z]?", eid):
-        return ort_lesetext_schreiben(reise_dir, wer, args, eid, heute)
-    if re.fullmatch(r"[UA]-\d+[A-Za-z]?", eid):
-        return ding_lesetext_schreiben(reise_dir, wer, args, eid, heute)
-    if not re.fullmatch(r"E-\d+[A-Za-z]?", eid):
+    if not re.fullmatch(r"[OUAE]-\d+[A-Za-z]?", eid):
         raise Ablehnung("schreiben.lesetext_schreiben.1")
+    if isinstance(args.get("text"), str) and not args["text"].strip():
+        return lesetext_entfernen(reise_dir, wer, args, eid)
+    if eid.startswith("O-"):
+        return ort_lesetext_schreiben(reise_dir, wer, args, eid, heute)
+    if eid[0] in "UA":
+        return ding_lesetext_schreiben(reise_dir, wer, args, eid, heute)
     text = text_wert(args, "text", pflicht=True, textfeld="lesetext.text")
     quelle = text_wert(args, "quelle", pflicht=True)
     cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
@@ -4296,6 +4298,77 @@ def ding_lesetext_schreiben(reise_dir, wer, args, did, heute):
     routen_speichern(reise_dir, roh)
     return (S("schreiben.titel.lesetext_" + was, w1=did),
             S("schreiben.antwort.lesetext.ding_" + was, w1=f"{did} {d.get('name') or ''}".strip()) + S("schreiben.antwort.herkunft", w1=quelle) + ".")
+
+
+def lesetext_entfernen(reise_dir, wer, args, ziel):
+    """Leerer text bei lesetext_schreiben (#605): den Lesetext einer Etappe, eines Orts, einer Unterkunft oder eines Aufenthalts
+    entfernen. Wie ein leerer Hinweis bei ding_aendern: Die Antwort nennt den alten Text, sie steht im Verlauf (Vorgang im
+    Reisespeicher bzw. Commit); der Grund ist Pflicht, eine Herkunft braucht das Entfernen nicht. -> (Titel, Text)."""
+    import json
+    grund = text_wert(args, "grund", pflicht=True)
+    route = route_stand(reise_dir)
+    if ziel[0] in "UA":
+        d = (route.get("unterkuenfte" if ziel.startswith("U-") else "aufenthalte") or {}).get(ziel)
+        if d is None:
+            raise Ablehnung("schreiben.lesetext_schreiben.ding_fehlt", did=ziel)
+        roh = routen_laden(reise_dir)
+        knoten, _ = ding_finden(roh, ziel)
+        if not knoten.get("lesetext"):
+            raise Ablehnung("schreiben.lesetext_entfernen.keiner", w1=ziel)
+        alt = str((knoten["lesetext"] or {}).get("text") or "").strip()
+        del knoten["lesetext"]
+        routen_speichern(reise_dir, roh)
+        bezeichnung = f"{ziel} {d.get('name') or ''}".strip()
+    elif ziel.startswith("O-"):
+        if ziel not in (route.get("orte") or {}):
+            raise Ablehnung("schreiben.lesetext_schreiben.ort_fehlt", oid=ziel)
+        cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
+        kopf = re.compile(r"^##\s+(O-\d+[A-Za-z]?)\s")
+        alt = None
+        for d_rel in [d for d in (cfg.get("orte_dossiers") or []) if isinstance(d, str)]:
+            f = Path(reise_dir) / d_rel
+            zeilen = f.read_text(encoding="utf-8").split("\n") if f.exists() else []
+            start = next((i for i, z in enumerate(zeilen) if (m := kopf.match(z + " ")) and m.group(1).upper() == ziel), None)
+            if start is None:
+                continue
+            ende = next((i for i in range(start + 1, len(zeilen)) if zeilen[i].startswith("## ")), len(zeilen))
+            erster = next((i for i in range(start + 1, ende) if zeilen[i].startswith("### ")), ende)
+            fussnoten = [z for z in zeilen[start + 1:erster] if FUSSNOTE.match(z)]   # Belege der Unterabschnitte bleiben
+            alt = "\n".join(z for z in zeilen[start + 1:erster] if not FUSSNOTE.match(z)).strip()
+            if not alt:
+                break
+            if erster == ende and not fussnoten:   # nur der Text: der ganze Abschnitt des Orts geht
+                del zeilen[start:ende]
+                if 0 < start < len(zeilen) and not zeilen[start - 1].strip() and not zeilen[start].strip():
+                    del zeilen[start]
+            else:   # Unterabschnitte und ihre Belege bleiben unter der Überschrift des Orts
+                zeilen[start + 1:erster] = [""] + (fussnoten + [""] if fussnoten else [])
+            inhalt = "\n".join(zeilen).strip("\n")
+            f.write_text(inhalt + "\n" if inhalt else "", encoding="utf-8")
+            break
+        if not alt:
+            raise Ablehnung("schreiben.lesetext_entfernen.keiner", w1=ziel)
+        bezeichnung = f"{ziel} {(route.get('orte') or {})[ziel].get('name') or ''}".strip()
+    else:
+        import bauen
+        cfg = json.loads((Path(reise_dir) / "reise.json").read_text(encoding="utf-8"))
+        d_rel = cfg.get("etappen_dossier")
+        f = Path(reise_dir) / d_rel if d_rel else None
+        zeilen = f.read_text(encoding="utf-8").split("\n") if f and f.exists() else []
+        start = next((i for i, z in enumerate(zeilen) if z.startswith("## ") and (m := bauen.STRECKE_UEBERSCHRIFT.match(z[3:].strip()))
+                      and m.group(1).upper() == ziel), None)
+        ende = next((i for i in range(start + 1, len(zeilen)) if zeilen[i].startswith("## ")), len(zeilen)) if start is not None else 0
+        zs = next((i for i in range(start + 1, ende) if re.fullmatch(r"###\s+Zusammenfassung\s*", zeilen[i])), None) if start is not None else None
+        if zs is None:
+            raise Ablehnung("schreiben.lesetext_entfernen.keiner", w1=ziel)
+        ze = next((i for i in range(zs + 1, ende) if zeilen[i].startswith("### ")), ende)
+        alt = "\n".join(zeilen[zs + 1:ze]).strip()
+        del zeilen[zs:ze]
+        f.write_text("\n".join(zeilen).rstrip("\n") + "\n", encoding="utf-8")
+        bezeichnung = f"{ziel} {((route.get('strecken') or {}).get(ziel) or {}).get('titel') or ''}".strip()
+    alt = re.sub(r"\n+\*[^*\n][^\n]*\*$", "", alt).strip()   # ohne die Herkunftszeile, die der Schreibweg selbst darunter setzt
+    return (S("schreiben.titel.lesetext_entfernt", w1=ziel),
+            S("schreiben.antwort.lesetext.entfernt", w1=bezeichnung, w2=alt) + "." + S("schreiben.antwort.grund", w1=grund))
 
 
 FUSSNOTE = re.compile(r"^\[\^[^\]]+\]:")
