@@ -295,6 +295,12 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen im Speicher (#
   elif [ -n "$software_gepr" ] && [ "$software_gepr" = "$kennung" ]; then
     geprueft=1; gepr_stand="$(git rev-parse HEAD)"   # Software-Klon (#454): dieser Lauf hat den Commit eben geprüft
   fi
+  # Die Prüfung der Software gilt dem Commit, nicht dem Veröffentlichen (#599): Ist der Commit im Klon schon geprüft
+  # (Nachweis oder Tests vor dem Vorspulen), führt deploy.sh die Tests nicht vor jeder Reise erneut aus, auch wenn eine
+  # rote Reise das Veröffentlichen des Stands noch aufhält. Nachziehen auf die neue Kennung wartet trotzdem (geprueft).
+  if [ -z "$gepr_stand" ] && [ "$(cat "$FR_DIENST/software-geprueft" 2>/dev/null || true)" = "$(git rev-parse HEAD)" ]; then
+    gepr_stand="$(git rev-parse HEAD)"
+  fi
   # shellcheck disable=SC2086
   aus="$("$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" staende $liste)" \
     || { echo "ERROR: the trip store cannot be read ($aus), the next run tries again."; return 1; }
@@ -902,6 +908,7 @@ main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
       alarm_pruefen
       return 1
     fi
+    echo "$neu" > "$FR_DIENST/software-geprueft.neu" && mv "$FR_DIENST/software-geprueft.neu" "$FR_DIENST/software-geprueft"   # #599
     git merge -q --ff-only "$neu" || { python_verwerfen; echo "ERROR: the software clone cannot be fast-forwarded."; return 1; }
     python_uebernehmen || { echo "ERROR: the new Python environment cannot be put in place, the next run tries again."; return 1; }
     echo "Software ${kopf:0:7} -> ${neu:0:7}."

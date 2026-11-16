@@ -1174,3 +1174,26 @@ def test_f007_aufrufhilfen_der_werkzeuge_nennen_den_neuen_weg():
     for p in sorted((WURZEL / "werkzeuge").glob("*.py")):
         text = p.read_text(encoding="utf-8")
         assert "Reisen-Repo" not in text and "engine/.venv/bin/python werkzeuge/" not in text, p.name
+
+
+def test_rote_reise_laesst_die_tests_nicht_vor_jeder_reise_neu_laufen(sw):
+    """#599: Hält eine rote Reise das Veröffentlichen eines geprüften Software-Stands auf, baut der Speicher-Teil die
+    anderen Reisen trotzdem mit dem geprüften Stand (FR_GEPRUEFT), statt vor jeder Reise die ganze Testsuite zu starten."""
+    _ok(sw.lauf())
+    sw.nachweis_gruen()
+    c = sw.neuer_commit()
+    rot, gruen = REISEN
+    deploy = sw.t / "deploy.sh"
+    deploy.write_text(deploy.read_text().replace(
+        'kopf=$(git -C "$FR_WURZEL" rev-parse HEAD)\n',
+        f'kopf=$(git -C "$FR_WURZEL" rev-parse HEAD)\necho "$1 ${{FR_GEPRUEFT:-}}" >> {sw.t}/gepr.log\n'
+        f'[ "$1" = {rot} ] && [ -e {sw.t}/rot-reise ] && exit 2\n'))
+    (sw.t / "rot-reise").touch()
+    r = sw.lauf()
+    assert r.returncode != 0 and sw.lesen("veroeffentlicht") != c, r.stdout
+    assert sw.kopf() == c and sw.lesen("software-geprueft") == c
+    (sw.t / "gepr.log").unlink()
+    import reisespeicher
+    reisespeicher.vorgang_schreiben(gruen, {"x.md": b"1"}, "Test", "test", "x")
+    sw.lauf()
+    assert f"{gruen} {c}" in sw.zeilen("gepr.log"), sw.zeilen("gepr.log")
