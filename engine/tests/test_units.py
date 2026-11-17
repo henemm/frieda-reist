@@ -114,7 +114,8 @@ def test_unicode_leerraum_und_leeres_environment_sind_gesperrt():
 
 def test_erlaubnisliste_ist_eine_feste_namensliste():
     erlaubt = units().ERLAUBT
-    assert set(erlaubt) == {("Service", "Environment:FR_DIENST"), ("Service", "Environment:FR_ZEITZONE"), ("Service", "TimeoutStartSec")}
+    assert set(erlaubt) == {("Service", "Environment:FR_DIENST"), ("Service", "Environment:FR_ZEITZONE"), ("Service", "TimeoutStartSec"),
+                            ("Service", "MemoryHigh"), ("Service", "MemoryMax"), ("Service", "MemorySwapMax")}   # #538
     for zeile in ("Environment=FR_WURZEL=/tmp/x", "Environment=RM_ABLAGE=/tmp/x", "Environment=KN_PORT=1"):
         setzen, _, gesperrt = units().abgleich(EINHEIT + zeile + "\n", EINHEIT, "probe-x.service")
         assert setzen == [] and len(gesperrt) == 1
@@ -235,3 +236,96 @@ def test_sandbox_nicht_in_erlaubnisliste(tmp_path):
     r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
     assert r.returncode == 4, r.stdout + r.stderr
     assert "probe-konnektor.service" in r.stdout and "probe-schreiben.service" in r.stdout, r.stdout
+
+
+# ---------- #538: Speichergrenzen der Dauerdienste in der Erlaubnisliste ----------
+
+SPEICHER = ("MemoryHigh", "MemoryMax", "MemorySwapMax")
+GUELTIG = ("256M", "1G", "4G", "99999M")
+UNGUELTIG = ("infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", " 256M", "256 M")
+
+
+@pytest.mark.parametrize("schluessel", SPEICHER)
+@pytest.mark.parametrize("wert", GUELTIG)
+def test_speicherwert_gueltig(schluessel, wert):
+    """AC-6: gültige Werte werden angenommen."""
+    assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+
+
+@pytest.mark.parametrize("schluessel", SPEICHER)
+@pytest.mark.parametrize("wert", UNGUELTIG)
+def test_speicherwert_ungueltig(schluessel, wert):
+    """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+    Zeilenumbruch am Ende)."""
+    u = units()
+    assert ("Service", schluessel) in u.ERLAUBT
+    assert not u.erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+
+
+def test_ungueltige_grenze_ist_gesperrt():
+    """AC-9: Eine Grenzzeile mit gültigem Wert ist eine erlaubte Abweichung, mit ungültigem Wert eine gesperrte."""
+    u = units()
+    ist = EINHEIT + "MemoryMax=256M\n"
+    setzen, entfernen, gesperrt = u.abgleich(EINHEIT + "MemoryMax=512M\n", ist, "probe-x.service")
+    assert gesperrt == [] and ("Service", "MemoryMax", "512M") in setzen and ("Service", "MemoryMax", "256M") in entfernen
+    for wert in ("infinity", "0", "50%"):
+        setzen, _, gesperrt = u.abgleich(EINHEIT + f"MemoryMax={wert}\n", ist, "probe-x.service")
+        assert setzen == [] and len(gesperrt) == 1, (wert, gesperrt)
+
+
+def _helfer_programm(tmp_path, systemd, alt):
+    """Echtes Hilfsprogramm aus der Vorlage als ausführbares Programm, das in den Testordner installiert (kein daemon-reload).
+    alt=True: Stand vor #538, die drei Speicher-Schlüssel fehlen in seiner Erlaubnisliste."""
+    benutzer = re.search(r"(?m)^User=(.*)$", (systemd / "probe-konnektor.service").read_text()).group(1)
+    text = (BETRIEB / "vorlagen" / "units-installieren.py").read_text(encoding="utf-8")
+    text = text.replace("__INSTANZ__", "probe").replace("__BENUTZER__", benutzer)
+    if alt:
+        text = "".join(z for z in text.splitlines(keepends=True) if not re.match(r'\s*\("Service", "Memory', z))
+    modul = tmp_path / ("helfer-alt.py" if alt else "helfer-neu.py")
+    modul.write_text(text, encoding="utf-8")
+    programm = tmp_path / ("helfer-alt" if alt else "helfer-neu")
+    programm.write_text(f"#!{sys.executable}\nimport importlib.util, sys\n"
+                        f"spec = importlib.util.spec_from_file_location('h', {str(modul)!r})\n"
+                        "m = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(m)\n"
+                        f"sys.exit(m.main(sys.argv, systemd={str(systemd)!r}, neu_laden=lambda: None))\n")
+    programm.chmod(0o755)
+    return programm
+
+
+def _ohne_speichergrenzen(systemd, name):
+    """Installierte Einheit wie vor #538: die drei Speicherzeilen fehlen."""
+    datei = systemd / name
+    text = datei.read_text()
+    assert all(f"\n{k}=" in text for k in SPEICHER), f"{name}: Vorlage ohne Speichergrenzen"
+    datei.write_text(re.sub(r"(?m)^Memory(?:High|Max|SwapMax)=.*\n", "", text))
+
+
+def test_neue_grenzen_installiert_der_abgleich_ohne_handarbeit(tmp_path):
+    """AC-8 (Ende zu Ende): Eine installierte Unit ohne Speicherzeilen ist eine erlaubte Abweichung; das echte Hilfsprogramm
+    installiert sie, danach endet pruefen mit 0."""
+    systemd, env = _installierte_einheiten(tmp_path)
+    protokoll = _attrappen(tmp_path, env, systemd)
+    env["FR_UNITS_HELFER"] = str(_helfer_programm(tmp_path, systemd, alt=False))
+    _ohne_speichergrenzen(systemd, "probe-konnektor.service")
+    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 3 and "MemoryMax" in r.stdout and "BLOCKED" not in r.stdout, r.stdout
+    r = _installieren(env)
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert "MemoryMax=" in (systemd / "probe-konnektor.service").read_text()
+    assert "systemctl restart probe-konnektor" in protokoll.read_text()
+
+
+def test_alter_helfer_nur_normale_meldung(tmp_path):
+    """AC-10: Kennt das installierte Hilfsprogramm die Speicher-Schlüssel noch nicht, lehnt es ab und ändert nichts;
+    units.py meldet den Fehlschlag (Ausgang 5), die erneute Prüfung bleibt bei Ausgang 3. veroeffentlichen.sh macht daraus genau
+    eine normale Meldung (test_betrieb.py::test_alter_helfer_meldet_einmal_normal)."""
+    systemd, env = _installierte_einheiten(tmp_path)
+    _attrappen(tmp_path, env, systemd)
+    env["FR_UNITS_HELFER"] = str(_helfer_programm(tmp_path, systemd, alt=True))
+    _ohne_speichergrenzen(systemd, "probe-push.service")
+    vorher = (systemd / "probe-push.service").read_text()
+    r = _installieren(env)
+    assert r.returncode == 5 and "probe-push.service: install failed (exit 3)" in r.stdout and "outside the allowed list" in r.stdout, r.stdout
+    assert (systemd / "probe-push.service").read_text() == vorher
+    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 3, r.stdout

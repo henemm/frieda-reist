@@ -2498,6 +2498,113 @@ def test_veroeffentlichen_unit_abgleich_fehler_stoppt_nichts(vf):
     assert not hoch(vf)
 
 
+def test_units_abweichung_nur_normale_meldung(vf):
+    """#538, AC-9: Eine gesperrte Grenzzeile (ungültiger Wert) wird genau eine normale Meldung, kein Alarm, auch beim
+    nächsten Lauf keine zweite."""
+    stub = ausfuehrbar(vf["tmp"] / "units.sh", '#!/bin/sh\necho "probe-konnektor.service: BLOCKED, [Service] MemoryMax=infinity wanted"\nexit 4\n')
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    meldungen = [z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]
+    assert len(meldungen) == 1 and "MemoryMax=infinity" in meldungen[0]
+    assert not hoch(vf)
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1 and not hoch(vf)
+
+
+def test_alter_helfer_meldet_einmal_normal(vf):
+    """#538, AC-10: Das installierte Hilfsprogramm kennt die Speicher-Schlüssel noch nicht: Installieren scheitert (Ausgang 5),
+    die Prüfung bleibt bei 3. Daraus wird genau eine normale Meldung mit dem Merker units-gemeldet, kein Alarm, keine
+    Wiederholung beim nächsten Lauf."""
+    protokoll = vf["tmp"] / "units-aufrufe.log"
+    stub = ausfuehrbar(vf["tmp"] / "units-alt.sh",
+                       f'#!/bin/sh\necho "$1" >> {protokoll}\n'
+                       'if [ "$1" = installieren ]; then echo "probe-konnektor.service: install failed (exit 3): rejected: lines outside '
+                       'the allowed list differ"; exit 5; fi\n'
+                       'echo "probe-konnektor.service: allowed, add [Service] MemoryMax=1G"\nexit 3\n')
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    assert protokoll.read_text().split() == ["pruefen", "installieren", "pruefen"]
+    meldungen = [z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]
+    assert len(meldungen) == 1 and "MemoryMax=1G" in meldungen[0]
+    assert not hoch(vf)
+    assert (vf["tmp"] / "dienst" / "units-gemeldet").exists()
+    vf["neuer_commit"]()
+    assert vf["lauf"](VF_UNITS=str(stub)).returncode == 0
+    assert len([z for z in vf["zeilen"]("melden.log") if z.startswith("normal|")]) == 1 and not hoch(vf)
+
+
+# ---------- Speichergrenzen der Dauerdienste (#538) ----------
+
+SPEICHERGRENZEN = {   # Spec speichergrenzen-538, Entscheidung 2: (MemoryHigh, MemoryMax, MemorySwapMax)
+    "rueckmeldungen": ("192M", "256M", "128M"),
+    "push": ("192M", "256M", "128M"),
+    "konnektor": ("768M", "1G", "256M"),
+    "schreiben": ("4G", "5G", "1G"),
+}
+SPEICHERWERT = re.compile(r"[1-9][0-9]{0,4}[MG]")
+
+
+def _service_zeilen(art):
+    """Schlüssel-Wert-Paare im Abschnitt [Service] einer Vorlage (ohne Kommentare)."""
+    abschnitt, erg = "", []
+    for z in (BETRIEB / "vorlagen" / f"{art}.service").read_text(encoding="utf-8").splitlines():
+        z = z.strip()
+        if not z or z[0] in "#;":
+            continue
+        if z.startswith("["):
+            abschnitt = z
+        elif abschnitt == "[Service]" and "=" in z:
+            erg.append(tuple(z.split("=", 1)))
+    return erg
+
+
+def _mb(wert):
+    return int(wert[:-1]) * (1024 if wert.endswith("G") else 1)
+
+
+@pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+def test_dauerdienste_tragen_speichergrenzen(art):
+    """AC-1: Jede Dauerdienst-Vorlage trägt genau eine Zeile MemoryHigh, MemoryMax, MemorySwapMax mit den Werten der Spec;
+    jeder Wert passt auf das Muster der Erlaubnisliste. Der Kommentar nennt das Messdatum."""
+    zeilen = _service_zeilen(art)
+    for schluessel, soll in zip(("MemoryHigh", "MemoryMax", "MemorySwapMax"), SPEICHERGRENZEN[art]):
+        werte = [w for k, w in zeilen if k == schluessel]
+        assert werte == [soll], (art, schluessel, werte)
+        assert SPEICHERWERT.fullmatch(soll)
+    text = (BETRIEB / "vorlagen" / f"{art}.service").read_text(encoding="utf-8")
+    assert "17.11.2026" in text, art
+    if art == "schreiben":
+        assert "#624" in text
+
+
+@pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+def test_speicher_high_kleiner_max(art):
+    """AC-2: Die weiche Grenze liegt unter der harten (G = 1024 M)."""
+    werte = dict(_service_zeilen(art))
+    assert _mb(werte["MemoryHigh"]) < _mb(werte["MemoryMax"]), werte
+
+
+@pytest.mark.parametrize("art", ["veroeffentlichen", "waechter"])
+def test_veroeffentlichen_ohne_speichergrenze(art):
+    """AC-3: Die kurzlebigen Einheiten (Veröffentlichen, Wächter) bekommen keine Speichergrenze."""
+    assert not [k for k, _ in _service_zeilen(art) if k.startswith("Memory")]
+
+
+def test_doku_beschreibt_speichergrenzen():
+    """AC-11: docs/betrieb.md nennt Schlüssel, Muster, Werte und Einmalschritt; Spec 552 Entscheidung 8 die Abgrenzung."""
+    doku = (BETRIEB.parent / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    assert "Speichergrenzen (#538)" in doku
+    abschnitt = doku[doku.index("Speichergrenzen (#538)"):]
+    for wort in ("MemoryHigh", "MemoryMax", "MemorySwapMax", "^[1-9][0-9]{0,4}[MG]$", "einrichten.sh --installieren", "#624",
+                 "192M", "768M", "5G"):
+        assert wort in abschnitt, wort
+    abgleich = doku[doku.index("## Einheiten abgleichen (#260)"):]
+    abgleich = abgleich[:abgleich.index("\n## ", 5)]
+    assert all(k in abgleich for k in ("MemoryHigh", "MemoryMax", "MemorySwapMax")), "Liste der erlaubten Zeilen"
+    spec = (BETRIEB.parent / "docs" / "specs" / "betrieb" / "dienstrechte-552.md").read_text(encoding="utf-8")
+    e8 = spec[spec.index("8. **Unit-Änderungen nicht in `ERLAUBT`**"):spec.index("9. **")]
+    assert "Ressourcengrenzen" in e8 and "#538" in e8, e8
+
+
 # ---------- nginx-Bausteine abgleichen beim Veröffentlichen (#206, test_nginx.py prüft den Abgleich selbst) ----------
 
 def test_veroeffentlichen_meldet_nginx_abweichung_einmal_je_fingerabdruck_nach_installationsversuch(vf):

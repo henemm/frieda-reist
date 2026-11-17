@@ -276,3 +276,44 @@ def test_einrichten_erzeugt_das_hilfsprogramm_mit_eingesetzten_werten(tmp_path):
     datei = ziel / "sbin" / "probe-units-installieren"
     text = datei.read_text(encoding="utf-8")
     assert 'INSTANZ = "probe"' in text and 'BENUTZER = "hans"' in text and "__" not in text.replace("__name__", "").replace("__main__", "")
+
+
+
+# ---------- #538: Speichergrenzen (MemoryHigh, MemoryMax, MemorySwapMax) ----------
+
+SPEICHER = ("MemoryHigh", "MemoryMax", "MemorySwapMax")
+
+
+@pytest.mark.parametrize("schluessel", SPEICHER)
+@pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+def test_speicherwert_gueltig(h, schluessel, wert):
+    """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+    h["m"].pruefe_neu([("Service", schluessel, wert)])
+    assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+
+
+@pytest.mark.parametrize("schluessel", SPEICHER)
+@pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+def test_speicherwert_ungueltig(h, schluessel, wert):
+    """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+    assert ("Service", schluessel) in h["m"].ERLAUBT
+    with pytest.raises(h["m"].Abgelehnt):
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+    if "\n" not in wert:
+        abgelehnt(h, EINHEIT + f"{schluessel}={wert}\n")
+
+
+def test_grenzabweichung_wird_installiert(h):
+    """AC-8: Unterscheidet sich die neue Datei nur in Grenzzeilen mit gültigen Werten, wird sie installiert; auch das
+    Ändern eines vorhandenen Werts."""
+    mit = EINHEIT + "MemoryHigh=192M\nMemoryMax=256M\nMemorySwapMax=128M\n"
+    assert h["lauf"](mit) == 0
+    assert (h["systemd"] / NAME).read_text(encoding="utf-8") == mit
+    assert h["lauf"](mit.replace("MemoryMax=256M", "MemoryMax=1G")) == 0
+    assert h["geladen"] == [1, 1]
+
+
+def test_gemischte_abweichung_wird_nicht_installiert(h):
+    """AC-8: Eine gültige Grenzzeile zusammen mit einer nicht erlaubten Zeile: nichts wird installiert."""
+    abgelehnt(h, EINHEIT + "MemoryMax=256M\nExecStartPre=/bin/true\n")
+    abgelehnt(h, EINHEIT + "MemoryMax=256M\nMemoryMax=512M\n")      # ein Schlüssel höchstens einmal

@@ -1,0 +1,2569 @@
+# RED-Lauf #538 (17.11.2026): 119 rot, 5 grün.
+# Grün sind nur Wächter für schon vorhandenes Verhalten, die nach der Umsetzung grün bleiben müssen:
+#   test_veroeffentlichen_ohne_speichergrenze[veroeffentlichen|waechter] (AC-3), test_gemischte_abweichung_wird_nicht_installiert (AC-8),
+#   test_units_abweichung_nur_normale_meldung (AC-9, Meldestufe), test_alter_helfer_meldet_einmal_normal (AC-10, Meldestufe).
+# Befehl: pytest -q -n 4 engine/tests/test_units.py engine/tests/test_units_helfer.py engine/tests/test_betrieb.py -k <neue Tests> -rfE
+
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF [ 58%]
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.FFFFFFF.FF...FF                     [100%]
+=================================== FAILURES ===================================
+________________ test_erlaubnisliste_ist_eine_feste_namensliste ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_erlaubnisliste_ist_eine_feste_namensliste():
+        erlaubt = units().ERLAUBT
+>       assert set(erlaubt) == {("Service", "Environment:FR_DIENST"), ("Service", "Environment:FR_ZEITZONE"), ("Service", "TimeoutStartSec"),
+                                ("Service", "MemoryHigh"), ("Service", "MemoryMax"), ("Service", "MemorySwapMax")}   # #538
+E       AssertionError: assert {('Service', ...outStartSec')} == {('Service', ...outStartSec')}
+E         
+E         Extra items in the right set:
+E         ('Service', 'MemoryHigh')
+E         ('Service', 'MemorySwapMax')
+E         ('Service', 'MemoryMax')
+E         Use -v to get more diff
+
+engine/tests/test_units.py:117: AssertionError
+_______________ test_speicherwert_ungueltig[infinity-MemoryMax] ________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = 'infinity'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+___________________ test_speicherwert_gueltig[4G-MemoryHigh] ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '4G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryHigh', '4G')
+E       assert False
+E        +  where False = <function erlaubt at 0x7a2c4d5636a0>(('Service', 'MemoryHigh', '4G'))
+E        +    where <function erlaubt at 0x7a2c4d5636a0> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+________________ test_speicherwert_ungueltig[0M-MemorySwapMax] _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '0M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+___________________ test_speicherwert_gueltig[4G-MemoryMax] ____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '4G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryMax', '4G')
+E       assert False
+E        +  where False = <function erlaubt at 0x7a2c4d400680>(('Service', 'MemoryMax', '4G'))
+E        +    where <function erlaubt at 0x7a2c4d400680> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+_____________ test_speicherwert_ungueltig[infinity-MemorySwapMax] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = 'infinity'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[50%-MemoryHigh] __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '50%'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+__________________ test_speicherwert_gueltig[256M-MemoryHigh] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryHigh', '256M')
+E       assert False
+E        +  where False = <function erlaubt at 0x7069fb010400>(('Service', 'MemoryHigh', '256M'))
+E        +    where <function erlaubt at 0x7069fb010400> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+_________________ test_speicherwert_gueltig[4G-MemorySwapMax] __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '4G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemorySwapMax', '4G')
+E       assert False
+E        +  where False = <function erlaubt at 0x7a2c4d4011c0>(('Service', 'MemorySwapMax', '4G'))
+E        +    where <function erlaubt at 0x7a2c4d4011c0> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+__________________ test_speicherwert_ungueltig[0-MemoryHigh] ___________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '0'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+__________________ test_speicherwert_ungueltig[50%-MemoryMax] __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '50%'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+__________________ test_speicherwert_gueltig[256M-MemoryMax] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryMax', '256M')
+E       assert False
+E        +  where False = <function erlaubt at 0x7069fb0111c0>(('Service', 'MemoryMax', '256M'))
+E        +    where <function erlaubt at 0x7069fb0111c0> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+___________________ test_speicherwert_ungueltig[0-MemoryMax] ___________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '0'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[50%-MemorySwapMax] ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '50%'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_gueltig[99999M-MemoryHigh] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '99999M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryHigh', '99999M')
+E       assert False
+E        +  where False = <function erlaubt at 0x7a2c4d401f80>(('Service', 'MemoryHigh', '99999M'))
+E        +    where <function erlaubt at 0x7a2c4d401f80> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+_________________ test_speicherwert_ungueltig[0-MemorySwapMax] _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '0'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[512K-MemoryHigh] _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '512K'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_gueltig[99999M-MemoryMax] __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '99999M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryMax', '99999M')
+E       assert False
+E        +  where False = <function erlaubt at 0x7a2c4d402b60>(('Service', 'MemoryMax', '99999M'))
+E        +    where <function erlaubt at 0x7a2c4d402b60> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+________________ test_speicherwert_gueltig[256M-MemorySwapMax] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemorySwapMax', '256M')
+E       assert False
+E        +  where False = <function erlaubt at 0x7069fb011f80>(('Service', 'MemorySwapMax', '256M'))
+E        +    where <function erlaubt at 0x7069fb011f80> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+_______________ test_speicherwert_gueltig[99999M-MemorySwapMax] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '99999M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemorySwapMax', '99999M')
+E       assert False
+E        +  where False = <function erlaubt at 0x7a2c4d403ba0>(('Service', 'MemorySwapMax', '99999M'))
+E        +    where <function erlaubt at 0x7a2c4d403ba0> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+__________________ test_speicherwert_ungueltig[0M-MemoryHigh] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '0M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[512K-MemoryMax] __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '512K'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+___________________ test_speicherwert_gueltig[1G-MemoryHigh] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '1G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryHigh', '1G')
+E       assert False
+E        +  where False = <function erlaubt at 0x7069fb012b60>(('Service', 'MemoryHigh', '1G'))
+E        +    where <function erlaubt at 0x7069fb012b60> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+__________________ test_speicherwert_ungueltig[0M-MemoryMax] ___________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '0M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[512K-MemorySwapMax] ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '512K'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[infinity-MemoryHigh] _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = 'infinity'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+___________________ test_speicherwert_gueltig[1G-MemoryMax] ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '1G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemoryMax', '1G')
+E       assert False
+E        +  where False = <function erlaubt at 0x7069fb013ba0>(('Service', 'MemoryMax', '1G'))
+E        +    where <function erlaubt at 0x7069fb013ba0> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+__________________ test_speicherwert_ungueltig[1T-MemoryHigh] __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '1T'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[100000M-MemoryMax] ________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '100000M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[256-MemorySwapMax] ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '256'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_gueltig[1G-MemorySwapMax] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '1G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", GUELTIG)
+    def test_speicherwert_gueltig(schluessel, wert):
+        """AC-6: gültige Werte werden angenommen."""
+>       assert units().erlaubt(("Service", schluessel, wert)), (schluessel, wert)
+E       AssertionError: ('MemorySwapMax', '1G')
+E       assert False
+E        +  where False = <function erlaubt at 0x7069fb0d8860>(('Service', 'MemorySwapMax', '1G'))
+E        +    where <function erlaubt at 0x7069fb0d8860> = <module 'units' from 'betrieb/units.py'>.erlaubt
+E        +      where <module 'units' from 'betrieb/units.py'> = units()
+
+engine/tests/test_units.py:252: AssertionError
+__________________ test_speicherwert_ungueltig[1T-MemoryMax] ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '1T'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+______________ test_speicherwert_ungueltig[100000M-MemorySwapMax] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '100000M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[256M\n-MemoryHigh] ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '256M\n'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[256m-MemoryHigh] _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '256m'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[-MemorySwapMax] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = ''
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[256M\n-MemoryMax] _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '256M\n'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[1T-MemorySwapMax] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '1T'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[ 256M-MemoryHigh] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = ' 256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[ 256M-MemoryMax] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = ' 256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[256m-MemoryMax] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '256m'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+______________ test_speicherwert_ungueltig[256M\n-MemorySwapMax] _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '256M\n'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[0256M-MemoryHigh] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '0256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[256m-MemorySwapMax] ________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '256m'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+___________________ test_speicherwert_ungueltig[-MemoryHigh] ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = ''
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[0256M-MemoryMax] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '0256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[ 256M-MemorySwapMax] _______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = ' 256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[0256M-MemorySwapMax] _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '0256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[100000M-MemoryHigh] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '100000M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+___________________ test_speicherwert_ungueltig[-MemoryMax] ____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = ''
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+________________ test_speicherwert_ungueltig[256 M-MemoryHigh] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '256 M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_________________ test_speicherwert_ungueltig[256-MemoryHigh] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryHigh', wert = '256'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[256 M-MemorySwapMax] _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemorySwapMax', wert = '256 M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_____________________ test_ungueltige_grenze_ist_gesperrt ______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_ungueltige_grenze_ist_gesperrt():
+        """AC-9: Eine Grenzzeile mit gültigem Wert ist eine erlaubte Abweichung, mit ungültigem Wert eine gesperrte."""
+        u = units()
+        ist = EINHEIT + "MemoryMax=256M\n"
+        setzen, entfernen, gesperrt = u.abgleich(EINHEIT + "MemoryMax=512M\n", ist, "probe-x.service")
+>       assert gesperrt == [] and ("Service", "MemoryMax", "512M") in setzen and ("Service", "MemoryMax", "256M") in entfernen
+E       AssertionError: assert (['probe-x.ser...6M installed'] == []
+E         
+E         Left contains 2 more items, first extra item: 'probe-x.service: [Service] MemoryMax=512M wanted'
+E         Use -v to get more diff)
+
+engine/tests/test_units.py:270: AssertionError
+_________________ test_speicherwert_ungueltig[256 M-MemoryMax] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '256 M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_gueltig[99999M-MemorySwapMax] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_gueltig_99993/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_gueltig_99993/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '99999M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemorySwapMax=99999M\n'
+systemd = '<tmp>/pytest-18158/popen-gw1/test_speicherwert_gueltig_99993/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7a2c4d403100>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw1/test_speicherwert_gueltig_99993/helfer.py:165: Abgelehnt
+__________________ test_speicherwert_gueltig[256M-MemoryMax] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M3/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M3/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryMax=256M\n'
+systemd = '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M3/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7069fb0d8400>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M3/helfer.py:165: Abgelehnt
+__________________ test_speicherwert_ungueltig[256-MemoryMax] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+schluessel = 'MemoryMax', wert = '256'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", UNGUELTIG)
+    def test_speicherwert_ungueltig(schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber das Muster lehnt den Wert ab (vollständiger Treffer, auch kein
+        Zeilenumbruch am Ende)."""
+        u = units()
+>       assert ("Service", schluessel) in u.ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'units' from 'betrieb/units.py'>.ERLAUBT
+
+engine/tests/test_units.py:261: AssertionError
+_______________ test_speicherwert_ungueltig[infinity-MemoryHigh] _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in1/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in1/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = 'infinity'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in1/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+________________ test_speicherwert_gueltig[256M-MemorySwapMax] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M4/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M4/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemorySwapMax=256M\n'
+systemd = '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M4/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7069fb011ee0>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_256M4/helfer.py:165: Abgelehnt
+_______________ test_speicherwert_ungueltig[infinity-MemoryMax] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in2/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in2/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = 'infinity'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in2/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+___________________ test_speicherwert_gueltig[1G-MemoryHigh] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M3/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M3/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '1G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryHigh=1G\n'
+systemd = '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M3/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x706a0040e5c0>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M3/helfer.py:165: Abgelehnt
+_____________ test_speicherwert_ungueltig[infinity-MemorySwapMax] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in3/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in3/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = 'infinity'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_in3/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+__________________ test_speicherwert_ungueltig[0-MemoryHigh] ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_0/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '0'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_0/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+___________________ test_speicherwert_gueltig[4G-MemoryHigh] ___________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M0/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '4G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryHigh=4G\n'
+systemd = '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M0/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7e40f4eff100>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M0/helfer.py:165: Abgelehnt
+___________________ test_speicherwert_gueltig[1G-MemoryMax] ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M4/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M4/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '1G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryMax=1G\n'
+systemd = '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M4/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x706a0040cd60>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M4/helfer.py:165: Abgelehnt
+___________________ test_speicherwert_ungueltig[0-MemoryMax] ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_1/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_1/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '0'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_1/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+___________________ test_speicherwert_gueltig[4G-MemoryMax] ____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M1/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M1/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '4G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryMax=4G\n'
+systemd = '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M1/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7e40f4efca40>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M1/helfer.py:165: Abgelehnt
+_________________ test_speicherwert_gueltig[1G-MemorySwapMax] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M5/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M5/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '1G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemorySwapMax=1G\n'
+systemd = '<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M5/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7069fb15ede0>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw0/test_speicherwert_gueltig_1G_M5/helfer.py:165: Abgelehnt
+__________________ test_speicherwert_ungueltig[0M-MemoryMax] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_0M0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_0M0/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '0M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_0M0/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_gueltig[4G-MemorySwapMax] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M2/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M2/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '4G'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemorySwapMax=4G\n'
+systemd = '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M2/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7e40f62c5b20>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_4G_M2/helfer.py:165: Abgelehnt
+_________________ test_speicherwert_ungueltig[0-MemorySwapMax] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_2/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_2/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '0'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0_2/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+__________________ test_speicherwert_ungueltig[0M-MemoryHigh] __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0M0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0M0/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '0M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_0M0/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_gueltig[99999M-MemoryHigh] _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99990/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99990/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '99999M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryHigh=99999M\n'
+systemd = '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99990/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7e40f62c7d80>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99990/helfer.py:165: Abgelehnt
+________________ test_speicherwert_ungueltig[0M-MemorySwapMax] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_0M1/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_0M1/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '0M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_0M1/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[50%-MemoryHigh] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_500/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_500/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '50%'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_500/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+________________ test_speicherwert_ungueltig[50%-MemorySwapMax] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_500/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_500/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '50%'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_500/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+__________________ test_speicherwert_ungueltig[50%-MemoryMax] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_501/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_501/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '50%'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_501/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_gueltig[99999M-MemoryMax] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99991/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99991/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '99999M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryMax=99999M\n'
+systemd = '<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99991/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7e40f4f6c860>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw3/test_speicherwert_gueltig_99991/helfer.py:165: Abgelehnt
+________________ test_speicherwert_ungueltig[0256M-MemoryHigh] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_020/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_020/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '0256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_020/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[512K-MemoryHigh] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_510/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_510/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '512K'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_510/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[0256M-MemoryMax] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_021/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_021/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '0256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_021/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+__________________ test_speicherwert_ungueltig[1T-MemoryHigh] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T0/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '1T'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T0/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[512K-MemoryMax] __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_511/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_511/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '512K'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_511/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_______________ test_speicherwert_ungueltig[0256M-MemorySwapMax] _______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_022/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_022/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '0256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_022/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+__________________ test_speicherwert_ungueltig[1T-MemoryMax] ___________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T1/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T1/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '1T'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T1/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_______________ test_speicherwert_ungueltig[512K-MemorySwapMax] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_512/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_512/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '512K'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_512/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_______________ test_speicherwert_ungueltig[100000M-MemoryHigh] ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_100/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_100/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '100000M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_100/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+________________ test_speicherwert_ungueltig[1T-MemorySwapMax] _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T2/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T2/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '1T'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_1T2/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+________________ test_speicherwert_ungueltig[100000M-MemoryMax] ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_101/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_101/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '100000M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_101/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[256m-MemoryHigh] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_250/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_250/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '256m'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_250/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[256m-MemoryMax] __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_251/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_251/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '256m'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_251/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+______________ test_speicherwert_ungueltig[100000M-MemorySwapMax] ______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_102/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_102/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '100000M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_102/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_______________ test_speicherwert_ungueltig[256m-MemorySwapMax] ________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_255/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_255/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '256m'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_255/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+__________________ test_speicherwert_ungueltig[256-MemoryMax] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_252/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_252/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '256'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_252/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+________________ test_speicherwert_ungueltig[256M\n-MemoryHigh] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_252/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_252/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '256M\n'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_252/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+__________ test_neue_grenzen_installiert_der_abgleich_ohne_handarbeit __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/pytest-18158/popen-gw2/test_neue_grenzen_installiert_0')
+
+    def test_neue_grenzen_installiert_der_abgleich_ohne_handarbeit(tmp_path):
+        """AC-8 (Ende zu Ende): Eine installierte Unit ohne Speicherzeilen ist eine erlaubte Abweichung; das echte Hilfsprogramm
+        installiert sie, danach endet pruefen mit 0."""
+        systemd, env = _installierte_einheiten(tmp_path)
+        protokoll = _attrappen(tmp_path, env, systemd)
+        env["FR_UNITS_HELFER"] = str(_helfer_programm(tmp_path, systemd, alt=False))
+>       _ohne_speichergrenzen(systemd, "probe-konnektor.service")
+
+engine/tests/test_units.py:309: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+systemd = PosixPath('<tmp>/pytest-18158/popen-gw2/test_neue_grenzen_installiert_0/systemd')
+name = 'probe-konnektor.service'
+
+    def _ohne_speichergrenzen(systemd, name):
+        """Installierte Einheit wie vor #538: die drei Speicherzeilen fehlen."""
+        datei = systemd / name
+        text = datei.read_text()
+>       assert all(f"\n{k}=" in text for k in SPEICHER), f"{name}: Vorlage ohne Speichergrenzen"
+E       AssertionError: probe-konnektor.service: Vorlage ohne Speichergrenzen
+E       assert False
+E        +  where False = all(<generator object _ohne_speichergrenzen.<locals>.<genexpr> at 0x762a1ce69460>)
+
+engine/tests/test_units.py:299: AssertionError
+________________ test_speicherwert_ungueltig[256M\n-MemoryMax] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_253/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_253/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '256M\n'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_253/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[256-MemoryHigh] __________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_256/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_256/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '256'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_256/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+________________ test_speicherwert_ungueltig[256-MemorySwapMax] ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_253/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_253/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '256'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_253/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+___________________ test_speicherwert_ungueltig[-MemoryHigh] ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig__M0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig__M0/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = ''
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig__M0/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+___________________ test_speicherwert_ungueltig[-MemoryMax] ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig__M1/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig__M1/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = ''
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig__M1/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+______________ test_speicherwert_ungueltig[256M\n-MemorySwapMax] _______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_257/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_257/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '256M\n'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_257/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[-MemorySwapMax] __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig__M1/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig__M1/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = ''
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig__M1/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+________________ test_speicherwert_ungueltig[256 M-MemoryHigh] _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_254/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_254/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '256 M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryHigh') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_speicherwert_ungueltig_254/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_________________ test_speicherwert_ungueltig[256 M-MemoryMax] _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_258/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_258/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryMax', wert = '256 M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemoryMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw3/test_speicherwert_ungueltig_258/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+_______________ test_speicherwert_ungueltig[256 M-MemorySwapMax] _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_254/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_254/systemd'), 'geladen': [], ...}
+schluessel = 'MemorySwapMax', wert = '256 M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["infinity", "0", "0M", "50%", "512K", "1T", "0256M", "100000M", "256m", "256", "256M\n", "", "256 M"])
+    def test_speicherwert_ungueltig(h, schluessel, wert):
+        """AC-7: Der Schlüssel steht in der Liste, aber jeder ungültige Wert wird abgelehnt (vollständiger Treffer)."""
+>       assert ("Service", schluessel) in h["m"].ERLAUBT
+E       AssertionError: assert ('Service', 'MemorySwapMax') in {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')}
+E        +  where {('Service', 'Environment:FR_DIENST'): re.compile('^/(?!.*(?:^|/)\\.\\.?(?:/|$))[A-Za-z0-9_./-]+$'), ('Service', 'Envi... re.compile('^[A-Za-z][A-Za-z0-9_+/-]*$'), ('Service', 'TimeoutStartSec'): re.compile('^[1-9][0-9]{0,4}(?:s|min|h)?$')} = <module 'helfer' from '<tmp>/pytest-18158/popen-gw1/test_speicherwert_ungueltig_254/helfer.py'>.ERLAUBT
+
+engine/tests/test_units_helfer.py:299: AssertionError
+____________________ test_grenzabweichung_wird_installiert _____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw0/test_grenzabweichung_wird_inst0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw0/test_grenzabweichung_wird_inst0/systemd'), 'geladen': [], ...}
+
+    def test_grenzabweichung_wird_installiert(h):
+        """AC-8: Unterscheidet sich die neue Datei nur in Grenzzeilen mit gültigen Werten, wird sie installiert; auch das
+        Ändern eines vorhandenen Werts."""
+        mit = EINHEIT + "MemoryHigh=192M\nMemoryMax=256M\nMemorySwapMax=128M\n"
+>       assert h["lauf"](mit) == 0
+               ^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:310: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryHigh=192M\nMemoryMax=256M\nMemorySwapMax=128M\n'
+systemd = '<tmp>/pytest-18158/popen-gw0/test_grenzabweichung_wird_inst0/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x7069fb08ca40>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw0/test_grenzabweichung_wird_inst0/helfer.py:165: Abgelehnt
+____________________ test_alter_helfer_nur_normale_meldung _____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/pytest-18158/popen-gw2/test_alter_helfer_nur_normale_0')
+
+    def test_alter_helfer_nur_normale_meldung(tmp_path):
+        """AC-10: Kennt das installierte Hilfsprogramm die Speicher-Schlüssel noch nicht, lehnt es ab und ändert nichts;
+        units.py meldet den Fehlschlag (Ausgang 5), die erneute Prüfung bleibt bei Ausgang 3. veroeffentlichen.sh macht daraus genau
+        eine normale Meldung (test_betrieb.py::test_alter_helfer_meldet_einmal_normal)."""
+        systemd, env = _installierte_einheiten(tmp_path)
+        _attrappen(tmp_path, env, systemd)
+        env["FR_UNITS_HELFER"] = str(_helfer_programm(tmp_path, systemd, alt=True))
+>       _ohne_speichergrenzen(systemd, "probe-push.service")
+
+engine/tests/test_units.py:325: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+systemd = PosixPath('<tmp>/pytest-18158/popen-gw2/test_alter_helfer_nur_normale_0/systemd')
+name = 'probe-push.service'
+
+    def _ohne_speichergrenzen(systemd, name):
+        """Installierte Einheit wie vor #538: die drei Speicherzeilen fehlen."""
+        datei = systemd / name
+        text = datei.read_text()
+>       assert all(f"\n{k}=" in text for k in SPEICHER), f"{name}: Vorlage ohne Speichergrenzen"
+E       AssertionError: probe-push.service: Vorlage ohne Speichergrenzen
+E       assert False
+E        +  where False = all(<generator object _ohne_speichergrenzen.<locals>.<genexpr> at 0x762a1ce68900>)
+
+engine/tests/test_units.py:299: AssertionError
+__________________ test_speicherwert_gueltig[256M-MemoryHigh] __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+h = {'m': <module 'helfer' from '<tmp>/pytest-18158/popen-gw2/test_speicherwert_gueltig_256M0/helfer.py'>, 'l...d': PosixPath('<tmp>/pytest-18158/popen-gw2/test_speicherwert_gueltig_256M0/systemd'), 'geladen': [], ...}
+schluessel = 'MemoryHigh', wert = '256M'
+
+    @pytest.mark.parametrize("schluessel", SPEICHER)
+    @pytest.mark.parametrize("wert", ["256M", "1G", "4G", "99999M"])
+    def test_speicherwert_gueltig(h, schluessel, wert):
+        """AC-6: Das Hilfsprogramm nimmt gültige Werte an und installiert eine neue Grenzzeile."""
+        h["m"].pruefe_neu([("Service", schluessel, wert)])
+>       assert h["lauf"](EINHEIT + f"{schluessel}={wert}\n") == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_units_helfer.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_units_helfer.py:37: in lauf
+    return modul.installieren(einheit, neu, systemd=str(systemd), neu_laden=lambda: geladen.append(1), **kw)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+einheit = 'probe-konnektor.service'
+neu = b'[Unit]\nDescription=probe\n\n[Service]\nUser=hans\nExecStart=/usr/bin/probe\nEnvironment=PATH=/usr/bin\nEnvironment=FR_ZEITZONE=UTC\nTimeoutStartSec=10min\nMemoryHigh=256M\n'
+systemd = '<tmp>/pytest-18158/popen-gw2/test_speicherwert_gueltig_256M0/systemd'
+instanz = 'probe'
+neu_laden = <function h.<locals>.lauf.<locals>.<lambda> at 0x762a1ce651c0>
+
+    def installieren(einheit, neu, systemd=SYSTEMD, instanz=INSTANZ, neu_laden=neu_laden):
+        """Einheit prüfen und ersetzen. 0 installiert, 2 nichts zu tun, 5 installiert, aber daemon-reload gescheitert;
+        Abgelehnt bei allem anderen. neu_laden() meldet ein Scheitern mit False."""
+        if not re.fullmatch(re.escape(instanz) + r"-(?:" + "|".join(ARTEN) + r")\.service", einheit or ""):
+            raise Abgelehnt("unit not allowed")
+        pfad = os.path.join(systemd, einheit)
+        if os.path.lexists(pfad + ".d"):
+            raise Abgelehnt("drop-in folder exists")
+        try:
+            fd_alt = os.open(pfad, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)   # folgt keinem Symlink
+        except OSError:
+            raise Abgelehnt("installed unit missing or not a plain file")
+        with os.fdopen(fd_alt, "rb") as f:
+            st = os.fstat(f.fileno())
+            if not stat.S_ISREG(st.st_mode):
+                raise Abgelehnt("installed unit is not a regular file")
+            if os.geteuid() == 0 and st.st_uid != 0:
+                raise Abgelehnt("installed unit does not belong to root")
+            alt_daten = f.read(MAX_BYTES + 1)
+        alt, neu_z = lies(alt_daten), lies(neu)
+        pruefe_benutzer(alt, "installed")
+        pruefe_benutzer(neu_z, "new")
+        pruefe_ohne_zuruecksetzen(alt, "installed")
+        pruefe_ohne_zuruecksetzen(neu_z, "new")
+        pruefe_neu(neu_z)
+        if rest(alt) != rest(neu_z):
+>           raise Abgelehnt("lines outside the allowed list differ")
+E           helfer.Abgelehnt: lines outside the allowed list differ
+
+<tmp>/pytest-18158/popen-gw2/test_speicherwert_gueltig_256M0/helfer.py:165: Abgelehnt
+_____________ test_dauerdienste_tragen_speichergrenzen[konnektor] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'konnektor'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_dauerdienste_tragen_speichergrenzen(art):
+        """AC-1: Jede Dauerdienst-Vorlage trägt genau eine Zeile MemoryHigh, MemoryMax, MemorySwapMax mit den Werten der Spec;
+        jeder Wert passt auf das Muster der Erlaubnisliste. Der Kommentar nennt das Messdatum."""
+        zeilen = _service_zeilen(art)
+        for schluessel, soll in zip(("MemoryHigh", "MemoryMax", "MemorySwapMax"), SPEICHERGRENZEN[art]):
+            werte = [w for k, w in zeilen if k == schluessel]
+>           assert werte == [soll], (art, schluessel, werte)
+E           AssertionError: ('konnektor', 'MemoryHigh', [])
+E           assert [] == ['768M']
+E             
+E             Right contains one more item: '768M'
+E             Use -v to get more diff
+
+engine/tests/test_betrieb.py:2571: AssertionError
+___________ test_dauerdienste_tragen_speichergrenzen[rueckmeldungen] ___________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'rueckmeldungen'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_dauerdienste_tragen_speichergrenzen(art):
+        """AC-1: Jede Dauerdienst-Vorlage trägt genau eine Zeile MemoryHigh, MemoryMax, MemorySwapMax mit den Werten der Spec;
+        jeder Wert passt auf das Muster der Erlaubnisliste. Der Kommentar nennt das Messdatum."""
+        zeilen = _service_zeilen(art)
+        for schluessel, soll in zip(("MemoryHigh", "MemoryMax", "MemorySwapMax"), SPEICHERGRENZEN[art]):
+            werte = [w for k, w in zeilen if k == schluessel]
+>           assert werte == [soll], (art, schluessel, werte)
+E           AssertionError: ('rueckmeldungen', 'MemoryHigh', [])
+E           assert [] == ['192M']
+E             
+E             Right contains one more item: '192M'
+E             Use -v to get more diff
+
+engine/tests/test_betrieb.py:2571: AssertionError
+__________________ test_speicher_high_kleiner_max[konnektor] ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'konnektor'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_speicher_high_kleiner_max(art):
+        """AC-2: Die weiche Grenze liegt unter der harten (G = 1024 M)."""
+        werte = dict(_service_zeilen(art))
+>       assert _mb(werte["MemoryHigh"]) < _mb(werte["MemoryMax"]), werte
+                   ^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'MemoryHigh'
+
+engine/tests/test_betrieb.py:2583: KeyError
+_____________________ test_speicher_high_kleiner_max[push] _____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'push'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_speicher_high_kleiner_max(art):
+        """AC-2: Die weiche Grenze liegt unter der harten (G = 1024 M)."""
+        werte = dict(_service_zeilen(art))
+>       assert _mb(werte["MemoryHigh"]) < _mb(werte["MemoryMax"]), werte
+                   ^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'MemoryHigh'
+
+engine/tests/test_betrieb.py:2583: KeyError
+________________ test_speicher_high_kleiner_max[rueckmeldungen] ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'rueckmeldungen'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_speicher_high_kleiner_max(art):
+        """AC-2: Die weiche Grenze liegt unter der harten (G = 1024 M)."""
+        werte = dict(_service_zeilen(art))
+>       assert _mb(werte["MemoryHigh"]) < _mb(werte["MemoryMax"]), werte
+                   ^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'MemoryHigh'
+
+engine/tests/test_betrieb.py:2583: KeyError
+_____________________ test_doku_beschreibt_speichergrenzen _____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_doku_beschreibt_speichergrenzen():
+        """AC-11: docs/betrieb.md nennt Schlüssel, Muster, Werte und Einmalschritt; Spec 552 Entscheidung 8 die Abgrenzung."""
+        doku = (BETRIEB.parent / "docs" / "betrieb.md").read_text(encoding="utf-8")
+>       assert "Speichergrenzen (#538)" in doku
+E       AssertionError: assert 'Speichergrenzen (#538)' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+
+engine/tests/test_betrieb.py:2595: AssertionError
+__________________ test_speicher_high_kleiner_max[schreiben] ___________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'schreiben'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_speicher_high_kleiner_max(art):
+        """AC-2: Die weiche Grenze liegt unter der harten (G = 1024 M)."""
+        werte = dict(_service_zeilen(art))
+>       assert _mb(werte["MemoryHigh"]) < _mb(werte["MemoryMax"]), werte
+                   ^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'MemoryHigh'
+
+engine/tests/test_betrieb.py:2583: KeyError
+________________ test_dauerdienste_tragen_speichergrenzen[push] ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'push'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_dauerdienste_tragen_speichergrenzen(art):
+        """AC-1: Jede Dauerdienst-Vorlage trägt genau eine Zeile MemoryHigh, MemoryMax, MemorySwapMax mit den Werten der Spec;
+        jeder Wert passt auf das Muster der Erlaubnisliste. Der Kommentar nennt das Messdatum."""
+        zeilen = _service_zeilen(art)
+        for schluessel, soll in zip(("MemoryHigh", "MemoryMax", "MemorySwapMax"), SPEICHERGRENZEN[art]):
+            werte = [w for k, w in zeilen if k == schluessel]
+>           assert werte == [soll], (art, schluessel, werte)
+E           AssertionError: ('push', 'MemoryHigh', [])
+E           assert [] == ['192M']
+E             
+E             Right contains one more item: '192M'
+E             Use -v to get more diff
+
+engine/tests/test_betrieb.py:2571: AssertionError
+_____________ test_dauerdienste_tragen_speichergrenzen[schreiben] ______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'schreiben'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_dauerdienste_tragen_speichergrenzen(art):
+        """AC-1: Jede Dauerdienst-Vorlage trägt genau eine Zeile MemoryHigh, MemoryMax, MemorySwapMax mit den Werten der Spec;
+        jeder Wert passt auf das Muster der Erlaubnisliste. Der Kommentar nennt das Messdatum."""
+        zeilen = _service_zeilen(art)
+        for schluessel, soll in zip(("MemoryHigh", "MemoryMax", "MemorySwapMax"), SPEICHERGRENZEN[art]):
+            werte = [w for k, w in zeilen if k == schluessel]
+>           assert werte == [soll], (art, schluessel, werte)
+E           AssertionError: ('schreiben', 'MemoryHigh', [])
+E           assert [] == ['4G']
+E             
+E             Right contains one more item: '4G'
+E             Use -v to get more diff
+
+engine/tests/test_betrieb.py:2571: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_units.py::test_erlaubnisliste_ist_eine_feste_namensliste
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[infinity-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[4G-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0M-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[4G-MemoryMax] - ...
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[infinity-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[50%-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[256M-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[4G-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[50%-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[256M-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[50%-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[99999M-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[512K-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[99999M-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[256M-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[99999M-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0M-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[512K-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[1G-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0M-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[512K-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[infinity-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[1G-MemoryMax] - ...
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[1T-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[100000M-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_gueltig[1G-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[1T-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[100000M-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256M\n-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256m-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256M\n-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[1T-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[ 256M-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[ 256M-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256m-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256M\n-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0256M-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256m-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0256M-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[ 256M-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[0256M-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[100000M-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[-MemoryMax] - ...
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256 M-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256-MemoryHigh]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256 M-MemorySwapMax]
+FAILED engine/tests/test_units.py::test_ungueltige_grenze_ist_gesperrt - Asse...
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256 M-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[99999M-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[256M-MemoryMax]
+FAILED engine/tests/test_units.py::test_speicherwert_ungueltig[256-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[infinity-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[256M-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[infinity-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[1G-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[infinity-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[4G-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[1G-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[4G-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[1G-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0M-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[4G-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0M-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[99999M-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0M-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[50%-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[50%-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[50%-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[99999M-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0256M-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[512K-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0256M-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[1T-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[512K-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[0256M-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[1T-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[512K-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[100000M-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[1T-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[100000M-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256m-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256m-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[100000M-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256m-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256M\n-MemoryHigh]
+FAILED engine/tests/test_units.py::test_neue_grenzen_installiert_der_abgleich_ohne_handarbeit
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256M\n-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256M\n-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256 M-MemoryHigh]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256 M-MemoryMax]
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_ungueltig[256 M-MemorySwapMax]
+FAILED engine/tests/test_units_helfer.py::test_grenzabweichung_wird_installiert
+FAILED engine/tests/test_units.py::test_alter_helfer_nur_normale_meldung - As...
+FAILED engine/tests/test_units_helfer.py::test_speicherwert_gueltig[256M-MemoryHigh]
+FAILED engine/tests/test_betrieb.py::test_dauerdienste_tragen_speichergrenzen[konnektor]
+FAILED engine/tests/test_betrieb.py::test_dauerdienste_tragen_speichergrenzen[rueckmeldungen]
+FAILED engine/tests/test_betrieb.py::test_speicher_high_kleiner_max[konnektor]
+FAILED engine/tests/test_betrieb.py::test_speicher_high_kleiner_max[push] - K...
+FAILED engine/tests/test_betrieb.py::test_speicher_high_kleiner_max[rueckmeldungen]
+FAILED engine/tests/test_betrieb.py::test_doku_beschreibt_speichergrenzen - A...
+FAILED engine/tests/test_betrieb.py::test_speicher_high_kleiner_max[schreiben]
+FAILED engine/tests/test_betrieb.py::test_dauerdienste_tragen_speichergrenzen[push]
+FAILED engine/tests/test_betrieb.py::test_dauerdienste_tragen_speichergrenzen[schreiben]
+119 failed, 5 passed in 3.68s
