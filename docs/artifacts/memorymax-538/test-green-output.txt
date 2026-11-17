@@ -49,7 +49,7 @@ bringing up nodes...
 ....................F............................................        [100%]
 =================================== FAILURES ===================================
 _____________________ test_doku_beschreibt_speichergrenzen _____________________
-[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/<arbeitskopie>/engine/.venv/bin/python
 
     def test_doku_beschreibt_speichergrenzen():
         """AC-11: docs/betrieb.md nennt Schlüssel, Muster, Werte und Einmalschritt; Spec 552 Entscheidung 8 die Abgrenzung."""
@@ -71,7 +71,7 @@ E       assert ('Ressourcengrenzen' in '8. **Unit-Änderungen nicht in `ERLAUBT`
 
 engine/tests/test_betrieb.py:2605: AssertionError
 _ test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen __
-[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/<arbeitskopie>/engine/.venv/bin/python
 
 sw = namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73e...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-hem/pytest-18161/popen-gw0/test_f002_rueckfall_mit_rot_da0/rotmelden.sh'})
 
