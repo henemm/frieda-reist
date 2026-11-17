@@ -4,6 +4,7 @@ die Seite selbst (engine/seitenbild.mjs steuert #<kennung> an). Erfundene Daten 
 import base64
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -79,6 +80,34 @@ def test_beispielreise_tag_und_rechner(seiten, monkeypatch):
     _bild_ok(t)
 
 
+def test_ein_bild_sagt_dass_es_nur_ein_bildschirm_ist(seiten, monkeypatch):
+    """Ohne ganze_ansicht zeigt das Bild einen Bildschirm; die Antwort sagt es und nennt den Weg zur ganzen Ansicht."""
+    monkeypatch.setenv("PLAYWRIGHT_MODUL", str(_playwright()))
+    t, _ = kn.werkzeug({"reise": "beispielreise", "person": "ida"}, "seite_ansehen", {"id": "A-01"})
+    assert len(t.bilder) == 1 and meldet(t.text, "konnektor.seitenbild.ein_bildschirm")
+
+
+@pytest.mark.parametrize("reise", sorted(REISEN))
+def test_ganze_ansicht_in_teilen_mit_stelle_und_weiter(seiten, monkeypatch, reise):
+    """ganze_ansicht: die ganze Ansicht von oben in Teilen von je einem Bildschirm (höchstens 4 je Aufruf); die Antwort nennt die
+    Zahl der Teile, den Teil mit der Stelle und wie es weitergeht; ab_teil blättert."""
+    monkeypatch.setenv("PLAYWRIGHT_MODUL", str(_playwright()))
+    person, kennung = REISEN[reise]
+    zugang = {"reise": reise, "person": person}
+    t, fehler = kn.werkzeug(zugang, "seite_ansehen", {"id": kennung, "ganze_ansicht": True})
+    assert fehler is False, t
+    teile = int(re.search(r"Teil 1 bis \d+ von (\d+)", t.text).group(1))
+    assert 1 <= len(t.bilder) <= 4 and len(t.bilder) == min(4, teile) and meldet(t.text, "konnektor.seitenbild.teile")
+    assert meldet(t.text, "konnektor.seitenbild.stelle_teil") and not meldet(t.text, "konnektor.seitenbild.ein_bildschirm")
+    for _, b64 in t.bilder:
+        assert base64.b64decode(b64)[:3] == b"\xff\xd8\xff"
+    assert meldet(t.text, "konnektor.seitenbild.weiter") == (teile > 4)
+    t, fehler = kn.werkzeug(zugang, "seite_ansehen", {"id": kennung, "ganze_ansicht": True, "ab_teil": teile})
+    assert fehler is False and len(t.bilder) == 1 and f"Teil {teile} bis {teile} von {teile}" in t.text
+    t, fehler = kn.werkzeug(zugang, "seite_ansehen", {"id": kennung, "ganze_ansicht": True, "ab_teil": teile + 1})
+    assert fehler and meldet(t, "konnektor.seitenbild.ab_teil_zu_gross")
+
+
 def test_bild_nennt_stand_und_neueren_gesicherten(seiten, monkeypatch):
     monkeypatch.setenv("PLAYWRIGHT_MODUL", str(_playwright()))
     d = json.loads((seiten / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
@@ -145,6 +174,8 @@ def test_ablehnungen(seiten, monkeypatch, tmp_path):
     assert fehler and meldet(t, "konnektor.zeige.2")
     t, fehler = kn.werkzeug(zugang, "seite_ansehen", {"id": "U-01", "geraet": "tablet"})
     assert fehler and meldet(t, "konnektor.seitenbild.geraet")
+    t, fehler = kn.werkzeug(zugang, "seite_ansehen", {"id": "U-01", "ganze_ansicht": True, "ab_teil": "zwei"})
+    assert fehler and meldet(t, "konnektor.seitenbild.ab_teil")
     monkeypatch.setenv("PLAYWRIGHT_MODUL", str(tmp_path / "gibt-es-nicht.mjs"))
     t, fehler = kn.werkzeug(zugang, "seite_ansehen", {"id": "U-01"})
     assert fehler and meldet(t, "konnektor.seitenbild.kein_browser")
@@ -230,6 +261,8 @@ def test_werkzeug_fuer_alle_rollen_englisch_page_view(seiten):
     assert w["annotations"]["readOnlyHint"] is True
     assert w["inputSchema"]["properties"]["device"]["enum"] == ["phone", "desktop"]
     assert schnittstelle.parameter_zu_intern("seite_ansehen")["device"] == "geraet"
+    assert {"whole_view", "from_part"} <= set(w["inputSchema"]["properties"])
+    assert "ganze_ansicht" not in w["description"] and "whole_view" in w["description"] and "from_part" in w["description"]
 
 
 @pytest.mark.parametrize("sprache", ["de", "en"])

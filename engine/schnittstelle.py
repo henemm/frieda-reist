@@ -117,6 +117,7 @@ PARAMETER = {
     "werte": "values", "wunsch": "wish", "zeit": "time_text", "ziel": "target", "zustaendig": "assignee", "reise": "trip",
     "wer": "packer", "gepackt": "packed",
     "zusammenhang": "context",
+    "ganze_ansicht": "whole_view", "ab_teil": "from_part",
     "je_ding": "per_thing", "anreise_ab": "checkin_from", "abreise_bis": "checkout_until", "vor_ort_zahlen": "pay_on_site",
 }
 # Gleiches Wort, andere Bedeutung: bei Strecken (ding_anlegen, ding_aendern) sind von/nach Start und Ziel, ab/an Abfahrt und Ankunft

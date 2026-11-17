@@ -1,7 +1,11 @@
 // Bild einer Stelle der Reiseseite für den Konnektor (page_view / seite_ansehen, #618): Frieda sieht die Seite so, wie sie
 // am Handy oder am Rechner erscheint, und erfährt, wo eine Kennung auf der Seite steht.
-// Aufruf: node seitenbild.mjs <playwright-modul> <ordner der veröffentlichten Seite> <kennung oder -> <handy|rechner>
-// Liefert eine JSON-Zeile auf stdout: {ort: {reiter, ansicht, teil, klappen, gekuerzt, markiert}, bild (JPEG, base64), fehler}.
+// Aufruf: node seitenbild.mjs <playwright-modul> <ordner der veröffentlichten Seite> <kennung oder -> <handy|rechner> [ganz [<ab teil>]]
+// Liefert eine JSON-Zeile auf stdout: {ort: {reiter, ansicht, teil, klappen, gekuerzt, markiert}, bilder (JPEG, base64), fehler},
+// mit „ganz“ dazu {teile, ab, stelle_teil}.
+// Ohne „ganz“ ein Bild: der Bildschirm, den man nach dem Sprung zur Stelle sieht. Mit „ganz“ die ganze Ansicht von oben in Teilen
+// von je einem Bildschirm (mit Überlappung, die feste Leiste unten verdeckt sonst Text), höchstens MAX_TEILE ab Teil <ab>; ein
+// einziges langes Bild würde für das Lesen durch die KI so stark verkleinert, dass die Schrift nicht mehr lesbar wäre.
 // Die Seite kommt nur aus dem Ordner (eigener kleiner Server auf 127.0.0.1, wie betrieb/startprobe.mjs); jede andere Adresse,
 // auch /api/ des Rückmeldedienstes, ist gesperrt: keine geheimen Links, keine Live-Daten, nichts nach außen.
 // Den Ort bestimmt die Seite selbst (route, zumZiel in vorlage.html): Das Skript steuert #<kennung> an wie ein Link und merkt
@@ -10,7 +14,8 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 
-const [, , modul, ordner, kennung, geraet] = process.argv;
+const [, , modul, ordner, kennung, geraet, umfang, ab_roh] = process.argv;
+const GANZ = umfang === "ganz", AB = Math.max(1, parseInt(ab_roh || "1", 10) || 1), MAX_TEILE = 4;
 const GERAETE = {handy: {viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true},
                  rechner: {viewport: {width: 1280, height: 860}}};
 const typen = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".json": "application/json", ".css": "text/css",
@@ -89,8 +94,23 @@ async function aufnehmen(b, basis) {
       const kopf = document.querySelector("#main h1, #main h2");
       return {reiter: t(document.querySelector("#nav a.on")), ansicht: t(kopf).slice(0, 160), ...(window.__ort || {markiert: false, klappen: []})};
     });
-    const bild = (await p.screenshot({type: "jpeg", quality: 72})).toString("base64");
-    return {ort, bild, fehler};
+    const aufnahme = async () => (await p.screenshot({type: "jpeg", quality: 70})).toString("base64");
+    if (!GANZ) return {ort, bilder: [await aufnahme()], fehler};
+    // Die ganze Ansicht: Höhe, Bildschirm, Lage der Stelle (das Element mit dem Blitz der Seite)
+    const m = await p.evaluate(() => {
+      const ziel = document.querySelector("#main .blitz");
+      return {hoehe: document.documentElement.scrollHeight, fenster: innerHeight, ziel: ziel ? ziel.getBoundingClientRect().top + scrollY : null};
+    });
+    const schritt = Math.max(200, Math.round(m.fenster * 0.75));
+    const teile = 1 + Math.ceil(Math.max(0, m.hoehe - m.fenster) / schritt);
+    const stelle_teil = m.ziel === null ? null : Math.min(teile, Math.floor(Math.max(0, m.ziel - 80) / schritt) + 1);
+    const bilder = [];
+    for (let i = AB; i <= Math.min(teile, AB + MAX_TEILE - 1); i++) {
+      await p.evaluate(y => window.scrollTo(0, y), (i - 1) * schritt);
+      await p.waitForTimeout(300);   // Karten und Bilder, die erst beim Hinsehen laden
+      bilder.push(await aufnahme());
+    }
+    return {ort, bilder, teile, ab: AB, stelle_teil, fehler};   // ab hinter dem letzten Teil: keine Bilder, der Konnektor sagt es
   } finally {
     await ctx.close();
   }
@@ -112,4 +132,4 @@ try {
   server.close();
 }
 // Erst beenden, wenn die Zeile ganz geschrieben ist: process.exit schneidet eine große Ausgabe in eine Pipe sonst ab
-process.stdout.write(JSON.stringify(ergebnis) + "\n", () => process.exit(ergebnis.bild ? 0 : 1));
+process.stdout.write(JSON.stringify(ergebnis) + "\n", () => process.exit(ergebnis.bilder && (ergebnis.bilder.length || ergebnis.teile) ? 0 : 1));

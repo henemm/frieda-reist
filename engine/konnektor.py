@@ -534,8 +534,8 @@ def seitenbild_umgebung(heim):
     return umg
 
 
-def seitenbild_aufnehmen(ordner, kennung, geraet):
-    """engine/seitenbild.mjs aufrufen. -> (Ergebnis {ort, bild}, None) oder (None, Grund in Worten)."""
+def seitenbild_aufnehmen(ordner, kennung, geraet, ganz=False, ab_teil=1):
+    """engine/seitenbild.mjs aufrufen. -> (Ergebnis {ort, bilder[, teile, ab, stelle_teil]}, None) oder (None, Grund in Worten)."""
     modul = playwright_modul()
     node = shutil.which("node", path=instanz.wert("FR_PFAD") or os.environ.get("PATH"))
     if not modul or not modul.exists() or not node:
@@ -544,7 +544,8 @@ def seitenbild_aufnehmen(ordner, kennung, geraet):
         return None, tk("konnektor.seitenbild.besetzt")
     heim = tempfile.mkdtemp(prefix="seitenbild-")
     try:
-        lauf = subprocess.run([node, str(SEITENBILD), str(modul), str(ordner), kennung or "-", geraet], capture_output=True,
+        lauf = subprocess.run([node, str(SEITENBILD), str(modul), str(ordner), kennung or "-", geraet]
+                              + (["ganz", str(ab_teil)] if ganz else []), capture_output=True,
                               text=True, timeout=SEITENBILD_ZEIT, env=seitenbild_umgebung(heim), cwd=heim, check=False)
     except subprocess.TimeoutExpired:
         return None, tk("konnektor.seitenbild.zu_lange", sekunden=SEITENBILD_ZEIT)
@@ -557,7 +558,7 @@ def seitenbild_aufnehmen(ordner, kennung, geraet):
         erg = json.loads((lauf.stdout.strip().splitlines() or ["{}"])[-1])
     except json.JSONDecodeError:
         erg = {}
-    if not isinstance(erg, dict) or not erg.get("bild"):
+    if not isinstance(erg, dict) or not (erg.get("bilder") or erg.get("teile")):
         # Die erste Zeile mit „Error“ sagt am meisten (Playwright rahmt den Rest in einen Kasten)
         zeilen = [z.strip() for z in lauf.stderr.splitlines() if "Error" in z or "rror:" in z] or [lauf.stderr.strip()[-300:] or "?"]
         grund = "; ".join((erg.get("fehler") if isinstance(erg, dict) else None) or zeilen[:1])
@@ -584,6 +585,11 @@ def seite_ansehen(reise, h, args):
     """Werkzeug seite_ansehen (page_view, #618). -> (MitBild oder Text, ist_fehler)"""
     kennung = str(args.get("id") or "").strip()
     geraet = str(args.get("geraet") or "handy").strip().lower()
+    ganz = args.get("ganze_ansicht") is True or str(args.get("ganze_ansicht")).strip().lower() in ("true", "ja", "yes", "1")
+    try:
+        ab_teil = max(1, int(args.get("ab_teil") or 1))
+    except (TypeError, ValueError):
+        return tk("konnektor.seitenbild.ab_teil"), True
     if geraet not in GERAETE:
         return tk("konnektor.seitenbild.geraet", werte=", ".join(GERAETE)), True
     if kennung and (not KENNUNG_SEITE.match(kennung) or not (
@@ -592,7 +598,7 @@ def seite_ansehen(reise, h, args):
     ordner = seiten() / reise
     if not (ordner / "index.html").is_file():
         return tk("konnektor.seitenbild.keine_seite"), True
-    erg, grund = seitenbild_aufnehmen(ordner, kennung, geraet)
+    erg, grund = seitenbild_aufnehmen(ordner, kennung, geraet, ganz, ab_teil)
     if grund:
         return grund, True
     try:
@@ -600,8 +606,20 @@ def seite_ansehen(reise, h, args):
     except (OSError, ValueError, TypeError, KeyError):
         nummer = None
     kopf = tk("konnektor.seitenbild.kopf_" + geraet) + (tk("konnektor.seitenbild.stand", nummer=nummer) if isinstance(nummer, int) else "")
-    text = "\n".join([kopf, seitenbild_ort(erg.get("ort"), kennung), tk("konnektor.seitenbild.live")]) + seite_zurueck(reise)
-    return MitBild(text, [("image/jpeg", erg["bild"])]), False
+    zeilen = [kopf, seitenbild_ort(erg.get("ort"), kennung)]
+    if ganz:
+        teile, ab, n = erg.get("teile") or 1, erg.get("ab") or 1, len(erg["bilder"])
+        if ab > teile:
+            return tk("konnektor.seitenbild.ab_teil_zu_gross", teile=teile), True
+        zeilen.append(tk("konnektor.seitenbild.teile", von=ab, bis=ab + n - 1, teile=teile))
+        if erg.get("stelle_teil"):
+            zeilen.append(tk("konnektor.seitenbild.stelle_teil", teil=erg["stelle_teil"]))
+        if ab + n - 1 < teile:
+            zeilen.append(tk("konnektor.seitenbild.weiter", ab_teil=ab + n))
+    else:
+        zeilen.append(tk("konnektor.seitenbild.ein_bildschirm"))
+    text = "\n".join(zeilen + [tk("konnektor.seitenbild.live")]) + seite_zurueck(reise)
+    return MitBild(text, [("image/jpeg", b) for b in erg["bilder"]]), False
 
 # ---------- Zeiten mit Zeitzone (#227) ----------
 # Jede Zeit, die der Konnektor nennt, steht in der Zeitzone der Person und trägt sie („02.11.2026 09:47 (MEZ)“). Der Server läuft
@@ -2787,7 +2805,9 @@ WERKZEUGE = [
     {"name": "seite_ansehen", "description": "@konnektor.werkzeug.seite_ansehen",
      "inputSchema": {"type": "object", "properties": {
          "id": {**ZIEL_FELD, "description": "@konnektor.werkzeug.seite_ansehen.id"},
-         "geraet": {"type": "string", "enum": list(GERAETE), "description": "@konnektor.werkzeug.seite_ansehen.geraet"}}},
+         "geraet": {"type": "string", "enum": list(GERAETE), "description": "@konnektor.werkzeug.seite_ansehen.geraet"},
+         "ganze_ansicht": {"type": "boolean", "description": "@konnektor.werkzeug.seite_ansehen.ganz"},
+         "ab_teil": {"type": "integer", "minimum": 1, "description": "@konnektor.werkzeug.seite_ansehen.ab_teil"}}},
      "annotations": {"readOnlyHint": True}},
     {"name": "rueckmeldung_geben", "description": "@konnektor.werkzeug.rueckmeldung_geben",
      "inputSchema": {"type": "object", "properties": {
