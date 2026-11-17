@@ -1,0 +1,302 @@
+bringing up nodes...
+bringing up nodes...
+
+..F....F.................F.FFFF.FFFFFFF                                  [100%]
+=================================== FAILURES ===================================
+_____________________ test_mitglied_bekommt_kleine_fassung _____________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x746db71be0c0>
+
+    def test_mitglied_bekommt_kleine_fassung(bw):
+        u = bw()
+        s, h, inhalt = holen(f"{u.kurl}/bild/beispielreise/{TITELBILD}.webp", cookie=u.ida)
+>       assert s == 200, (s, inhalt[:200])
+E       AssertionError: (404, b'{"fehler": "unbekannt"}')
+E       assert 404 == 200
+
+engine/tests/test_bilder_konto.py:104: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 404
+_________________________ test_mitglied_bekommt_symbol _________________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x746db71bf380>
+
+    def test_mitglied_bekommt_symbol(bw):
+        u = bw()
+        for reise in ("beispielreise", "stadtwochenende"):
+            s, h, inhalt = holen(f"{u.kurl}/bild/{reise}/symbol.png", cookie=u.ida)
+>           assert s == 200 and h.get("Content-Type") == "image/png", (reise, s)
+E           AssertionError: ('beispielreise', 404)
+E           assert (404 == 200)
+
+engine/tests/test_bilder_konto.py:118: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 404
+______________________ test_post_liefert_nichts_und_allow ______________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x746db71bf920>
+
+    def test_post_liefert_nichts_und_allow(bw):
+        u = bw()
+        s, _, inhalt = holen(f"{u.kurl}/bild/beispielreise/{TITELBILD}.webp", "POST", cookie=u.ida)
+        assert s in (404, 405) and b"RIFF" not in inhalt
+        s, h, _ = holen(f"{u.kurl}/bild/beispielreise/{TITELBILD}.webp", "OPTIONS")
+>       assert s == 204 and h.get("Allow") == "GET, HEAD, OPTIONS"
+E       AssertionError: assert (204 == 204 and 'GET, HEAD, POST, OPTIONS' == 'GET, HEAD, OPTIONS'
+E         
+E         - GET, HEAD, OPTIONS
+E         + GET, HEAD, POST, OPTIONS
+E         ?           ++++++)
+
+engine/tests/test_bilder_konto.py:213: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+OPTIONS 204
+__________________________ test_kachel_mit_titelbild ___________________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x7be7ab2b2660>
+
+    def test_kachel_mit_titelbild(bw):
+        u = bw()
+        t = abruf(f"{u.kurl}/konto", cookie=u.ida)[2]
+>       assert 'class="liste"' in t and 'class="kachel' in t
+E       assert ('class="liste"' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>' and 'class="kachel' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_bilder_konto.py:221: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+____________________ test_kachel_ohne_titelbild_mit_symbol _____________________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x74bbae6f02c0>
+
+    def test_kachel_ohne_titelbild_mit_symbol(bw):
+        """Stadtwochenende (ohne Bilder): Akzentfläche mit App-Symbol, keine Bildadresse auf ein Foto."""
+        u = bw()
+        t = abruf(f"{u.kurl}/konto", cookie=u.ida)[2]
+        k = kachel_von(t, titel(u, "stadtwochenende"))
+>       assert k, "Kachel des Stadtwochenendes"
+E       AssertionError: Kachel des Stadtwochenendes
+E       assert None
+
+engine/tests/test_bilder_konto.py:236: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+_____________________ test_kachel_ohne_symbol_nur_flaeche ______________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x746db6dc7380>
+
+    def test_kachel_ohne_symbol_nur_flaeche(bw):
+        u = bw()
+        (u.seiten / "stadtwochenende" / "icon-192.png").unlink()
+        t = abruf(f"{u.kurl}/konto", cookie=u.ida)[2]
+        k = kachel_von(t, titel(u, "stadtwochenende"))
+>       assert k and not img_tags(k) and "flaeche" in k
+E       assert (None)
+
+engine/tests/test_bilder_konto.py:249: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+________________________ test_kachel_ohne_gebaute_seite ________________________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x77c9a8f8b7e0>
+
+    def test_kachel_ohne_gebaute_seite(bw):
+        u = bw(dritte=True)
+        s, _, t = abruf(f"{u.kurl}/konto", cookie=u.ida)
+        assert s == 200
+        k = kachel_von(t, "dritte-reise")
+>       assert k, "Kachel der Reise ohne Seite"
+E       AssertionError: Kachel der Reise ohne Seite
+E       assert None
+
+engine/tests/test_bilder_konto.py:257: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+______________________ test_archiv_mit_denselben_kacheln _______________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x7be7aafb1940>
+
+    def test_archiv_mit_denselben_kacheln(bw):
+        u = bw(stadt_status="archiv")
+        t = abruf(f"{u.kurl}/konto", cookie=u.ida)[2]
+        oben, unten = t.split('<details class="archiv">', 1)
+>       assert 'class="kachel' in oben and "/bild/beispielreise/" in oben
+E       assert ('class="kachel' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...e Reise erst, wenn sie auf den neuen Speicher umgestellt ist; bis dahin hilft der Betreiber.</p></details></div></div>')
+
+engine/tests/test_bilder_konto.py:267: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+_________________ test_kachel_ist_ein_baustein_der_kontoseiten _________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+    def test_kachel_ist_ein_baustein_der_kontoseiten():
+        """Stil .kachel gehört zu den eigenen Stilen der Kontoseiten (anmeldung.py), eine Spalte, ab 760 px zwei; 16:7."""
+        stil = (ENGINE / "anmeldung.py").read_text(encoding="utf-8")
+>       assert ".kachel" in stil and "16/7" in stil.replace(" ", "")
+E       assert ('.kachel' in '"""Anmeldeseiten für Konten (Paket J2, Issues #43 und #46). Der Konnektor-Dienst liefert sie unter Friedas eigener\nA...age_reisen", {"name": k["name"], "email": k["email"]})]\n                                           if k else None))\n')
+
+engine/tests/test_bilder_konto.py:282: AssertionError
+_____________________________ test_nginx_ort_bild ______________________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+    def test_nginx_ort_bild():
+        inc = (WURZEL / "betrieb/vorlagen/nginx-konnektor-orte.inc").read_text(encoding="utf-8")
+        zeile = next((z for z in inc.splitlines() if z.startswith("location ^~ /bild/")), None)
+>       assert zeile and "__SNIPPETS__/__INSTANZ__-konnektor.inc" in zeile, zeile
+E       AssertionError: None
+E       assert (None)
+
+engine/tests/test_bilder_konto.py:326: AssertionError
+____________________________ test_doku_nachgefuehrt ____________________________
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+    def test_doku_nachgefuehrt():
+        k = (WURZEL / "docs/konnektor.md").read_text(encoding="utf-8")
+>       assert "/bild/<reise>/<datei>" in k and "symbol.png" in k
+E       AssertionError: assert ('/bild/<reise>/<datei>' in '# Konnektor: Reisen in der Claude-App\n\nMit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen...rnamen, die zugleich deutsche Wörter sind (von, nach, an, ab, bei, vor, was, art), bleiben im Fließtext unverändert.\n')
+
+engine/tests/test_bilder_konto.py:334: AssertionError
+_________________ test_bildadresse_ohne_adresse_der_reiseseite _________________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x77c9a8f8b6a0>
+
+    def test_bildadresse_ohne_adresse_der_reiseseite(bw):
+        u = bw()
+        t = abruf(f"{u.kurl}/konto", cookie=u.ida)[2]
+        srcs = re.findall(r'<img\b[^>]*\bsrc="(/bild/[^"]*)"', t)
+>       assert srcs, "Kacheln mit Bildadressen"
+E       AssertionError: Kacheln mit Bildadressen
+E       assert []
+
+engine/tests/test_bilder_konto.py:291: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+______________________ test_kacheln_im_browser[chromium] _______________________
+[gw3] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x74bbae6f02c0>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17639/popen-gw3/test_kacheln_im_browser_chromi0')
+browser = 'chromium'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_kacheln_im_browser(bw, tmp_path, browser):
+        """360 px: eine Spalte ohne Überbreite; ab 760 px zwei Kacheln nebeneinander; Bilder 16:7."""
+        u = bw()
+        seite = tmp_path / "konto.html"
+        seite.write_text(abruf(f"{u.kurl}/konto", cookie=u.ida)[2], encoding="utf-8")
+        bilder = {f"/bild/beispielreise/{TITELBILD}.webp": str(u.seiten / "beispielreise" / klein(u, TITELBILD)),
+                  "/bild/stadtwochenende/symbol.png": str(u.seiten / "stadtwochenende" / "icon-192.png")}
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_konto_kacheln.mjs"), str(PLAYWRIGHT), str(seite),
+                              json.dumps(bilder)], capture_output=True, text=True, timeout=120,
+                             env={**os.environ, "RH_BROWSER": browser})
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert not e["fehler"], e
+        for breite, w in e["breiten"].items():
+>           assert w["kacheln"] >= 2 and not w["ueberbreite"], (breite, w)
+E           AssertionError: ('360', {'kacheln': 0, 'spalten': 0, 'ueberbreite': False, 'verhaeltnis': []})
+E           assert (0 >= 2)
+
+engine/tests/test_bilder_konto.py:315: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+_______________________ test_kacheln_im_browser[webkit] ________________________
+[gw2] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+bw = <function bw.<locals>.neu at 0x7be7aafb0e00>
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17639/popen-gw2/test_kacheln_im_browser_webkit0')
+browser = 'webkit'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_kacheln_im_browser(bw, tmp_path, browser):
+        """360 px: eine Spalte ohne Überbreite; ab 760 px zwei Kacheln nebeneinander; Bilder 16:7."""
+        u = bw()
+        seite = tmp_path / "konto.html"
+        seite.write_text(abruf(f"{u.kurl}/konto", cookie=u.ida)[2], encoding="utf-8")
+        bilder = {f"/bild/beispielreise/{TITELBILD}.webp": str(u.seiten / "beispielreise" / klein(u, TITELBILD)),
+                  "/bild/stadtwochenende/symbol.png": str(u.seiten / "stadtwochenende" / "icon-192.png")}
+        aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_konto_kacheln.mjs"), str(PLAYWRIGHT), str(seite),
+                              json.dumps(bilder)], capture_output=True, text=True, timeout=120,
+                             env={**os.environ, "RH_BROWSER": browser})
+        assert aus.returncode == 0, aus.stderr[-2000:]
+        e = json.loads(aus.stdout.strip().splitlines()[-1])
+        assert not e["fehler"], e
+        for breite, w in e["breiten"].items():
+>           assert w["kacheln"] >= 2 and not w["ueberbreite"], (breite, w)
+E           AssertionError: ('360', {'kacheln': 0, 'spalten': 0, 'ueberbreite': False, 'verhaeltnis': []})
+E           assert (0 >= 2)
+
+engine/tests/test_bilder_konto.py:315: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+GET 200
+=========================== short test summary info ============================
+FAILED engine/tests/test_bilder_konto.py::test_mitglied_bekommt_kleine_fassung
+FAILED engine/tests/test_bilder_konto.py::test_mitglied_bekommt_symbol - Asse...
+FAILED engine/tests/test_bilder_konto.py::test_post_liefert_nichts_und_allow
+FAILED engine/tests/test_bilder_konto.py::test_kachel_mit_titelbild - assert ...
+FAILED engine/tests/test_bilder_konto.py::test_kachel_ohne_titelbild_mit_symbol
+FAILED engine/tests/test_bilder_konto.py::test_kachel_ohne_symbol_nur_flaeche
+FAILED engine/tests/test_bilder_konto.py::test_kachel_ohne_gebaute_seite - As...
+FAILED engine/tests/test_bilder_konto.py::test_archiv_mit_denselben_kacheln
+FAILED engine/tests/test_bilder_konto.py::test_kachel_ist_ein_baustein_der_kontoseiten
+FAILED engine/tests/test_bilder_konto.py::test_nginx_ort_bild - AssertionErro...
+FAILED engine/tests/test_bilder_konto.py::test_doku_nachgefuehrt - AssertionE...
+FAILED engine/tests/test_bilder_konto.py::test_bildadresse_ohne_adresse_der_reiseseite
+FAILED engine/tests/test_bilder_konto.py::test_kacheln_im_browser[chromium]
+FAILED engine/tests/test_bilder_konto.py::test_kacheln_im_browser[webkit] - A...
+14 failed, 25 passed in 19.41s
