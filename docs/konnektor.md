@@ -16,6 +16,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 |---|---|---|
 | `ueberblick` | alle | Eckdaten, Tagesplan mit IDs, Wahlstellen, Inhaltsverzeichnis, Meldungen an die Person (Wächter und Erinnerer, wenn der Baustein `waechter` an ist); ab Status `fest` die Mahnungen der Reise (offene Planungs-Wahlstellen, ungeprüfte veränderliche Angaben, fehlende Lage), seit 29.10.2026 nur noch hier und nicht mehr als Kasten auf der Seite |
 | `zeige` | alle | Volltext zu einer ID (T-, E-, O-, U-, A-, B- mit Belegen, V-, P-, F-, W-) |
+| `seite_ansehen` | alle | Bild der veröffentlichten Seite an der Stelle einer ID, am Handy (Vorgabe) oder am Rechner, mit Ortsangabe in Worten (Reiter, Ansicht, Klappen); Abschnitt „Die Seite sehen“ |
 | `suche` | alle | Volltextsuche |
 | `offene_fragen` | alle | F-Liste mit Frist und Status |
 | `varianten` | alle | Pläne und Wahlstellen mit Dafür/Dagegen und Summen |
@@ -239,6 +240,16 @@ Jede Reise trägt eine fortlaufende Nummer neben dem Software-Release, etwa „R
 - **So prüft die Person:** Frieda nennt die Nummer. Steht im Fuß der Seite dieselbe oder eine höhere, ist die Änderung da; bei einer niedrigeren zeigt der Hinweis „Neu: Reise-Stand 43. Aktualisieren“ den Weg.
 - **Zeiten** nennt der Konnektor in der Zeitzone der Person mit Angabe der Zone („02.11.2026 09:47 (MEZ)“): die Zone des Geräts, mit dem die Person zuletzt Benachrichtigungen eingeschaltet hat, sonst `FR_ZEITZONE` der Instanz, sonst UTC (#227).
 
+## Die Seite sehen (#618, Product Owner 17.11.2026)
+
+Frieda kennt die Daten (`zeige`) und je Feld die Textform, sah die Seite selbst aber nie: nicht, wo etwas steht, was zugeklappt ist und wie es am Handy umbricht. Daraus kamen roher Markdown, geplättete Listen und Texte im falschen Feld (#601, #604, #605). Seitdem gibt es **`seite_ansehen`** (`page_view`), freigegeben vom Product Owner mit dem Entwurf „Frieda sieht die Seite“:
+
+- **Eingabe:** `id` (jede Kennung der Reise; ohne die Startseite), `geraet` `handy` (Vorgabe, 390 Pixel breit) oder `rechner`. Für alle Rollen, nur Lesen.
+- **Antwort:** ein Bild (JPEG) und in Worten, wo die Stelle steht: Reiter, Ansicht (etwa „Tag 2 · Fr 14.5. · …“), der Teil einer Tagesseite, die Klappen, hinter denen sie liegt (im Bild geöffnet), ein gekürzter Text. Ist die Kennung ein Ziel in einer Ansicht, ist sie im Bild grün umrandet (der Blitz der Seite beim Springen, angehalten); hat sie eine eigene Ansicht, zeigt das Bild deren Anfang. Dazu der veröffentlichte Reise-Stand und, wie bei `zeige`, ein Satz, wenn ein neuerer gesichert ist. Was nur angemeldet erscheint (Aufgaben, Rückmeldungen, Packstand), fehlt im Bild; das steht dabei.
+- **Wie es entsteht:** `engine/seitenbild.mjs` öffnet die veröffentlichte Seite aus dem Seitenordner über einen eigenen kleinen Server auf 127.0.0.1; jede andere Adresse und `/api/` sind gesperrt (keine geheimen Links, keine Live-Daten, nichts nach außen). Es steuert `#<id>` an wie ein Link (über `hashchange`, ohne den Sprung des Browsers, der Klappen sonst vorab öffnet) und merkt sich in `zumZiel`, was die Seite dafür öffnen musste. Den Ort bestimmt so die Seite selbst; es gibt keine zweite Logik der Heimat (ADR-0003).
+- **Anleitung:** Bevor Frieda sagt, wie etwas aussieht oder wo es steht, sieht sie es an, nach dem Eintragen, sobald `veroeffentlichung_pruefen` „enthalten: ja“ meldet (die Antwort nennt dann das Werkzeug). Sie nennt den Ort in Worten und sagt offen, wenn etwas nicht gut aussieht.
+- **Betrieb:** Höchstens ein Bild zugleich (ein zweiter Aufruf wartet bis 45 Sekunden), Zeitgrenze 60 Sekunden. Playwright kommt aus `PLAYWRIGHT_MODUL`, sonst aus `<FR_DIENST>/playwright`; die Browser liegen in `<FR_DIENST>/playwright/browser`, weil der Konnektor mit `ProtectHome` kein Heimatverzeichnis sieht (`veroeffentlichen.sh` installiert sie dorthin, `docs/betrieb.md`). `node` sucht er in `FR_PFAD`, sonst im `PATH`. Fehlt etwas oder scheitert das Bild, sagt die Antwort es mit Grund und rät, die Stelle mit `zeige` zu beschreiben; kein Alarm.
+
 ## Stand (26.10.2026)
 
 Der `ueberblick` endet mit dem Abschnitt „Stand“: wann die Reise zuletzt veröffentlicht wurde (mit Zeitzone), welcher Reise-Stand auf der Seite ist, wann der Konnektor gestartet ist und mit welchem Code (Kurz-Hash von `konnektor.py`, `reise.py`, `rueckmeldungen.py`, `routen.py`). Liegt auf dem Server neuerer Code als der, mit dem der Dienst gestartet ist, steht dort, dass er einen Neustart braucht. So lässt sich in der App prüfen, ob das Veröffentlichen gelaufen ist, ohne auf den Server zu schauen. Der Rückmeldedienst wird dabei nicht geprüft.
@@ -269,6 +280,7 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 | `variants` | `varianten` |
 | `feedback_list` | `rueckmeldungen` |
 | `publish_status` | `veroeffentlichung_pruefen` |
+| `page_view` (`device`: `phone`, `desktop`) | `seite_ansehen` (`geraet`: `handy`, `rechner`) |
 | `feedback_give` | `rueckmeldung_geben` |
 | `feedback_resolve` | `rueckmeldung_erledigen` |
 | `tasks` | `aufgaben` |
