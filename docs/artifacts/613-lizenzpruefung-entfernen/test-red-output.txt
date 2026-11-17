@@ -1,0 +1,2449 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF...FF....FFFF.F.F.......F.FFF...FF.FFFFFFF [ 49%]
+FFFFFF..FFF......F..F.F...F............................................. [ 99%]
+.                                                                        [100%]
+=================================== FAILURES ===================================
+_______ test_einschraenkungen_nach_der_tabelle[cc by-nc-nd 4.0-codes13] ________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'cc by-nc-nd 4.0', codes = ['nc', 'nd']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+________________ test_lizenz_lesen_wirft_nie[Copyrighted-None] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'Copyrighted', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_____________ test_einschraenkungen_nach_der_tabelle[GFDL-codes14] _____________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'GFDL', codes = ['gfdl']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[CC BY-SA 3.0-codes4] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-SA 3.0', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_ test_lizenz_lesen_wirft_nie[CC0-https://creativecommons.org/publicdomain/zero/1.0] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC0', url = 'https://creativecommons.org/publicdomain/zero/1.0'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+___________ test_einschraenkungen_nach_der_tabelle[GFDL 1.2-codes15] ___________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'GFDL 1.2', codes = ['gfdl']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+______________________ test_lizenz_lesen_wirft_nie[-None] ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = '', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_______________ test_lizenz_lesen_wirft_nie[Public domain-None] ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'Public domain', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_______ test_einschraenkungen_nach_der_tabelle[Free Art License-codes16] _______
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'Free Art License', codes = ['andere']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+___________ test_einschraenkungen_nach_der_tabelle[CC BY-SA-codes5] ____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-SA', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+____________________ test_lizenz_lesen_wirft_nie[None-None] ____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = None, url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_____________ test_einschraenkungen_nach_der_tabelle[CC BY-codes6] _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_____________________ test_lizenz_lesen_wirft_nie[PD-None] _____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'PD', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_____________ test_einschraenkungen_nach_der_tabelle[FAL-codes17] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'FAL', codes = ['andere']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+___________________ test_lizenz_lesen_nimmt_nur_https_links ____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_lizenz_lesen_nimmt_nur_https_links():
+>       assert bilder_modul().lizenz_lesen(meta("CC BY-NC 4.0", "javascript:alert(1)"))["lizenz_url"] is None
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:175: AttributeError
+_ test_lizenz_lesen_wirft_nie[CC BY 3.0-https://creativecommons.org/licenses/by/3.0] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY 3.0', url = 'https://creativecommons.org/licenses/by/3.0'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[CC BY 4.0 de-codes7] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY 4.0 de', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[Copyrighted-codes18] __________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'Copyrighted', codes = ['andere']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+___________________ test_positivliste_und_pruefung_entfallen ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_positivliste_und_pruefung_entfallen():
+        b = bilder_modul()
+>       assert not hasattr(b, "lizenz_pruefen") and not hasattr(b, "FREI")
+E       AssertionError: assert (not True)
+E        +  where True = hasattr(<module 'bilder' from 'engine/bilder.py'>, 'lizenz_pruefen')
+
+engine/tests/test_bilder.py:180: AssertionError
+______________ test_einschraenkungen_nach_der_tabelle[CC0-codes0] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC0', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_ test_lizenz_lesen_wirft_nie[CC BY-SA 4.0-https://creativecommons.org/licenses/by-sa/4.0] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-SA 4.0', url = 'https://creativecommons.org/licenses/by-sa/4.0'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[cc by-sa 2.5-codes8] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'cc by-sa 2.5', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[Public domain-codes1] _________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'Public domain', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_ test_lizenz_lesen_wirft_nie[CC BY-NC 4.0-https://creativecommons.org/licenses/by-nc/4.0] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-NC 4.0', url = 'https://creativecommons.org/licenses/by-nc/4.0'
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[Attribution-codes19] __________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'Attribution', codes = ['andere']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+____________ test_einschraenkungen_nach_der_tabelle[PD-old-codes2] _____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'PD-old', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[CC BY-NC 4.0-codes9] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-NC 4.0', codes = ['nc']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+___________ test_einschraenkungen_nach_der_tabelle[CC BY 4.0-codes3] ___________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY 4.0', codes = []
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+________________ test_lizenz_lesen_wirft_nie[CC BY-ND 4.0-None] ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-ND 4.0', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_______ test_einschraenkungen_nach_der_tabelle[CC BY-NC-SA 3.0-codes10] ________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-NC-SA 3.0', codes = ['nc']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_______ test_einschraenkungen_nach_der_tabelle[CC BY-NC-ND 4.0-codes11] ________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-NC-ND 4.0', codes = ['nc', 'nd']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_______________ test_einschraenkungen_nach_der_tabelle[-codes20] _______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = '', codes = ['fehlt']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+____________________ test_lizenz_lesen_wirft_nie[GFDL-None] ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'GFDL', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_________ test_einschraenkungen_nach_der_tabelle[CC BY-ND 2.0-codes12] _________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'CC BY-ND 2.0', codes = ['nd']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+______________ test_lizenz_lesen_wirft_nie[Free Art License-None] ______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = 'Free Art License', url = None
+
+    @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
+                                             ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
+                                             ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
+                                             ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                             ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                             ("Copyrighted", None), ("", None), (None, None)])
+    def test_lizenz_lesen_wirft_nie(lizenz, url):
+>       r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'lizenz_lesen'. Did you mean: 'lizenz_pruefen'?
+
+engine/tests/test_bilder.py:167: AttributeError
+_____________ test_einschraenkungen_nach_der_tabelle[   -codes21] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = '   ', codes = ['fehlt']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+_____________ test_einschraenkungen_nach_der_tabelle[None-codes22] _____________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+lizenz = None, codes = ['fehlt']
+
+    @pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+    def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+>       assert bilder_modul().einschraenkungen(lizenz) == codes
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:193: AttributeError
+___________________ test_einschraenkung_nur_als_eigenes_wort ___________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_einschraenkung_nur_als_eigenes_wort():
+        """NC, ND und GFDL zählen nur als eigenes Wort: „Grand“ oder „Unclear“ sind keine Einschränkung, sondern „andere“."""
+>       assert bilder_modul().einschraenkungen("Grand Unclear License") == ["andere"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'bilder' has no attribute 'einschraenkungen'
+
+engine/tests/test_bilder.py:198: AttributeError
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC-ND 4.0-codes2-stadt] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter0/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC-ND 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC-ND 4.0-codes2-stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7129ed1fac60>
+reise = 'stadt', lizenz = 'CC BY-NC-ND 4.0', codes = ['nc', 'nd']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter0/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Copyrighted-codes5-stadt] _
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_bild_mit_eingeschraenkter0/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'Copyrighted'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Copyrighted-codes5-stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76ae19e4df70>
+reise = 'stadt', lizenz = 'Copyrighted', codes = ['andere']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_bild_mit_eingeschraenkter0/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[GFDL-codes3-wanderung] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter1/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'GFDL'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[GFDL-codes3-wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7129ed1692e0>
+reise = 'wanderung', lizenz = 'GFDL', codes = ['gfdl']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter1/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC 4.0-codes0-wanderung] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC 4.0-codes0-wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ac5d3d484d0>
+reise = 'wanderung', lizenz = 'CC BY-NC 4.0', codes = ['nc']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC 4.0-codes0-stadt] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter1/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC 4.0-codes0-stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ac5d3d4af00>
+reise = 'stadt', lizenz = 'CC BY-NC 4.0', codes = ['nc']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter1/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[GFDL-codes3-stadt] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter2/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'GFDL'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[GFDL-codes3-stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7129ed26b740>
+reise = 'stadt', lizenz = 'GFDL', codes = ['gfdl']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter2/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[None-codes6-wanderung] _
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_bild_mit_eingeschraenkter1/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[None-codes6-wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76ae19e4ee40>
+reise = 'wanderung', lizenz = None, codes = ['fehlt']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_bild_mit_eingeschraenkter1/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Free Art License-codes4-wanderung] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter3/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'Free Art License'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Free Art License-codes4-wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7129ed139430>
+reise = 'wanderung', lizenz = 'Free Art License', codes = ['andere']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter3/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-ND 4.0-codes1-wanderung] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter2/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-ND 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-ND 4.0-codes1-wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ac5d3e47f50>
+reise = 'wanderung', lizenz = 'CC BY-ND 4.0', codes = ['nd']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter2/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[None-codes6-stadt] _
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_bild_mit_eingeschraenkter2/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[None-codes6-stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76ae19e4d280>
+reise = 'stadt', lizenz = None, codes = ['fehlt']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_bild_mit_eingeschraenkter2/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+__________________ test_reihenfolge_der_saetze_in_der_antwort __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_reihenfolge_der_saetze_in0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC-ND 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw0/test_reihenfolge_der_saetze_in0/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7240b4f53bc0>
+
+    def test_reihenfolge_der_saetze_in_der_antwort(wanderung, monkeypatch):
+        """Aufbau: bild.neu, dann bild.rechte, dann die Einschränkungen in der Reihenfolge nc, nd; getrennt durch ein Leerzeichen."""
+        import texte
+        de = texte.sprache("de").TEXTE
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta("CC BY-NC-ND 4.0", None)))
+>       _, text = neu_hinzu(wanderung)
+                  ^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:363: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_reihenfolge_der_saetze_in0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Free Art License-codes4-stadt] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter4/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'Free Art License'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Free Art License-codes4-stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7129ed2704d0>
+reise = 'stadt', lizenz = 'Free Art License', codes = ['andere']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter4/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-ND 4.0-codes1-stadt] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter3/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-ND 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-ND 4.0-codes1-stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ac5d3d5c650>
+reise = 'stadt', lizenz = 'CC BY-ND 4.0', codes = ['nd']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter3/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_leerer_urheber_oder_lizenz_bekommt_ersatzwort[-CC BY 4.0-schreiben.antwort.bild.ohne_urheber] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw0/test_leerer_urheber_oder_lizen0/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7240b4f402f0>
+artist = '', lizenz = 'CC BY 4.0'
+ersatz = 'schreiben.antwort.bild.ohne_urheber'
+
+    @pytest.mark.parametrize("artist, lizenz, ersatz", [("", "CC BY 4.0", "schreiben.antwort.bild.ohne_urheber"),
+                                                         ('<a href="//x">Max Muster</a>', None, "schreiben.antwort.bild.ohne_lizenz"),
+                                                         ("", "", "schreiben.antwort.bild.ohne_lizenz")])
+    def test_leerer_urheber_oder_lizenz_bekommt_ersatzwort(wanderung, monkeypatch, artist, lizenz, ersatz):
+        """AC-6: keine leeren Stellen in der Antwort; gespeichert bleibt der leere Wert."""
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None, artist=artist)))
+        bid, text = neu_hinzu(wanderung)
+>       assert meldet(text, ersatz)
+               ^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:374: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Bild BI-10 zu E-01 hinzugefügt: , CC BY 4.0. Die Vorschau zeigt, was Frieda abgelegt hat.'
+schluessel = 'schreiben.antwort.bild.ohne_urheber', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel schreiben.antwort.bild.ohne_urheber fehlt im Katalog
+E       assert 'schreiben.antwort.bild.ohne_urheber' != 'schreiben.antwort.bild.ohne_urheber'
+
+engine/tests/conftest.py:82: AssertionError
+______________ test_freie_lizenz_nur_mit_rechtehinweis[CC BY 4.0] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw3/test_freie_lizenz_nur_mit_rech0/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76ae18b491f0>
+lizenz = 'CC BY 4.0'
+
+    @pytest.mark.parametrize("lizenz", ["CC BY 4.0", "CC0", "CC BY-SA"])
+    def test_freie_lizenz_nur_mit_rechtehinweis(wanderung, monkeypatch, lizenz):
+        """AC-4: freie Lizenz, auch ohne Version: Urheber, Lizenz, Verantwortung, kein Einschränkungssatz."""
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+        _, text = neu_hinzu(wanderung)
+>       assert "Max Muster" in text and lizenz in text and meldet(text, "schreiben.antwort.bild.rechte")
+                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:354: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Bild BI-10 zu E-01 hinzugefügt: Max Muster, CC BY 4.0. Die Vorschau zeigt, was Frieda abgelegt hat.'
+schluessel = 'schreiben.antwort.bild.rechte', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel schreiben.antwort.bild.rechte fehlt im Katalog
+E       assert 'schreiben.antwort.bild.rechte' != 'schreiben.antwort.bild.rechte'
+
+engine/tests/conftest.py:82: AssertionError
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Copyrighted-codes5-wanderung] _
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter5/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'Copyrighted'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Copyrighted-codes5-wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7129ed16e840>
+reise = 'wanderung', lizenz = 'Copyrighted', codes = ['andere']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw1/test_bild_mit_eingeschraenkter5/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+__________ test_lizenztexte_in_allen_sprachen_und_ablehnung_entfaellt __________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_lizenztexte_in_allen_sprachen_und_ablehnung_entfaellt():
+        """AC-7: bild.abgelehnt.lizenz in keiner Sprache, die neuen Schlüssel in jeder; der Code wirft die Ablehnung nirgends mehr."""
+        import texte
+        for kuerzel in texte.SPRACHEN:
+            katalog = texte.sprache(kuerzel).TEXTE
+>           assert "bild.abgelehnt.lizenz" not in katalog, kuerzel
+E           AssertionError: de
+E           assert 'bild.abgelehnt.lizenz' not in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+
+engine/tests/test_bilder.py:418: AssertionError
+_____________ test_werkzeugbeschreibung_und_doku_ohne_positivliste _____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_werkzeugbeschreibung_und_doku_ohne_positivliste():
+        """AC-10: keine Positivliste mehr; Verantwortung der Person und Hinweis in der Antwort."""
+        import texte
+        for kuerzel in ("de", "en"):
+            beschreibung = texte.sprache(kuerzel).TEXTE["konnektor.werkzeug.bild_hinzufuegen"]
+>           assert "CC BY-SA" not in beschreibung and "CC0" not in beschreibung, kuerzel
+E           AssertionError: de
+E           assert ('CC BY-SA' not in 'Ein Bild au...tragen wird.'
+E             
+E             'CC BY-SA' is contained here:
+E               i, CC BY, CC BY-SA) und legt es mit Urheber und Lizenz ab; die Antwort zeigt eine kleine Vorschau zur Kontrolle. Im Text erscheint es mit ![Bildunterschrift](BI-…). Das Titelbild (titelbild) setzen nur Organisator:innen. Vorher kurz bestätigen lassen, welches Bild eingetragen wird.
+E             ?           ++++++++)
+
+engine/tests/test_bilder.py:430: AssertionError
+_ test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC-ND 4.0-codes2-wanderung] _
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter4/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC-ND 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC-ND 4.0-codes2-wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7ac5d3e1b710>
+reise = 'wanderung', lizenz = 'CC BY-NC-ND 4.0', codes = ['nc', 'nd']
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    @pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+    def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+        """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+        Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+        from PIL import Image
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       bid, text = neu_hinzu(ordner)
+                    ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:337: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw2/test_bild_mit_eingeschraenkter4/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_________________ test_freie_lizenz_nur_mit_rechtehinweis[CC0] _________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw3/test_freie_lizenz_nur_mit_rech1/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76ae18aa0b00>
+lizenz = 'CC0'
+
+    @pytest.mark.parametrize("lizenz", ["CC BY 4.0", "CC0", "CC BY-SA"])
+    def test_freie_lizenz_nur_mit_rechtehinweis(wanderung, monkeypatch, lizenz):
+        """AC-4: freie Lizenz, auch ohne Version: Urheber, Lizenz, Verantwortung, kein Einschränkungssatz."""
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+        _, text = neu_hinzu(wanderung)
+>       assert "Max Muster" in text and lizenz in text and meldet(text, "schreiben.antwort.bild.rechte")
+                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:354: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Bild BI-10 zu E-01 hinzugefügt: Max Muster, CC0. Die Vorschau zeigt, was Frieda abgelegt hat.'
+schluessel = 'schreiben.antwort.bild.rechte', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel schreiben.antwort.bild.rechte fehlt im Katalog
+E       assert 'schreiben.antwort.bild.rechte' != 'schreiben.antwort.bild.rechte'
+
+engine/tests/conftest.py:82: AssertionError
+_ test_leerer_urheber_oder_lizenz_bekommt_ersatzwort[<a href="//x">Max Muster</a>-None-schreiben.antwort.bild.ohne_lizenz] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_leerer_urheber_oder_lizen1/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//x">Max Muster</a>'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw0/test_leerer_urheber_oder_lizen1/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7240b4f4e120>
+artist = '<a href="//x">Max Muster</a>', lizenz = None
+ersatz = 'schreiben.antwort.bild.ohne_lizenz'
+
+    @pytest.mark.parametrize("artist, lizenz, ersatz", [("", "CC BY 4.0", "schreiben.antwort.bild.ohne_urheber"),
+                                                         ('<a href="//x">Max Muster</a>', None, "schreiben.antwort.bild.ohne_lizenz"),
+                                                         ("", "", "schreiben.antwort.bild.ohne_lizenz")])
+    def test_leerer_urheber_oder_lizenz_bekommt_ersatzwort(wanderung, monkeypatch, artist, lizenz, ersatz):
+        """AC-6: keine leeren Stellen in der Antwort; gespeichert bleibt der leere Wert."""
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None, artist=artist)))
+>       bid, text = neu_hinzu(wanderung)
+                    ^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:373: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_leerer_urheber_oder_lizen1/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+______________ test_freie_lizenz_nur_mit_rechtehinweis[CC BY-SA] _______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_freie_lizenz_nur_mit_rech2/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-SA'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw3/test_freie_lizenz_nur_mit_rech2/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76ae18addd60>
+lizenz = 'CC BY-SA'
+
+    @pytest.mark.parametrize("lizenz", ["CC BY 4.0", "CC0", "CC BY-SA"])
+    def test_freie_lizenz_nur_mit_rechtehinweis(wanderung, monkeypatch, lizenz):
+        """AC-4: freie Lizenz, auch ohne Version: Urheber, Lizenz, Verantwortung, kein Einschränkungssatz."""
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>       _, text = neu_hinzu(wanderung)
+                  ^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw3/test_freie_lizenz_nur_mit_rech2/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_leerer_urheber_oder_lizenz_bekommt_ersatzwort[--schreiben.antwort.bild.ohne_lizenz] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_leerer_urheber_oder_lizen2/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': ''}, 'LicenseShortName': {'value': ''}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw0/test_leerer_urheber_oder_lizen2/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7240b4c7dd90>
+artist = '', lizenz = '', ersatz = 'schreiben.antwort.bild.ohne_lizenz'
+
+    @pytest.mark.parametrize("artist, lizenz, ersatz", [("", "CC BY 4.0", "schreiben.antwort.bild.ohne_urheber"),
+                                                         ('<a href="//x">Max Muster</a>', None, "schreiben.antwort.bild.ohne_lizenz"),
+                                                         ("", "", "schreiben.antwort.bild.ohne_lizenz")])
+    def test_leerer_urheber_oder_lizenz_bekommt_ersatzwort(wanderung, monkeypatch, artist, lizenz, ersatz):
+        """AC-6: keine leeren Stellen in der Antwort; gespeichert bleibt der leere Wert."""
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None, artist=artist)))
+>       bid, text = neu_hinzu(wanderung)
+                    ^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:373: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_leerer_urheber_oder_lizen2/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts[wanderung] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_eingeschraenkte_bilder_oh0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC-ND 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts[wanderung]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7240b4c64860>
+reise = 'wanderung'
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    def test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts(request, monkeypatch, reise):
+        """AC-8: kein neues Feld in plan/bilder.yaml, kein Formatwechsel; nachziehen meldet für die Bilder nichts."""
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch)
+        frei, _ = neu_hinzu(ordner)
+        felder = set(eintrag(ordner, frei))
+        for lizenz in ("CC BY-NC-ND 4.0", None):
+            Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>           bid, _ = neu_hinzu(ordner)
+                     ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_eingeschraenkte_bilder_oh0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+_ test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts[stadt] _
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_eingeschraenkte_bilder_oh1/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC-ND 4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+request = <FixtureRequest for <Function test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts[stadt]>>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7240b51cea20>
+reise = 'stadt'
+
+    @pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+    def test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts(request, monkeypatch, reise):
+        """AC-8: kein neues Feld in plan/bilder.yaml, kein Formatwechsel; nachziehen meldet für die Bilder nichts."""
+        ordner = request.getfixturevalue(reise)
+        Netz(monkeypatch)
+        frei, _ = neu_hinzu(ordner)
+        felder = set(eintrag(ordner, frei))
+        for lizenz in ("CC BY-NC-ND 4.0", None):
+            Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+>           bid, _ = neu_hinzu(ordner)
+                     ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:391: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_eingeschraenkte_bilder_oh1/stadtwochenende')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+__________________ test_nc_bild_wird_mit_namensnennung_gebaut __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_nc_bild_wird_mit_namensne0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+>           r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/schreiben.py:5287: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bilder.py:265: in holen
+    return vorab_lesen({"commons": commons, "wikidata": wikidata}) or abrufen(commons=commons, wikidata=wikidata)
+                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bilder.py:224: in abrufen
+    lizenz = lizenz_pruefen(info.get("extmetadata"))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+extmetadata = {'Artist': {'value': '<a href="//commons.wikimedia.org/wiki/User:Max">Max Muster</a>'}, 'LicenseShortName': {'value': 'CC BY-NC 4.0'}, 'LicenseUrl': {'value': 'https://creativecommons.org/licenses/by-nc/4.0'}}
+
+    def lizenz_pruefen(extmetadata):
+        """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
+        alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+        name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
+        frei = gemeinfrei(name)
+        if not frei and not FREI.fullmatch(name):
+>           raise Abgelehnt("bild.abgelehnt.lizenz")
+E           bilder.Abgelehnt: bild.abgelehnt.lizenz
+
+engine/bilder.py:99: Abgelehnt
+
+During handling of the above exception, another exception occurred:
+
+wanderung = PosixPath('<tmp>/pytest-17569/popen-gw0/test_nc_bild_wird_mit_namensne0/beispielreise')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7240b4f4f740>
+tmp_path = PosixPath('<tmp>/pytest-17569/popen-gw0/test_nc_bild_wird_mit_namensne0')
+
+    def test_nc_bild_wird_mit_namensnennung_gebaut(wanderung, monkeypatch, tmp_path):
+        """AC-3: ein angenommenes NC-Bild steht mit Urheber und Lizenz-Link unter dem Bild, der Bau gelingt."""
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0")))
+>       bid, _ = neu_hinzu(wanderung)
+                 ^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_bilder.py:402: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_bilder.py:154: in neu_hinzu
+    titel, text = sb.bild_hinzufuegen(ordner, wer, {"commons": "Basteibruecke.jpg", "zu": "E-01", **args})
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('<tmp>/pytest-17569/popen-gw0/test_nc_bild_wird_mit_namensne0/beispielreise')
+wer = {'name': 'Ida', 'rolle': 'organisator'}
+args = {'commons': 'Basteibruecke.jpg', 'zu': 'E-01'}, heute = None
+
+    def bild_hinzufuegen(reise_dir, wer, args, heute=None):
+        """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
+        (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
+        plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+        import bilder
+        q = bild_anfrage(reise_dir, wer, args)
+        try:
+            r = bilder.holen(commons=q["commons"], wikidata=q["wikidata"])
+            bid = neue_id(reise_dir, "BI")
+            f = bilder.fassungen_schreiben(r["inhalt"], reise_dir, bid)
+        except bilder.Abgelehnt as e:
+>           raise bild_ablehnung(e)
+E           schreiben.Ablehnung: Das Bild steht nicht unter einer Lizenz, die Frieda annimmt (CC0, gemeinfrei, CC BY oder CC BY-SA). Free Art License, NC, ND, GFDL und Bilder ohne erkennbare Lizenz kommen nicht in die Reise. Bitte ein anderes Bild wählen.
+
+engine/schreiben.py:5291: Ablehnung
+=========================== short test summary info ============================
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[cc by-nc-nd 4.0-codes13]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[Copyrighted-None]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[GFDL-codes14]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY-SA 3.0-codes4]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[CC0-https://creativecommons.org/publicdomain/zero/1.0]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[GFDL 1.2-codes15]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[-None] - Attr...
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[Public domain-None]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[Free Art License-codes16]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY-SA-codes5]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[None-None] - ...
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY-codes6]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[PD-None] - At...
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[FAL-codes17]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_nimmt_nur_https_links
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[CC BY 3.0-https://creativecommons.org/licenses/by/3.0]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY 4.0 de-codes7]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[Copyrighted-codes18]
+FAILED engine/tests/test_bilder.py::test_positivliste_und_pruefung_entfallen
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC0-codes0]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[CC BY-SA 4.0-https://creativecommons.org/licenses/by-sa/4.0]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[cc by-sa 2.5-codes8]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[Public domain-codes1]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[CC BY-NC 4.0-https://creativecommons.org/licenses/by-nc/4.0]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[Attribution-codes19]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[PD-old-codes2]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY-NC 4.0-codes9]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY 4.0-codes3]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[CC BY-ND 4.0-None]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY-NC-SA 3.0-codes10]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY-NC-ND 4.0-codes11]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[-codes20]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[GFDL-None] - ...
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[CC BY-ND 2.0-codes12]
+FAILED engine/tests/test_bilder.py::test_lizenz_lesen_wirft_nie[Free Art License-None]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[   -codes21]
+FAILED engine/tests/test_bilder.py::test_einschraenkungen_nach_der_tabelle[None-codes22]
+FAILED engine/tests/test_bilder.py::test_einschraenkung_nur_als_eigenes_wort
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC-ND 4.0-codes2-stadt]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Copyrighted-codes5-stadt]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[GFDL-codes3-wanderung]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC 4.0-codes0-wanderung]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC 4.0-codes0-stadt]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[GFDL-codes3-stadt]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[None-codes6-wanderung]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Free Art License-codes4-wanderung]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-ND 4.0-codes1-wanderung]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[None-codes6-stadt]
+FAILED engine/tests/test_bilder.py::test_reihenfolge_der_saetze_in_der_antwort
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Free Art License-codes4-stadt]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-ND 4.0-codes1-stadt]
+FAILED engine/tests/test_bilder.py::test_leerer_urheber_oder_lizenz_bekommt_ersatzwort[-CC BY 4.0-schreiben.antwort.bild.ohne_urheber]
+FAILED engine/tests/test_bilder.py::test_freie_lizenz_nur_mit_rechtehinweis[CC BY 4.0]
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[Copyrighted-codes5-wanderung]
+FAILED engine/tests/test_bilder.py::test_lizenztexte_in_allen_sprachen_und_ablehnung_entfaellt
+FAILED engine/tests/test_bilder.py::test_werkzeugbeschreibung_und_doku_ohne_positivliste
+FAILED engine/tests/test_bilder.py::test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis[CC BY-NC-ND 4.0-codes2-wanderung]
+FAILED engine/tests/test_bilder.py::test_freie_lizenz_nur_mit_rechtehinweis[CC0]
+FAILED engine/tests/test_bilder.py::test_leerer_urheber_oder_lizenz_bekommt_ersatzwort[<a href="//x">Max Muster</a>-None-schreiben.antwort.bild.ohne_lizenz]
+FAILED engine/tests/test_bilder.py::test_freie_lizenz_nur_mit_rechtehinweis[CC BY-SA]
+FAILED engine/tests/test_bilder.py::test_leerer_urheber_oder_lizenz_bekommt_ersatzwort[--schreiben.antwort.bild.ohne_lizenz]
+FAILED engine/tests/test_bilder.py::test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts[wanderung]
+FAILED engine/tests/test_bilder.py::test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts[stadt]
+FAILED engine/tests/test_bilder.py::test_nc_bild_wird_mit_namensnennung_gebaut
+64 failed, 81 passed in 31.72s

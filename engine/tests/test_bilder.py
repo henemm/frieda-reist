@@ -1,11 +1,13 @@
 """Tests für Bilder Stufe 1, Paket P1 (#455, #581; Spec docs/specs/oberflaeche/bilder-455-stufe1.md): Liste plan/bilder.yaml mit
-Kennung BI-NN, Abruf aus Wikimedia Commons und Wikidata, Lizenz-Positivliste, zwei WebP-Fassungen, Rechte, Werkzeuge,
-Hotlink-Sperre, bilder_nachziehen und BI- im Text. Kein Test geht ins Netz: urllib.request.urlopen wird ersetzt, Commons- und
+Kennung BI-NN, Abruf aus Wikimedia Commons und Wikidata, Lizenz lesen und einordnen (#613, Spec
+docs/specs/oberflaeche/bilder-lizenzhinweis-613.md: keine Positivliste mehr, Hinweis statt Ablehnung), zwei WebP-Fassungen,
+Rechte, Werkzeuge, Hotlink-Sperre, bilder_nachziehen und BI- im Text. Kein Test geht ins Netz: urllib.request.urlopen wird ersetzt, Commons- und
 Wikidata-Antworten sind Fixtures in dieser Datei, das Testbild entsteht mit Pillow.
 
 Was diese Tests als Schnittstelle festlegen (über die Spec hinaus):
   bilder.Abgelehnt(schluessel, **werte)         Ablehnung des Moduls; .schluessel ist bild.abgelehnt.*
-  bilder.lizenz_pruefen(extmetadata) -> dict     {"lizenz", "lizenz_url", "gemeinfrei"}; wirft Abgelehnt("bild.abgelehnt.lizenz")
+  bilder.lizenz_lesen(extmetadata) -> dict       {"lizenz", "lizenz_url", "gemeinfrei"}; wirft nie wegen der Lizenz (#613)
+  bilder.einschraenkungen(lizenz) -> list[str]   Codes aus nc, nd, gfdl, fehlt, andere; leer bei freier Lizenz (#613)
   bilder.urheber_saeubern(html) -> str           reiner Text
   bilder.abrufen(commons=None, wikidata=None) -> dict   Netzabruf (Metadaten und Bytes der 1600er-Fassung):
                                                  {"datei", "urheber", "lizenz", "lizenz_url", "seite", "gemeinfrei", "inhalt"}
@@ -153,25 +155,47 @@ def neu_hinzu(ordner, wer=IDA, **args):
     return titel.split()[0], text
 
 
-# ---------- Lizenz und Urheber (V8, V9) ----------
+# ---------- Lizenz lesen und einordnen (#613, ersetzt V8; V9) ----------
 
 @pytest.mark.parametrize("lizenz, url", [("CC0", "https://creativecommons.org/publicdomain/zero/1.0"), ("Public domain", None),
                                          ("PD", None), ("CC BY 3.0", "https://creativecommons.org/licenses/by/3.0"),
                                          ("CC BY-SA 4.0", "https://creativecommons.org/licenses/by-sa/4.0"),
-                                         ("CC BY-SA 2.5", "https://creativecommons.org/licenses/by-sa/2.5")])
-def test_lizenz_positivliste_nimmt_an(lizenz, url):
-    r = bilder_modul().lizenz_pruefen(meta(lizenz, url))
-    assert r["lizenz"] == lizenz
+                                         ("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0"),
+                                         ("CC BY-ND 4.0", None), ("GFDL", None), ("Free Art License", None),
+                                         ("Copyrighted", None), ("", None), (None, None)])
+def test_lizenz_lesen_wirft_nie(lizenz, url):
+    r = bilder_modul().lizenz_lesen(meta(lizenz, url))
+    assert set(r) == {"lizenz", "lizenz_url", "gemeinfrei"}
+    assert r["lizenz"] == (lizenz or "")
     assert r["gemeinfrei"] == (lizenz in ("CC0", "Public domain", "PD"))
+    assert r["lizenz_url"] == url
 
 
-@pytest.mark.parametrize("lizenz", ["Free Art License", "FAL", "CC BY-NC 4.0", "CC BY-NC-SA 3.0", "CC BY-ND 4.0", "GFDL",
-                                    "Copyrighted", "", None])
-def test_lizenz_ausserhalb_der_positivliste_wird_abgelehnt(lizenz):
+def test_lizenz_lesen_nimmt_nur_https_links():
+    assert bilder_modul().lizenz_lesen(meta("CC BY-NC 4.0", "javascript:alert(1)"))["lizenz_url"] is None
+
+
+def test_positivliste_und_pruefung_entfallen():
     b = bilder_modul()
-    with pytest.raises(b.Abgelehnt) as e:
-        b.lizenz_pruefen(meta(lizenz, None))
-    assert e.value.schluessel == "bild.abgelehnt.lizenz"
+    assert not hasattr(b, "lizenz_pruefen") and not hasattr(b, "FREI")
+
+
+EINORDNUNG = [("CC0", []), ("Public domain", []), ("PD-old", []), ("CC BY 4.0", []), ("CC BY-SA 3.0", []), ("CC BY-SA", []),
+              ("CC BY", []), ("CC BY 4.0 de", []), ("cc by-sa 2.5", []),
+              ("CC BY-NC 4.0", ["nc"]), ("CC BY-NC-SA 3.0", ["nc"]), ("CC BY-NC-ND 4.0", ["nc", "nd"]), ("CC BY-ND 2.0", ["nd"]),
+              ("cc by-nc-nd 4.0", ["nc", "nd"]), ("GFDL", ["gfdl"]), ("GFDL 1.2", ["gfdl"]),
+              ("Free Art License", ["andere"]), ("FAL", ["andere"]), ("Copyrighted", ["andere"]), ("Attribution", ["andere"]),
+              ("", ["fehlt"]), ("   ", ["fehlt"]), (None, ["fehlt"])]
+
+
+@pytest.mark.parametrize("lizenz, codes", EINORDNUNG)
+def test_einschraenkungen_nach_der_tabelle(lizenz, codes):
+    assert bilder_modul().einschraenkungen(lizenz) == codes
+
+
+def test_einschraenkung_nur_als_eigenes_wort():
+    """NC, ND und GFDL zählen nur als eigenes Wort: „Grand“ oder „Unclear“ sind keine Einschränkung, sondern „andere“."""
+    assert bilder_modul().einschraenkungen("Grand Unclear License") == ["andere"]
 
 
 def test_urheber_wird_zu_text_gesaeubert():
@@ -293,15 +317,124 @@ def test_bild_hinzufuegen_lehnt_ab_ohne_eintrag(wanderung, monkeypatch, args, sc
     assert liste(wanderung) == vorher and netz.aufrufe == []       # Prüfung der Anfrage vor dem Netz
 
 
-@pytest.mark.parametrize("lizenz", ["Free Art License", "CC BY-NC 4.0", "CC BY-ND 4.0", "GFDL", None])
-def test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise(wanderung, monkeypatch, lizenz):
+EINGESCHRAENKT = [("CC BY-NC 4.0", ["nc"]), ("CC BY-ND 4.0", ["nd"]), ("CC BY-NC-ND 4.0", ["nc", "nd"]), ("GFDL", ["gfdl"]),
+                  ("Free Art License", ["andere"]), ("Copyrighted", ["andere"]), (None, ["fehlt"])]
+CODES = ("nc", "nd", "gfdl", "fehlt", "andere")
+
+
+def einschraenkung(code):
+    return f"schreiben.antwort.bild.einschraenkung.{code}"
+
+
+@pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+@pytest.mark.parametrize("lizenz, codes", EINGESCHRAENKT)
+def test_bild_mit_eingeschraenkter_lizenz_wird_angenommen_mit_hinweis(request, monkeypatch, reise, lizenz, codes):
+    """AC-1, AC-2, AC-5: jedes Commons-Bild kommt in die Reise, an der Wanderung wie am Stadtwochenende; die Antwort nennt
+    Urheber, Lizenz, die Verantwortung der Person und je Einschränkung genau ihren Satz."""
+    from PIL import Image
+    ordner = request.getfixturevalue(reise)
     Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
-    vorher, webp_vorher = liste(wanderung), sorted((wanderung / "medien").rglob("*.webp"))
-    with pytest.raises(sb.Ablehnung) as e:
-        neu_hinzu(wanderung)
-    assert e.value.schluessel == "bild.abgelehnt.lizenz" and meldet(str(e.value), "bild.abgelehnt.lizenz")
-    assert liste(wanderung) == vorher
-    assert sorted((wanderung / "medien").rglob("*.webp")) == webp_vorher       # keine Datei in der Ablage
+    bid, text = neu_hinzu(ordner)
+    b = eintrag(ordner, bid)
+    assert b["lizenz"] == (lizenz or "") and b["status"] == "aktiv"
+    for fassung in ("klein", "gross"):
+        with Image.open(ordner / b["dateien"][fassung]) as im:
+            assert im.format == "WEBP"
+    assert "Max Muster" in text and (lizenz is None or lizenz in text)
+    assert meldet(text, "schreiben.antwort.bild.neu") and meldet(text, "schreiben.antwort.bild.rechte")
+    for code in CODES:
+        assert meldet(text, einschraenkung(code)) == (code in codes), (code, text)
+
+
+@pytest.mark.parametrize("lizenz", ["CC BY 4.0", "CC0", "CC BY-SA"])
+def test_freie_lizenz_nur_mit_rechtehinweis(wanderung, monkeypatch, lizenz):
+    """AC-4: freie Lizenz, auch ohne Version: Urheber, Lizenz, Verantwortung, kein Einschränkungssatz."""
+    Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+    _, text = neu_hinzu(wanderung)
+    assert "Max Muster" in text and lizenz in text and meldet(text, "schreiben.antwort.bild.rechte")
+    assert [c for c in CODES if meldet(text, einschraenkung(c))] == []
+
+
+def test_reihenfolge_der_saetze_in_der_antwort(wanderung, monkeypatch):
+    """Aufbau: bild.neu, dann bild.rechte, dann die Einschränkungen in der Reihenfolge nc, nd; getrennt durch ein Leerzeichen."""
+    import texte
+    de = texte.sprache("de").TEXTE
+    Netz(monkeypatch, commons=commons_antwort(extmetadata=meta("CC BY-NC-ND 4.0", None)))
+    _, text = neu_hinzu(wanderung)
+    assert text.endswith(" ".join([de["schreiben.antwort.bild.rechte"], de[einschraenkung("nc")], de[einschraenkung("nd")]]))
+
+
+@pytest.mark.parametrize("artist, lizenz, ersatz", [("", "CC BY 4.0", "schreiben.antwort.bild.ohne_urheber"),
+                                                     ('<a href="//x">Max Muster</a>', None, "schreiben.antwort.bild.ohne_lizenz"),
+                                                     ("", "", "schreiben.antwort.bild.ohne_lizenz")])
+def test_leerer_urheber_oder_lizenz_bekommt_ersatzwort(wanderung, monkeypatch, artist, lizenz, ersatz):
+    """AC-6: keine leeren Stellen in der Antwort; gespeichert bleibt der leere Wert."""
+    Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None, artist=artist)))
+    bid, text = neu_hinzu(wanderung)
+    assert meldet(text, ersatz)
+    assert ": ," not in text and ", ." not in text and " ." not in text and "  " not in text, text
+    b = eintrag(wanderung, bid)
+    assert b["lizenz"] == (lizenz or "")
+    if not artist:
+        assert not b.get("urheber")
+
+
+@pytest.mark.parametrize("reise", ["wanderung", "stadt"])
+def test_eingeschraenkte_bilder_ohne_neues_feld_und_nachziehen_aendert_nichts(request, monkeypatch, reise):
+    """AC-8: kein neues Feld in plan/bilder.yaml, kein Formatwechsel; nachziehen meldet für die Bilder nichts."""
+    ordner = request.getfixturevalue(reise)
+    Netz(monkeypatch)
+    frei, _ = neu_hinzu(ordner)
+    felder = set(eintrag(ordner, frei))
+    for lizenz in ("CC BY-NC-ND 4.0", None):
+        Netz(monkeypatch, commons=commons_antwort(extmetadata=meta(lizenz, None)))
+        bid, _ = neu_hinzu(ordner)
+        assert set(eintrag(ordner, bid)) == felder, (lizenz, set(eintrag(ordner, bid)) ^ felder)
+    stand = (ordner / "plan" / "bilder.yaml").read_bytes()
+    assert neu.bilder_nachziehen(ordner, schreiben=False) == []
+    neu.nachziehen(ordner, schreiben=False)
+    assert (ordner / "plan" / "bilder.yaml").read_bytes() == stand
+
+
+def test_nc_bild_wird_mit_namensnennung_gebaut(wanderung, monkeypatch, tmp_path):
+    """AC-3: ein angenommenes NC-Bild steht mit Urheber und Lizenz-Link unter dem Bild, der Bau gelingt."""
+    Netz(monkeypatch, commons=commons_antwort(extmetadata=meta("CC BY-NC 4.0", "https://creativecommons.org/licenses/by-nc/4.0")))
+    bid, _ = neu_hinzu(wanderung)
+    text_anhaengen(wanderung, f"![Die Brücke]({bid})")
+    bauen.bauen(wanderung, tmp_path / "dist")
+    seite = (tmp_path / "dist" / "index.html").read_text(encoding="utf-8")
+    assert "Max Muster" in seite and "CC BY-NC 4.0" in seite and "https://creativecommons.org/licenses/by-nc/4.0" in seite
+
+
+NEUE_LIZENZTEXTE = ("schreiben.antwort.bild.rechte", "schreiben.antwort.bild.ohne_urheber", "schreiben.antwort.bild.ohne_lizenz",
+                    *(f"schreiben.antwort.bild.einschraenkung.{c}" for c in CODES))
+
+
+def test_lizenztexte_in_allen_sprachen_und_ablehnung_entfaellt():
+    """AC-7: bild.abgelehnt.lizenz in keiner Sprache, die neuen Schlüssel in jeder; der Code wirft die Ablehnung nirgends mehr."""
+    import texte
+    for kuerzel in texte.SPRACHEN:
+        katalog = texte.sprache(kuerzel).TEXTE
+        assert "bild.abgelehnt.lizenz" not in katalog, kuerzel
+        fehlt = [k for k in NEUE_LIZENZTEXTE if k not in katalog]
+        assert fehlt == [], (kuerzel, fehlt)
+    for datei in (WURZEL / "engine").glob("*.py"):
+        assert "bild.abgelehnt.lizenz" not in datei.read_text(encoding="utf-8"), datei.name
+
+
+def test_werkzeugbeschreibung_und_doku_ohne_positivliste():
+    """AC-10: keine Positivliste mehr; Verantwortung der Person und Hinweis in der Antwort."""
+    import texte
+    for kuerzel in ("de", "en"):
+        beschreibung = texte.sprache(kuerzel).TEXTE["konnektor.werkzeug.bild_hinzufuegen"]
+        assert "CC BY-SA" not in beschreibung and "CC0" not in beschreibung, kuerzel
+    de = texte.sprache("de").TEXTE["konnektor.werkzeug.bild_hinzufuegen"]
+    assert "verantwortlich" in de and "Hinweis" in de, de
+    en = texte.sprache("en").TEXTE["konnektor.werkzeug.bild_hinzufuegen"]
+    assert "responsib" in en, en
+    zeile = next(z for z in (WURZEL / "docs" / "konnektor.md").read_text(encoding="utf-8").splitlines()
+                 if z.startswith("| `bild_hinzufuegen`"))
+    assert "CC BY-SA" not in zeile and "CC0" not in zeile and "verantwortlich" in zeile, zeile
 
 
 def test_zu_reise_ist_erlaubt(wanderung, monkeypatch):
