@@ -166,6 +166,18 @@ def test_hoechstens_ein_bild_zugleich(seiten, monkeypatch, tmp_path):
     assert fehler and meldet(t, "konnektor.seitenbild.besetzt")
 
 
+def test_fehlender_browser_kommt_als_grund_zurueck(tmp_path):
+    """Startet der Browser nicht (hier: Browser-Ordner leer), antwortet das Skript trotzdem mit einer JSON-Zeile und dem Grund."""
+    pw = _playwright()
+    (tmp_path / "s").mkdir()
+    (tmp_path / "s" / "index.html").write_text("<!DOCTYPE html><main id=main><p>x</p></main>", encoding="utf-8")
+    (tmp_path / "leer").mkdir()
+    aus = subprocess.run(["node", str(ENGINE / "seitenbild.mjs"), str(pw), str(tmp_path / "s"), "-", "handy"], capture_output=True,
+                         text=True, timeout=120, env={**os.environ, "PLAYWRIGHT_BROWSERS_PATH": str(tmp_path / "leer")})
+    erg = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert aus.returncode == 1 and "bild" not in erg and erg["fehler"] and "\n" not in erg["fehler"][0]
+
+
 def test_gescheitertes_bild_sagt_den_grund(seiten, monkeypatch, tmp_path):
     modul = tmp_path / "pw.mjs"
     modul.write_text("")
@@ -187,8 +199,13 @@ def test_umgebung_des_browsers(tmp_path, monkeypatch):
     """Der Konnektor läuft mit ProtectHome: eigener HOME, die Browser der Instanz unter <FR_DIENST>/playwright/browser."""
     monkeypatch.setenv("FR_DIENST", str(tmp_path / "dienst"))
     monkeypatch.delenv("PLAYWRIGHT_BROWSERS_PATH", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path / "alt"))
     umg = kn.seitenbild_umgebung(str(tmp_path / "heim"))
     assert umg["HOME"] == str(tmp_path / "heim") and "PLAYWRIGHT_BROWSERS_PATH" not in umg
+    # Browser im Zwischenspeicher des bisherigen Heimatverzeichnisses (Vorgabe von Playwright, so in CI): der neue HOME verdeckt
+    # ihn nicht
+    (tmp_path / "alt" / ".cache" / "ms-playwright").mkdir(parents=True)
+    assert kn.seitenbild_umgebung("/x")["PLAYWRIGHT_BROWSERS_PATH"] == str(tmp_path / "alt" / ".cache" / "ms-playwright")
     (tmp_path / "dienst" / "playwright" / "browser").mkdir(parents=True)
     (tmp_path / "dienst" / "playwright" / "node_modules" / "playwright").mkdir(parents=True)
     (tmp_path / "dienst" / "playwright" / "node_modules" / "playwright" / "index.mjs").write_text("")

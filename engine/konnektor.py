@@ -522,12 +522,15 @@ def playwright_modul():
 
 
 def seitenbild_umgebung(heim):
-    """Umgebung für node: eigener HOME (der Dienst sieht kein Heimatverzeichnis, ProtectHome), die Browser der Instanz unter
-    <FR_DIENST>/playwright/browser, wenn PLAYWRIGHT_BROWSERS_PATH nicht gesetzt ist."""
+    """Umgebung für node: eigener HOME (der Dienst sieht kein Heimatverzeichnis, ProtectHome). Die Browser, wenn
+    PLAYWRIGHT_BROWSERS_PATH nicht gesetzt ist: die der Instanz unter <FR_DIENST>/playwright/browser, sonst die im Zwischenspeicher
+    des bisherigen Heimatverzeichnisses (Vorgabe von Playwright, etwa in CI), den der neue HOME sonst verdecken würde."""
     umg = {**os.environ, "HOME": heim}
-    browser = instanz.dienst() / "playwright" / "browser"
-    if not umg.get("PLAYWRIGHT_BROWSERS_PATH") and browser.is_dir():
-        umg["PLAYWRIGHT_BROWSERS_PATH"] = str(browser)
+    if not umg.get("PLAYWRIGHT_BROWSERS_PATH"):
+        for browser in (instanz.dienst() / "playwright" / "browser", Path.home() / ".cache" / "ms-playwright"):
+            if browser.is_dir():
+                umg["PLAYWRIGHT_BROWSERS_PATH"] = str(browser)
+                break
     return umg
 
 
@@ -555,7 +558,9 @@ def seitenbild_aufnehmen(ordner, kennung, geraet):
     except json.JSONDecodeError:
         erg = {}
     if not isinstance(erg, dict) or not erg.get("bild"):
-        grund = "; ".join((erg.get("fehler") if isinstance(erg, dict) else None) or [lauf.stderr.strip()[-300:] or "?"])
+        # Die erste Zeile mit „Error“ sagt am meisten (Playwright rahmt den Rest in einen Kasten)
+        zeilen = [z.strip() for z in lauf.stderr.splitlines() if "Error" in z or "rror:" in z] or [lauf.stderr.strip()[-300:] or "?"]
+        grund = "; ".join((erg.get("fehler") if isinstance(erg, dict) else None) or zeilen[:1])
         return None, tk("konnektor.seitenbild.gescheitert", grund=grund[:300])
     return erg, None
 

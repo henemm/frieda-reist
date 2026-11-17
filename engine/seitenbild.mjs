@@ -99,14 +99,16 @@ async function aufnehmen(b, basis) {
 let ergebnis;
 const server = http.createServer(ausliefern);
 await new Promise(r => server.listen(0, "127.0.0.1", r));
-const pw = await import(path.resolve(modul));
-const b = await pw.chromium.launch();
+let b = null;
 try {
+  // Auch ein Fehler beim Start des Browsers (etwa fehlende Browser) kommt als JSON mit Grund zurück
+  const pw = await import(path.resolve(modul));
+  b = await pw.chromium.launch();
   ergebnis = await aufnehmen(b, `http://127.0.0.1:${server.address().port}`);
 } catch (e) {
-  ergebnis = {fehler: [zeile(e.message).slice(0, 300)]};
+  ergebnis = {fehler: [zeile(String(e.message || e).split("\n")[0]).slice(0, 300)]};
 } finally {
-  await b.close();
+  if (b) await b.close();
   server.close();
 }
 // Erst beenden, wenn die Zeile ganz geschrieben ist: process.exit schneidet eine große Ausgabe in eine Pipe sonst ab
