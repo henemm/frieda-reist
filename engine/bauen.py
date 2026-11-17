@@ -1839,11 +1839,12 @@ def svg_pruefen(text):
 
 def icon_aus_svg(svg, groesse):
     """App-Symbol aus reisen/<reise>/medien/icon.svg (Pfad) oder SVG-Bytes; CairoSVG (LGPL) rechnet es in die Größe um.
-    CairoSVG löst ohne unsafe=True keine Verweise auf Dateien und keine Entitäten auf."""
+    CairoSVG löst ohne unsafe=True keine Verweise auf Dateien und keine Entitäten auf. Die Datei wird hier gelesen, nicht über
+    CairoSVG (das liest Pfade über urllib.request.urlopen)."""
     import io
     import cairosvg
-    quelle = {"bytestring": svg} if isinstance(svg, bytes) else {"url": str(svg)}
-    png = cairosvg.svg2png(**quelle, output_width=groesse, output_height=groesse)
+    inhalt = svg if isinstance(svg, bytes) else Path(svg).read_bytes()
+    png = cairosvg.svg2png(bytestring=inhalt, output_width=groesse, output_height=groesse)
     return flach(Image.open(io.BytesIO(png)))
 
 

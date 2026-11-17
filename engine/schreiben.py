@@ -5271,7 +5271,7 @@ def bild_eintrag(bid, q, r, f, args, wer):
     """Neuer Eintrag der Liste aus Anfrage q, Abruf r und Fassungen f."""
     quelle = {"wikidata": q["wikidata"], "commons": r["datei"]} if q["wikidata"] else {"commons": r["datei"]}
     b = {"id": bid, "zu": q["zu"], "quelle": quelle, "urheber": r.get("urheber") or "", "lizenz": r["lizenz"],
-         "lizenz_url": r.get("lizenz_url"), "seite": r["seite"], "bildunterschrift": text_wert(args, "bildunterschrift"),
+         "lizenz_url": r.get("lizenz_url") or "", "seite": r["seite"], "bildunterschrift": text_wert(args, "bildunterschrift"),
          "alt": text_wert(args, "alt"), "titelbild": True if q["titelbild"] else None, "status": "aktiv", **f,
          "hinzugefuegt": {"datum": datetime.date.today(), "wer": wer["name"]}}
     return {k: v for k, v in b.items() if v is not None}
@@ -5279,8 +5279,8 @@ def bild_eintrag(bid, q, r, f, args, wer):
 
 def bild_hinzufuegen(reise_dir, wer, args, heute=None):
     """Ein Bild aus Wikimedia Commons (commons) oder über Wikidata (wikidata, Eigenschaft P18) zur Reise (#455): Anfrage prüfen
-    (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag in
-    plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text)."""
+    (vor dem Netz), Bild holen (vorab vom Dienst oder selbst), Lizenz lesen und Inhalt prüfen, zwei WebP-Fassungen ablegen, Eintrag
+    in plan/bilder.yaml. Ein neues Titelbild löst das bisherige ab. -> (Titel, Text mit Hinweis zu den Nutzungsrechten)."""
     import bilder
     q = bild_anfrage(reise_dir, wer, args)
     try:
@@ -5295,8 +5295,19 @@ def bild_hinzufuegen(reise_dir, wer, args, heute=None):
             b.pop("titelbild", None)
     liste.append(bild_eintrag(bid, q, r, f, args, wer))
     bild_liste_speichern(reise_dir, liste)
-    return (S("schreiben.titel.bild_neu", bid=bid, zu=q["zu"]),
-            S("schreiben.antwort.bild.neu", bid=bid, zu=q["zu"], urheber=r.get("urheber") or "", lizenz=r["lizenz"]))
+    return S("schreiben.titel.bild_neu", bid=bid, zu=q["zu"]), bild_antwort(bid, q["zu"], r)
+
+
+def bild_antwort(bid, zu, r):
+    """Antwort von bild_hinzufuegen (#613): bild.neu mit Urheber und Lizenz (Ersatzwörter, wenn leer), der Hinweis auf die
+    Verantwortung für die Nutzungsrechte und je Einschränkung der Lizenz ein Satz. Sperrt nie."""
+    import bilder
+    saetze = [S("schreiben.antwort.bild.neu", bid=bid, zu=zu,
+                urheber=r.get("urheber") or S("schreiben.antwort.bild.ohne_urheber"),
+                lizenz=r.get("lizenz") or S("schreiben.antwort.bild.ohne_lizenz")),
+              S("schreiben.antwort.bild.rechte")]
+    saetze += [S(f"schreiben.antwort.bild.einschraenkung.{code}") for code in bilder.einschraenkungen(r.get("lizenz"))]
+    return " ".join(saetze)
 
 
 def bild_status_setzen(reise_dir, liste, b, args):

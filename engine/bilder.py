@@ -21,9 +21,11 @@ Packliste). Die Liste steht in plan/bilder.yaml der Reise:
       hinzugefuegt: {datum: 2026-11-15, wer: Ida}
 
 Claude nennt über den Konnektor nur eine Commons-Datei oder eine Wikidata-Kennung; Frieda holt das Bild selbst (nie das
-Original, höchstens 1600 px), prüft die Lizenz gegen eine Positivliste, prüft den Inhalt mit Pillow und legt zwei
-WebP-Fassungen ab. Ablehnungen tragen einen Schlüssel bild.abgelehnt.* des Katalogs (Abgelehnt); der Schreibweg macht daraus
-seine Ablehnung. Hier stehen keine sichtbaren Texte.
+Original, höchstens 1600 px), liest Urheber und Lizenz, prüft den Inhalt mit Pillow und legt zwei WebP-Fassungen ab. Die
+Lizenz wird nicht geprüft, sondern nur eingeordnet (#613, Spec docs/specs/oberflaeche/bilder-lizenzhinweis-613.md): Die
+Nutzungsrechte verantwortet die Person, die das Bild hinzufügt; einschraenkungen() liefert die Codes für den Hinweis.
+Ablehnungen tragen einen Schlüssel bild.abgelehnt.* des Katalogs (Abgelehnt); der Schreibweg macht daraus seine Ablehnung.
+Hier stehen keine sichtbaren Texte.
 """
 import html
 import io
@@ -58,7 +60,9 @@ LISTE = "plan/bilder.yaml"
 KENNUNG = re.compile(r"BI-\d+")
 WIKIDATA_KENNUNG = re.compile(r"Q\d{1,12}")
 GEMEINFREI = re.compile(r"CC0(?: 1\.0)?|Public domain|PD(?:-[\w.-]+)?", re.I)
-FREI = re.compile(r"CC BY(?:-SA)? \d\.\d(?: [a-z]{2})?", re.I)
+OHNE_EINSCHRAENKUNG = re.compile(r"CC BY(?:-SA)?(?: \d\.\d)?(?: [a-z]{2})?", re.I)
+EINSCHRAENKUNGEN = (("nc", re.compile(r"\bNC\b", re.I)), ("nd", re.compile(r"\bND\b", re.I)),
+                    ("gfdl", re.compile(r"\bGFDL\b", re.I)))
 VORAB_UMGEBUNG = "FR_BILD_VORAB"
 
 
@@ -90,16 +94,24 @@ def gemeinfrei(lizenz):
     return bool(GEMEINFREI.fullmatch(str(lizenz or "").strip()))
 
 
-def lizenz_pruefen(extmetadata):
-    """Lizenz aus extmetadata gegen die Positivliste (CC0, gemeinfrei, CC BY, CC BY-SA) -> {"lizenz", "lizenz_url", "gemeinfrei"};
-    alles andere (Free Art License, NC, ND, GFDL, unbekannt, fehlend) wirft Abgelehnt("bild.abgelehnt.lizenz")."""
+def lizenz_lesen(extmetadata):
+    """Lizenz aus extmetadata lesen -> {"lizenz", "lizenz_url", "gemeinfrei"}; wirft nie wegen der Lizenz (#613). Fehlt sie,
+    ist lizenz "", lizenz_url None; als Link zählt nur https://."""
     name = urheber_saeubern(_meta(extmetadata, "LicenseShortName"))
-    frei = gemeinfrei(name)
-    if not frei and not FREI.fullmatch(name):
-        raise Abgelehnt("bild.abgelehnt.lizenz")
     url = _meta(extmetadata, "LicenseUrl")
     url = "https:" + url if url.startswith("//") else "https://" + url[7:] if url.startswith("http://") else url
-    return {"lizenz": name, "lizenz_url": url if re.fullmatch(r"https://[^\s\"<>]+", url) else None, "gemeinfrei": frei}
+    return {"lizenz": name, "lizenz_url": url if re.fullmatch(r"https://[^\s\"<>]+", url) else None, "gemeinfrei": gemeinfrei(name)}
+
+
+def einschraenkungen(lizenz):
+    """Lizenzname -> Codes der Einschränkungen (nc, nd, gfdl; fehlt bei leerer, andere bei nicht eingeordneter Lizenz);
+    leer bei CC0, gemeinfrei, CC BY und CC BY-SA. Reine Funktion, informiert nur und sperrt nie (#613)."""
+    name = str(lizenz or "").strip()
+    if not name:
+        return ["fehlt"]
+    if gemeinfrei(name) or OHNE_EINSCHRAENKUNG.fullmatch(name):
+        return []
+    return [code for code, muster in EINSCHRAENKUNGEN if muster.search(name)] or ["andere"]
 
 
 # ---------- Abruf ----------
@@ -221,7 +233,7 @@ def abrufen(commons=None, wikidata=None):
     ende = time.monotonic() + FRIST
     datei = commons_name(commons) if commons else p18_lesen(wikidata, ende)
     info = bildinfo(datei, ende)
-    lizenz = lizenz_pruefen(info.get("extmetadata"))
+    lizenz = lizenz_lesen(info.get("extmetadata"))
     mime = str(info.get("mime") or "")
     if not mime.startswith("image/") or "svg" in mime:
         raise Abgelehnt("bild.abgelehnt.kein_rasterbild")
