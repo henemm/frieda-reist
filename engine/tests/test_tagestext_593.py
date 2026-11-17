@@ -71,6 +71,7 @@ def test_vorlage_aktivitaet_in_jeder_sprache():
         assert a["grundform"] == "aufenthalt" and a["name"] == name
         assert set(a["merkmale"]) == {"anbieter", "treffpunkt", "preis", "anmeldung", "mitbringen", "webseite"}
         assert a["merkmale"]["preis"]["rolle"] == "kosten"
+        assert a["buchbar"] is False   # kein „nicht gebucht“ an jeder Aktivität (#616); Anmeldung ist ein Merkmal
 
 
 @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
@@ -90,4 +91,5 @@ def test_aktivitaet_uebernehmen_und_mit_uhrzeit_und_lesetext_zeigen(tmp_path, re
     d = bauen.bauen(q, tmp_path / "web" / reise)
     a = d["route"]["aufenthalte"][aid]
     assert a["art"] == "aktivitaet" and a["beginn"] == "10:00" and a["ende"] == "12:30"
+    assert a.get("buchung") is None and d["route"]["arten"]["aktivitaet"]["buchbar"] is False   # ohne Buchungsstand (#616)
     assert "<ol>" in a["lesetext"]

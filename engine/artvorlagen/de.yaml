@@ -65,6 +65,7 @@ arten:
     name: Aktivität
     farbe: lila
     symbol: ticket
+    buchbar: false   # meist ohne Buchung; ob man sich anmelden muss, sagt das Merkmal anmeldung (#616)
     beschreibung: "Was man an einem Tag tut, ohne dort zu übernachten: Übung, Workshop, Führung, Kurs, Termin. Uhrzeit (von–bis) und eine lange Beschreibung (Lesetext) hat jeder Aufenthalt ohnehin."
     merkmale:
       anbieter: {name: Anbieter, typ: text, hilfe: "wer es anbietet oder leitet"}

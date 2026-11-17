@@ -64,6 +64,7 @@ arten:
     name: Activity
     farbe: lila
     symbol: ticket
+    buchbar: false   # usually not booked; whether to register is the attribute anmeldung (#616)
     beschreibung: "Something you do during a day without staying the night: exercise, workshop, guided tour, course, appointment. Every stay already has a time (from–to) and a long description (reading text)."
     merkmale:
       anbieter: {name: Provider, typ: text, hilfe: "who offers or leads it"}
