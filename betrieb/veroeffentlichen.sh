@@ -626,18 +626,24 @@ abhaengigkeiten_playwright() {
   # Playwright: eigene Kopie in <FR_DIENST>/playwright nach engine/tests/playwright/package-lock.json, nie ein
   # Ordner, den andere mitbenutzen. Browser ohne --with-deps (kein sudo); Systembibliotheken richtet einrichten.sh ein.
   # Ohne npm (Instanz ohne Browsertests) bleibt alles, wie es ist. Im Software-Klon (#454) nur vor Tests auf dem Server.
+  # Die Browser liegen daneben in <FR_DIENST>/playwright/browser (PLAYWRIGHT_BROWSERS_PATH), nicht im Heimatverzeichnis: Der
+  # Konnektor macht damit Bilder der Seite (page_view, #618) und sieht als Dienst mit ProtectHome kein Heimatverzeichnis.
   local summe pw_quelle=engine/tests/playwright pw_ziel="$FR_DIENST/playwright" npm="${VF_NPM:-npm}"
   [ -f "$pw_quelle/package-lock.json" ] || return 0
   command -v "$npm" > /dev/null 2>&1 || { echo "Note: npm missing, browser tests use what playwright_pfad.py finds."; return 0; }
   summe="$(cat "$pw_quelle/package.json" "$pw_quelle/package-lock.json" | sha256sum | cut -d' ' -f1)"
-  if [ "$summe" != "$(cat "$pw_ziel/.stand" 2>/dev/null || true)" ] || [ ! -e "$pw_ziel/node_modules/playwright/index.mjs" ]; then
-    echo "Installing Playwright (engine/tests/playwright changed)."
+  if [ "$summe" != "$(cat "$pw_ziel/.stand" 2>/dev/null || true)" ] || [ ! -e "$pw_ziel/node_modules/playwright/index.mjs" ] \
+     || [ ! -d "$pw_ziel/browser" ]; then
+    echo "Installing Playwright (engine/tests/playwright changed or its browsers missing)."
     mkdir -p "$pw_ziel"
     cp "$pw_quelle/package.json" "$pw_quelle/package-lock.json" "$pw_ziel/"
-    ( cd "$pw_ziel" && "$npm" ci --silent --no-audit --no-fund && "$npm" exec --no -- playwright install chromium webkit ) || return 1
+    ( cd "$pw_ziel" && "$npm" ci --silent --no-audit --no-fund \
+      && PLAYWRIGHT_BROWSERS_PATH="$pw_ziel/browser" "$npm" exec --no -- playwright install chromium webkit ) || return 1
+    mkdir -p "$pw_ziel/browser"
     echo "$summe" > "$pw_ziel/.stand"
   fi
   PLAYWRIGHT_MODUL="$pw_ziel/node_modules/playwright/index.mjs"; export PLAYWRIGHT_MODUL
+  PLAYWRIGHT_BROWSERS_PATH="$pw_ziel/browser"; export PLAYWRIGHT_BROWSERS_PATH
 }
 
 git_reisen_umschalten() {  # Lieferung 1 (#454): jede Reise unter reisen/ des Bauordners, die nicht im Speicher steht, auf den
@@ -935,6 +941,9 @@ main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
   # software-gut zurück, mit Rot-Datei am Commit (er wird nicht im nächsten Takt erneut ausgerollt; ein Alarm je Rot-Phase,
   # F002). Erst danach zieht der Speicher-Teil die Reisen auf die Kennung von kopf nach: Nach einem Rückfall läuft so nie
   # alter Code auf schon umgestellten Reisedaten.
+  # Browser für das Bild der Seite (page_view, #618) und die Startprobe: nur bei geänderter Sperrdatei oder fehlenden Browsern
+  # wird installiert; scheitert es, bleibt es eine Warnung (das Bild sagt dann selbst, dass es nicht geht), der Lauf geht weiter
+  abhaengigkeiten_playwright || echo "Warning: Playwright cannot be installed (page picture and start probe use what is there), the next run tries again."
   rc=0; FR_GEPRUEFT="$kopf" "$deploy" --dienste 2>&1 | sed 's/^/  /' || rc=${PIPESTATUS[0]}
   unset FR_BIBLIOTHEKEN_NEU   # Dienste mit FR_PYTHON nur beim ersten Deploy neu starten
   if [ "$rc" != 0 ]; then

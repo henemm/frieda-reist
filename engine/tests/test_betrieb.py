@@ -1146,13 +1146,14 @@ def test_veroeffentlichen_installiert_playwright_fest_und_startet_dienste_einmal
     Deploy des Laufs FR_BIBLIOTHEKEN_NEU (Dienste mit FR_PYTHON einmal neu starten), #202."""
     tmp, quelle, arbeit = vf["tmp"], vf["tmp"] / "quelle", vf["arbeit"]
     npm_log = tmp / "npm.log"
-    npm = ausfuehrbar(tmp / "npm.sh", f'#!/bin/sh\necho "$PWD|$*" >> {npm_log}\n[ "$1" = ci ] && mkdir -p node_modules/playwright '
+    npm = ausfuehrbar(tmp / "npm.sh", f'#!/bin/sh\necho "$PWD|$*|${{PLAYWRIGHT_BROWSERS_PATH:-}}" >> {npm_log}\n[ "$1" = ci ] && mkdir -p node_modules/playwright '
                                       f'&& touch node_modules/playwright/index.mjs\nexit 0\n')
     pip = ausfuehrbar(tmp / "pip.sh", "#!/bin/sh\nexit 0\n")
     # Deploy-Attrappe, die festhält, was sie mitbekommt
     seen = tmp / "seen.log"
     deploy = ausfuehrbar(tmp / "deploy-seen.sh", f'#!/bin/sh\necho "$1|${{FR_BIBLIOTHEKEN_NEU:-}}" >> {seen}\nexit 0\n')
-    pruefen = ausfuehrbar(tmp / "pruefen-pw.sh", f'#!/bin/sh\necho "$1|${{PLAYWRIGHT_MODUL:-}}" >> {tmp}/pw.log\nexit 0\n')
+    pruefen = ausfuehrbar(tmp / "pruefen-pw.sh", f'#!/bin/sh\necho "$1|${{PLAYWRIGHT_MODUL:-}}" >> {tmp}/pw.log\n'
+                                                 f'echo "${{PLAYWRIGHT_BROWSERS_PATH:-}}" >> {tmp}/pwb.log\nexit 0\n')
     (quelle / "engine/tests/playwright").mkdir(parents=True)
     (quelle / "engine/tests/playwright/package.json").write_text('{"dependencies": {"playwright": "1.0.0"}}')
     (quelle / "engine/tests/playwright/package-lock.json").write_text("{}")
@@ -1166,8 +1167,11 @@ def test_veroeffentlichen_installiert_playwright_fest_und_startet_dienste_einmal
     aufrufe = npm_log.read_text().splitlines()
     assert [a.split("|")[1].split()[0] for a in aufrufe] == ["ci", "exec"] and all(a.split("|")[0] == str(ziel) for a in aufrufe), aufrufe
     assert "playwright install chromium webkit" in aufrufe[1]
+    # Browser neben dem Modul, nicht im Heimatverzeichnis: der Konnektor (ProtectHome) macht damit Bilder der Seite (#618)
+    assert aufrufe[1].endswith(f"|{ziel}/browser") and (ziel / "browser").is_dir(), aufrufe
     assert (ziel / "package-lock.json").exists() and (ziel / ".stand").exists()
     assert all(z.endswith(f"|{ziel}/node_modules/playwright/index.mjs") for z in (tmp / "pw.log").read_text().splitlines())
+    assert set((tmp / "pwb.log").read_text().splitlines()) == {f"{ziel}/browser"}
     assert seen.read_text().splitlines() == ["beispielreise|1", "zweitreise|"]
     # Nichts geändert: keine Installation, kein Neustart-Hinweis, PLAYWRIGHT_MODUL trotzdem gesetzt
     npm_log.unlink(); seen.unlink(); (tmp / "pw.log").unlink()
