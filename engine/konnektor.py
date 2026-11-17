@@ -43,7 +43,9 @@ import os
 import re
 import secrets
 import shutil
+import subprocess
 import sys
+import tempfile
 import threading
 import urllib.error
 import urllib.request
@@ -490,6 +492,111 @@ def symbol_lesen(reise):
         return MitBild(tk("konnektor.symbol.png"), bild), False
     return MitBild(tk("konnektor.symbol.kurzname"), bild), False
 
+
+
+# ---------- Bild der Seite (page_view / seite_ansehen, #618) ----------
+# Frieda sieht die veröffentlichte Seite so, wie sie am Handy oder am Rechner erscheint: engine/seitenbild.mjs öffnet sie aus
+# dem Seitenordner (ohne Netz, ohne /api/), steuert #<kennung> an wie ein Link und gibt Bild und Ort zurück. Den Ort bestimmt
+# die Seite selbst (route, zumZiel), damit es keine zweite Logik der Heimat gibt (ADR-0003). Höchstens ein Bild zugleich.
+SEITENBILD = Path(__file__).resolve().parent / "seitenbild.mjs"
+SEITENBILD_SPERRE = threading.Lock()
+SEITENBILD_ZEIT = 60          # Sekunden, bis ein Bild aufgegeben wird
+SEITENBILD_WARTEN = 45        # Sekunden, die ein zweiter Aufruf auf das laufende Bild wartet
+GERAETE = ("handy", "rechner")
+# Ansichten der Seite, die keine Kennung sind (route in vorlage.html); alles andere muss eine Kennung der Reise sein
+SEITEN_ANSICHTEN = ("plan", "plaene", "etappen", "wissen", "orte", "praxis", "quellen", "zu-tun", "zu-entscheiden", "zu-buchen",
+                    "wuensche", "packliste", "fragen", "aufgaben", "rueckmeldungen")
+KENNUNG_SEITE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
+
+
+def playwright_modul():
+    """Playwright für das Bild: PLAYWRIGHT_MODUL, sonst die Kopie der Instanz (<FR_DIENST>/playwright, veroeffentlichen.sh),
+    sonst die der Tests im Repo. -> Path oder None."""
+    if os.environ.get("PLAYWRIGHT_MODUL"):
+        return Path(os.environ["PLAYWRIGHT_MODUL"])
+    for p in (instanz.dienst() / "playwright" / "node_modules" / "playwright" / "index.mjs",
+              Path(__file__).resolve().parent / "tests" / "playwright" / "node_modules" / "playwright" / "index.mjs"):
+        if p.exists():
+            return p
+    return None
+
+
+def seitenbild_umgebung(heim):
+    """Umgebung für node: eigener HOME (der Dienst sieht kein Heimatverzeichnis, ProtectHome), die Browser der Instanz unter
+    <FR_DIENST>/playwright/browser, wenn PLAYWRIGHT_BROWSERS_PATH nicht gesetzt ist."""
+    umg = {**os.environ, "HOME": heim}
+    browser = instanz.dienst() / "playwright" / "browser"
+    if not umg.get("PLAYWRIGHT_BROWSERS_PATH") and browser.is_dir():
+        umg["PLAYWRIGHT_BROWSERS_PATH"] = str(browser)
+    return umg
+
+
+def seitenbild_aufnehmen(ordner, kennung, geraet):
+    """engine/seitenbild.mjs aufrufen. -> (Ergebnis {ort, bild}, None) oder (None, Grund in Worten)."""
+    modul = playwright_modul()
+    node = shutil.which("node", path=instanz.wert("FR_PFAD") or os.environ.get("PATH"))
+    if not modul or not modul.exists() or not node:
+        return None, tk("konnektor.seitenbild.kein_browser")
+    if not SEITENBILD_SPERRE.acquire(timeout=SEITENBILD_WARTEN):
+        return None, tk("konnektor.seitenbild.besetzt")
+    heim = tempfile.mkdtemp(prefix="seitenbild-")
+    try:
+        lauf = subprocess.run([node, str(SEITENBILD), str(modul), str(ordner), kennung or "-", geraet], capture_output=True,
+                              text=True, timeout=SEITENBILD_ZEIT, env=seitenbild_umgebung(heim), cwd=heim, check=False)
+    except subprocess.TimeoutExpired:
+        return None, tk("konnektor.seitenbild.zu_lange", sekunden=SEITENBILD_ZEIT)
+    except OSError as e:
+        return None, tk("konnektor.seitenbild.gescheitert", grund=str(e)[:200])
+    finally:
+        SEITENBILD_SPERRE.release()
+        shutil.rmtree(heim, ignore_errors=True)
+    try:
+        erg = json.loads((lauf.stdout.strip().splitlines() or ["{}"])[-1])
+    except json.JSONDecodeError:
+        erg = {}
+    if not isinstance(erg, dict) or not erg.get("bild"):
+        grund = "; ".join((erg.get("fehler") if isinstance(erg, dict) else None) or [lauf.stderr.strip()[-300:] or "?"])
+        return None, tk("konnektor.seitenbild.gescheitert", grund=grund[:300])
+    return erg, None
+
+
+def seitenbild_ort(ort, kennung):
+    """Ortsangabe in Worten aus dem, was die Seite beim Ansteuern getan hat."""
+    o = ort if isinstance(ort, dict) else {}
+    z = [tk("konnektor.seitenbild.ort", reiter=o.get("reiter") or "–", ansicht=o.get("ansicht") or "–")]
+    if o.get("teil"):
+        z.append(tk("konnektor.seitenbild.teil", teil=o["teil"]))
+    for k in o.get("klappen") or []:
+        z.append(tk("konnektor.seitenbild.klappe", klappe=k or "…"))
+    if o.get("gekuerzt"):
+        z.append(tk("konnektor.seitenbild.gekuerzt"))
+    if kennung:
+        z.append(tk("konnektor.seitenbild.markiert" if o.get("markiert") else "konnektor.seitenbild.eigene_ansicht"))
+    return "\n".join(z)
+
+
+def seite_ansehen(reise, h, args):
+    """Werkzeug seite_ansehen (page_view, #618). -> (MitBild oder Text, ist_fehler)"""
+    kennung = str(args.get("id") or "").strip()
+    geraet = str(args.get("geraet") or "handy").strip().lower()
+    if geraet not in GERAETE:
+        return tk("konnektor.seitenbild.geraet", werte=", ".join(GERAETE)), True
+    if kennung and (not KENNUNG_SEITE.match(kennung) or not (
+            kennung in h.eintraege or kennung in SEITEN_ANSICHTEN or (h.aufgaben is not None and rm.AG_MUSTER.match(kennung)))):
+        return tk("konnektor.zeige.2"), True
+    ordner = seiten() / reise
+    if not (ordner / "index.html").is_file():
+        return tk("konnektor.seitenbild.keine_seite"), True
+    erg, grund = seitenbild_aufnehmen(ordner, kennung, geraet)
+    if grund:
+        return grund, True
+    try:
+        nummer = reisestand.lesen(reise)["veroeffentlicht"]["nummer"]
+    except (OSError, ValueError, TypeError, KeyError):
+        nummer = None
+    kopf = tk("konnektor.seitenbild.kopf_" + geraet) + (tk("konnektor.seitenbild.stand", nummer=nummer) if isinstance(nummer, int) else "")
+    text = "\n".join([kopf, seitenbild_ort(erg.get("ort"), kennung), tk("konnektor.seitenbild.live")]) + seite_zurueck(reise)
+    return MitBild(text, [("image/jpeg", erg["bild"])]), False
 
 # ---------- Zeiten mit Zeitzone (#227) ----------
 # Jede Zeit, die der Konnektor nennt, steht in der Zeitzone der Person und trägt sie („02.11.2026 09:47 (MEZ)“). Der Server läuft
@@ -1468,6 +1575,8 @@ def veroeffentlichung_text(reise, nummer=None, z=None):
     drin = reisestand.enthalten(z, gefragt)
     if drin is not None:
         zeilen.append(tk("konnektor.veroeffentlichung.enthalten_ja" if drin else "konnektor.veroeffentlichung.enthalten_nein", nummer=gefragt))
+        if drin:
+            zeilen.append(tk("konnektor.veroeffentlichung.ansehen"))
     if z.get("dauer") is not None:
         schluessel = "konnektor.veroeffentlichung.dauer" if z["zustand"] == "veroeffentlicht" else "konnektor.veroeffentlichung.dauer_laeuft"
         zeilen.append(tk(schluessel, dauer=dauer_text(z["dauer"]), ziel=dauer_text(z["ziel"]))
@@ -2396,6 +2505,8 @@ def anleitung_frieda(k, sprache=None):
               anleitung({"reise": reise, "person": schl, "konto_id": k["id"], "sprache": sprache}, d)]
     if not reisen:
         z += ["", anl(sprache, "frieda.keine_reisen"), "", anl(sprache, "antwortsprache")]
+    if reisen:   # einmal für alle Reisen (#618)
+        z += ["", anl(sprache, "seite_ansehen")]
     z += ["", anl(sprache, "frieda.melden"), "", anl(sprache, "frieda.profil")]
     return "\n".join(z)
 
@@ -2667,6 +2778,11 @@ WERKZEUGE = [
     {"name": "veroeffentlichung_pruefen", "description": "@konnektor.werkzeug.veroeffentlichung_pruefen",
      "inputSchema": {"type": "object", "properties": {
          "nummer": {"type": "integer", "description": "@konnektor.werkzeug.veroeffentlichung_pruefen.nummer"}}},
+     "annotations": {"readOnlyHint": True}},
+    {"name": "seite_ansehen", "description": "@konnektor.werkzeug.seite_ansehen",
+     "inputSchema": {"type": "object", "properties": {
+         "id": {**ZIEL_FELD, "description": "@konnektor.werkzeug.seite_ansehen.id"},
+         "geraet": {"type": "string", "enum": list(GERAETE), "description": "@konnektor.werkzeug.seite_ansehen.geraet"}}},
      "annotations": {"readOnlyHint": True}},
     {"name": "rueckmeldung_geben", "description": "@konnektor.werkzeug.rueckmeldung_geben",
      "inputSchema": {"type": "object", "properties": {
@@ -3372,6 +3488,8 @@ def werkzeug(zugang, name, args):
     if name == "ueberblick":
         return (h.ueberblick() + "\n" + stand_text(reise)
                 + (wuensche_kurz(reise) if "wuensche" in (zustand_von(d)[1] or []) else "")), False
+    if name == "seite_ansehen":
+        return seite_ansehen(reise, h, args)
     if name == "zeige":
         t, fehler = h.zeige(str(args.get("id", "")).strip())
         return (fehler, True) if fehler else (t + seite_zurueck(reise), False)

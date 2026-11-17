@@ -15,6 +15,7 @@ import texte
 NAMEN = {
     "overview": "ueberblick",
     "show": "zeige",
+    "page_view": "seite_ansehen",
     "search": "suche",
     "open_questions": "offene_fragen",
     "variants": "varianten",
@@ -131,6 +132,8 @@ PARAMETER_JE_WERKZEUG = {
     "buchung_aendern": {"ab": "available_from", "anreise": "arrival", "abreise": "departure"},
     # Profil je Person (#12): nur hier; „bereich“ und „herkunft“ meinen bei anderen Werkzeugen anderes oder fehlen dort
     "profil_eintrag_setzen": {"bereich": "area", "herkunft": "origin", "bestaetigt": "confirmed"},
+    # Bild der Seite (#618): Gerät, auf dem die Seite gezeigt wird
+    "seite_ansehen": {"geraet": "device"},
     # Bilder (#455): nur hier; „zu“ und „alt“ meinen bei anderen Werkzeugen nichts
     **{w: {"zu": "belongs_to", "bildunterschrift": "caption", "alt": "alt_text", "titelbild": "title_image", "zurueckziehen": "withdraw",
            "wiederherstellen": "restore"} for w in ("bild_hinzufuegen", "bild_aendern")},
