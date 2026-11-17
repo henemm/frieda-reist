@@ -24,6 +24,12 @@ EnvironmentFile=-__DIENST__/konten.env
 ExecStart=/usr/bin/python3 __DIENST__/konnektor.py dienst
 Restart=on-failure
 RestartSec=5
+# Speichergrenzen (#538): weiche Drossel (MemoryHigh), harte Grenze (MemoryMax), Swap eigens begrenzt (MemorySwapMax).
+# Höchste gemessene Spitze der letzten 60 Tage: 326 MiB (Chromium für das Seitenbild), Messung vom 17.11.2026.
+# Nachmessen: Journalzeile „memory peak“ des Dienstes (journalctl -u __INSTANZ__-konnektor), Anleitung in docs/betrieb.md.
+MemoryHigh=768M
+MemoryMax=1G
+MemorySwapMax=256M
 NoNewPrivileges=yes
 # Kein Weg zu Root über Docker (#552): der Socket ist im Dienst unsichtbar; „-“: kein Fehler, wo es ihn nicht gibt
 InaccessiblePaths=-/run/docker.sock

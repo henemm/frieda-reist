@@ -131,6 +131,7 @@ Instanz-Nachweis (AC-12) ist kein CI-Test, siehe dort.
 - Nebenbefunde, nicht Teil dieser Spec: Das angestoßene Veröffentlichen erbt `NoNewPrivileges=yes` (#465), und ein Neustart von `schreiben` beendet ein laufendes angestoßenes Veröffentlichen mit (`KillMode=control-group`).
 - Andere Instanzen brauchen den Einmalschritt (`einrichten.sh --installieren`) je Instanz; bis dahin eine einmalige normale Meldung.
 - Die Werte sind Messwerte vom 17.11.2026 und müssen bei deutlich gewachsener Last nachgemessen werden (Anleitung in `docs/betrieb.md`).
+- Die Abgrenzung zu Spec 552 steht als datierter Nachtrag zu Entscheidung 8 im Changelog von `dienstrechte-552.md`, nicht im Text der Entscheidung selbst: Deren freigegebener Teil gehört zu einem abgeschlossenen Workflow und ist gesperrt. Inhaltlich ist es dieselbe Abgrenzung.
 
 ## Acceptance Criteria
 
@@ -179,3 +180,4 @@ Betrieb, nicht Kern: Das Vorhaben berührt weder Grundformen der Reise-Ontologie
 ## Changelog
 
 - 2026-11-17: Initial spec created (Issue #538, Variante C aus der Analyse)
+- 2026-11-17: Abgrenzung zu Spec 552 als Nachtrag zu Entscheidung 8 in deren Changelog statt im gesperrten Entscheidungstext (Entscheidung Tech Lead); Test `test_doku_beschreibt_speichergrenzen` liest den Changelog

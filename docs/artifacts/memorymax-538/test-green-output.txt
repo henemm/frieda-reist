@@ -1,0 +1,109 @@
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  6%]
+........................................................................ [  8%]
+........................................................................ [ 10%]
+...................................F.................................... [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 56%]
+........................................................................ [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 82%]
+........................................................................ [ 84%]
+........................................................................ [ 87%]
+........................................................................ [ 89%]
+........................................................................ [ 91%]
+........................................................................ [ 93%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+....................F............................................        [100%]
+=================================== FAILURES ===================================
+_____________________ test_doku_beschreibt_speichergrenzen _____________________
+[gw1] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+    def test_doku_beschreibt_speichergrenzen():
+        """AC-11: docs/betrieb.md nennt Schlüssel, Muster, Werte und Einmalschritt; Spec 552 Entscheidung 8 die Abgrenzung."""
+        doku = (BETRIEB.parent / "docs" / "betrieb.md").read_text(encoding="utf-8")
+        assert "Speichergrenzen (#538)" in doku
+        abschnitt = doku[doku.index("Speichergrenzen (#538)"):]
+        for wort in ("MemoryHigh", "MemoryMax", "MemorySwapMax", "^[1-9][0-9]{0,4}[MG]$", "einrichten.sh --installieren", "#624",
+                     "192M", "768M", "5G"):
+            assert wort in abschnitt, wort
+        abgleich = doku[doku.index("## Einheiten abgleichen (#260)"):]
+        abgleich = abgleich[:abgleich.index("\n## ", 5)]
+        assert all(k in abgleich for k in ("MemoryHigh", "MemoryMax", "MemorySwapMax")), "Liste der erlaubten Zeilen"
+        spec = (BETRIEB.parent / "docs" / "specs" / "betrieb" / "dienstrechte-552.md").read_text(encoding="utf-8")
+        e8 = spec[spec.index("8. **Unit-Änderungen nicht in `ERLAUBT`**"):spec.index("9. **")]
+>       assert "Ressourcengrenzen" in e8 and "#538" in e8, e8
+E       AssertionError: 8. **Unit-Änderungen nicht in `ERLAUBT`** (Sandbox-Werte wie `ReadWritePaths` können Rechte öffnen): einmalige Installation je Instanz mit `einrichten.sh --installieren` (Root). Die Umstellung der Instanz gehört zu „fertig“.
+E         
+E       assert ('Ressourcengrenzen' in '8. **Unit-Änderungen nicht in `ERLAUBT`** (Sandbox-Werte wie `ReadWritePaths` können Rechte öffnen): einmalige Installation je Instanz mit `einrichten.sh --installieren` (Root). Die Umstellung der Instanz gehört zu „fertig“.\n')
+
+engine/tests/test_betrieb.py:2605: AssertionError
+_ test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen __
+[gw0] linux -- Python 3.12.3 /home/hem/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73e...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-hem/pytest-18161/popen-gw0/test_f002_rueckfall_mit_rot_da0/rotmelden.sh'})
+
+    def test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen(sw):
+        """F002: Scheitert der Deploy der Dienste mit C, fällt die Software auf software-gut zurück, die Rot-Datei nennt C, und
+        der nächste Takt rollt C nicht erneut aus. Die Reisen wurden nicht auf die Kennung von C umgestellt."""
+        _ok(sw.lauf())
+        sw.nachweis_gruen()
+        c = sw.neuer_commit()
+        (sw.t / "infra-neu").write_text(c)
+        r = sw.lauf(VF_JETZT=str(T0))
+        assert r.returncode != 0, r.stdout
+        assert sw.kopf() == sw.a and sw.lesen("software-gut") == sw.a
+        rot = dict(z.split("=", 1) for z in (sw.dienst / "veroeffentlichen-rot").read_text().splitlines() if "=" in z)
+        assert rot["commit"] == c and rot["art"] == "software"
+        assert len(_dienste_mit(sw, c)) == 1
+        assert "converting" not in r.stdout and _nachgezogen(sw) == 0
+        for reise in REISEN:
+            assert sw.gebaut(reise)[1] == sw.a
+        r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+        assert "Known red state" in r.stdout, r.stdout
+>       assert len(_dienste_mit(sw, c)) == 1 and sw.kopf() == sw.a
+E       AssertionError: assert (2 == 1)
+E        +  where 2 = len(['--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d', '--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d'])
+E        +    where ['--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d', '--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d'] = _dienste_mit(namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73e...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-hem/pytest-18161/popen-gw0/test_f002_rueckfall_mit_rot_da0/rotmelden.sh'}), '9044f0cf00dbe5fe14487f3fce5699b5aa180d6d')
+
+engine/tests/test_software_weg_454.py:1008: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_betrieb.py::test_doku_beschreibt_speichergrenzen - A...
+FAILED engine/tests/test_software_weg_454.py::test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen
+2 failed, 3303 passed in 1090.09s (0:18:10)
+
+# Nachlauf nach Nachtrag AC-11 (gezielt: test_betrieb, test_units, test_units_helfer)
+418 passed in 58.34s
+# Verbleibend rot in der ganzen Suite: test_software_weg_454::test_f002_rueckfall_... - bekannt (#622), nur lokal auf dem Server rot, in CI gruen, unabhaengig von dieser Aenderung

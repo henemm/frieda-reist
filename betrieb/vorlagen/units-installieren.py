@@ -31,11 +31,15 @@ ARTEN = ("konnektor", "push", "rueckmeldungen", "schreiben", "veroeffentlichen",
 
 # Erlaubnisliste (gleich der in betrieb/units.py, ein Test prüft das): (Abschnitt, Schlüssel) -> Muster für den Wert. Bei
 # Environment ist der Schlüssel "Environment:<NAME>" und das Muster gilt für den Wert nach "NAME=". Ein neuer Eintrag ist eine
-# Sicherheitsentscheidung des Product Owners (docs/betrieb.md, Einheiten abgleichen).
+# Sicherheitsentscheidung des Product Owners (docs/betrieb.md, Einheiten abgleichen). Erlaubt sind FR_DIENST, FR_ZEITZONE,
+# TimeoutStartSec und die Speichergrenzen MemoryHigh, MemoryMax, MemorySwapMax (#538); jedes Muster gilt als vollständiger Treffer.
 ERLAUBT = {
     ("Service", "Environment:FR_DIENST"): re.compile(r"^/(?!.*(?:^|/)\.\.?(?:/|$))[A-Za-z0-9_./-]+$"),
     ("Service", "Environment:FR_ZEITZONE"): re.compile(r"^[A-Za-z][A-Za-z0-9_+/-]*$"),
     ("Service", "TimeoutStartSec"): re.compile(r"^[1-9][0-9]{0,4}(?:s|min|h)?$"),
+    ("Service", "MemoryHigh"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),      # Speichergrenzen (#538): nur einschränkend, kein
+    ("Service", "MemoryMax"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),       # infinity, keine 0, keine Prozent-, K- oder T-Werte
+    ("Service", "MemorySwapMax"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),
 }
 ABSCHNITT = re.compile(r"^\[([A-Za-z]+)\]$")
 SCHLUESSEL = re.compile(r"^[A-Za-z0-9]+$")
@@ -100,7 +104,7 @@ def pruefe_neu(zeilen_neu):
         if k in gesehen:
             raise Abgelehnt(f"{k} more than once")
         gesehen.add(k)
-        if not ERLAUBT[(z[0], k)].match(wert_von(z)):
+        if not ERLAUBT[(z[0], k)].fullmatch(wert_von(z)):
             raise Abgelehnt(f"value of {k} not allowed")
 
 

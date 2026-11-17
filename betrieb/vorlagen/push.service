@@ -19,6 +19,12 @@ EnvironmentFile=-__DIENST__/konten.env
 ExecStart=__PYTHON__ __DIENST__/push.py dienst
 Restart=on-failure
 RestartSec=10
+# Speichergrenzen (#538): weiche Drossel (MemoryHigh), harte Grenze (MemoryMax), Swap eigens begrenzt (MemorySwapMax).
+# Höchste gemessene Spitze der letzten 60 Tage: 73 MiB, Messung vom 17.11.2026.
+# Nachmessen: Journalzeile „memory peak“ des Dienstes (journalctl -u __INSTANZ__-push), Anleitung in docs/betrieb.md.
+MemoryHigh=192M
+MemoryMax=256M
+MemorySwapMax=128M
 NoNewPrivileges=yes
 # Kein Weg zu Root über Docker (#552): der Socket ist im Dienst unsichtbar; „-“: kein Fehler, wo es ihn nicht gibt
 InaccessiblePaths=-/run/docker.sock

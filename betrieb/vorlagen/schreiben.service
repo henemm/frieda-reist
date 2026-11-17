@@ -39,6 +39,13 @@ EnvironmentFile=-__DIENST__/konten.env
 ExecStart=__PYTHON__ __DIENST__/schreiben.py dienst
 Restart=on-failure
 RestartSec=5
+# Speichergrenzen (#538): weiche Drossel (MemoryHigh), harte Grenze (MemoryMax), Swap eigens begrenzt (MemorySwapMax).
+# Höchste gemessene Spitze der letzten 60 Tage: 3,4 GiB (das angestoßene Veröffentlichen läuft als Kindprozess in dieser cgroup), Messung vom 17.11.2026.
+# Bewusst grob, bis #624 das Veröffentlichen aus der cgroup des Schreibdienstes löst; danach sinkt die Grenze auf 512M.
+# Nachmessen: Journalzeile „memory peak“ des Dienstes (journalctl -u __INSTANZ__-schreiben), Anleitung in docs/betrieb.md.
+MemoryHigh=4G
+MemoryMax=5G
+MemorySwapMax=1G
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict

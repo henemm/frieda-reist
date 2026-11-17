@@ -418,9 +418,10 @@ normale Meldung (Issue, kein Alarm), danach erst wieder bei einer anderen Abweic
 Ein Fehler im Abgleich stoppt das Veröffentlichen nie.
 
 Ausgang von `units.py pruefen`: 0 alles gleich, 3 nur erlaubte Abweichungen, 4 auch gesperrte, 1 Fehler. Erlaubt sind nur
-die Zeilen `Environment=FR_DIENST=…`, `Environment=FR_ZEITZONE=…` und `TimeoutStartSec=…` jeweils mit engem Wertmuster
-(feste Namensliste `ERLAUBT`, gleich in `units.py` und im Hilfsprogramm; ein neuer Eintrag ist eine Sicherheitsentscheidung des
-Product Owners). Alles andere (User, Startbefehle, Rechte, Reihenfolge, Drop-in-Ordner `<einheit>.d`, Timer, nicht
+die Zeilen `Environment=FR_DIENST=…`, `Environment=FR_ZEITZONE=…`, `TimeoutStartSec=…` und die Speichergrenzen
+`MemoryHigh=…`, `MemoryMax=…`, `MemorySwapMax=…` (Muster `^[1-9][0-9]{0,4}[MG]$`, siehe „Speichergrenzen (#538)“) jeweils mit
+engem Wertmuster, geprüft als vollständiger Treffer (feste Namensliste `ERLAUBT`, gleich in `units.py` und im Hilfsprogramm;
+ein neuer Eintrag ist eine Sicherheitsentscheidung des Product Owners). Alles andere (User, Startbefehle, Rechte, Reihenfolge, Drop-in-Ordner `<einheit>.d`, Timer, nicht
 installierte Einheiten) ist gesperrt und braucht einen bewussten Schritt (`einrichten.sh --installieren`).
 
 **Automatisch installieren (Hilfsprogramm mit Root-Rechten).** Hat der Abgleich nur erlaubte Abweichungen, ruft
@@ -441,6 +442,35 @@ werden wie bei systemd nur an Leerzeichen und Tab getrennt; Nicht-ASCII ist nur 
 Einmalig und bewusst (Freigabe des Product Owners, kein Teil des automatischen Laufs): Hilfsprogramm und sudoers-Zeile
 installieren, die Befehle nennt `einrichten.sh` am Ende seiner Ausgabe. Ohne installiertes Hilfsprogramm bleibt es bei der
 Meldung. Nach einer Änderung der Vorlage `units-installieren.py` muss die Kopie auf dem Server bewusst erneuert werden.
+
+**Speichergrenzen (#538).** Die vier Dauerdienste tragen in ihrer Vorlage je eine weiche Grenze (`MemoryHigh`, darüber wird
+der Dienst gedrosselt), eine harte Grenze (`MemoryMax`, darüber beendet systemd den Dienst, `Restart=` startet ihn neu) und
+eine Swap-Grenze (`MemorySwapMax`). So trifft ein Speicherleck in einem Dienst nicht den ganzen Server. Die Werte stammen aus
+der Messung vom 17.11.2026 (höchste Spitze der letzten 60 Tage, Faktor mindestens 3, außer beim Schreibweg):
+
+| Dienst | höchste Spitze | MemoryHigh | MemoryMax | MemorySwapMax |
+|--------|----------------|-----------|-----------|---------------|
+| rueckmeldungen | 42 MiB | 192M | 256M | 128M |
+| push | 73 MiB | 192M | 256M | 128M |
+| konnektor | 326 MiB (Chromium für das Seitenbild) | 768M | 1G | 256M |
+| schreiben | 3,4 GiB (angestoßenes Veröffentlichen) | 4G | 5G | 1G |
+
+Begründung: In cgroup v2 begrenzt `MemoryMax` nur den Arbeitsspeicher; ohne `MemorySwapMax` wiche ein Leck in den Swap aus und
+träfe den Server trotzdem. Der Schreibweg startet das Veröffentlichen als Kindprozess in seiner eigenen cgroup, darum bleibt seine
+Grenze bewusst grob, bis #624 das Veröffentlichen aus der cgroup des Schreibdienstes löst; danach sinkt sie auf 512M.
+`veroeffentlichen.service` und `waechter.service` (kurzlebig) bekommen keine Grenze. Die drei Schlüssel stehen in `ERLAUBT` mit
+dem Muster `^[1-9][0-9]{0,4}[MG]$` (vollständiger Treffer): nur Werte wie `256M` oder `1G`, kein `infinity`, keine 0, keine
+Prozent-, K- oder T-Werte. Sie schränken nur ein und öffnen keine Rechte; ein späterer anderer Wert in der Vorlage geht über den
+Abgleich ohne Handarbeit auf die Instanz.
+
+Nachmessen bei deutlich gewachsener Last: Beim Beenden oder Neustart schreibt systemd je Dienst eine Journalzeile mit
+„memory peak“ (`journalctl -u <instanz>-<dienst> --since -60d | grep "memory peak"`); die höchste Spitze mal mindestens 3 ergibt
+`MemoryMax`, `MemoryHigh` liegt darunter. Den neuen Wert in der Vorlage ändern, der Abgleich übernimmt ihn.
+
+Einmalschritt je Instanz: Das installierte Hilfsprogramm kennt die neuen Schlüssel erst, wenn es erneuert ist. Bis dahin ist die
+Grenzzeile eine gesperrte Abweichung (genau eine normale Meldung, kein Alarm). Erneuert wird es bewusst mit
+`betrieb/einrichten.sh --installieren` (mit Root-Rechten); danach installiert der Abgleich die Grenzen selbst. Prüfen:
+`systemctl show -p MemoryHigh -p MemoryMax -p MemorySwapMax <instanz>-<dienst>`.
 
 ## nginx-Bausteine abgleichen (#206, #445)
 

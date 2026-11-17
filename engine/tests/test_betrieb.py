@@ -2590,7 +2590,8 @@ def test_veroeffentlichen_ohne_speichergrenze(art):
 
 
 def test_doku_beschreibt_speichergrenzen():
-    """AC-11: docs/betrieb.md nennt Schlüssel, Muster, Werte und Einmalschritt; Spec 552 Entscheidung 8 die Abgrenzung."""
+    """AC-11: docs/betrieb.md nennt Schlüssel, Muster, Werte und Einmalschritt; der Changelog von Spec 552 nennt die
+    Abgrenzung als datierten Nachtrag zu Entscheidung 8 (der freigegebene Text der Entscheidung ist gesperrt)."""
     doku = (BETRIEB.parent / "docs" / "betrieb.md").read_text(encoding="utf-8")
     assert "Speichergrenzen (#538)" in doku
     abschnitt = doku[doku.index("Speichergrenzen (#538)"):]
@@ -2601,8 +2602,9 @@ def test_doku_beschreibt_speichergrenzen():
     abgleich = abgleich[:abgleich.index("\n## ", 5)]
     assert all(k in abgleich for k in ("MemoryHigh", "MemoryMax", "MemorySwapMax")), "Liste der erlaubten Zeilen"
     spec = (BETRIEB.parent / "docs" / "specs" / "betrieb" / "dienstrechte-552.md").read_text(encoding="utf-8")
-    e8 = spec[spec.index("8. **Unit-Änderungen nicht in `ERLAUBT`**"):spec.index("9. **")]
-    assert "Ressourcengrenzen" in e8 and "#538" in e8, e8
+    changelog = spec[spec.index("## Changelog"):]
+    assert [z for z in changelog.splitlines()
+            if all(w in z for w in ("Entscheidung 8", "Ressourcengrenzen", "#538", "Sandbox"))], changelog
 
 
 # ---------- nginx-Bausteine abgleichen beim Veröffentlichen (#206, test_nginx.py prüft den Abgleich selbst) ----------

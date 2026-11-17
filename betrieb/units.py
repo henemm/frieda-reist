@@ -11,8 +11,9 @@
                                 startet die Dauerdienste neu und prüft erneut. Ausgang wie pruefen, 5 wenn das Hilfsprogramm
                                 fehlt oder scheitert.
 
-Erlaubt sind nur ungefährliche Zeilen (Erlaubnisliste ERLAUBT unten): FR_DIENST, FR_ZEITZONE (Umgebungswerte mit engem Wertmuster)
-und TimeoutStartSec. Alles andere (User, ExecStart, Rechte, neue oder fehlende Einheiten, Timer) ist gesperrt: Es wird gemeldet,
+Erlaubt sind nur ungefährliche Zeilen (Erlaubnisliste ERLAUBT unten): FR_DIENST, FR_ZEITZONE (Umgebungswerte mit engem Wertmuster),
+TimeoutStartSec und die Speichergrenzen MemoryHigh, MemoryMax, MemorySwapMax (#538, nur Werte wie 256M oder 1G). Jedes Muster
+gilt als vollständiger Treffer. Alles andere (User, ExecStart, Rechte, neue oder fehlende Einheiten, Timer) ist gesperrt: Es wird gemeldet,
 nie automatisch installiert. Nur Standardbibliothek: Dieselbe Prüfung läuft später im Hilfsprogramm mit Root-Rechten.
 """
 import json
@@ -30,6 +31,9 @@ ERLAUBT = {
     ("Service", "Environment:FR_DIENST"): re.compile(r"^/(?!.*(?:^|/)\.\.?(?:/|$))[A-Za-z0-9_./-]+$"),
     ("Service", "Environment:FR_ZEITZONE"): re.compile(r"^[A-Za-z][A-Za-z0-9_+/-]*$"),
     ("Service", "TimeoutStartSec"): re.compile(r"^[1-9][0-9]{0,4}(?:s|min|h)?$"),
+    ("Service", "MemoryHigh"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),      # Speichergrenzen (#538): nur einschränkend, kein
+    ("Service", "MemoryMax"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),       # infinity, keine 0, keine Prozent-, K- oder T-Werte
+    ("Service", "MemorySwapMax"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),
 }
 EINHEITEN = re.compile(r"^[A-Za-z0-9_.-]+\.(?:service|timer)$")
 DAUERDIENSTE = ("rueckmeldungen", "konnektor", "schreiben", "push")   # werden nach dem Installieren neu gestartet
@@ -64,7 +68,7 @@ def erlaubt(z):
     """Zeile gehört zur Erlaubnisliste und ihr Wert passt zum Muster."""
     k = schluessel(z)
     wert = z[2].partition("=")[2] if z[1] == "Environment" else z[2]
-    return k is not None and bool(ERLAUBT[(z[0], k)].match(wert))
+    return k is not None and bool(ERLAUBT[(z[0], k)].fullmatch(wert))
 
 
 def beschreibe(z):
