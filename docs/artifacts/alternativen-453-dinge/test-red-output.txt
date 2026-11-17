@@ -1,0 +1,1023 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFF......F...FFFF..FFFFF..FFFFFFFFFFFFFFFFF                      [100%]
+=================================== FAILURES ===================================
+______________________ test_dinge_aufteilen_nach_praefix _______________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+    def test_dinge_aufteilen_nach_praefix():
+        """dinge_aufteilen (einzige Stelle, die die Präfixe kennt): U, A, O, E in ihre Gruppen, Reihenfolge je Gruppe wie eingegeben."""
+>       from routen import dinge_aufteilen
+E       ImportError: cannot import name 'dinge_aufteilen' from 'routen' (~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/routen.py)
+
+engine/tests/test_option_dinge.py:113: ImportError
+____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[A-99] _____________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef0')
+did = 'A-99'
+
+    @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
+    def test_unbekanntes_ding_je_praefix_ist_ein_fehler(tmp_path, did):
+        """AC-4: unbekanntes Ding je Präfix ist ein Prüffehler, auch für U und E (vorher ungeprüft)."""
+        v = wahlstelle("V-91", option("V-91.a", "Nirgendwo (Beispiel)", dinge=[did]), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:150: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef0')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+________________ test_dinge_wird_in_gruppen_aufgeteilt_und_baut ________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_dinge_wird_in_gruppen_auf0')
+
+    def test_dinge_wird_in_gruppen_aufgeteilt_und_baut(tmp_path):
+        """AC-1: dinge: [E-02, A-01, O-04] steht in der Ausgabe als strecken, aufenthalte, orte, ohne Fehler."""
+        d = gebaut(tmp_path, wahl=[V91])
+        a, b = wahl_von(d, "V-91")["optionen"]
+>       assert a.get("strecken") == ["E-02"] and a.get("aufenthalte") == ["A-01"] and a.get("orte") == ["O-04"], gruppen_von(a)
+E       AssertionError: {'unterkuenfte': None, 'aufenthalte': None, 'orte': None, 'strecken': None, ...}
+E       assert (None == ['E-02'])
+E        +  where None = <built-in method get of dict object at 0x768f35f55d40>('strecken')
+E        +    where <built-in method get of dict object at 0x768f35f55d40> = {'merkmale': {}, 'fehlt': [], 'id': 'V-91.a', 'titel': 'Burg und Altendorf (Beispiel)', ...}.get
+
+engine/tests/test_option_dinge.py:124: AssertionError
+______ test_altes_feld_an_option_ist_pruefehler[False-aufenthalte-wert1] _______
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_0')
+feld = 'aufenthalte', wert = ['A-01'], neben_dinge = False
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_0')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+___________________ test_unbekannter_praefix_ist_ein_fehler ____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekannter_praefix_ist_e0')
+
+    def test_unbekannter_praefix_ist_ein_fehler(tmp_path):
+        """AC-3: dinge: [X-01] ist genau ein Prüffehler mit Wahlstelle, Möglichkeit und ID."""
+        v = wahlstelle("V-91", option("V-91.a", "Unbekannt (Beispiel)", dinge=["X-01"]), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekannter_praefix_ist_e0')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[O-99] _____________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef1')
+did = 'O-99'
+
+    @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
+    def test_unbekanntes_ding_je_praefix_ist_ein_fehler(tmp_path, did):
+        """AC-4: unbekanntes Ding je Präfix ist ein Prüffehler, auch für U und E (vorher ungeprüft)."""
+        v = wahlstelle("V-91", option("V-91.a", "Nirgendwo (Beispiel)", dinge=[did]), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:150: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef1')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+__________ test_altes_feld_an_option_ist_pruefehler[False-orte-wert2] __________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_1')
+feld = 'orte', wert = ['O-04'], neben_dinge = False
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_1')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+____________________ test_dinge_bewahrt_eingabereihenfolge _____________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_dinge_bewahrt_eingabereih0')
+
+    def test_dinge_bewahrt_eingabereihenfolge(tmp_path):
+        """AC-2: dinge: [O-06, O-04] bleibt in der Gruppe orte in dieser Reihenfolge."""
+        v = wahlstelle("V-91", option("V-91.a", "Zwei Orte (Beispiel)", dinge=["O-06", "O-04"]),
+                       option("V-91.b", "Ein Ort (Beispiel)", dinge=["O-04"]))
+        d = gebaut(tmp_path, wahl=[v])
+>       assert wahl_von(d, "V-91")["optionen"][0]["orte"] == ["O-06", "O-04"]
+E       AssertionError: assert None == ['O-06', 'O-04']
+
+engine/tests/test_option_dinge.py:133: AssertionError
+____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[U-99] _____________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef0')
+did = 'U-99'
+
+    @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
+    def test_unbekanntes_ding_je_praefix_ist_ein_fehler(tmp_path, did):
+        """AC-4: unbekanntes Ding je Präfix ist ein Prüffehler, auch für U und E (vorher ungeprüft)."""
+        v = wahlstelle("V-91", option("V-91.a", "Nirgendwo (Beispiel)", dinge=[did]), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:150: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef0')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+______ test_altes_feld_an_option_ist_pruefehler[False-unterkuenfte-wert0] ______
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_0')
+feld = 'unterkuenfte', wert = ['U-02'], neben_dinge = False
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_0')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[E-99] _____________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef1')
+did = 'E-99'
+
+    @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
+    def test_unbekanntes_ding_je_praefix_ist_ein_fehler(tmp_path, did):
+        """AC-4: unbekanntes Ding je Präfix ist ein Prüffehler, auch für U und E (vorher ungeprüft)."""
+        v = wahlstelle("V-91", option("V-91.a", "Nirgendwo (Beispiel)", dinge=[did]), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:150: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef1')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+________ test_altes_feld_an_option_ist_pruefehler[False-strecken-wert3] ________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_2')
+feld = 'strecken', wert = ['E-02'], neben_dinge = False
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_2')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...n': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+____ test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt10-False] ____
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+inhalt = {'dinge': ['U-02', 'O-04']}, gueltig = False
+
+    @pytest.mark.parametrize("inhalt, gueltig", [
+        ({"dinge": ["U-02"]}, True),
+        ({"folge": ["T-04"]}, True),
+        ({"dinge": ["E-04"]}, True),
+        ({"dinge": ["A-01"]}, True),
+        ({"dinge": ["O-04"]}, True),
+        ({"dinge": ["E-04", "A-01"]}, True),
+        ({"dinge": ["O-04", "E-04"]}, True),
+        ({"dinge": ["A-01", "O-04"]}, True),
+        ({"dinge": ["E-04", "A-01", "O-04"]}, True),
+        ({"dinge": ["U-02", "U-03"]}, True),
+        ({"dinge": ["U-02", "O-04"]}, False),
+        ({"dinge": ["U-02", "E-04"]}, False),
+        ({"dinge": ["A-01", "U-02"]}, False),
+        ({"dinge": ["O-04"], "folge": ["T-04"]}, False),
+        ({"dinge": ["U-02"], "folge": ["T-04"]}, False),
+        ({"dinge": [], "folge": []}, False),
+        ({"dinge": []}, False),
+    ])
+    def test_praefixregel_u_allein_folge_allein_e_a_o_zusammen(inhalt, gueltig):
+        """AC-6: {U} allein, folge allein, {E, A, O} in jeder Teilmenge; Mischungen mit U oder folge und leerer Inhalt sind ungültig."""
+>       assert sb.option_inhalt_ok({"dinge": inhalt.get("dinge", []), "folge": inhalt.get("folge", [])}) is gueltig
+E       AssertionError: assert True is False
+E        +  where True = <function option_inhalt_ok at 0x71ceaf488ae0>({'dinge': ['U-02', 'O-04'], 'folge': []})
+E        +    where <function option_inhalt_ok at 0x71ceaf488ae0> = sb.option_inhalt_ok
+
+engine/tests/test_option_dinge.py:194: AssertionError
+____ test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt12-False] ____
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+inhalt = {'dinge': ['A-01', 'U-02']}, gueltig = False
+
+    @pytest.mark.parametrize("inhalt, gueltig", [
+        ({"dinge": ["U-02"]}, True),
+        ({"folge": ["T-04"]}, True),
+        ({"dinge": ["E-04"]}, True),
+        ({"dinge": ["A-01"]}, True),
+        ({"dinge": ["O-04"]}, True),
+        ({"dinge": ["E-04", "A-01"]}, True),
+        ({"dinge": ["O-04", "E-04"]}, True),
+        ({"dinge": ["A-01", "O-04"]}, True),
+        ({"dinge": ["E-04", "A-01", "O-04"]}, True),
+        ({"dinge": ["U-02", "U-03"]}, True),
+        ({"dinge": ["U-02", "O-04"]}, False),
+        ({"dinge": ["U-02", "E-04"]}, False),
+        ({"dinge": ["A-01", "U-02"]}, False),
+        ({"dinge": ["O-04"], "folge": ["T-04"]}, False),
+        ({"dinge": ["U-02"], "folge": ["T-04"]}, False),
+        ({"dinge": [], "folge": []}, False),
+        ({"dinge": []}, False),
+    ])
+    def test_praefixregel_u_allein_folge_allein_e_a_o_zusammen(inhalt, gueltig):
+        """AC-6: {U} allein, folge allein, {E, A, O} in jeder Teilmenge; Mischungen mit U oder folge und leerer Inhalt sind ungültig."""
+>       assert sb.option_inhalt_ok({"dinge": inhalt.get("dinge", []), "folge": inhalt.get("folge", [])}) is gueltig
+E       AssertionError: assert True is False
+E        +  where True = <function option_inhalt_ok at 0x7b195cf8ca40>({'dinge': ['A-01', 'U-02'], 'folge': []})
+E        +    where <function option_inhalt_ok at 0x7b195cf8ca40> = sb.option_inhalt_ok
+
+engine/tests/test_option_dinge.py:194: AssertionError
+______ test_altes_feld_an_option_ist_pruefehler[True-unterkuenfte-wert0] _______
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_0')
+feld = 'unterkuenfte', wert = ['U-02'], neben_dinge = True
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_0')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+____ test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt11-False] ____
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+inhalt = {'dinge': ['U-02', 'E-04']}, gueltig = False
+
+    @pytest.mark.parametrize("inhalt, gueltig", [
+        ({"dinge": ["U-02"]}, True),
+        ({"folge": ["T-04"]}, True),
+        ({"dinge": ["E-04"]}, True),
+        ({"dinge": ["A-01"]}, True),
+        ({"dinge": ["O-04"]}, True),
+        ({"dinge": ["E-04", "A-01"]}, True),
+        ({"dinge": ["O-04", "E-04"]}, True),
+        ({"dinge": ["A-01", "O-04"]}, True),
+        ({"dinge": ["E-04", "A-01", "O-04"]}, True),
+        ({"dinge": ["U-02", "U-03"]}, True),
+        ({"dinge": ["U-02", "O-04"]}, False),
+        ({"dinge": ["U-02", "E-04"]}, False),
+        ({"dinge": ["A-01", "U-02"]}, False),
+        ({"dinge": ["O-04"], "folge": ["T-04"]}, False),
+        ({"dinge": ["U-02"], "folge": ["T-04"]}, False),
+        ({"dinge": [], "folge": []}, False),
+        ({"dinge": []}, False),
+    ])
+    def test_praefixregel_u_allein_folge_allein_e_a_o_zusammen(inhalt, gueltig):
+        """AC-6: {U} allein, folge allein, {E, A, O} in jeder Teilmenge; Mischungen mit U oder folge und leerer Inhalt sind ungültig."""
+>       assert sb.option_inhalt_ok({"dinge": inhalt.get("dinge", []), "folge": inhalt.get("folge", [])}) is gueltig
+E       AssertionError: assert True is False
+E        +  where True = <function option_inhalt_ok at 0x71ceaf488ae0>({'dinge': ['U-02', 'E-04'], 'folge': []})
+E        +    where <function option_inhalt_ok at 0x71ceaf488ae0> = sb.option_inhalt_ok
+
+engine/tests/test_option_dinge.py:194: AssertionError
+____ test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt15-False] ____
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+inhalt = {'dinge': [], 'folge': []}, gueltig = False
+
+    @pytest.mark.parametrize("inhalt, gueltig", [
+        ({"dinge": ["U-02"]}, True),
+        ({"folge": ["T-04"]}, True),
+        ({"dinge": ["E-04"]}, True),
+        ({"dinge": ["A-01"]}, True),
+        ({"dinge": ["O-04"]}, True),
+        ({"dinge": ["E-04", "A-01"]}, True),
+        ({"dinge": ["O-04", "E-04"]}, True),
+        ({"dinge": ["A-01", "O-04"]}, True),
+        ({"dinge": ["E-04", "A-01", "O-04"]}, True),
+        ({"dinge": ["U-02", "U-03"]}, True),
+        ({"dinge": ["U-02", "O-04"]}, False),
+        ({"dinge": ["U-02", "E-04"]}, False),
+        ({"dinge": ["A-01", "U-02"]}, False),
+        ({"dinge": ["O-04"], "folge": ["T-04"]}, False),
+        ({"dinge": ["U-02"], "folge": ["T-04"]}, False),
+        ({"dinge": [], "folge": []}, False),
+        ({"dinge": []}, False),
+    ])
+    def test_praefixregel_u_allein_folge_allein_e_a_o_zusammen(inhalt, gueltig):
+        """AC-6: {U} allein, folge allein, {E, A, O} in jeder Teilmenge; Mischungen mit U oder folge und leerer Inhalt sind ungültig."""
+>       assert sb.option_inhalt_ok({"dinge": inhalt.get("dinge", []), "folge": inhalt.get("folge", [])}) is gueltig
+E       AssertionError: assert True is False
+E        +  where True = <function option_inhalt_ok at 0x7b195cf8ca40>({'dinge': [], 'folge': []})
+E        +    where <function option_inhalt_ok at 0x7b195cf8ca40> = sb.option_inhalt_ok
+
+engine/tests/test_option_dinge.py:194: AssertionError
+____ test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt16-False] ____
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+inhalt = {'dinge': []}, gueltig = False
+
+    @pytest.mark.parametrize("inhalt, gueltig", [
+        ({"dinge": ["U-02"]}, True),
+        ({"folge": ["T-04"]}, True),
+        ({"dinge": ["E-04"]}, True),
+        ({"dinge": ["A-01"]}, True),
+        ({"dinge": ["O-04"]}, True),
+        ({"dinge": ["E-04", "A-01"]}, True),
+        ({"dinge": ["O-04", "E-04"]}, True),
+        ({"dinge": ["A-01", "O-04"]}, True),
+        ({"dinge": ["E-04", "A-01", "O-04"]}, True),
+        ({"dinge": ["U-02", "U-03"]}, True),
+        ({"dinge": ["U-02", "O-04"]}, False),
+        ({"dinge": ["U-02", "E-04"]}, False),
+        ({"dinge": ["A-01", "U-02"]}, False),
+        ({"dinge": ["O-04"], "folge": ["T-04"]}, False),
+        ({"dinge": ["U-02"], "folge": ["T-04"]}, False),
+        ({"dinge": [], "folge": []}, False),
+        ({"dinge": []}, False),
+    ])
+    def test_praefixregel_u_allein_folge_allein_e_a_o_zusammen(inhalt, gueltig):
+        """AC-6: {U} allein, folge allein, {E, A, O} in jeder Teilmenge; Mischungen mit U oder folge und leerer Inhalt sind ungültig."""
+>       assert sb.option_inhalt_ok({"dinge": inhalt.get("dinge", []), "folge": inhalt.get("folge", [])}) is gueltig
+E       AssertionError: assert True is False
+E        +  where True = <function option_inhalt_ok at 0x71ceaf488ae0>({'dinge': [], 'folge': []})
+E        +    where <function option_inhalt_ok at 0x71ceaf488ae0> = sb.option_inhalt_ok
+
+engine/tests/test_option_dinge.py:194: AssertionError
+_________________________ test_praefixregel_beim_bauen _________________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_praefixregel_beim_bauen0')
+
+    def test_praefixregel_beim_bauen(tmp_path):
+        """AC-6 im handgepflegten YAML: dinge: [U-02, O-04] ist ein Prüffehler der Möglichkeit."""
+        v = wahlstelle("V-91", option("V-91.a", "Unterkunft und Ort (Beispiel)", dinge=["U-02", "O-04"]),
+                       option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:201: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_praefixregel_beim_bauen0')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+________ test_altes_feld_an_option_ist_pruefehler[True-strecken-wert3] _________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_1')
+feld = 'strecken', wert = ['E-02'], neben_dinge = True
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_1')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...n': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+_______ test_altes_feld_an_option_ist_pruefehler[True-aufenthalte-wert1] _______
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_1')
+feld = 'aufenthalte', wert = ['A-01'], neben_dinge = True
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_1')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+__________ test_altes_feld_an_option_ist_pruefehler[True-orte-wert2] ___________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_2')
+feld = 'orte', wert = ['O-04'], neben_dinge = True
+
+    @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
+    @pytest.mark.parametrize("neben_dinge", [False, True])
+    def test_altes_feld_an_option_ist_pruefehler(tmp_path, feld, wert, neben_dinge):
+        """AC-5: ein altes Feld an einer Option (allein oder neben dinge) ist ein Prüffehler mit Hinweis auf dinge; folge bleibt erlaubt."""
+        felder = {feld: wert, **({"dinge": ["O-06"]} if neben_dinge else {})}
+        v = wahlstelle("V-91", option("V-91.a", "Altes Feld (Beispiel)", **felder), option("V-91.b", "Ort (Beispiel)", dinge=["O-06"]))
+>       meldungen = baufehler(tmp_path, wahl=[v])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_2')
+abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
+
+    def baufehler(tmp, **abwandlung):
+>       with pytest.raises(bauen.BauFehler) as e:
+E       Failed: DID NOT RAISE BauFehler
+
+engine/tests/test_option_dinge.py:66: Failed
+_____________ test_schreibweg_nimmt_dinge_und_verlauf_hat_wechsel ______________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_schreibweg_nimmt_dinge_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_schreibweg_nimmt_dinge_un0/veroeffentlicht'))
+
+    def test_schreibweg_nimmt_dinge_und_verlauf_hat_wechsel(repo):
+        """AC-7: choice_create und option_create schreiben dinge als Liste der IDs in Eingabereihenfolge (ohne Anführungszeichen);
+        unbekanntes Ding und ungültige Mischung werden abgelehnt."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "wahlstelle_anlegen", {**KARL, "args": {
+            "titel": "Nachmittag: Burg oder Wasserfall (Beispiel)", "wann": "unterwegs", "an": ["T-03"],
+            "optionen": [{"titel": "Burg und Altendorf (Beispiel)", "dinge": ["O-04", "A-01"], "quelle": B},
+                         {"titel": "Wasserfall (Beispiel)", "dinge": ["O-06"], "quelle": B}]}})
+        assert a["ok"]
+        r, text = routen_auf_main(origin)
+        _, w = next((k, v) for k, v in r["wahlstellen"].items() if v["titel"].startswith("Nachmittag: Burg oder Wasserfall"))
+>       assert [o.get("dinge") for o in w["optionen"]] == [["O-04", "A-01"], ["O-06"]], "Eingabereihenfolge bleibt"
+E       AssertionError: Eingabereihenfolge bleibt
+E       assert [None, None] == [['O-04', 'A-01'], ['O-06']]
+E         
+E         At index 0 diff: None != ['O-04', 'A-01']
+E         Use -v to get more diff
+
+engine/tests/test_option_dinge.py:219: AssertionError
+_______________ test_konnektor_schema_hat_things_mit_alias_dinge _______________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+    def test_konnektor_schema_hat_things_mit_alias_dinge():
+        """AC-9: OPTION_FELDER hat dinge (Liste von Strings, Beschreibung aus dem Katalog), keines der alten Felder; nach außen heißt es things."""
+        f = kn.OPTION_FELDER.get("dinge")
+>       assert f and f["type"] == "array" and f["items"]["type"] == "string"
+E       assert (None)
+
+engine/tests/test_option_dinge.py:273: AssertionError
+__________ test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args0] ___________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un0/veroeffentlicht'))
+args = {'choice': 'V-02', 'title': 'Rast (Beispiel)', 'source': 'erfunden (Beispiel)', 'things': ['O-03'], ...}
+
+    @pytest.mark.parametrize("args", [
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "things": ["O-03"], "stays": ["A-01"]},
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "dinge": ["O-03"], "orte": ["O-04"]},
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "things": ["E-04"], "accommodations": ["U-02"]},
+    ])
+    def test_konnektor_mischung_alt_und_neu_wird_abgelehnt(repo, args):
+        """AC-11: things/dinge zusammen mit einem alten Parameter wird mit Begründung aus dem Katalog abgelehnt; nichts wird geschrieben."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        vorher = routen_auf_main(origin)[1]
+>       with pytest.raises(sb.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_option_dinge.py:329: Failed
+_________________ test_nachziehen_stellt_optionen_auf_dinge_um _________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_nachziehen_stellt_optione0')
+
+    def test_nachziehen_stellt_optionen_auf_dinge_um(tmp_path):
+        """AC-12: nachziehen stellt alte Felder auf dinge um (an der Stelle des ersten alten Felds, Reihenfolge Unterkünfte, Aufenthalte,
+        Orte, Strecken), folge und andere Felder bleiben, Meldung aus texte; die Reise baut danach mit gleichen Seitendaten."""
+        q = alt_kopie(tmp_path)
+    
+        def gemischt(r):   # eine erfundene Option mit drei alten Feldern an Tag 3, nach plus (Reihenfolge der Schlüssel zählt)
+            r["wahlstellen"]["V-91"] = {"titel": "V-91: erfundenes Beispiel", "wann": "unterwegs", "optionen": [
+                {"id": "V-91.a", "titel": "Burg (Beispiel)", "plus": ["x"], "strecken": ["E-02"], "orte": ["O-04"], "aufenthalte": ["A-01"],
+                 "quelle": B, "verlauf": [{"datum": HEUTE, "status": "vorgeschlagen", "wer": "Claude"}]},
+                {"id": "V-91.b", "titel": "Wasserfall (Beispiel)", "orte": ["O-06"], "quelle": B,
+                 "verlauf": [{"datum": HEUTE, "status": "vorgeschlagen", "wer": "Claude"}]}]}
+            r["tage"]["T-03"]["wahl"] = list(r["tage"]["T-03"].get("wahl") or []) + ["V-91"]
+        r = routen_von(q)
+        gemischt(r)
+        (q / "plan" / "routen.yaml").write_text(yaml.safe_dump(r, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        vorher = routen_von(q)
+        assert "unterkuenfte" in option_roh(vorher, "V-03.a"), "Ausgangslage: altes Format"
+        meldungen = neu.nachziehen(q, betrieb=False)
+        nachher = routen_von(q)
+        for w in nachher["wahlstellen"].values():
+            for o in w["optionen"]:
+>               assert not set(GRUPPEN) & set(o), (o["id"], list(o))
+E               AssertionError: ('V-06.a', ['id', 'titel', 'orte', 'plus', 'quelle', 'verlauf'])
+E               assert not ({'aufenthalte', 'orte', 'strecken', 'unterkuenfte'} & {'id', 'orte', 'plus', 'quelle', 'titel', 'verlauf'})
+E                +  where {'aufenthalte', 'orte', 'strecken', 'unterkuenfte'} = set(('unterkuenfte', 'aufenthalte', 'orte', 'strecken'))
+E                +  and   {'id', 'orte', 'plus', 'quelle', 'titel', 'verlauf'} = set({'id': 'V-06.a', 'titel': 'Nachmittag in Altendorf (Beispiel)', 'orte': ['O-04'], 'plus': ['kein weiterer Weg (Beispiel)'], ...})
+
+engine/tests/test_option_dinge.py:360: AssertionError
+_____________ test_konnektor_alte_parameter_werden_uebersetzt[de] ______________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_alte_parameter_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_alte_parameter_0/veroeffentlicht'))
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["en", "de"])
+    def test_konnektor_alte_parameter_werden_uebersetzt(repo, sprache):
+        """AC-10: alte Parameter (englisch und deutsch) werden angenommen und als dinge geschrieben, in der Reihenfolge Unterkünfte,
+        Aufenthalte, Orte, Strecken; das Ergebnis ist dasselbe wie mit things."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        if sprache == "en":
+            args = {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "legs": ["E-04"], "places": ["O-03"], "stays": ["A-01"]}
+        else:
+            args = {"wahlstelle": "V-02", "titel": "Rast (Beispiel)", "quelle": B, "strecken": ["E-04"], "orte": ["O-03"], "aufenthalte": ["A-01"]}
+        name, intern = kn.aufruf_intern(OPTION_WERKZEUGE, "option_create" if sprache == "en" else "option_anlegen", args)
+        assert name == "option_anlegen"
+        a = s.schreiben("beispielreise", name, {**KARL, "args": intern})
+        assert a["ok"]
+        r, _ = routen_auf_main(origin)
+        o = option_roh(r, "V-02.c")
+>       assert o["dinge"] == ["A-01", "O-03", "E-04"] and not any(o.get(g) for g in GRUPPEN), o
+               ^^^^^^^^^^
+E       KeyError: 'dinge'
+
+engine/tests/test_option_dinge.py:305: KeyError
+_______________ test_option_update_dinge_setzen_ersetzen_leeren ________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_option_update_dinge_setze0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_option_update_dinge_setze0/veroeffentlicht'))
+
+    def test_option_update_dinge_setzen_ersetzen_leeren(repo):
+        """AC-8: option_update setzt, ersetzt und leert dinge; Präfixregel auf dem zusammengeführten Stand; nur dinge ist eine Änderung
+        (nicht option_aendern.8) und steht als Wechsel in der Antwort; die Entscheider-Sperre option_aendern.9 bleibt."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "Rast in Hohnstein (Beispiel)",
+                                                                             "dinge": ["O-03"], "quelle": B}})
+        assert a["ok"]
+        s.vorbereiten()
+>       a = s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "dinge": ["O-03", "A-01"]}})
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_option_dinge.py:246: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/schreiben.py:5582: in schreiben
+    return schreiben_git.schreiben(self, reise, werkzeug, anfrage)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/schreiben_git.py:64: in schreiben
+    reise, reise_dir, wer, titel, text, hinweise = s.anwenden_im_ordner(reise, werkzeug, anfrage)
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/schreiben.py:5542: in anwenden_im_ordner
+    titel, text = WERKZEUGE[werkzeug](reise_dir, wer, args)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+reise_dir = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_option_update_dinge_setze0/reisen-schreiben/reisen/beispielreise')
+wer = {'name': 'Karl', 'rolle': 'mitwirkend', 'person': 'karl', 'titel': 'Beispielreise – Malerweg in vier Tagen'}
+args = {'ziel': 'V-02.c', 'dinge': ['O-03', 'A-01']}
+heute = datetime.date(2026, 11, 17)
+
+    def option_aendern(reise_dir, wer, args, heute=None):
+        """Felder einer Option ändern: titel, text, plus, minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken,
+        aufenthalte, orte, folge, quelle; favorisieren (favorisiert: true mit grund) als Verlaufseintrag (Mitwirkende dürfen; gewählt, verworfen,
+        ersetzt nur mit entscheiden). -> (Titel, Text)."""
+        from reise import darf
+        heute = heute or datetime.date.today()
+        oid = (text_wert(args, "ziel", pflicht=True, laenge=12) or "").strip()
+        if not re.fullmatch(r"V-\d+\.[a-z]", oid):
+            raise Ablehnung("schreiben.option_aendern.1")
+        route = route_stand(reise_dir)
+        roh = routen_laden(reise_dir)
+        knoten, bezeichnung = ding_finden(roh, oid)
+        if knoten is None:
+            raise Ablehnung("schreiben.entscheiden.3", oid=oid)
+        vid = oid.split(".")[0]
+        geaendert = []
+        for feld, laenge in (("titel", 200), ("text", 2000), ("ausloeser", 600), ("quelle", 600)):
+            if args.get(feld) is not None:
+                v = text_wert(args, feld, **({"textfeld": "option.text"} if feld == "text" else {"laenge": laenge})) or ""
+                if feld in ("titel", "quelle") and not v:
+                    raise Ablehnung("schreiben.option_aendern.2", feld=feld)
+                if v != (knoten.get(feld) or ""):
+                    geaendert.append(wechsel(feld, knoten.get(feld) or "", v, quotiert=True))
+                    (knoten.__setitem__(feld, skalar(feld, v)) if v else knoten.pop(feld, None))
+        for feld in ("plus", "minus"):
+            if args.get(feld) is not None:
+                l = liste_wert(args, feld, laenge=10) or []
+                if list(knoten.get(feld) or []) != l:
+                    geaendert.append(wechsel(feld, list(knoten.get(feld) or []), l))
+                    (knoten.__setitem__(feld, fliess_map({feld: l})[feld]) if l else knoten.pop(feld, None))
+        if args.get("siehe") is not None:
+            s = str(args.get("siehe") or "").strip()
+            if s and not ID_MUSTER.match(s):
+                raise Ablehnung("schreiben.option_aendern.3")
+            if s != (knoten.get("siehe") or ""):
+                geaendert.append(wechsel("siehe", knoten.get("siehe") or "–", s or "–"))
+                (knoten.__setitem__("siehe", s) if s else knoten.pop("siehe", None))
+        optionen_ids = {x["id"] for w in route.get("wahlstellen") or [] for x in w["optionen"]}
+        for feld in ("erfordert", "schliesst_aus"):
+            if args.get(feld) is not None:
+                l = id_liste(args, feld, r"V-\d+\.[a-z]", roh) or []
+                fehlt = [x for x in l if x not in optionen_ids]
+                if fehlt or any(x.startswith(vid + ".") for x in l):
+                    raise Ablehnung("schreiben.option_aendern.4", feld=feld, w2=', '.join(fehlt) or 'eine Option derselben Wahlstelle')
+                if list(knoten.get(feld) or []) != l:
+                    geaendert.append(wechsel(feld, list(knoten.get(feld) or []), l))
+                    (knoten.__setitem__(feld, fliess_map({feld: l})[feld]) if l else knoten.pop(feld, None))
+        inhalt = {}
+        for feld, muster, menge in (("unterkuenfte", r"U-\d+", "unterkuenfte"), ("strecken", r"E-\d+[A-Za-z]?", "strecken"), ("folge", r"T-\d+", "tage"),
+                                    ("aufenthalte", r"A-\d+", "aufenthalte"), ("orte", r"O-\d+", "orte")):
+            if args.get(feld) is not None:
+                inhalt[feld] = id_liste(args, feld, muster, roh, menge) or []
+        if inhalt:
+            neu = {f: (inhalt[f] if f in inhalt else list(knoten.get(f) or [])) for f in ("unterkuenfte", "strecken", "folge", "aufenthalte", "orte")}
+            if not option_inhalt_ok(neu):
+                raise Ablehnung("schreiben.option_aendern.5")
+            # Woraus eine entschiedene Option besteht, ändert nur, wer entscheiden darf: Sonst zeigte die Entscheidung
+            # einer Organisator:in danach auf andere Unterkünfte oder Strecken, ohne dass sie neu entschieden hat.
+            stand = next((x.get("status") for w in route.get("wahlstellen") or [] for x in w["optionen"] if x["id"] == oid), None)
+            if (stand in ("gewaehlt", "verworfen", "ersetzt") and not darf(wer.get("rolle"), "organisator")
+                    and any(list(knoten.get(f) or []) != l for f, l in inhalt.items())):
+                raise Ablehnung("schreiben.option_aendern.9", oid=oid, w2=stand)
+            for f, l in inhalt.items():
+                if list(knoten.get(f) or []) != l:
+                    geaendert.append(wechsel(f, list(knoten.get(f) or []), l))
+                    (knoten.__setitem__(f, fliess_map({f: l})[f]) if l else knoten.pop(f, None))
+        grund = text_wert(args, "grund")
+        if bool_wert(args, "favorisiert"):
+            if not grund:
+                raise Ablehnung("schreiben.option_aendern.6")
+            from routen import UNGUELTIG
+            o = next((x for w in route.get("wahlstellen") or [] for x in w["optionen"] if x["id"] == oid), {})
+            if o.get("status") in UNGUELTIG or o.get("status") == "gewaehlt":
+                raise Ablehnung("schreiben.option_aendern.7", oid=oid, w2=o.get('status'))
+            from ruamel.yaml.comments import CommentedSeq
+            verlauf = knoten.get("verlauf")
+            if verlauf is None:
+                verlauf = CommentedSeq()
+                knoten["verlauf"] = verlauf
+            verlauf.append(fliess_map({"datum": heute, "status": "favorisiert", "wer": wer["name"], "grund": grund}))
+            geaendert.append(S("schreiben.antwort.option.favorisiert", w1=wer["name"]))
+        if not geaendert:
+>           raise Ablehnung("schreiben.option_aendern.8", oid=oid)
+E           schreiben.Ablehnung: Nichts zu ändern an V-02.c (titel, text, plus, minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken, aufenthalte, orte, folge, quelle, favorisiert).
+
+engine/schreiben.py:4143: Ablehnung
+________________________ test_nachziehen_ist_idempotent ________________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_nachziehen_ist_idempotent0')
+
+    def test_nachziehen_ist_idempotent(tmp_path):
+        """AC-13: ein zweiter Lauf ändert nichts (byte-gleich) und meldet nichts zu dinge."""
+        q = alt_kopie(tmp_path)
+        neu.nachziehen(q, betrieb=False)
+        stand = (q / "plan" / "routen.yaml").read_bytes()
+        meldungen = neu.nachziehen(q, betrieb=False)
+        assert (q / "plan" / "routen.yaml").read_bytes() == stand
+        assert not meldet(meldungen, "pruefung.neu.nachziehen.dinge"), meldungen
+>       assert "dinge" in option_roh(routen_von(q), "V-03.a")
+E       AssertionError: assert 'dinge' in {'id': 'V-03.a', 'titel': 'Pension Burgblick', 'unterkuenfte': ['U-02'], 'quelle': 'erfunden (Beispiel)', ...}
+E        +  where {'id': 'V-03.a', 'titel': 'Pension Burgblick', 'unterkuenfte': ['U-02'], 'quelle': 'erfunden (Beispiel)', ...} = option_roh({'start': {'datum': datetime.date(2027, 5, 13), 'ort': 'O-01'}, 'ende': {'datum': datetime.date(2027, 5, 16), 'ort': '...al', ...}, 'O-04': {'name': 'Altendorf', 'an': 'O-07', 'art': 'ort_am_weg', 'quelle': 'OpenStreetMap', ...}, ...}, ...}, 'V-03.a')
+E        +    where {'start': {'datum': datetime.date(2027, 5, 13), 'ort': 'O-01'}, 'ende': {'datum': datetime.date(2027, 5, 16), 'ort': '...al', ...}, 'O-04': {'name': 'Altendorf', 'an': 'O-07', 'art': 'ort_am_weg', 'quelle': 'OpenStreetMap', ...}, ...}, ...} = routen_von(PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_nachziehen_ist_idempotent0/quelle'))
+
+engine/tests/test_option_dinge.py:383: AssertionError
+___________ test_beispielreise_wanderung_nutzt_dinge_und_baut_gleich ___________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_beispielreise_wanderung_n0')
+
+    def test_beispielreise_wanderung_nutzt_dinge_und_baut_gleich(tmp_path):
+        """AC-15: V-03 und V-06 der Wanderung nutzen dinge; Summen der Reise und der Pläne sind unverändert."""
+        r = routen_von(REISEN / "beispielreise")
+>       assert [o.get("dinge") for o in r["wahlstellen"]["V-03"]["optionen"]] == [["U-02"], ["U-03"]]
+E       AssertionError: assert [None, None] == [['U-02'], ['U-03']]
+E         
+E         At index 0 diff: None != ['U-02']
+E         Use -v to get more diff
+
+engine/tests/test_option_dinge.py:409: AssertionError
+______________ test_arten_ableiten_und_art_der_option_ueber_dinge ______________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_arten_ableiten_und_art_de0')
+
+    def test_arten_ableiten_und_art_der_option_ueber_dinge(tmp_path):
+        """AC-18: arten_ableiten nimmt die Art der Wahlstelle aus dem ersten Ding mit Art in dinge; aufraeumen kennt die Art der Option
+        (ein lang erlaubtes Merkmal der Unterkunftsart wird nicht als zu lang gemeldet)."""
+        o92 = {"name": "Ort mit Pensionsart (erfunden)", "art": "pension", "quelle": B}
+        v96 = wahlstelle("V-96", option("V-96.a", "Ort (Beispiel)", dinge=["O-92"], merkmale={"ausblick": WERT("ja")}),
+                         option("V-96.b", "Wasserfall (Beispiel)", dinge=["O-06"]))
+        v97 = wahlstelle("V-97", option("V-97.a", "Altendorf (Beispiel)", dinge=["O-04"]),
+                         option("V-97.b", "Gasthof (Beispiel)", dinge=["U-03"], merkmale={"hausschuhe": WERT("ja")}))
+        q = kopie(tmp_path, wahl=[v96, v97], orte={"O-92": o92}, ort_merkmal=False)
+        gasthof = routen_von(q)["unterkuenfte"]["U-03"].get("art")
+        a = yaml.safe_load(neu.arten_ableiten(q, schreiben=False))["arten"]
+>       assert "ausblick" in (a["pension"].get("merkmale") or {}), "Merkmal der Möglichkeit landet an der Art des ersten Orts mit Art"
+E       AssertionError: Merkmal der Möglichkeit landet an der Art des ersten Orts mit Art
+E       assert 'ausblick' in (({'preis': {'name': 'Preis', 'stufe': 'empfohlen'}, 'fruehstueck': {'name': 'Fruehstueck', 'stufe': 'empfohlen'}, 'abendessen': {'name': 'Abendessen', 'stufe': 'empfohlen'}, 'webseite': {'name': 'Webseite', 'stufe': 'empfohlen'}, ...}))
+E        +  where {'preis': {'name': 'Preis', 'stufe': 'empfohlen'}, 'fruehstueck': {'name': 'Fruehstueck', 'stufe': 'empfohlen'}, 'abendessen': {'name': 'Abendessen', 'stufe': 'empfohlen'}, 'webseite': {'name': 'Webseite', 'stufe': 'empfohlen'}, ...} = <built-in method get of dict object at 0x71ceaef63b00>('merkmale')
+E        +    where <built-in method get of dict object at 0x71ceaef63b00> = {'grundform': 'aufenthalt', 'name': 'Pension', 'farbe': 'gruen', 'merkmale': {'preis': {'name': 'Preis', 'stufe': 'emp...bendessen': {'name': 'Abendessen', 'stufe': 'empfohlen'}, 'webseite': {'name': 'Webseite', 'stufe': 'empfohlen'}, ...}}.get
+
+engine/tests/test_option_dinge.py:454: AssertionError
+____________________ test_neue_schluessel_in_allen_sprachen ____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+    def test_neue_schluessel_in_allen_sprachen():
+        """AC-19: die neuen Schlüssel stehen in allen Sprachen (dinge im Konnektor, Prüffehler, Nachziehmeldung)."""
+        for sp in texte.SPRACHEN:
+            katalog = texte.sprache(sp).TEXTE
+>           assert "konnektor.feld.option_felder.dinge" in katalog, sp
+E           AssertionError: de
+E           assert 'konnektor.feld.option_felder.dinge' in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in...us.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+
+engine/tests/test_option_dinge.py:471: AssertionError
+__________ test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args2] ___________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_mischung_alt_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_mischung_alt_un0/veroeffentlicht'))
+args = {'choice': 'V-02', 'title': 'Rast (Beispiel)', 'source': 'erfunden (Beispiel)', 'things': ['E-04'], ...}
+
+    @pytest.mark.parametrize("args", [
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "things": ["O-03"], "stays": ["A-01"]},
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "dinge": ["O-03"], "orte": ["O-04"]},
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "things": ["E-04"], "accommodations": ["U-02"]},
+    ])
+    def test_konnektor_mischung_alt_und_neu_wird_abgelehnt(repo, args):
+        """AC-11: things/dinge zusammen mit einem alten Parameter wird mit Begründung aus dem Katalog abgelehnt; nichts wird geschrieben."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        vorher = routen_auf_main(origin)[1]
+>       with pytest.raises(sb.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_option_dinge.py:329: Failed
+__________ test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args1] ___________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un1/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un1/veroeffentlicht'))
+args = {'choice': 'V-02', 'title': 'Rast (Beispiel)', 'source': 'erfunden (Beispiel)', 'dinge': ['O-03'], ...}
+
+    @pytest.mark.parametrize("args", [
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "things": ["O-03"], "stays": ["A-01"]},
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "dinge": ["O-03"], "orte": ["O-04"]},
+        {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "things": ["E-04"], "accommodations": ["U-02"]},
+    ])
+    def test_konnektor_mischung_alt_und_neu_wird_abgelehnt(repo, args):
+        """AC-11: things/dinge zusammen mit einem alten Parameter wird mit Begründung aus dem Katalog abgelehnt; nichts wird geschrieben."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        vorher = routen_auf_main(origin)[1]
+>       with pytest.raises(sb.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_option_dinge.py:329: Failed
+__ test_stadtwochenende_baut_unveraendert_und_erfundene_wahlstelle_a_gegen_a ___
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_stadtwochenende_baut_unve0')
+
+    def test_stadtwochenende_baut_unveraendert_und_erfundene_wahlstelle_a_gegen_a(tmp_path):
+        """AC-16: das Stadtwochenende baut ohne Fehler und Warnung; eine erfundene Wahlstelle am Sonntag (Stadtmuseum gegen ein
+        erfundenes zweites Ziel) mit dinge baut ebenso; die Beispielreise selbst bleibt unverändert."""
+        vorher = (REISEN / "stadtwochenende" / "plan" / "routen.yaml").read_bytes()
+        d = bauen.bauen(REISEN / "stadtwochenende", tmp_path / "web" / "a")
+        assert d["route"].get("warnungen") == [] and not d["route"].get("wahlstellen")
+        v90 = wahlstelle("V-90", option("V-90.a", "Ins Stadtmuseum (Beispiel)", dinge=["A-02"]),
+                         option("V-90.b", "In den Zoo (Beispiel)", dinge=["A-90"]))
+        d2 = gebaut(tmp_path / "zwei", reise="stadtwochenende", wahl=[v90], tag="T-03", ort_merkmal=False, aufenthalte={"A-90": A90})
+        a, b = wahl_von(d2, "V-90")["optionen"]
+>       assert a.get("aufenthalte") == ["A-02"] and b.get("aufenthalte") == ["A-90"]
+E       AssertionError: assert (None == ['A-02'])
+E        +  where None = <built-in method get of dict object at 0x768f355b5b00>('aufenthalte')
+E        +    where <built-in method get of dict object at 0x768f355b5b00> = {'merkmale': {}, 'fehlt': [], 'id': 'V-90.a', 'titel': 'Ins Stadtmuseum (Beispiel)', ...}.get
+
+engine/tests/test_option_dinge.py:431: AssertionError
+_____________ test_konnektor_alte_parameter_werden_uebersetzt[en] ______________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_konnektor_alte_parameter_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_konnektor_alte_parameter_0/veroeffentlicht'))
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["en", "de"])
+    def test_konnektor_alte_parameter_werden_uebersetzt(repo, sprache):
+        """AC-10: alte Parameter (englisch und deutsch) werden angenommen und als dinge geschrieben, in der Reihenfolge Unterkünfte,
+        Aufenthalte, Orte, Strecken; das Ergebnis ist dasselbe wie mit things."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        if sprache == "en":
+            args = {"choice": "V-02", "title": "Rast (Beispiel)", "source": B, "legs": ["E-04"], "places": ["O-03"], "stays": ["A-01"]}
+        else:
+            args = {"wahlstelle": "V-02", "titel": "Rast (Beispiel)", "quelle": B, "strecken": ["E-04"], "orte": ["O-03"], "aufenthalte": ["A-01"]}
+        name, intern = kn.aufruf_intern(OPTION_WERKZEUGE, "option_create" if sprache == "en" else "option_anlegen", args)
+        assert name == "option_anlegen"
+        a = s.schreiben("beispielreise", name, {**KARL, "args": intern})
+        assert a["ok"]
+        r, _ = routen_auf_main(origin)
+        o = option_roh(r, "V-02.c")
+>       assert o["dinge"] == ["A-01", "O-03", "E-04"] and not any(o.get(g) for g in GRUPPEN), o
+               ^^^^^^^^^^
+E       KeyError: 'dinge'
+
+engine/tests/test_option_dinge.py:305: KeyError
+__________________ test_seitendaten_unveraendert_gegen_vorher __________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_seitendaten_unveraendert_0')
+
+    def test_seitendaten_unveraendert_gegen_vorher(tmp_path):
+        """AC-17: die Seitendaten der Wanderung (R.wahlstellen[].optionen[]) haben dieselben Gruppen wie vor der Umstellung."""
+>       assert "dinge" in option_roh(routen_von(REISEN / "beispielreise"), "V-06.a"), "Wanderung ist umgestellt (AC-15)"
+E       AssertionError: Wanderung ist umgestellt (AC-15)
+E       assert 'dinge' in {'id': 'V-06.a', 'titel': 'Nachmittag in Altendorf (Beispiel)', 'orte': ['O-04'], 'plus': ['kein weiterer Weg (Beispiel)'], ...}
+E        +  where {'id': 'V-06.a', 'titel': 'Nachmittag in Altendorf (Beispiel)', 'orte': ['O-04'], 'plus': ['kein weiterer Weg (Beispiel)'], ...} = option_roh({'start': {'datum': datetime.date(2027, 5, 13), 'ort': 'O-01'}, 'ende': {'datum': datetime.date(2027, 5, 16), 'ort': '...al', ...}, 'O-04': {'name': 'Altendorf', 'an': 'O-07', 'art': 'ort_am_weg', 'quelle': 'OpenStreetMap', ...}, ...}, ...}, 'V-06.a')
+E        +    where {'start': {'datum': datetime.date(2027, 5, 13), 'ort': 'O-01'}, 'ende': {'datum': datetime.date(2027, 5, 16), 'ort': '...al', ...}, 'O-04': {'name': 'Altendorf', 'an': 'O-07', 'art': 'ort_am_weg', 'quelle': 'OpenStreetMap', ...}, ...}, ...} = routen_von((PosixPath('~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/beispiel/reisen') / 'beispielreise'))
+
+engine/tests/test_option_dinge.py:437: AssertionError
+____________ test_nachziehen_speicher_stellt_um_und_ist_idempotent _____________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_nachziehen_speicher_stell0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7635a583fe90>
+
+    def test_nachziehen_speicher_stellt_um_und_ist_idempotent(tmp_path, monkeypatch):
+        """AC-14: im Reisespeicher steht die umgestellte Fassung als neue, angehängte Version; ein zweiter Lauf legt keine weitere an."""
+        monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))
+        import reisespeicher as rs
+        q = alt_kopie(tmp_path)
+        rs.importieren(q, "beispielreise", "Test", grund="Anfang")
+        n = rs.stand_nummer("beispielreise")
+        code, ausgabe = neu.nachziehen_speicher("beispielreise", tmp_path / "bau")
+        assert code == 0, ausgabe
+        assert rs.stand_nummer("beispielreise") > n, "die Umstellung steht als neue Version"
+        rs.materialisieren("beispielreise", tmp_path / "frisch")
+        r = routen_von(tmp_path / "frisch")
+>       assert option_roh(r, "V-03.a")["dinge"] == ["U-02"] and "unterkuenfte" not in option_roh(r, "V-03.a")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'dinge'
+
+engine/tests/test_option_dinge.py:398: KeyError
+=========================== short test summary info ============================
+FAILED engine/tests/test_option_dinge.py::test_dinge_aufteilen_nach_praefix
+FAILED engine/tests/test_option_dinge.py::test_unbekanntes_ding_je_praefix_ist_ein_fehler[A-99]
+FAILED engine/tests/test_option_dinge.py::test_dinge_wird_in_gruppen_aufgeteilt_und_baut
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[False-aufenthalte-wert1]
+FAILED engine/tests/test_option_dinge.py::test_unbekannter_praefix_ist_ein_fehler
+FAILED engine/tests/test_option_dinge.py::test_unbekanntes_ding_je_praefix_ist_ein_fehler[O-99]
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[False-orte-wert2]
+FAILED engine/tests/test_option_dinge.py::test_dinge_bewahrt_eingabereihenfolge
+FAILED engine/tests/test_option_dinge.py::test_unbekanntes_ding_je_praefix_ist_ein_fehler[U-99]
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[False-unterkuenfte-wert0]
+FAILED engine/tests/test_option_dinge.py::test_unbekanntes_ding_je_praefix_ist_ein_fehler[E-99]
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[False-strecken-wert3]
+FAILED engine/tests/test_option_dinge.py::test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt10-False]
+FAILED engine/tests/test_option_dinge.py::test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt12-False]
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[True-unterkuenfte-wert0]
+FAILED engine/tests/test_option_dinge.py::test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt11-False]
+FAILED engine/tests/test_option_dinge.py::test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt15-False]
+FAILED engine/tests/test_option_dinge.py::test_praefixregel_u_allein_folge_allein_e_a_o_zusammen[inhalt16-False]
+FAILED engine/tests/test_option_dinge.py::test_praefixregel_beim_bauen - Fail...
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[True-strecken-wert3]
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[True-aufenthalte-wert1]
+FAILED engine/tests/test_option_dinge.py::test_altes_feld_an_option_ist_pruefehler[True-orte-wert2]
+FAILED engine/tests/test_option_dinge.py::test_schreibweg_nimmt_dinge_und_verlauf_hat_wechsel
+FAILED engine/tests/test_option_dinge.py::test_konnektor_schema_hat_things_mit_alias_dinge
+FAILED engine/tests/test_option_dinge.py::test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args0]
+FAILED engine/tests/test_option_dinge.py::test_nachziehen_stellt_optionen_auf_dinge_um
+FAILED engine/tests/test_option_dinge.py::test_konnektor_alte_parameter_werden_uebersetzt[de]
+FAILED engine/tests/test_option_dinge.py::test_option_update_dinge_setzen_ersetzen_leeren
+FAILED engine/tests/test_option_dinge.py::test_nachziehen_ist_idempotent - As...
+FAILED engine/tests/test_option_dinge.py::test_beispielreise_wanderung_nutzt_dinge_und_baut_gleich
+FAILED engine/tests/test_option_dinge.py::test_arten_ableiten_und_art_der_option_ueber_dinge
+FAILED engine/tests/test_option_dinge.py::test_neue_schluessel_in_allen_sprachen
+FAILED engine/tests/test_option_dinge.py::test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args2]
+FAILED engine/tests/test_option_dinge.py::test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args1]
+FAILED engine/tests/test_option_dinge.py::test_stadtwochenende_baut_unveraendert_und_erfundene_wahlstelle_a_gegen_a
+FAILED engine/tests/test_option_dinge.py::test_konnektor_alte_parameter_werden_uebersetzt[en]
+FAILED engine/tests/test_option_dinge.py::test_seitendaten_unveraendert_gegen_vorher
+FAILED engine/tests/test_option_dinge.py::test_nachziehen_speicher_stellt_um_und_ist_idempotent
+38 failed, 13 passed in 13.50s
