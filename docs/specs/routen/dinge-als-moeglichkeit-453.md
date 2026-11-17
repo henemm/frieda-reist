@@ -228,7 +228,7 @@ Alle prüfbar durch Tests in `engine/tests/test_option_dinge.py`.
 - **AC-3 (unbekannter Präfix):** Given `dinge: [X-01]`, when die Reise lädt, then genau ein Prüffehler mit Wahlstelle, Möglichkeit und ID; der Bau meldet ihn wie die übrigen Optionsfehler.
 - **AC-4 (Existenz je Präfix):** Given je ein unbekanntes `U-99`, `E-99`, `A-99`, `O-99` in einer Möglichkeit, when die Reise lädt, then gibt es je einen Prüffehler (auch für U und E, die vorher ungeprüft blieben).
 - **AC-5 (alte Felder):** Given eine Option mit `unterkuenfte`, `aufenthalte`, `orte` oder `strecken` (allein oder neben `dinge`), when die Reise lädt, then ein Prüffehler mit Hinweis auf `dinge`; `folge` bleibt ohne Fehler.
-- **AC-6 (Präfixregel):** Given Möglichkeiten (a) `{U}` allein, (b) `folge` allein, (c) `{E, A, O}` in jeder Teilmenge, then gültig; Given `{U, O}`, `{U, E}`, `{folge, dinge}` oder leeres `dinge`, then ungültig (`option_inhalt_ok` falsch bzw. Prüffehler).
+- **AC-6 (Präfixregel):** Given Möglichkeiten (a) `{U}` allein, (b) `folge` allein, (c) `{E, A, O}` in jeder Teilmenge, then gültig; Given `{U, O}`, `{U, E}`, `{folge, dinge}` oder leeres `dinge`, then ungültig (`option_inhalt_ok` falsch bzw. Prüffehler). Eine Möglichkeit ganz ohne Inhalt (weder `dinge` noch `folge`, auch `dinge: []`) bleibt wie bisher erlaubt und ist kein Prüffehler (vgl. V-02); nur `option_inhalt_ok` meldet sie als leer.
 
 **Schreibweg**
 
@@ -238,7 +238,7 @@ Alle prüfbar durch Tests in `engine/tests/test_option_dinge.py`.
 **Konnektor**
 
 - **AC-9 (Schema):** Given `OPTION_FELDER` und das erzeugte Schema, then enthält es `things` (Array von Strings, Beschreibung aus dem Katalog) mit deutschem Alias `dinge` und keines der vier alten Felder.
-- **AC-10 (Übergang):** Given ein Aufruf mit den alten Parametern (englisch `accommodations`, `stays`, `places`, `legs` und deutsch `unterkuenfte`, `aufenthalte`, `orte`, `strecken`), when der Konnektor ihn verarbeitet, then wird er angenommen und als `dinge` geschrieben (Eingabereihenfolge: Unterkünfte, Aufenthalte, Orte, Strecken, wie sie übergeben wurden), und das Ergebnis ist dasselbe wie bei `things`.
+- **AC-10 (Übergang):** Given ein Aufruf mit den alten Parametern (englisch `accommodations`, `stays`, `places`, `legs` und deutsch `unterkuenfte`, `aufenthalte`, `orte`, `strecken`), when der Konnektor ihn verarbeitet, then wird er angenommen und als `dinge` geschrieben (Eingabereihenfolge: Unterkünfte, Aufenthalte, Orte, Strecken, wie sie übergeben wurden), und das Ergebnis ist dasselbe wie bei `things`. Bei `option_update` an einer bestehenden Möglichkeit ersetzt ein alter Gruppen-Parameter nur die Dinge seiner Gruppe; die übrigen Dinge bleiben erhalten (kein stiller Verlust für Clients mit altem Schema). `null` bei einem alten Parameter gilt als nicht gesetzt.
 - **AC-11 (Mischung):** Given ein Aufruf mit `things`/`dinge` und zugleich einem alten Parameter, then Ablehnung mit Begründung aus dem Katalog; nichts wird geschrieben.
 
 **Formatwechsel (#250)**
@@ -290,3 +290,4 @@ Alle prüfbar durch Tests in `engine/tests/test_option_dinge.py`.
 ## Changelog
 
 - 2026-11-17: Initial spec created (dinge-als-moeglichkeit-453).
+- 2026-11-17: Adversary-Runde 1: leere Möglichkeit bleibt erlaubt (AC-6 präzisiert, F002); alte Gruppen-Parameter bei `option_update` ersetzen nur ihre Gruppe in `dinge` (F001); `null` bei alten Parametern gilt als nicht gesetzt (F003).

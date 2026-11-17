@@ -111,8 +111,8 @@ def warnungen_zu(d, *bezuege):
 
 # Altendorf (Ort mit Art) oder Lichtenhainer Wasserfall (Ort ohne Art), am Nachmittag von Tag 3 (erfunden)
 V91 = wahlstelle("V-91",
-                 option("V-91.a", "Nachmittag in Altendorf (Beispiel)", orte=["O-04"]),
-                 option("V-91.b", "Zum Lichtenhainer Wasserfall (Beispiel)", orte=["O-06"], plus=["kühl bei Hitze (Beispiel)"]))
+                 option("V-91.a", "Nachmittag in Altendorf (Beispiel)", dinge=["O-04"]),
+                 option("V-91.b", "Zum Lichtenhainer Wasserfall (Beispiel)", dinge=["O-06"], plus=["kühl bei Hitze (Beispiel)"]))
 
 
 def test_ort_als_option_wird_gelesen_und_verglichen(tmp_path):
@@ -137,7 +137,7 @@ def test_ort_ohne_art_ist_erlaubt_und_vergleicht_nur_text(tmp_path):
 
 def test_unbekannter_ort_in_option_ist_ein_fehler(tmp_path):
     """AC-3: orte: [O-99] ist genau ein Prüffehler option_ort mit Wahlstelle, Möglichkeit und Ort."""
-    falsch = wahlstelle("V-91", option("V-91.a", "Nirgendwo (Beispiel)", orte=["O-99"]), option("V-91.b", "Wasserfall", orte=["O-06"]))
+    falsch = wahlstelle("V-91", option("V-91.a", "Nirgendwo (Beispiel)", dinge=["O-99"]), option("V-91.b", "Wasserfall", dinge=["O-06"]))
     with pytest.raises(bauen.BauFehler) as e:
         gebaut(tmp_path, wahl=[falsch])
     meldungen = e.value.args[0] if isinstance(e.value.args[0], (list, tuple)) else str(e.value.args[0]).splitlines()
@@ -162,54 +162,55 @@ def test_unbekannter_ort_in_option_ist_ein_fehler(tmp_path):
 ])
 def test_sortenregel_orte_mit_aufenthalten_und_strecken(inhalt, gueltig):
     """AC-4: orte allein oder mit aufenthalte und/oder strecken; unterkuenfte und folge nur allein."""
-    neu_ = {k: inhalt.get(k, []) for k in ("unterkuenfte", "strecken", "folge", "aufenthalte", "orte")}
+    # seit #453 stehen die Dinge in einem Feld dinge (Präfixregel); die Fälle bleiben dieselben
+    neu_ = {"dinge": [x for k in ("unterkuenfte", "aufenthalte", "orte", "strecken") for x in inhalt.get(k, [])], "folge": inhalt.get("folge", [])}
     assert sb.option_inhalt_ok(neu_) is gueltig
 
 
 def test_schreibweg_nimmt_orte_in_optionen(repo):
-    """AC-5: wahlstelle_anlegen, option_anlegen und option_aendern (setzen, ersetzen, leeren) schreiben orte als Liste von O-IDs."""
+    """AC-5: wahlstelle_anlegen, option_anlegen und option_aendern (setzen, ersetzen, leeren) schreiben Orte als O-IDs in dinge (#453)."""
     _, origin, _, _ = repo
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "wahlstelle_anlegen", {**KARL, "args": {
         "titel": "Nachmittag: Ort oder Wasserfall (Beispiel)", "wann": "unterwegs", "an": ["T-03"],
-        "optionen": [{"titel": "Altendorf (Beispiel)", "orte": ["O-04"], "quelle": B},
-                     {"titel": "Wasserfall (Beispiel)", "orte": ["O-06"], "quelle": B}]}})
+        "optionen": [{"titel": "Altendorf (Beispiel)", "dinge": ["O-04"], "quelle": B},
+                     {"titel": "Wasserfall (Beispiel)", "dinge": ["O-06"], "quelle": B}]}})
     assert a["ok"]
     r, text = routen_auf_main(origin)
     vid, w = next((k, v) for k, v in r["wahlstellen"].items() if v["titel"].startswith("Nachmittag: Ort oder Wasserfall"))
-    assert [o.get("orte") for o in w["optionen"]] == [["O-04"], ["O-06"]]
-    assert "orte: [O-04]" in text, "Listenwerte ohne Anführungszeichen, wie aufenthalte"
+    assert [o.get("dinge") for o in w["optionen"]] == [["O-04"], ["O-06"]]
+    assert "dinge: [O-04]" in text, "Listenwerte ohne Anführungszeichen, wie aufenthalte"
     s.vorbereiten()
     a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "Rast in Hohnstein (Beispiel)",
-                                                                         "orte": ["O-03"], "aufenthalte": ["A-01"], "quelle": B}})
+                                                                         "dinge": ["O-03", "A-01"], "quelle": B}})
     assert "V-02.c" in a["text"]
     o = lambda r: next(o for o in r["wahlstellen"]["V-02"]["optionen"] if o["id"] == "V-02.c")   # noqa: E731
     r, _ = routen_auf_main(origin)
-    assert o(r)["orte"] == ["O-03"] and o(r)["aufenthalte"] == ["A-01"]
+    assert o(r)["dinge"] == ["O-03", "A-01"]
     vorher = len(o(r).get("verlauf") or [])
     s.vorbereiten()
-    a = s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "orte": ["O-06"]}})   # nur orte: eine Änderung
+    a = s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "dinge": ["O-06", "A-01"]}})   # nur dinge: eine Änderung
     assert a["ok"] and not meldet(a["text"], "schreiben.option_aendern.8")
     r, _ = routen_auf_main(origin)
-    assert o(r)["orte"] == ["O-06"] and o(r)["aufenthalte"] == ["A-01"], "ersetzt, der Rest bleibt"
+    assert o(r)["dinge"] == ["O-06", "A-01"], "Ort ersetzt, der Aufenthalt bleibt"
     assert len(o(r).get("verlauf") or []) >= vorher, "der Verlauf wird nicht überschrieben"
     s.vorbereiten()
-    s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "orte": []}})
+    s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "dinge": ["A-01"]}})
     r, _ = routen_auf_main(origin)
-    assert not o(r).get("orte") and o(r)["aufenthalte"] == ["A-01"], "geleert"
+    assert o(r)["dinge"] == ["A-01"], "Ort geleert"
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="O-77"):
-        s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "X", "orte": ["O-77"], "quelle": "x"}})
+        s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "X", "dinge": ["O-77"], "quelle": "x"}})
     with pytest.raises(sb.Ablehnung) as e:
-        s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-03.a", "orte": ["O-03"]}})   # Unterkunft und Ort
+        s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-03.a", "dinge": ["U-02", "O-03"]}})   # Unterkunft und Ort
     assert e.value.schluessel == "schreiben.option_aendern.5"
 
 
 def test_konnektor_schema_und_show_kennen_orte(tmp_path):
-    """AC-6: OPTION_FELDER hat orte (Liste von Strings, Beschreibung aus dem Katalog); show nennt die Orte mit Namen."""
-    f = kn.OPTION_FELDER.get("orte")
+    """AC-6: OPTION_FELDER hat dinge (seit #453 statt orte; Liste von Strings, Beschreibung aus dem Katalog); show nennt die Orte mit Namen."""
+    f = kn.OPTION_FELDER.get("dinge")
     assert f and f["type"] == "array" and f["items"]["type"] == "string"
-    assert f["description"] == "@konnektor.feld.option_felder.orte"
+    assert f["description"] == "@konnektor.feld.option_felder.dinge"
     h = kn.Handbuch(gebaut(tmp_path, wahl=[V91]))
     t, fehler = h.zeige("V-91.b")
     assert not fehler and "Lichtenhainer Wasserfall" in t, t
@@ -223,8 +224,8 @@ A90 = {"name": "Burg Hohnstein (Beispiel)", "ort": "O-03", "art": "besichtigung"
 def test_gemischter_vergleich_ort_und_aufenthalt(tmp_path):
     """AC-7: Ort (ort_am_weg) und Aufenthalt (besichtigung): der Vergleich hat die Merkmale beider Arten,
     jede Möglichkeit mahnt nur die Pflichtmerkmale ihrer eigenen Art."""
-    v92 = wahlstelle("V-92", option("V-92.a", "Altendorf (Beispiel)", orte=["O-04"]),
-                     option("V-92.b", "Burg (Beispiel)", aufenthalte=["A-90"]))
+    v92 = wahlstelle("V-92", option("V-92.a", "Altendorf (Beispiel)", dinge=["O-04"]),
+                     option("V-92.b", "Burg (Beispiel)", dinge=["A-90"]))
     d = gebaut(tmp_path, wahl=[v92], aufenthalte={"A-90": A90})
     w = wahl_von(d, "V-92")
     a, b = w["optionen"]
@@ -237,10 +238,10 @@ def test_gemischter_vergleich_ort_und_aufenthalt(tmp_path):
 
 def test_art_der_wahlstelle_aus_erstem_ort_mit_art(tmp_path):
     """AC-8: ohne art: kommt die Art aus dem ersten Ort mit Art; haben alle Orte keine Art: allgemein, ohne Fehler."""
-    v93 = wahlstelle("V-93", option("V-93.a", "Wasserfall (Beispiel)", orte=["O-06"]),
-                     option("V-93.b", "Altendorf (Beispiel)", orte=["O-04"]))
-    v94 = wahlstelle("V-94", option("V-94.a", "Wasserfall (Beispiel)", orte=["O-06"]),
-                     option("V-94.b", "Turm (Beispiel)", orte=["O-90"]))
+    v93 = wahlstelle("V-93", option("V-93.a", "Wasserfall (Beispiel)", dinge=["O-06"]),
+                     option("V-93.b", "Altendorf (Beispiel)", dinge=["O-04"]))
+    v94 = wahlstelle("V-94", option("V-94.a", "Wasserfall (Beispiel)", dinge=["O-06"]),
+                     option("V-94.b", "Turm (Beispiel)", dinge=["O-90"]))
     d = gebaut(tmp_path, wahl=[v93, v94], orte={"O-90": O90})
     assert wahl_von(d, "V-93")["optionen"][1].get("orte") == ["O-04"]
     assert wahl_von(d, "V-93")["art"] == "ort_am_weg"
@@ -250,8 +251,8 @@ def test_art_der_wahlstelle_aus_erstem_ort_mit_art(tmp_path):
 def test_ort_der_moeglichkeit_bekommt_punkt_auf_uebersicht(tmp_path):
     """AC-9: ein Ort nur in einer Möglichkeit am Tag hat einen Punkt; Stand plan für die aktive, alternative für die andere;
     ein Ort ohne Verwendung bleibt ohne Punkt (#335)."""
-    v91 = wahlstelle("V-91", option("V-91.a", "Wasserfall (Beispiel)", orte=["O-06"]),
-                     option("V-91.b", "Turm (Beispiel)", orte=["O-90"]))
+    v91 = wahlstelle("V-91", option("V-91.a", "Wasserfall (Beispiel)", dinge=["O-06"]),
+                     option("V-91.b", "Turm (Beispiel)", dinge=["O-90"]))
     d = gebaut(tmp_path, wahl=[v91], orte={"O-90": O90, "O-91": O91}, ohne_karte=True)
     route = d["route"]
     opts = wahl_von(d, "V-91")["optionen"]
@@ -269,8 +270,8 @@ def test_ort_der_moeglichkeit_bekommt_punkt_auf_uebersicht(tmp_path):
 
 def test_nacht_nur_mit_orten_warnt_und_aendert_nichts(tmp_path):
     """AC-10: nacht: V-…, deren Möglichkeiten nur orte haben: Warnung nacht_nur_orte, kein Fehler, Ort der Nacht None."""
-    v95 = wahlstelle("V-95", option("V-95.a", "Altendorf (Beispiel)", orte=["O-04"]),
-                     option("V-95.b", "Wasserfall (Beispiel)", orte=["O-06"]), wann="planung", an=["T-03"], frage="F-01")   # offene Planungswahl braucht eine Frage (pruefung.routen.97)
+    v95 = wahlstelle("V-95", option("V-95.a", "Altendorf (Beispiel)", dinge=["O-04"]),
+                     option("V-95.b", "Wasserfall (Beispiel)", dinge=["O-06"]), wann="planung", an=["T-03"], frage="F-01")   # offene Planungswahl braucht eine Frage (pruefung.routen.97)
 
     def nacht(r):
         r["tage"]["T-03"]["nacht"] = "V-95"
@@ -291,7 +292,7 @@ def test_orte_in_option_aendern_nachtort_und_anschluss_nicht(tmp_path):
     """AC-11: mit und ohne orte: in einer Wahlstelle am Tag sind Anfang, Ende, Nacht und Anschluss aller Tage gleich."""
     mit = gebaut(tmp_path / "mit", wahl=[V91])
     _, w = V91
-    ohne_orte = ("V-91", {**w, "optionen": [{k: v for k, v in o.items() if k != "orte"} for o in w["optionen"]]})
+    ohne_orte = ("V-91", {**w, "optionen": [{k: v for k, v in o.items() if k != "dinge"} for o in w["optionen"]]})
     ohne = gebaut(tmp_path / "ohne", wahl=[ohne_orte])
     assert wahl_von(mit, "V-91")["optionen"][0].get("orte") == ["O-04"]
     assert tageslauf(mit) == tageslauf(ohne)
@@ -304,7 +305,7 @@ def test_kalender_hat_keinen_eintrag_fuer_orte(tmp_path):
     entschieden["optionen"][0]["verlauf"].append({"datum": HEUTE, "status": "gewaehlt", "wer": "Ida", "grund": "Test"})
     ohne_orte = copy.deepcopy(entschieden)
     for o in ohne_orte["optionen"]:
-        o.pop("orte")
+        o.pop("dinge")
     mit = gebaut(tmp_path / "mit", wahl=[("V-91", entschieden)])
     ohne = gebaut(tmp_path / "ohne", wahl=[("V-91", ohne_orte)])
     assert wahl_von(mit, "V-91")["optionen"][0].get("orte") == ["O-04"]
@@ -363,8 +364,8 @@ def test_stadtwochenende_baut_unveraendert(tmp_path):
     (O-01 ohne Art, O-02 mit der Art „stadt“ ohne Merkmale, seit #334) baut ebenso, ohne Merkmale und ohne Warnung."""
     d = bauen.bauen(REISEN / "stadtwochenende", tmp_path / "web" / "a")
     assert d["route"].get("warnungen") == [] and not d["route"].get("wahlstellen")
-    v90 = wahlstelle("V-90", option("V-90.a", "In Beispielstadt bleiben (Beispiel)", orte=["O-02"]),
-                     option("V-90.b", "Zurück nach Heimatstadt (Beispiel)", orte=["O-01"]))
+    v90 = wahlstelle("V-90", option("V-90.a", "In Beispielstadt bleiben (Beispiel)", dinge=["O-02"]),
+                     option("V-90.b", "Zurück nach Heimatstadt (Beispiel)", dinge=["O-01"]))
     d2 = gebaut(tmp_path / "zwei", reise="stadtwochenende", wahl=[v90], tag="T-02", ort_merkmal=False)
     a, b = wahl_von(d2, "V-90")["optionen"]
     assert a.get("orte") == ["O-02"] and b.get("orte") == ["O-01"]
@@ -388,11 +389,11 @@ def test_arten_ableiten_kennt_orte_in_optionen(tmp_path):
     (erreichbar nur, wenn der Schlüssel auch an einem anderen Ding vorkommt, hier die Art pension einer Unterkunft);
     eine nicht abgeleitete Ortsart verdrängt die Art einer Unterkunft nicht; ein Ort ohne Art ergibt keine Art und keinen Fehler."""
     o92 = {"name": "Ort mit Pensionsart (erfunden)", "art": "pension", "quelle": B}
-    v96 = wahlstelle("V-96", option("V-96.a", "Ort (Beispiel)", orte=["O-92"], merkmale={"ausblick": WERT("ja")}),
-                     option("V-96.b", "Wasserfall (Beispiel)", orte=["O-06"]))
-    v97 = wahlstelle("V-97", option("V-97.a", "Altendorf (Beispiel)", orte=["O-04"]),
-                     option("V-97.b", "Gasthof (Beispiel)", unterkuenfte=["U-03"], merkmale={"hausschuhe": WERT("ja")}))
-    v98 = wahlstelle("V-98", option("V-98.a", "Wasserfall (Beispiel)", orte=["O-06"], merkmale={"nur_text": WERT("ja")}))
+    v96 = wahlstelle("V-96", option("V-96.a", "Ort (Beispiel)", dinge=["O-92"], merkmale={"ausblick": WERT("ja")}),
+                     option("V-96.b", "Wasserfall (Beispiel)", dinge=["O-06"]))
+    v97 = wahlstelle("V-97", option("V-97.a", "Altendorf (Beispiel)", dinge=["O-04"]),
+                     option("V-97.b", "Gasthof (Beispiel)", dinge=["U-03"], merkmale={"hausschuhe": WERT("ja")}))
+    v98 = wahlstelle("V-98", option("V-98.a", "Wasserfall (Beispiel)", dinge=["O-06"], merkmale={"nur_text": WERT("ja")}))
     q = kopie(tmp_path, wahl=[v96, v97, v98], orte={"O-92": o92}, ort_merkmal=False)
     gasthof = yaml.safe_load(q.joinpath("plan/routen.yaml").read_text(encoding="utf-8"))["unterkuenfte"]["U-03"].get("art")
     a = yaml.safe_load(neu.arten_ableiten(q, schreiben=False))["arten"]

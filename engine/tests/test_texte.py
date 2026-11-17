@@ -663,31 +663,33 @@ def test_handbuch_summe_teilweise_angaben():
 
 
 def test_neue_schluessel_der_orte_in_allen_sprachen():
-    """#353, Schritt 2 (AC-17): Orte als Möglichkeit haben ihre Texte in jeder Sprache; die geänderten Ablehnungen nennen die
-    neue Sorte orte und die änderbaren Felder aufenthalte und orte."""
+    """#353, Schritt 2 (AC-17): Orte als Möglichkeit haben ihre Texte in jeder Sprache. Seit #453 stehen die Dinge einer Option in
+    einem Feld dinge (englisch things): die Ablehnungen und „Nichts zu ändern“ nennen dieses Feld."""
+    dinge = {"de": "dinge", "en": "things"}
     for k in texte.SPRACHEN:
         katalog = texte.sprache(k).TEXTE
-        for s in ("konnektor.feld.option_felder.orte", "konnektor.ausgabe.option_text.orte",
+        for s in ("konnektor.feld.option_felder.dinge", "konnektor.ausgabe.option_text.orte",
                   "pruefung.routen.option_ort", "pruefung.routen.nacht_nur_orte"):
             assert s in katalog, (k, s)
         for s in ("schreiben.option_bauen.2", "schreiben.option_aendern.5", "schreiben.option_aendern.8"):
-            assert re.search(r"\borte\b", katalog[s]), (k, s, katalog[s])
-        assert re.search(r"\baufenthalte\b", katalog["schreiben.option_aendern.8"]), (k, katalog["schreiben.option_aendern.8"])
+            assert re.search(rf"\b{dinge.get(k, 'dinge')}\b", katalog[s]), (k, s, katalog[s])
 
 
 def test_option_bauen_hinweis_nennt_alle_sorten():
-    """#364: Der Hinweis zum Inhalt einer Option nennt alle Sorten (unterkuenfte, strecken, aufenthalte, orte, Folge)."""
-    folge = {"de": "folge", "en": "sequence"}
+    """#364: Der Hinweis zum Inhalt einer Option nennt alle Sorten; seit #453 das Feld dinge (Unterkünfte, Strecken, Aufenthalte,
+    Orte) und folge."""
+    sorten = {"de": ("dinge", "Unterkünfte", "Strecken", "Aufenthalte", "Orte", "folge"),
+              "en": ("things", "accommodation", "legs", "stays", "places", "sequence")}
     for k in ("de", "en"):
         text = texte.sprache(k).TEXTE["schreiben.option_bauen.1"]
-        for s in ("unterkuenfte", "strecken", "aufenthalte", "orte", folge[k]):
+        for s in sorten[k]:
             assert re.search(rf"\b{s}\b", text), (k, s, text)
 
 
 def test_wahlstelle_anlegen_hinweis_nennt_alle_sorten():
-    """#374: Der Hinweis zu den Optionen einer neuen Wahlstelle nennt alle Sorten (unterkuenfte, strecken, aufenthalte, orte, Folge)."""
-    folge = {"de": "folge", "en": "sequence"}
+    """#374: Der Hinweis zu den Optionen einer neuen Wahlstelle nennt den Inhalt einer Option: seit #453 dinge oder folge."""
+    sorten = {"de": ("dinge", "folge"), "en": ("things", "sequence")}
     for k in ("de", "en"):
         text = texte.sprache(k).TEXTE["schreiben.wahlstelle_anlegen.4"]
-        for s in ("unterkuenfte", "strecken", "aufenthalte", "orte", folge[k]):
+        for s in sorten[k]:
             assert re.search(rf"\b{s}\b", text), (k, s, text)

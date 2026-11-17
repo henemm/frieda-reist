@@ -99,7 +99,7 @@ PARAMETER = {
     "bei": "booked_with", "beleg_base64": "receipt_base64", "beleg_dateiname": "receipt_filename", "beleg_text": "receipt_text",
     "beschreibung": "description", "bezahlt": "paid", "bezeichnung": "label", "bezug": "refs", "bis": "until", "buchbar": "bookable",
     "ausgeblendet": "hidden", "buchung": "booking", "buchungslink": "booking_link", "datei": "file", "dateiname": "filename", "daten_base64": "data_base64",
-    "datum": "date", "eingeplant": "scheduled", "einheit": "unit", "einzahl": "singular", "ende": "end_time", "ende_datum": "end_date", "ende_ort": "end_place", "entfernen": "remove",
+    "datum": "date", "dinge": "things", "eingeplant": "scheduled", "einheit": "unit", "einzahl": "singular", "ende": "end_time", "ende_datum": "end_date", "ende_ort": "end_place", "entfernen": "remove",
     "erfordert": "requires", "ergebnis": "result", "erlauben": "allow", "erlebt": "experienced", "ersetzt_durch": "replaced_by",
     "farbe": "colour", "favorisiert": "favoured", "folge": "sequence", "frage": "question", "frist": "deadline",
     "frist_was": "deadline_what", "fuer": "for", "gebucht_am": "booked_on", "geprueft": "checked", "gilt": "valid_for",
@@ -174,6 +174,8 @@ def parameter_zu_englisch(werkzeug):
 PARAMETER_VERSTECKT = {w: {"from_place": "von", "to_place": "nach", "departure": "ab", "arrival": "an", "place": "ort", "start_time": "beginn",
                            "end_time": "ende", "time_text": "zeit", "address": "adresse", "coordinates": "koordinaten", "booking_link": "buchungslink",
                            "question": "frage", "outside": "ausserhalb"} for w in ("ding_anlegen", "ding_aendern")}
+# Frühere Felder einer Option (#453): accommodations, stays, places, legs (deutsch unterkuenfte, aufenthalte, orte, strecken) stehen nicht
+# mehr im Schema, werden aber weiter angenommen; der Eingabeschritt des Konnektors (konnektor.dinge_uebersetzen) macht daraus dinge.
 
 
 def parameter_zu_intern(werkzeug):

@@ -46,7 +46,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import bauen  # noqa: E402
 import texte  # noqa: E402
-from routen import kz_wert  # noqa: E402
+from routen import DING_FELDER, dinge_aufteilen, kz_wert  # noqa: E402
 from reise import (PFAD_MUSTER, ROLLEN, reise_pfad, rolle_neu, schluessel_aus_name, sprache_pruefen, sprache_von,  # noqa: E402
                    zeitraum_text)
 
@@ -429,7 +429,8 @@ def aufraeumen(reise_dir):
         except sb.Ablehnung as e:
             aus.append(f"{bid}: {e}")
     def art_der_option(o):
-        for x in (o.get("unterkuenfte") or []) + (o.get("aufenthalte") or []):
+        g = dinge_aufteilen(o.get("dinge") or [], []) if "dinge" in o else o
+        for x in (g.get("unterkuenfte") or []) + (g.get("aufenthalte") or []):
             d = (r.get("unterkuenfte") or {}).get(x) or (r.get("aufenthalte") or {}).get(x) or {}
             if isinstance(d.get("art"), str):
                 return d["art"]
@@ -509,7 +510,7 @@ def arten_ableiten(reise_dir, namen=None, summiert=(), definitionen=None, schrei
         art(k, "bewegung")["dinge"].append(("bewegung", None, s.get("merkmale") or {}))
     wahl = r.get("wahlstellen") or {}
     for vid, w in (wahl.items() if isinstance(wahl, dict) else ((x["id"], x) for x in wahl)):
-        opts = w.get("optionen") or []
+        opts = [{**o, **dinge_aufteilen(o.get("dinge") or [], [])} if isinstance(o, dict) and "dinge" in o else o for o in w.get("optionen") or []]
         b = w.get("bereich") or (w.get("art") if w.get("art") not in ("planung", "unterwegs") else None)
         if b and b not in arten:
             art(b, "bewegung" if any(o.get("strecken") for o in opts) else "aufenthalt")
@@ -1112,6 +1113,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
                 w.insert(list(w.keys()).index("bereich"), "art", bereich)
                 meldungen.append(f"{vid}: bereich {bereich} → art {bereich}")
             del w["bereich"]
+    dinge_nachziehen(roh, sprache_von(reise_dir), meldungen)   # #453: unterkuenfte, aufenthalte, orte, strecken an Optionen -> dinge
     buchung_nachziehen(reise_dir, roh, schreiben, meldungen)   # #215: Feld buchung: an Dingen -> Buchung B-…
     kennzahlen_kennungen(roh, sprache_von(reise_dir), meldungen)   # #269: Namen der Kennzahlen in routen.yaml -> Kennungen
     fahrzeit_nachziehen(reise_dir, roh, meldungen)   # #508: die Zeit einer Fahrt heißt fahrzeit, nicht gehzeit
@@ -1227,6 +1229,35 @@ def software_kennung():
 
 
 NACHZIEHEN_VERSUCHE = 3   # wie der Workflow beim Push: bei einem Wettlauf mit dem Schreibweg neu, nie erzwungen
+
+
+def dinge_nachziehen(roh, sprache, meldungen):
+    """Formatwechsel #453: die früheren Felder einer Option (unterkuenfte, aufenthalte, orte, strecken) werden zu einem Feld dinge an der
+    Stelle des ersten früheren Felds, die IDs in dieser Reihenfolge der Felder. Steht dinge schon da, kommen die IDs der früheren Felder
+    dahinter (ohne doppelte). Ohne frühere Felder ändert sich nichts (idempotent)."""
+    import schreiben as sb
+    for w in ((roh or {}).get("wahlstellen") or {}).values():
+        if not isinstance(w, dict):
+            continue
+        for o in w.get("optionen") or []:
+            if not isinstance(o, dict):
+                continue
+            alt = [f for f in DING_FELDER if f in o]
+            if not alt:
+                continue
+            ids = list(o.get("dinge") or [])
+            for f in alt:
+                v = o.get(f)
+                for x in (v if isinstance(v, list) else [v] if v else []):
+                    if x not in ids:
+                        ids.append(x)
+            stelle = min(list(o.keys()).index(f) for f in alt + (["dinge"] if "dinge" in o else []))
+            for f in alt:
+                del o[f]
+            o.pop("dinge", None)
+            if ids:
+                o.insert(stelle, "dinge", sb.fliess_map({"dinge": ids})["dinge"])
+            meldungen.append(texte.t(sprache, "pruefung.neu.nachziehen.dinge", oid=o.get("id", ""), felder=", ".join(alt), ids=", ".join(map(str, ids))))
 
 
 def nachziehen_speicher(reise, ordner):

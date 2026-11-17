@@ -45,12 +45,12 @@ BASIS = {
             {"id": "V-01.b", "titel": "Mit Bus", "folge": ["T-04", "T-05"]},
         ]},
         "V-02": {"titel": "Hotel in B", "wann": "planung", "frage": "F-01", "optionen": [
-            {"id": "V-02.a", "titel": "B1", "unterkuenfte": ["U-01"]},
-            {"id": "V-02.b", "titel": "B2", "unterkuenfte": ["U-02"]},
+            {"id": "V-02.a", "titel": "B1", "dinge": ["U-01"]},
+            {"id": "V-02.b", "titel": "B2", "dinge": ["U-02"]},
         ]},
         "V-03": {"titel": "Abzweig nehmen?", "wann": "unterwegs", "optionen": [
-            {"id": "V-03.a", "titel": "Hauptweg", "strecken": ["E-02"]},
-            {"id": "V-03.b", "titel": "Abzweig", "strecken": ["E-02V"], "ausloeser": "bei gutem Wetter"},
+            {"id": "V-03.a", "titel": "Hauptweg", "dinge": ["E-02"]},
+            {"id": "V-03.b", "titel": "Abzweig", "dinge": ["E-02V"], "ausloeser": "bei gutem Wetter"},
         ]},
     },
 }
@@ -613,8 +613,8 @@ def mit_faehren():
                              "merkmale": {"dauer": {"wert": "ca. 11 h", "quelle": "Beispiel"}}}
     r["strecken"]["E-11"] = {"titel": "Fähre B", "von": "O-02", "nach": "O-03", "art": "faehre"}
     r["wahlstellen"]["V-04"] = {"titel": "Überfahrt", "art": "planung", "frage": "F-01", "an": ["T-02"], "optionen": [
-        {"id": "V-04.a", "titel": "Fähre A", "strecken": ["E-10"], "merkmale": {"preis": "80 €"}},
-        {"id": "V-04.b", "titel": "Fähre B", "strecken": ["E-11"], "merkmale": {"dauer": "ca. 10 h"}}]}
+        {"id": "V-04.a", "titel": "Fähre A", "dinge": ["E-10"], "merkmale": {"preis": "80 €"}},
+        {"id": "V-04.b", "titel": "Fähre B", "dinge": ["E-11"], "merkmale": {"dauer": "ca. 10 h"}}]}
     return r
 
 
@@ -633,7 +633,7 @@ def test_art_der_strecken_bestimmt_die_liste_und_werte_stehen_an_strecke_oder_op
 
 def test_gemischte_arten_haben_keine_gemeinsamen_merkmale():
     r = mit_faehren()
-    r["wahlstellen"]["V-04"]["optionen"][1]["strecken"] = ["E-03"]
+    r["wahlstellen"]["V-04"]["optionen"][1]["dinge"] = ["E-03"]
     r["wahlstellen"]["V-04"]["optionen"][0]["merkmale"] = r["wahlstellen"]["V-04"]["optionen"][1]["merkmale"] = {}
     erg, fehler = mk_bauen(r)
     assert fehler == []

@@ -35,13 +35,13 @@ WAHL = ("wahlstellen:\n  V-01:", """wahlstellen:
     optionen:
       - id: V-90.a
         titel: "Festung besichtigen"
-        aufenthalte: [A-90]
+        dinge: [A-90]
         quelle: "erfunden (Beispiel)"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude}
       - id: V-90.b
         titel: "Statt dessen zum Wasserfall wandern"
-        strecken: [E-04]
+        dinge: [E-04]
         quelle: "erfunden (Beispiel)"
         verlauf:
           - {datum: 2026-10-20, status: vorgeschlagen, wer: Claude}
@@ -81,7 +81,7 @@ def test_aufenthalt_der_aktiven_option_steht_am_tag():
 
 
 def test_unbekannter_aufenthalt_in_option_ist_ein_fehler():
-    falsch = (WAHL[0], WAHL[1].replace("aufenthalte: [A-90]", "aufenthalte: [A-77]"))
+    falsch = (WAHL[0], WAHL[1].replace("dinge: [A-90]", "dinge: [A-77]"))
     with pytest.raises(BaseException) as e:
         routen([AUFENTHALT, TAG, falsch])
     assert "A-77" in str(e.value)
@@ -97,26 +97,26 @@ def test_seite_zeigt_aufenthalt_der_option_im_vergleich_und_in_der_zeitleiste(tm
 
 
 def test_schreibweg_nimmt_aufenthalte_in_optionen(repo):
-    """option_anlegen und option_aendern: aufenthalte: [A-…]; mit strecken zusammen erlaubt, sonst nur eine Sorte."""
+    """option_anlegen und option_aendern: Aufenthalte (A-…) in dinge (#453); mit Strecken zusammen erlaubt, mit Unterkünften nicht."""
     _, origin, _, _ = repo
     s = schreiber(repo)
-    a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "Burg statt Weg", "aufenthalte": ["A-01"],
+    a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "Burg statt Weg", "dinge": ["A-01"],
                                                                          "quelle": "Karl im Gespräch"}})
     assert "V-02.c" in a["text"]
     r, _ = routen_auf_main(origin)
     o = next(o for o in r["wahlstellen"]["V-02"]["optionen"] if o["id"] == "V-02.c")
-    assert o["aufenthalte"] == ["A-01"]
+    assert o["dinge"] == ["A-01"]
     s.vorbereiten()
-    s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "strecken": ["E-04"]}})   # Weg und Rast
+    s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "dinge": ["A-01", "E-04"]}})   # Weg und Rast
     r, _ = routen_auf_main(origin)
     o = next(o for o in r["wahlstellen"]["V-02"]["optionen"] if o["id"] == "V-02.c")
-    assert o["aufenthalte"] == ["A-01"] and o["strecken"] == ["E-04"]
+    assert o["dinge"] == ["A-01", "E-04"]
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung) as e:
-        s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "unterkuenfte": ["U-02"]}})
+        s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-02.c", "dinge": ["A-01", "U-02"]}})
     assert e.value.schluessel == "schreiben.option_aendern.5"
     with pytest.raises(sb.Ablehnung, match="gibt es nicht"):
-        s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "X", "aufenthalte": ["A-77"], "quelle": "x"}})
+        s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "X", "dinge": ["A-77"], "quelle": "x"}})
 
 
 def test_zweite_beispielreise_museum_oder_cafe_gemischt(tmp_path):
@@ -153,13 +153,13 @@ wahlstellen:
     optionen:
       - id: V-90.a
         titel: "Naturkundemuseum"
-        aufenthalte: [A-90]
+        dinge: [A-90]
         quelle: "erfunden (Beispiel)"
         verlauf:
           - {datum: 2026-11-01, status: vorgeschlagen, wer: Tom}
       - id: V-90.b
         titel: "Café am Markt"
-        aufenthalte: [A-91]
+        dinge: [A-91]
         quelle: "erfunden (Beispiel)"
         verlauf:
           - {datum: 2026-11-01, status: vorgeschlagen, wer: Lea}
@@ -180,7 +180,7 @@ def test_wahlstelle_in_der_abfolge_des_tags_und_optional():
     """#586: Steht die Wahlstelle in aufenthalte des Tags, stehen die Aufenthalte ihrer gewählten Möglichkeit an dieser Stelle (nicht
     am Ende); die anderen Möglichkeiten mit Aufenthalt sind Alternativen zum gewählten Halt; optional geht mit in die Daten des Tags.
     Ohne Wahlstelle in aufenthalte bleibt es wie bisher (Aufenthalte der Wahl am Ende)."""
-    zweite = ("        strecken: [E-04]\n", "        strecken: [E-04]\n        aufenthalte: [A-91]\n        ausloeser: \"bei Regen\"\n")
+    zweite = ("        dinge: [E-04]\n", "        dinge: [E-04, A-91]\n        ausloeser: \"bei Regen\"\n")
     a91 = ("  A-02:\n    name: \"Stadt Wehlen\"", "  A-91:\n    name: Café am Wasserfall\n    ort: O-03\n    art: besichtigung\n"
            "    quelle: \"erfunden (Beispiel)\"\n  A-02:\n    name: \"Stadt Wehlen\"")
     vorher = ("  T-02: {titel: \"Stadt Wehlen → Bastei → Hohnstein\", strecken: [E-20, E-01], wahl: [V-02], aufenthalte: [A-01],",

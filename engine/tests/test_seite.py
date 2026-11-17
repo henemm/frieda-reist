@@ -303,8 +303,8 @@ def test_fahrtag_in_der_reihenfolge_des_tags(tmp_path, browser):
                 ("  A-02:\n    name: \"Stadt Wehlen\"", "  A-91:\n    name: Café am Markt\n" + ort + "  A-92:\n    name: Bäckerei am Bahnhof\n" + ort
                  + "  A-93:\n    name: Aussicht am Hang\n" + ort + "  A-02:\n    name: \"Stadt Wehlen\""),
                 ("  V-02:\n", "  V-90:\n    titel: \"Einkehr unterwegs\"\n    wann: unterwegs\n    optionen:\n"
-                 "      - {id: V-90.a, titel: Café, aufenthalte: [A-91], quelle: \"erfunden (Beispiel)\"}\n"
-                 "      - {id: V-90.b, titel: Bäckerei, aufenthalte: [A-92], ausloeser: \"falls geschlossen\", quelle: \"erfunden (Beispiel)\"}\n  V-02:\n")]
+                 "      - {id: V-90.a, titel: Café, dinge: [A-91], quelle: \"erfunden (Beispiel)\"}\n"
+                 "      - {id: V-90.b, titel: Bäckerei, dinge: [A-92], ausloeser: \"falls geschlossen\", quelle: \"erfunden (Beispiel)\"}\n  V-02:\n")]
     e = seite_der_variante(tmp_path, browser, skript="seiten_wegverlauf.mjs", routen_ersetzen=ersetzen)
     z = e["verlauf"]
     namen = [x[1] for x in z]

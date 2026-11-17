@@ -546,14 +546,14 @@ wahlstellen:
     optionen:
       - id: V-06.a
         titel: "Nachmittag in Altendorf (Beispiel)"
-        orte: [O-04]
+        dinge: [O-04]
         plus: ["kein weiterer Weg (Beispiel)"]
         quelle: "erfunden (Beispiel)"
         verlauf:
           - {datum: 2026-11-06, status: vorgeschlagen, wer: Claude}
       - id: V-06.b
         titel: "Zum Lichtenhainer Wasserfall (Beispiel)"
-        orte: [O-06]
+        dinge: [O-06]
         plus: ["kühl bei Hitze (Beispiel)"]
         minus: ["Hin und zurück mit der Kirnitzschtalbahn (Beispiel)"]
         quelle: "erfunden (Beispiel)"
@@ -567,14 +567,14 @@ wahlstellen:
     optionen:
       - id: V-03.a
         titel: Pension Burgblick
-        unterkuenfte: [U-02]
+        dinge: [U-02]
         quelle: "erfunden (Beispiel)"
         plus: ["direkt am Weg"]
         verlauf:
           - {datum: 2026-10-20, status: gewaehlt, wer: Ida, grund: "liegt am Weg, kein Anstieg am Morgen"}
       - id: V-03.b
         titel: Gasthof Polenztal
-        unterkuenfte: [U-03]
+        dinge: [U-03]
         quelle: "erfunden (Beispiel)"
         plus: ["Abendessen im Haus"]
         minus: ["morgens 15 Minuten Anstieg"]

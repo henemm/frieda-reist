@@ -313,7 +313,52 @@ def test_konnektor_alte_parameter_werden_uebersetzt(repo, sprache):
     name, intern = kn.aufruf_intern(OPTION_WERKZEUGE, "option_update", {"target": "V-02.d", "places": ["O-06"]})
     s.schreiben("beispielreise", name, {**KARL, "args": intern})
     r, _ = routen_auf_main(origin)
-    assert option_roh(r, "V-02.d")["dinge"] == ["O-06"], "auch option_update nimmt die alten Parameter"
+    # auch option_update nimmt die alten Parameter; places ersetzt nur die Orte (Gegenprüfung F001, Tech Lead 17.11.2026)
+    assert option_roh(r, "V-02.d")["dinge"] == ["A-01", "O-06", "E-04"], "auch option_update nimmt die alten Parameter"
+
+
+@pytest.mark.parametrize("sprache", ["en", "de"])
+def test_option_update_alter_parameter_ersetzt_nur_seine_gruppe(repo, sprache):
+    """Gegenprüfung F001: option_update mit einem alten Gruppen-Parameter (ohne things/dinge) ersetzt nur die Dinge dieser Gruppe
+    (an der Stelle ihres ersten Dings, sonst hinten); eine leere Liste leert nur ihre Gruppe; die übrigen Dinge bleiben, wie sie sind.
+    Über den Konnektor-Aufruf, englisch und deutsch."""
+    _, origin, _, _ = repo
+    s = schreiber(repo)
+    a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-02", "titel": "Weg mit Rast (Beispiel)",
+                                                                         "dinge": ["E-04", "O-03", "A-01"], "quelle": B}})
+    assert a["ok"]
+    orte, strecken, aufenthalte, ziel = (("places", "legs", "stays", "target") if sprache == "en" else ("orte", "strecken", "aufenthalte", "ziel"))
+    werkzeug = "option_update" if sprache == "en" else "option_aendern"
+
+    def aendern(args):
+        s.vorbereiten()
+        name, intern = kn.aufruf_intern(OPTION_WERKZEUGE, werkzeug, {ziel: "V-02.c", **args})
+        assert name == "option_aendern"
+        assert s.schreiben("beispielreise", name, {**KARL, "args": intern})["ok"]
+        return option_roh(routen_auf_main(origin)[0], "V-02.c")["dinge"]
+
+    assert aendern({orte: ["O-06"]}) == ["E-04", "O-06", "A-01"], "places ersetzt nur die Orte, an ihrer Stelle"
+    assert aendern({strecken: []}) == ["O-06", "A-01"], "legs: [] leert nur die Strecken"
+    assert aendern({strecken: ["E-02"]}) == ["O-06", "A-01", "E-02"], "eine neue Gruppe kommt hinten dazu"
+    assert aendern({aufenthalte: [], orte: ["O-04", "O-03"]}) == ["O-04", "O-03", "E-02"], "mehrere Gruppen auf einmal"
+    s.vorbereiten()
+    with pytest.raises(sb.Ablehnung) as e:   # Präfixregel auf dem Ergebnis
+        name, intern = kn.aufruf_intern(OPTION_WERKZEUGE, werkzeug, {ziel: "V-02.c", ("accommodations" if sprache == "en" else "unterkuenfte"): ["U-02"]})
+        s.schreiben("beispielreise", name, {**KARL, "args": intern})
+    assert e.value.schluessel == "schreiben.option_aendern.5"
+    with pytest.raises(sb.Ablehnung) as e:   # Mischung alt und neu bleibt eine Ablehnung
+        name, intern = kn.aufruf_intern(OPTION_WERKZEUGE, werkzeug, {ziel: "V-02.c", orte: ["O-06"], ("things" if sprache == "en" else "dinge"): ["O-04"]})
+        s.schreiben("beispielreise", name, {**KARL, "args": intern})
+    assert e.value.schluessel == "schreiben.option_dinge.gemischt"
+    assert option_roh(routen_auf_main(origin)[0], "V-02.c")["dinge"] == ["O-04", "O-03", "E-02"], "nichts geschrieben"
+
+
+def test_alte_parameter_mit_none_gelten_als_nicht_gesetzt():
+    """Gegenprüfung F003: ein alter Parameter mit dem Wert None (deutsch oder englisch) gilt als nicht gesetzt."""
+    assert kn.dinge_uebersetzen({"unterkuenfte": None, "orte": ["O-04"]}) == {"dinge": ["O-04"]}
+    assert kn.dinge_uebersetzen({"accommodations": None, "legs": ["E-02"], "titel": "x"}) == {"titel": "x", "dinge": ["E-02"]}
+    assert kn.dinge_uebersetzen({"things": ["O-04"], "stays": None}) == {"things": ["O-04"]}, "None ist keine Mischung"
+    assert kn.dinge_uebersetzen({"ziel": "V-02.c", "places": None}, aendern=True) == {"ziel": "V-02.c"}
 
 
 @pytest.mark.parametrize("args", [

@@ -244,7 +244,48 @@ def aufruf_intern(werkzeuge, name, args):
     (ADR-0006, Punkt 4). werkzeuge ist die interne Liste, aus der das Schema des Werkzeugs stammt."""
     intern = schnittstelle.intern_name(name) if isinstance(name, str) else name
     schema = next((w["inputSchema"] for w in list(werkzeuge) + ALIAS_WERKZEUGE if w["name"] == intern), None)
+    if intern in ("option_anlegen", "option_aendern"):
+        args = dinge_uebersetzen(args, aendern=intern == "option_aendern")
+    elif intern == "wahlstelle_anlegen" and isinstance(args, dict):
+        for k in ("optionen", "options"):
+            if isinstance(args.get(k), list):
+                args = {**args, k: [dinge_uebersetzen(o) for o in args[k]]}
     return intern, schnittstelle.intern_argumente(intern, args, schema)
+
+
+# Frühere Felder einer Option (#453), intern und englisch, in der Reihenfolge, in der sie in dinge stehen: Unterkünfte, Aufenthalte,
+# Orte, Strecken. Sie stehen nicht mehr im Schema, laufende Gespräche senden sie weiter.
+FRUEHERE_DING_FELDER = (("unterkuenfte", "accommodations"), ("aufenthalte", "stays"), ("orte", "places"), ("strecken", "legs"))
+
+
+def dinge_uebersetzen(o, aendern=False):
+    """Eingabeschritt für Optionen (#453): die früheren Felder (deutsch oder englisch) werden zu dinge, wenn dinge/things fehlt; ein
+    früheres Feld mit dem Wert None gilt als nicht gesetzt. Kommen beide, bleiben die früheren Felder unter ihrem internen Namen stehen
+    und der Schreibweg lehnt mit Begründung ab (schreiben.option_dinge.gemischt); geschrieben wird dann nichts.
+    aendern (option_aendern): die früheren Felder bleiben unter ihrem internen Namen stehen, der Schreibweg ersetzt mit jedem nur seine
+    Gruppe in den bestehenden dinge (schreiben.dinge_einmischen); die Option selbst kennt erst der Schreibweg."""
+    if not isinstance(o, dict):
+        return o
+    o = {k: v for k, v in o.items() if not (v is None and any(k in paar for paar in FRUEHERE_DING_FELDER))}
+    alt = [(i, e) for i, e in FRUEHERE_DING_FELDER if i in o or e in o]
+    if not alt:
+        return o
+    if aendern or "dinge" in o or "things" in o:
+        for i, e in alt:
+            if e in o:
+                o[i] = o.pop(e)
+        return o
+    dinge = []
+    for i, e in alt:
+        for k in (i, e):
+            if k not in o:
+                continue
+            v = o.pop(k)
+            if isinstance(v, str):
+                v = [x.strip() for x in v.split(",") if x.strip()]
+            dinge += v if isinstance(v, list) else [v]
+    o["dinge"] = dinge
+    return o
 
 
 # Aliase (ADR-0007, Schritt c): Diese Werkzeuge stehen nicht mehr in tools/list, laufende Gespräche rufen sie weiter und der Schreibweg
@@ -2966,10 +3007,7 @@ LAGE_EINTRAGEN = {"name": "lage_eintragen", "description": "@konnektor.werkzeug.
                       "required": ["ziel", "quelle"]}}
 OPTION_FELDER = {"titel": {"type": "string", "description": "@konnektor.feld.option_felder.titel"},
                  "text": textform.schema("option.text", "@konnektor.feld.option_felder.text"),
-                 "unterkuenfte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.unterkuenfte"},
-                 "strecken": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.strecken"},
-                 "aufenthalte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.aufenthalte"},
-                 "orte": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.orte"},
+                 "dinge": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.dinge"},
                  "folge": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.folge"},
                  "plus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.plus"},
                  "minus": {"type": "array", "items": {"type": "string"}, "description": "@konnektor.feld.option_felder.minus"},

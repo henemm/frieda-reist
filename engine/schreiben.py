@@ -1239,7 +1239,7 @@ ID_MUSTER = re.compile(r"^(T-\d+|E-\d+[A-Za-z]?|U-\d+|A-\d+|O-\d+|V-\d+|W-\d+(\.
 
 
 PLAIN_FELDER = {"id", "status", "wer", "art", "wann", "typ", "rolle", "ort", "von", "nach", "frage", "siehe", "bereich", "an", "unterkuenfte", "aufenthalte", "orte",
-                "strecken", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
+                "strecken", "dinge", "folge", "erfordert", "schliesst_aus", "auswahl", "fuer"}
 PLAIN_MUSTER = re.compile(r"^[^\W\d_][\w .\-]*\Z")
 
 
@@ -2659,14 +2659,12 @@ def option_bauen(roh, route, vid, o, wer, heute, bereich):
     for f in ("plus", "minus"):
         if (l := liste_wert(o, f, laenge=10)):
             d[f] = l
-    u = id_liste(o, "unterkuenfte", r"U-\d+", roh, "unterkuenfte")
-    st = id_liste(o, "strecken", r"E-\d+[A-Za-z]?", roh, "strecken")
+    fruehere_felder_ablehnen(o, d["titel"])
+    di = dinge_liste(o, roh)
     fo = id_liste(o, "folge", r"T-\d+", roh, "tage")
-    au = id_liste(o, "aufenthalte", r"A-\d+", roh, "aufenthalte")
-    og = id_liste(o, "orte", r"O-\d+", roh, "orte")
-    if not option_inhalt_ok({"unterkuenfte": u, "strecken": st, "folge": fo, "aufenthalte": au, "orte": og}):
+    if (di or fo) and not option_inhalt_ok({"dinge": di or [], "folge": fo or []}):
         raise Ablehnung("schreiben.option_bauen.2", w1=d['titel'])
-    for k, v in (("unterkuenfte", u), ("strecken", st), ("folge", fo), ("aufenthalte", au), ("orte", og)):
+    for k, v in (("dinge", di), ("folge", fo)):
         if v:
             d[k] = v
     optionen_ids = {x["id"] for w in route.get("wahlstellen") or [] for x in w["optionen"]}
@@ -4051,16 +4049,55 @@ def wahlstelle_aendern(reise_dir, wer, args, heute=None):
 
 
 def option_inhalt_ok(neu):
-    """Was eine Möglichkeit enthält: Unterkünfte, Strecken, Aufenthalte ohne Nacht, Orte oder ein Reiseteil (folge).
-    Unterkünfte und folge stehen allein; Strecken, Aufenthalte und Orte dürfen beliebig zusammen stehen (Gipfelalternative:
-    Weg und Rast; Ort mit Museum darin, #353)."""
-    sorten = {k for k, v in neu.items() if v}
-    return len(sorten) <= 1 or sorten <= {"strecken", "aufenthalte", "orte"}
+    """Was eine Möglichkeit enthält ({"dinge": [...], "folge": [...]}), als Präfixregel (#453): Unterkünfte (U-…) stehen allein,
+    ein Reiseteil (folge) steht allein, Strecken, Aufenthalte ohne Nacht und Orte (E-…, A-…, O-…) dürfen beliebig zusammen stehen
+    (Gipfelalternative: Weg und Rast; Ort mit Museum darin, #353). Leer ist keine Möglichkeit."""
+    from routen import dinge_praefixe_ok
+    dinge, folge = list(neu.get("dinge") or []), list(neu.get("folge") or [])
+    return not dinge if folge else dinge_praefixe_ok(dinge)
+
+
+def dinge_liste(args, roh, feld="dinge"):
+    """dinge einer Option aus der Anfrage (#453): IDs von Unterkünften, Aufenthalten, Orten und Strecken in Eingabereihenfolge,
+    jede geprüft auf Form und Existenz in der Routendatei (der Präfix sagt, wo) -> Liste oder None."""
+    from routen import DING_GRUPPEN, MUSTER
+    v = id_liste(args, feld, "|".join(f"(?:{MUSTER[g]})" for _, g in DING_GRUPPEN.values()), roh)
+    for x in v or []:
+        menge, _ = DING_GRUPPEN[x.split("-", 1)[0]]
+        if x not in (roh.get(menge) or {}):
+            raise Ablehnung("schreiben.id_liste.3", feld=feld, x=x)
+    return v
+
+
+def dinge_einmischen(dinge, alt, roh):
+    """Frühere Gruppen-Parameter einer Änderung (#453; {unterkuenfte|aufenthalte|orte|strecken: [IDs]}) in die bestehenden dinge
+    einmischen: jede übergebene Gruppe ersetzt nur ihre Dinge, an der Stelle des ersten bisherigen Dings dieser Gruppe; hatte die Option
+    keins, kommen sie hinten dazu (Reihenfolge Unterkünfte, Aufenthalte, Orte, Strecken). Eine leere Liste leert nur ihre Gruppe; die
+    übrigen Dinge bleiben in ihrer Reihenfolge. Jede ID wird auf Form und Existenz in ihrer Gruppe geprüft -> neue Liste dinge."""
+    from routen import DING_FELDER, DING_GRUPPEN, MUSTER
+    grundform = {g: f for g, f in DING_GRUPPEN.values()}
+    gruppen = {g: id_liste(alt, g, MUSTER[grundform[g]], roh, g) or [] for g in DING_FELDER if g in alt}
+    aus, gesetzt = [], set()
+    for x in dinge:
+        g = (DING_GRUPPEN.get(str(x).split("-", 1)[0]) or (None, None))[0]
+        if g not in gruppen:
+            aus.append(x)
+        elif g not in gesetzt:
+            aus += gruppen[g]
+            gesetzt.add(g)
+    return aus + [x for g in DING_FELDER if g in gruppen and g not in gesetzt for x in gruppen[g]]
+
+
+def fruehere_felder_ablehnen(args, titel):
+    """Die früheren Felder einer Option (unterkuenfte, aufenthalte, orte, strecken) erreichen den Schreibweg nicht mehr: der Konnektor
+    übersetzt sie in dinge und lässt sie nur stehen, wenn zugleich dinge kam (#453). Dann lehnt der Schreibweg ab, nichts wird geschrieben."""
+    from routen import DING_FELDER
+    if (alt := [f for f in DING_FELDER if args.get(f) is not None]):
+        raise Ablehnung("schreiben.option_dinge.gemischt", w1=titel, felder=", ".join(alt))
 
 
 def option_aendern(reise_dir, wer, args, heute=None):
-    """Felder einer Option ändern: titel, text, plus, minus, erfordert, schliesst_aus, ausloeser, siehe, unterkuenfte, strecken,
-    aufenthalte, orte, folge, quelle; favorisieren (favorisiert: true mit grund) als Verlaufseintrag (Mitwirkende dürfen; gewählt, verworfen,
+    """Felder einer Option ändern: titel, text, plus, minus, erfordert, schliesst_aus, ausloeser, siehe, dinge, folge, quelle; favorisieren (favorisiert: true mit grund) als Verlaufseintrag (Mitwirkende dürfen; gewählt, verworfen,
     ersetzt nur mit entscheiden). -> (Titel, Text)."""
     from reise import darf
     heute = heute or datetime.date.today()
@@ -4105,14 +4142,20 @@ def option_aendern(reise_dir, wer, args, heute=None):
             if list(knoten.get(feld) or []) != l:
                 geaendert.append(wechsel(feld, list(knoten.get(feld) or []), l))
                 (knoten.__setitem__(feld, fliess_map({feld: l})[feld]) if l else knoten.pop(feld, None))
+    from routen import DING_FELDER
+    if (alt := {f: args.get(f) for f in DING_FELDER if args.get(f) is not None}):
+        # Frühere Gruppen-Parameter (#453, über den Konnektor weiter angenommen): jeder ersetzt nur seine Gruppe in dinge
+        if args.get("dinge") is not None:
+            fruehere_felder_ablehnen(args, oid)
+        args = {**args, "dinge": dinge_einmischen(list(knoten.get("dinge") or []), alt, roh)}
     inhalt = {}
-    for feld, muster, menge in (("unterkuenfte", r"U-\d+", "unterkuenfte"), ("strecken", r"E-\d+[A-Za-z]?", "strecken"), ("folge", r"T-\d+", "tage"),
-                                ("aufenthalte", r"A-\d+", "aufenthalte"), ("orte", r"O-\d+", "orte")):
-        if args.get(feld) is not None:
-            inhalt[feld] = id_liste(args, feld, muster, roh, menge) or []
+    if args.get("dinge") is not None:
+        inhalt["dinge"] = dinge_liste(args, roh) or []
+    if args.get("folge") is not None:
+        inhalt["folge"] = id_liste(args, "folge", r"T-\d+", roh, "tage") or []
     if inhalt:
-        neu = {f: (inhalt[f] if f in inhalt else list(knoten.get(f) or [])) for f in ("unterkuenfte", "strecken", "folge", "aufenthalte", "orte")}
-        if not option_inhalt_ok(neu):
+        neu = {f: (inhalt[f] if f in inhalt else list(knoten.get(f) or [])) for f in ("dinge", "folge")}
+        if any(neu.values()) and not option_inhalt_ok(neu):
             raise Ablehnung("schreiben.option_aendern.5")
         # Woraus eine entschiedene Option besteht, ändert nur, wer entscheiden darf: Sonst zeigte die Entscheidung
         # einer Organisator:in danach auf andere Unterkünfte oder Strecken, ohne dass sie neu entschieden hat.

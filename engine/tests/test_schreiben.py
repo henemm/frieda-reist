@@ -675,19 +675,19 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     # Option an bestehender Wahlstelle: Status vorgeschlagen, Verlauf mit Person und Datum
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="quelle fehlt"):   # Herkunft ist Pflicht, keine Ersatzquelle (ADR-0001, Frage 5)
-        s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-03", "titel": "Pension Elbblick", "unterkuenfte": ["U-05"]}})
-    a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-03", "titel": "Pension Elbblick", "unterkuenfte": ["U-05"],
+        s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-03", "titel": "Pension Elbblick", "dinge": ["U-05"]}})
+    a = s.schreiben("beispielreise", "option_anlegen", {**KARL, "args": {"wahlstelle": "V-03", "titel": "Pension Elbblick", "dinge": ["U-05"],
                                                                          "plus": ["Elbblick"], "grund": "Karl kennt sie", "quelle": "Karl im Gespräch"}})
     assert "V-03.c" in a["text"] and "vorgeschlagen" in a["text"]
     r, text = routen_auf_main(origin)
     o = next(o for o in r["wahlstellen"]["V-03"]["optionen"] if o["id"] == "V-03.c")
-    assert o["unterkuenfte"] == ["U-05"] and o["plus"] == ["Elbblick"] and o["quelle"] == "Karl im Gespräch"
+    assert o["dinge"] == ["U-05"] and o["plus"] == ["Elbblick"] and o["quelle"] == "Karl im Gespräch"
     assert o["verlauf"] == [{"datum": datetime.date.today(), "status": "vorgeschlagen", "wer": "Karl", "grund": "Karl kennt sie"}]
     assert "wer: Karl, grund:" in text and "&id" not in text
     # Wahlstelle planung ohne Frage: die Frage entsteht mit (offene-fragen.md), Schlüssel bleiben gültig
     s.vorbereiten()
     a = s.schreiben("beispielreise", "wahlstelle_anlegen", {**KARL, "args": {"titel": "Anreise nach Stadt Wehlen", "an": ["T-01"], "art": "bahn",
-        "optionen": [{"titel": "S-Bahn wie bisher", "strecken": ["E-20"], "quelle": "Fahrplan"},
+        "optionen": [{"titel": "S-Bahn wie bisher", "dinge": ["E-20"], "quelle": "Fahrplan"},
                      {"titel": "Mit dem Auto", "text": "Parken in Wehlen", "minus": ["Auto steht vier Tage"], "quelle": "Karl im Gespräch"}]}})
     assert "V-07" in a["text"] and "F-04" in a["text"]
     r, _ = routen_auf_main(origin)
@@ -820,7 +820,7 @@ def test_ding_aendern_und_ablehnungen(repo):
         ("ding_anlegen", {"was": "unterkunft", "titel": "X", "ort": "O-01", "art": "pension", "quelle": "x", "merkmale": {"pool": "ja"}}, "merkmal_definieren"),
         ("ding_anlegen", {"was": "strecke", "titel": "X", "von": "O-01", "nach": "O-02", "art": "pension", "quelle": "x"}, "Bewegungs-Art"),
         ("ding_anlegen", {"was": "zelt", "titel": "X", "quelle": "x"}, "unterkunft, aufenthalt"),
-        ("option_anlegen", {"wahlstelle": "V-03", "titel": "X", "unterkuenfte": ["U-02"], "strecken": ["E-01"]}, "nur eines von"),
+        ("option_anlegen", {"wahlstelle": "V-03", "titel": "X", "dinge": ["U-02", "E-01"]}, "in dinge nur Unterkünfte"),
         ("option_anlegen", {"wahlstelle": "V-03", "titel": "X", "erfordert": ["V-09.z"]}, "gibt es nicht"),
         ("option_anlegen", {"wahlstelle": "V-99", "titel": "X"}, "gibt es nicht"),
         ("wahlstelle_anlegen", {"titel": "X", "optionen": []}, "mindestens eine Option"),
@@ -1787,8 +1787,8 @@ def test_wahlstelle_und_option_aendern(repo):
         s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-01.b", "favorisiert": True}})
     with pytest.raises(sb.Ablehnung, match="derselben Wahlstelle"):
         s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-01.b", "erfordert": ["V-01.a"]}})
-    with pytest.raises(sb.Ablehnung, match="nur eines von"):
-        s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-03.a", "strecken": ["E-01"]}})
+    with pytest.raises(sb.Ablehnung, match="in dinge nur Unterkünfte"):
+        s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-03.a", "dinge": ["U-02", "E-01"]}})
     assert not git(arbeit, "status", "--porcelain")
 
 
@@ -1966,7 +1966,7 @@ def test_wunsch_vorschlagen(repo):
     ("ding_anlegen", {"was": "ort", "titel": "Rathen"}),
     ("ding_anlegen", {"was": "aufenthalt", "titel": "Burg", "ort": "O-03", "art": "besichtigung"}),
     ("ding_anlegen", {"was": "unterkunft", "titel": "Hof", "ort": "O-03", "art": "pension"}),
-    ("option_anlegen", {"wahlstelle": "V-03", "titel": "Hof", "unterkuenfte": ["U-04"]}),
+    ("option_anlegen", {"wahlstelle": "V-03", "titel": "Hof", "dinge": ["U-04"]}),
     ("wahlstelle_anlegen", {"titel": "x", "optionen": [{"titel": "a"}]}),
     ("buchung_anlegen", {"fuer": "U-02"}),
     ("lage_eintragen", {"ziel": "U-02", "adresse": "Markt 1"}),

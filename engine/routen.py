@@ -480,6 +480,40 @@ def wann_von(w):
     return v if v is not None else "planung"
 
 
+# Gruppen der Dinge einer Möglichkeit (#453): Präfix der ID -> Gruppe, wie die Leser sie kennen. Einzige Stelle, die die Präfixe kennt.
+DING_GRUPPEN = {"U": ("unterkuenfte", "unterkunft"), "A": ("aufenthalte", "aufenthalt"), "O": ("orte", "ort"), "E": ("strecken", "strecke")}
+DING_FELDER = tuple(g for g, _ in DING_GRUPPEN.values())   # die früheren Felder einer Möglichkeit, heute nur noch Gruppen beim Lesen
+
+
+def dinge_aufteilen(dinge, unbekannt=None):
+    """Die Dinge einer Möglichkeit (dinge: [U-…|A-…|O-…|E-…]) nach Präfix in die Gruppen unterkuenfte, aufenthalte, orte, strecken
+    teilen, je Gruppe in der Reihenfolge der Eingabe (#453). Ein anderer Präfix ist ein Fehler: mit der Liste unbekannt wird die
+    ID dort gesammelt, sonst ValueError."""
+    gruppen = {}
+    for did in dinge or []:
+        praefix = did.split("-", 1)[0] if isinstance(did, str) and "-" in did else None
+        gruppe, grundform = DING_GRUPPEN.get(praefix) or (None, None)
+        if gruppe is None or not ist(grundform, did):
+            if unbekannt is None:
+                raise ValueError(did)
+            unbekannt.append(did)
+            continue
+        gruppen.setdefault(gruppe, []).append(did)
+    return gruppen
+
+
+def dinge_praefixe_ok(dinge, folge=None):
+    """Präfixregel einer Möglichkeit (#453): Unterkünfte stehen allein, folge steht allein, Strecken, Aufenthalte und Orte dürfen
+    zusammen stehen; leer ist keine Möglichkeit."""
+    unbekannt = []
+    gruppen = set(dinge_aufteilen(dinge, unbekannt))
+    if unbekannt:
+        return False
+    if folge:
+        return not dinge
+    return bool(gruppen) and (gruppen == {"unterkuenfte"} or gruppen <= {"strecken", "aufenthalte", "orte"})
+
+
 def art_der_dinge(w):
     """Art der Dinge, zwischen denen eine Wahlstelle wählt: art: (seit 29.10.2026), sonst der alte Schlüssel bereich:."""
     a = w.get("art")
@@ -694,6 +728,7 @@ class Routen:
         self.buchung_je_ding = {}                            # U-01/A-01/E-01 -> B-ID der geltenden Buchung (nicht storniert)
         self.tage = self.r.get("tage") or {}
         self.wahl = self.r.get("wahlstellen") or {}
+        self.wahl, self.dinge_fehler = self.dinge_aufteilen_alle(self.wahl)
         self.wissen = wissen
         self.option = {}          # V-01.a -> (V-01, Option)
         self.auswahl = {}         # V-01 -> aktive Option-ID
@@ -708,6 +743,47 @@ class Routen:
         self.ist_plan = zwang is not None   # Unterlauf für einen benannten Plan: keine Pläne darin
 
     # ---------- Hilfen ----------
+    def dinge_aufteilen_alle(self, wahl):
+        """Kopien der Wahlstellen, deren Möglichkeiten dinge: in die Gruppen unterkuenfte, aufenthalte, orte, strecken geteilt
+        tragen (#453); die Leser (Nacht, Halte, Merkmale, Ausgabe) lesen die Gruppen. Die Rohdaten bleiben unverändert. Ein Ding
+        mit unbekanntem Präfix oder eines, das es nicht gibt, kommt in keine Gruppe; -> (Wahlstellen, {Option: [(Schlüssel, Werte)]})."""
+        mengen = {"unterkuenfte": (self.unterkuenfte, "pruefung.routen.option_unterkunft"),
+                  "aufenthalte": (self.aufenthalte, "pruefung.routen.option_aufenthalt"),
+                  "orte": (self.orte, "pruefung.routen.option_ort"), "strecken": (self.strecken, "pruefung.routen.option_strecke")}
+        aus, fehler = {}, {}
+        for vid, w in wahl.items():
+            if not isinstance(w, dict) or not isinstance(w.get("optionen"), list):
+                aus[vid] = w
+                continue
+            optionen = []
+            for o in w["optionen"]:
+                if not isinstance(o, dict):
+                    optionen.append(o)
+                    continue
+                o = dict(o)
+                oid = str(o.get("id", ""))
+                f = fehler.setdefault(oid, [])
+                for alt in DING_FELDER:
+                    if alt in o:
+                        f.append(("pruefung.routen.option_altes_feld", {"feld": alt}))
+                if "dinge" in o:
+                    liste = o["dinge"] if isinstance(o["dinge"], list) else [o["dinge"]]
+                    unbekannt = []
+                    gruppen = dinge_aufteilen(liste, unbekannt)
+                    f += [("pruefung.routen.option_praefix", {"did": x}) for x in unbekannt]
+                    if liste and not unbekannt and not dinge_praefixe_ok(liste, o.get("folge")):
+                        f.append(("pruefung.routen.option_mischung", {}))
+                    for g in DING_FELDER:
+                        o.pop(g, None)
+                    for g, ids in gruppen.items():
+                        menge, schluessel = mengen[g]
+                        f += [(schluessel, {"did": x}) for x in ids if x not in menge]
+                        if (da := [x for x in ids if x in menge]):
+                            o[g] = da
+                optionen.append(o)
+            aus[vid] = {**w, "optionen": optionen}
+        return aus, {k: v for k, v in fehler.items() if v}
+
     def t(self, schluessel, /, **werte):
         """Text, den die Seite zeigt (Werte berechneter Merkmale), in der Sprache der Reise."""
         return texte.t(self.sprache, schluessel, **werte)
@@ -867,12 +943,9 @@ class Routen:
                     continue
                 self.id_anlegen(oid, self.q)
                 self.option[oid] = (vid, o)
-                for aid in o.get("aufenthalte") or []:
-                    if aid not in self.aufenthalte:
-                        self.fehl(texte.satz("pruefung.routen.option_aufenthalt", vid=vid, oid=oid, aid=aid))
-                for ort in o.get("orte") or []:   # Ort als Möglichkeit (#353, Schritt 2): ein Ziel ohne Rechenbedeutung
-                    if ort not in self.orte:
-                        self.fehl(texte.satz("pruefung.routen.option_ort", vid=vid, oid=oid, ort=ort))
+                # Dinge der Möglichkeit (#453): Präfix, Existenz je Grundform, Präfixregel, frühere Felder (aufgeteilt in __init__)
+                for schluessel, werte in self.dinge_fehler.get(oid) or []:
+                    self.fehl(texte.satz(schluessel, vid=vid, oid=oid, **werte))
                 self.verlauf_pruefen(oid, o)
             self.waehle(vid, w)
         for vid, f, offen, n_gueltig in self.fragen_offen:
