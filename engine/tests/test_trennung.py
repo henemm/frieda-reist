@@ -83,7 +83,9 @@ def pruefwerte():
 
 
 def verraet(text, werte):
-    """Welche Prüfwerte stehen im Text (als ganzes Wort)?"""
+    """Welche Prüfwerte stehen im Text (als ganzes Wort)? Eine Antwort mit Bild (seite_ansehen, #618) zählt mit ihrem Text; das Bild
+    zeigt die Seite derselben Reise, die das Werkzeug auch sonst nimmt."""
+    text = text.text if isinstance(text, kn.MitBild) else text
     text = text if isinstance(text, str) else json.dumps(text, ensure_ascii=False)
     return [w for w in werte if re.search(r"(?<![\w-])" + re.escape(w) + r"(?![\w])", text)]
 
@@ -138,7 +140,7 @@ def test_uebersichten_nur_eigene_reisen(zwei):
         if name in kn.SCHREIB_WERKZEUGE or name in kn.ONTOLOGIE_WERKZEUGE:
             continue
         text, _ = kn.frieda_werkzeug(u.b, name, {"begriff": "Ida"})
-        assert not verraet(text, werte), (name, text[:300])
+        assert not verraet(text, werte), (name, str(getattr(text, "text", text))[:300])
     assert not verraet(kn.anleitung_frieda(u.b), werte)
     assert {w["name"] for w in kn.frieda_werkzeuge(u.b)} and all(
         set(w["inputSchema"]["properties"]["reise"].get("enum", [])) <= {"stadtwochenende"}
