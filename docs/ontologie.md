@@ -59,6 +59,15 @@ gegenstaende:                                  # plan/packliste.yaml
 - **Packstand:** `<ablage>/<reise>/packstand.json` (`{G-ID: {Person: Zeitpunkt}}`), live beim Rückmeldedienst wie die Aufgaben, nicht im Verlauf der Reise; Abhaken geht auch ohne Netz.
 - **Rollen:** Mitwirkende legen an, ändern eigene (selbst angelegt oder zugewiesen) und haken ab; Organisator:innen alles; die Packliste ist in jedem Status schreibbar außer im Archiv.
 
+## Bilder: eine Eigenschaft der Grundformen (#455, Stufe 1)
+
+Ein Bild ist keine neue Grundform, sondern eine Eigenschaft der Dinge, mit einer eigenen Liste wie die Packliste: `plan/bilder.yaml`, je Bild eine feste Kennung `BI-…` (nie neu vergeben, nie gelöscht; `BI-` ist von der Buchung `B-` unterschieden). Jedes Bild hängt mit `zu` an genau einem Ding (Kennung einer Grundform) oder an der Reise (`reise`).
+
+- **Felder:** Quelle (`commons`, `wikidata` mit aufgelöstem Dateinamen oder `reise` für übernommenen Altbestand), Urheber, Lizenz, Commons-Seite, freiwillig Bildunterschrift und Alt-Text, `titelbild` (höchstens eines je Reise, setzen nur Organisator:innen), `status` (`aktiv` oder `zurueckgezogen`), zwei Fassungen unter `medien/bilder/` (klein 480 px, groß 1600 px, WebP), hinzugefügt mit Datum und Person.
+- **Zurückziehen statt Löschen:** Ein zurückgezogenes Bild wird nirgends mehr gezeigt, bleibt aber in Liste und Ablage und lässt sich wiederherstellen (echtes Löschen erst in Stufe 2, #582).
+- **Herkunft:** Frieda prüft die Nutzungsrechte nicht; sie nennt Urheber, Lizenz und mögliche Einschränkungen als Hinweis, verantwortlich ist, wer das Bild hinzufügt (#613). Die Nennung steht an jedem Bild der Reiseseite.
+- **Darstellung:** Im Text als `![…](BI-…)`, als Kopfbild an seinem Ding, das Titelbild oben auf der Reiseseite und als Kachel in „Meine Reisen“ auf Mein Konto (kleine Fassung über `/bild/<reise>/<datei>`, nur für Mitglieder, `docs/konnektor.md`).
+
 ## Wo ein Ding zu Hause ist: der Elternbezug `an:` (ADR-0007, seit Schritt a, #282)
 
 Jedes Ding in `plan/routen.yaml` (Ort, Strecke, Unterkunft, Aufenthalt, Buchung) darf mit **`an:`** sagen, an welchem anderen Ding es zu Hause ist, genau eines: ein Ort (`O-…`), eine Strecke (`E-…`), ein Aufenthalt (`A-…`), eine Unterkunft (`U-…`), ein Abschnitt des Wissens (`W-…`) oder die Reise selbst (`an: reise`). Die Seite des Elternelements ist die Heimat des Dings (ADR-0003). Ein Tag ist als Elternelement nicht nötig: Ein Ding steht an einem Tag, indem es dort steht (`aufenthalte:`, `strecken:`, `nacht:`).

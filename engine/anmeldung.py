@@ -135,6 +135,13 @@ details.weitere>.liste-innen>*,details.gelesen>.liste-innen>*{border-top:1px sol
 .zeile .wert{color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
 details>.inhalt{padding:0 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
 .archiv>summary{padding:.7rem .25rem;color:var(--mut);font-size:.9375rem;cursor:pointer}.archiv{margin-top:.5rem}
+.kacheln{display:grid;grid-template-columns:minmax(0,1fr);gap:1px;background:var(--line)}
+.kachel{background:var(--card);min-width:0;display:flex;flex-direction:column}
+.kachel-kopf{display:block;color:var(--fg);text-decoration:none}
+.kachel .bild,.kachel .flaeche{display:block;width:100%;aspect-ratio:16/7;object-fit:cover;background:var(--acc2)}
+.kachel .flaeche{display:flex;align-items:center;justify-content:center;background:var(--acc)}
+.kachel .flaeche img{width:3.5rem;height:3.5rem;border-radius:22%}
+@media (min-width:760px){.kacheln{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .personen summary{padding:.2rem 1rem .7rem;color:var(--mut);font-size:.875rem;cursor:pointer}
 .personen ul{margin:0;padding:0 1rem 1rem 2.2rem;display:flex;flex-direction:column;gap:.3rem;font-size:.9375rem}
 .kalender-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 1rem}
@@ -1061,6 +1068,25 @@ def profil_karte(k):
             f'<p class="hinweis" style="margin:0 0 .5rem">{esc(tx("konto.profil.erklaerung"))}</p>{inhalt}</div>')
 
 
+def reise_kachel(reise, info, p, unten):
+    """Baustein reiseKachel (#455): oben das Titelbild 16:7 (kleine Fassung über /bild/, dekorativ), ohne Titelbild die
+    Akzentfläche mit dem App-Symbol, ohne gebaute Seite nur die Fläche; darunter Titel und Rolle mit dem Link auf die
+    Reiseseite, darunter unten (Personen, „Reise löschen …“). Die Bildadresse nennt nur den Ordner der Reise."""
+    titelbild = next((b["id"] for b in seiten_bilder(reise) if b.get("titel") is True and BILD_ID.fullmatch(str(b.get("id")))),
+                     None) if info.get("seite") else None
+    if titelbild:
+        oben = f'<img class="bild" src="/bild/{esc(reise)}/{esc(titelbild)}.webp" alt="" loading="lazy">'
+    elif info.get("seite") and rm.REISE_MUSTER.match(reise) and (instanz.seiten() / reise / "icon-192.png").is_file():
+        oben = f'<span class="flaeche"><img src="/bild/{esc(reise)}/symbol.png" alt="" loading="lazy"></span>'
+    else:
+        oben = '<span class="flaeche"></span>'
+    zeile = (f'<span class="zeile{"" if info.get("seite") else " ohne-link"}"><span class="was"><span class="titel">'
+             f'{esc(info.get("titel") or reise)}</span>{rolle_marke(p.get("rolle"))}</span></span>')
+    kopf = (f'<a class="kachel-kopf" href="{esc(info["seite"])}">{oben}{zeile}</a>' if info.get("seite")
+            else f'<div class="kachel-kopf">{oben}{zeile}</div>')
+    return f'<div class="kachel">{kopf}{unten}</div>'
+
+
 def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen=""):
     """Mein Konto (Gestalt #60), zugleich die Startseite (#41): Meldungen, Reisen, dann Kalender, Freischaltungen
     (Betreiber), Einstellungen als Liste, unten Abmelden auf allen Geräten und Konto löschen. offen: Einstellung, die
@@ -1076,18 +1102,14 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
         info = reise_info(m["reise"]) or {}
         z = rm.zustand(m["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == m["schluessel"]), {})
-        inhalt = (f'<span class="was"><span class="titel">{esc(info.get("titel") or m["reise"])}</span>'
-                  f"{rolle_marke(p.get('rolle'))}</span>")
-        kopf = (f'<a class="zeile" href="{esc(info["seite"])}">{inhalt}</a>' if info.get("seite")
-                else f'<div class="zeile">{inhalt}</div>')
         (archiv if z.get("status") == "archiv" else zeilen).append(
-            f'<div class="reise">{kopf}{personen_block(m["reise"], z, p, loeschen_link(k, m["reise"], z, p))}</div>')
-    reisen = f'<div class="liste">{"".join(zeilen)}</div>' if zeilen else (
+            reise_kachel(m["reise"], info, p, personen_block(m["reise"], z, p, loeschen_link(k, m["reise"], z, p))))
+    reisen = f'<div class="liste"><div class="kacheln">{"".join(zeilen)}</div></div>' if zeilen else (
         "" if archiv or meine_vorgemerkten else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>'))
     reisen = loeschen_block(k, meine_vorgemerkten, reise_info) + reisen
     if archiv:   # archivierte Reisen (auch Testreisen) bleiben erreichbar, stören aber nicht die Liste (#416)
         reisen += (f'<details class="archiv"><summary>{esc(tx("konto.archiv.titel", n=len(archiv)))}</summary>'
-                   f'<div class="liste">{"".join(archiv)}</div></details>')
+                   f'<div class="liste"><div class="kacheln">{"".join(archiv)}</div></div></details>')
     if konten.recht(k, "reise_anlegen"):
         anlegen = f'<p class="hinweis">{esc(tx("konto.reisen.anlegen_darfst"))}</p>'
     else:
@@ -1301,6 +1323,59 @@ def info_datei(pfad):
     return datei if datei.is_file() else None
 
 
+# Bilder der Kacheln auf Mein Konto (#455): /bild/<reise>/BI-NN.webp (kleine Fassung eines aktiven Bildes laut daten.json der gebauten
+# Seite) und /bild/<reise>/symbol.png (App-Symbol icon-192.png), nur für angemeldete Mitglieder. Der Pfad wird nie aus der Anfrage
+# zusammengesetzt: Ordner nach dem Muster der Reisen, Datei über daten.json oder den festen Namen, dann muss sie im Ordner liegen.
+BILD_WEG = re.compile(r"/bild/([^/]+)/(BI-[0-9]+\.webp|symbol\.png)")
+BILD_ID = re.compile(r"BI-[0-9]+")
+
+
+def seiten_bilder(reise):
+    """Aktive Bilder der gebauten Seite (daten.json, Feld bilder) oder []."""
+    if not rm.REISE_MUSTER.match(reise or ""):
+        return []
+    try:
+        d = json.loads((instanz.seiten() / reise / "daten.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    b = d.get("bilder") if isinstance(d, dict) else None
+    return [x for x in b if isinstance(x, dict)] if isinstance(b, list) else []
+
+
+def bild_datei(k, weg):
+    """/bild/<reise>/<datei> -> (Datei, Content-Type) oder None (nicht angemeldet, kein Mitglied, falsche Form, nicht da)."""
+    m = BILD_WEG.fullmatch(weg)
+    if not k or not m or not rm.REISE_MUSTER.match(m[1]) or not konten.mitglied(k["id"], m[1]):
+        return None
+    reise, name = m[1], m[2]
+    if name == "symbol.png":
+        rel, art = "icon-192.png", "image/png"
+    else:
+        rel = next((b.get("klein") for b in seiten_bilder(reise) if b.get("id") == name.removesuffix(".webp")), None)
+        art = "image/webp"
+    if not isinstance(rel, str) or not rel:
+        return None
+    ordner = instanz.seiten() / reise
+    try:
+        basis, datei = ordner.resolve(strict=True), (ordner / rel).resolve(strict=True)
+    except (OSError, RuntimeError):
+        return None
+    return (datei, art) if datei.is_relative_to(basis) and datei != basis and datei.is_file() else None
+
+
+def bild_antwort(k, weg):
+    """Antwort der Bildroute; alles Unzulässige bekommt dieselbe 404-Antwort."""
+    gefunden = bild_datei(k, weg)
+    try:
+        inhalt = gefunden[0].read_bytes() if gefunden else None
+    except OSError:
+        inhalt = None
+    if inhalt is None:
+        return antwort(404, seite(tx("konto.nicht_gefunden"), karte(f"<h1>{esc(tx('konto.nicht_gefunden'))}</h1>")))
+    return 200, [("Content-Type", gefunden[1]), ("Cache-Control", "private, max-age=86400"),
+                 ("X-Content-Type-Options", "nosniff")], inhalt
+
+
 def info_sprachen(pfad="/"):
     """Zeile zum Umschalten der Sprache: ein Link je Sprache der Software auf die Adresse pfad, die aktuelle ist markiert."""
     sp = sprache_der_seite()
@@ -1384,7 +1459,7 @@ def geraet(headers):
 
 def ist_unsere(pfad):
     p = pfad.split("?", 1)[0]
-    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste", "/info", "/info/") + RECHT or p.startswith(("/einladung/", "/kalender/",
+    return p in ("/anmelden", "/konto", "/abmelden", "/warteliste", "/info", "/info/") + RECHT or p.startswith(("/einladung/", "/kalender/", "/bild/",
                                                                                      "/warteliste/bestaetigen/"))
 
 
@@ -1392,6 +1467,10 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
     """-> (code, kopfzeilen, body) für Friedas Anmeldeseiten. reise_info(reise) -> {titel, seite} oder None."""
     teile = urllib.parse.urlsplit(pfad)
     weg, q = teile.path, {k: v[0] for k, v in urllib.parse.parse_qs(teile.query).items()}
+    if weg.startswith("/bild/"):     # Bilder der Kacheln (#455): nur lesen, sonst dieselbe 404-Antwort wie für alles Unzulässige
+        k = sitzung_aus(headers)[1]
+        _anfrage.sprache = k["sprache"] if k else texte.aus_header(headers.get("Accept-Language"))
+        return bild_antwort(k if methode == "GET" else None, weg)
     f = {}
     if methode == "POST":
         if not herkunft_ok(headers):

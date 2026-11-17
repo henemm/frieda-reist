@@ -3602,7 +3602,7 @@ class Dienst(BaseHTTPRequestHandler):
 
     def _erlaubt(self):
         p = self.path.split("?", 1)[0]
-        return "GET, HEAD, OPTIONS" if p.startswith(("/kalender/", "/info/")) or p in FESTE_DATEIEN \
+        return "GET, HEAD, OPTIONS" if p.startswith(("/kalender/", "/info/", "/bild/")) or p in FESTE_DATEIEN \
             or p == "/gesund" else "GET, HEAD, POST, OPTIONS"
 
     def do_OPTIONS(self):

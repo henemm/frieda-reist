@@ -96,6 +96,9 @@ location ^~ /schrift/              { include __SNIPPETS__/__INSTANZ__-konnektor.
 # Bilder der Infoseite (#436): wie die Schrift ohne Drossel, der Dienst liefert nur /info/<name>.webp aus engine/info/. /info/ selbst ist die
 # Infoseite für alle (#440); /info leitet nginx wegen dieses Orts selbst mit 301 dorthin.
 location ^~ /info/                 { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
+# Bilder der Kacheln auf Mein Konto (#455): nur für angemeldete Mitglieder, der Dienst prüft Sitzung, Mitgliedschaft und Form
+# (/bild/<reise>/BI-NN.webp oder symbol.png); wie /info/ ohne Drossel, eine Seite lädt ein Bild je Reise.
+location ^~ /bild/                 { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /favicon.ico            { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /favicon.svg            { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
 location = /apple-touch-icon.png   { include __SNIPPETS__/__INSTANZ__-konnektor.inc; }
