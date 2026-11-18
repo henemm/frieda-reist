@@ -1,0 +1,13 @@
+# Startet das Veröffentlichen (__INSTANZ__-veroeffentlichen.service), sobald der Schreibweg den Merker
+# __DIENST__/veroeffentlichen-anstoss angelegt hat (#624). Das Skript entfernt den Merker vor seiner Sperre; PathExists (nicht
+# PathChanged) prüft nach dem Ende des Dienstes erneut, so geht ein Anstoß während eines Laufs nicht verloren. Ohne diese
+# Einheit veröffentlicht der Timer (alle 5 Minuten). Erzeugt von betrieb/einrichten.sh.
+[Unit]
+Description=__TITEL__: Veröffentlichen nach Anstoß des Schreibwegs
+
+[Path]
+PathExists=__DIENST__/veroeffentlichen-anstoss
+Unit=__INSTANZ__-veroeffentlichen.service
+
+[Install]
+WantedBy=paths.target

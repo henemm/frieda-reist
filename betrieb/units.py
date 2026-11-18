@@ -13,7 +13,8 @@
 
 Erlaubt sind nur ungefährliche Zeilen (Erlaubnisliste ERLAUBT unten): FR_DIENST, FR_ZEITZONE (Umgebungswerte mit engem Wertmuster),
 TimeoutStartSec und die Speichergrenzen MemoryHigh, MemoryMax, MemorySwapMax (#538, nur Werte wie 256M oder 1G). Jedes Muster
-gilt als vollständiger Treffer. Alles andere (User, ExecStart, Rechte, neue oder fehlende Einheiten, Timer) ist gesperrt: Es wird gemeldet,
+gilt als vollständiger Treffer. Alles andere (User, ExecStart, Rechte, neue oder fehlende Einheiten, Timer, Path-Einheiten wie
+<instanz>-veroeffentlichen.path, #624) ist gesperrt: Es wird gemeldet,
 nie automatisch installiert. Nur Standardbibliothek: Dieselbe Prüfung läuft später im Hilfsprogramm mit Root-Rechten.
 """
 import json
@@ -35,7 +36,7 @@ ERLAUBT = {
     ("Service", "MemoryMax"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),       # infinity, keine 0, keine Prozent-, K- oder T-Werte
     ("Service", "MemorySwapMax"): re.compile(r"^[1-9][0-9]{0,4}[MG]$"),
 }
-EINHEITEN = re.compile(r"^[A-Za-z0-9_.-]+\.(?:service|timer)$")
+EINHEITEN = re.compile(r"^[A-Za-z0-9_.-]+\.(?:service|timer|path)$")   # .path: Anstoß des Veröffentlichens (#624)
 DAUERDIENSTE = ("rueckmeldungen", "konnektor", "schreiben", "push")   # werden nach dem Installieren neu gestartet
 
 

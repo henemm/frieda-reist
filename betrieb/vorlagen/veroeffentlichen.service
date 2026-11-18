@@ -16,6 +16,9 @@ __UMGEBUNG_DIENST__
 # Geheime Werte (Heartbeat, Meldeweg) und Konten, Dateien 600, nicht im Repo
 EnvironmentFile=-__DIENST__/betrieb.env
 EnvironmentFile=-__DIENST__/konten.env
+# Merker entfernen, bevor das Skript startet (#624): Bricht veroeffentlichen.sh früh ab, löst der liegende Merker sonst
+# eine Startschleife der Path-Einheit aus. Das rm im Skript bleibt für Läufe außerhalb der Einheit.
+ExecStartPre=-/bin/rm -f __DIENST__/veroeffentlichen-anstoss
 ExecStart=__SOFTWARE__/betrieb/veroeffentlichen.sh
 # Die Tests brauchen Minuten an Rechenzeit; Schreibvorgänge des Schreibwegs gehen vor
 Nice=10

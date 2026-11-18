@@ -25,7 +25,7 @@ Der Schreibweg startet das Veröffentlichen heute als Kindprozess (`Popen`) und 
 
 1. **Kein Kindprozess mehr.** `veroeffentlichen_anstossen` in `engine/schreiben.py` legt nur den Merker `<FR_DIENST>/veroeffentlichen-anstoss` an. Die Funktion wirft nie; ein Fehler beim Anlegen steht nur im Protokoll. „Leer = aus“ über `SB_VEROEFFENTLICHEN` bleibt: ist das Skript dort leer gesetzt, wird kein Merker angelegt. Die Protokolldatei `veroeffentlichen-anstoss.log` entfällt. Der Git-Weg (`engine/schreiben_git.py`) nutzt denselben Anstoß.
 2. **Neue Vorlage** `betrieb/vorlagen/veroeffentlichen.path` mit `PathExists=__DIENST__/veroeffentlichen-anstoss`, `Unit=__INSTANZ__-veroeffentlichen.service` und `WantedBy=paths.target`. `PathExists` statt `PathChanged`, damit systemd nach dem Ende des Dienstes erneut prüft und ein Anstoß, der während eines Laufs kam, nicht verloren geht.
-3. **Merker vor der Sperre löschen.** `betrieb/veroeffentlichen.sh` entfernt `veroeffentlichen-anstoss` am Anfang, vor `flock`. Dadurch bleibt der Merker nie liegen, die Path-Einheit löst keine Endlosschleife und kein Trigger-Limit aus. Ist die Sperre belegt (auch durch einen Lauf außerhalb der Einheit), greift das vorhandene `veroeffentlichen-nochmal` (Nachlauf). Der Merker `-nochmal` behält seine Bedeutung „nach dem laufenden Lauf“; er wird nicht wiederverwendet.
+3. **Merker vor der Sperre löschen.** `betrieb/veroeffentlichen.sh` entfernt `veroeffentlichen-anstoss` am Anfang, vor `flock`. Dadurch bleibt der Merker nie liegen, die Path-Einheit löst keine Endlosschleife und kein Trigger-Limit aus. Ist die Sperre belegt (auch durch einen Lauf außerhalb der Einheit), greift das vorhandene `veroeffentlichen-nochmal` (Nachlauf). Der Merker `-nochmal` behält seine Bedeutung „nach dem laufenden Lauf“; er wird nicht wiederverwendet. Zweite Sicherung: `veroeffentlichen.service` entfernt den Merker schon vor dem Skript (`ExecStartPre=-/bin/rm -f __DIENST__/veroeffentlichen-anstoss`). Bricht das Skript vor seinem eigenen `rm` ab (unlesbare Einstellungen, `nur_bauordner`, `mkdir` scheitert), bleibt so kein Merker liegen, und die Path-Einheit startet den Dienst nicht immer wieder, bis die Startbegrenzung von systemd sie auf `failed` setzt. Das `rm` im Skript bleibt für Läufe außerhalb der Einheit.
 4. **`schreiben.service`:** `MemoryHigh=384M`, `MemoryMax=512M`; der Kommentar „bis #624“ entfällt und nennt den neuen Stand. `MemorySwapMax` sinkt von 1G auf 256M (gleiches Verhältnis wie beim Konnektor mit 1G Hauptspeicher und 256M Swap): Ohne Kindprozess braucht der Schreibdienst keinen großen Swap, und ein großer Swap würde ein Leck weiter verschleppen statt begrenzen. Alle drei Werte liegen im erlaubten Muster `^[1-9][0-9]{0,4}[MG]$`; der Abgleich installiert sie ohne Root-Schritt.
 5. **Einrichten:** `betrieb/einrichten.sh` erzeugt und installiert auch `.path`-Vorlagen und aktiviert `<instanz>-veroeffentlichen.path` (`enable --now`). `betrieb/units.py` kennt `.path` in `EINHEITEN`; eine fehlende `.path`-Einheit ist eine gesperrte, gemeldete Abweichung (normale Meldung, kein Alarm). `betrieb/vorlagen/units-installieren.py` bleibt unverändert: Eine `.path`-Einheit ist nicht automatisch installierbar, es gibt keine neue Sicherheitsentscheidung.
 6. **Übergang ohne aktive Path-Einheit:** Der Merker bleibt liegen, der Timer (alle fünf Minuten) veröffentlicht. Es gibt keinen Rückfall auf `Popen`, denn der liefe nach dem Abgleich von `MemoryMax=512M` in den Speicherabbruch (Analyse, Befund 2). Folge im Übergangsfenster: bis zu fünf Minuten Latenz statt sofort, nichts geht verloren, nichts stürzt ab.
@@ -63,6 +63,7 @@ Der Schreibweg startet das Veröffentlichen heute als Kindprozess (`Popen`) und 
 | `engine/schreiben_git.py` | MODIFY (nur falls nötig) | Aufruf bleibt; Stummel und Kommentar prüfen |
 | `betrieb/vorlagen/veroeffentlichen.path` | CREATE | `PathExists`, `Unit`, `WantedBy=paths.target` |
 | `betrieb/veroeffentlichen.sh` | MODIFY | Anstoß-Merker vor `flock` löschen |
+| `betrieb/vorlagen/veroeffentlichen.service` | MODIFY | `ExecStartPre` entfernt den Anstoß-Merker vor dem Skript (zweite Sicherung, Entscheidung 3) |
 | `betrieb/vorlagen/schreiben.service` | MODIFY | 384M/512M, Swap 256M, Kommentar ohne „bis #624“ |
 | `betrieb/einrichten.sh` | MODIFY | `.path`-Vorlagen erzeugen und installieren, `enable --now <instanz>-veroeffentlichen.path` |
 | `betrieb/units.py` | MODIFY | `EINHEITEN` kennt `.path` |
@@ -75,7 +76,7 @@ Der Schreibweg startet das Veröffentlichen heute als Kindprozess (`Popen`) und 
 | `engine/tests/test_units_helfer.py` | MODIFY | Helfer lehnt `.path` weiter ab (Test der Kategorie „sechs Einheiten“ bleibt gültig) |
 | `engine/tests/test_betrieb.py` | MODIFY | Speichergrenzen für `schreiben`, Doku ohne „bis #624“, Path-Vorlage, `einrichten.sh`, Merker vor Sperre |
 
-Keine Änderung: `betrieb/vorlagen/units-installieren.py`, `betrieb/vorlagen/veroeffentlichen.service`/`.timer`, `ERLAUBT`.
+Keine Änderung: `betrieb/vorlagen/units-installieren.py`, `betrieb/vorlagen/veroeffentlichen.timer`, `ERLAUBT`.
 
 ### Nicht im Scope
 
@@ -204,3 +205,4 @@ Betrieb, nicht Kern: Das Vorhaben berührt weder Grundformen der Reise-Ontologie
 ## Changelog
 
 - 2026-11-18: Initial spec created (Issue #624; Merker und Path-Einheit statt `Popen`, `schreiben` auf 512M, Swap auf 256M)
+- 2026-11-18: Nachbesserung nach Prüfung: ExecStartPre entfernt den Merker vor dem Start

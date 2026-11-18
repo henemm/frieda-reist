@@ -33,7 +33,7 @@ Die vier Dauerdienste der Instanz (Rückmeldedienst, Konnektor, Schreibweg, Push
 | konnektor | 326 MiB (Chromium für das Seitenbild) | 768M | 1G | 256M |
 | schreiben | 3,4 GiB (angestoßenes Veröffentlichen) | 4G | 5G | 1G |
 
-3. **`schreiben` bleibt bewusst grob**, bis das Folge-Issue #624 das Veröffentlichen aus der cgroup des Schreibdienstes löst; danach wird die Grenze auf 512M gesenkt (eigene Änderung, eigener Wert in dieser Tabelle).
+3. **`schreiben` blieb bewusst grob**, bis das Folge-Issue #624 das Veröffentlichen aus der cgroup des Schreibdienstes löst; danach wird die Grenze auf 512M gesenkt (eigene Änderung, eigener Wert in dieser Tabelle).
 4. **`veroeffentlichen.service` bekommt keine Grenze** (eigene Einheit, kurzlebig, läuft auch unter den größten Lasten wie pytest mit mehreren Prozessen).
 5. **Swap eigens begrenzen**: In cgroup v2 begrenzt `MemoryMax` nur den Arbeitsspeicher; auf der Instanz ist ein 2-GiB-Swapfile aktiv (am 17.11.2026 zu 1,6 GiB belegt). Ohne `MemorySwapMax` wiche ein Leck in den Swap aus und träfe den Server trotzdem.
 6. **Erlaubnisliste statt einmaliger Root-Installation** (Variante E verworfen): Sonst bräuchte jede künftige Wertänderung wieder Root auf jeder Instanz. Ressourcengrenzen schränken nur ein und öffnen keine Rechte; der schlimmste Missbrauch ist ein Neustart des Dienstes (Verfügbarkeit), nie mehr Zugriff. Das ist die Abgrenzung zu `dienstrechte-552` Entscheidung 8 (Sandbox-Werte wie `ReadWritePaths` bleiben außerhalb der Liste).
@@ -127,7 +127,7 @@ Instanz-Nachweis (AC-12) ist kein CI-Test, siehe dort.
 
 ## Known Limitations
 
-- `schreiben` trägt bis #624 die grobe Grenze (4G/5G), weil das angestoßene Veröffentlichen in seiner cgroup läuft; der Schutz gegen ein Leck im Schreibweg selbst ist dort schwächer.
+- `schreiben` trug bis zur Erledigung von #624 die grobe Grenze (4G/5G), weil das angestoßene Veröffentlichen in seiner cgroup läuft; der Schutz gegen ein Leck im Schreibweg selbst ist dort schwächer.
 - Nebenbefunde, nicht Teil dieser Spec: Das angestoßene Veröffentlichen erbt `NoNewPrivileges=yes` (#465), und ein Neustart von `schreiben` beendet ein laufendes angestoßenes Veröffentlichen mit (`KillMode=control-group`).
 - Andere Instanzen brauchen den Einmalschritt (`einrichten.sh --installieren`) je Instanz; bis dahin eine einmalige normale Meldung.
 - Die Werte sind Messwerte vom 17.11.2026 und müssen bei deutlich gewachsener Last nachgemessen werden (Anleitung in `docs/betrieb.md`).
@@ -168,7 +168,7 @@ Betrieb, nicht Kern: Das Vorhaben berührt weder Grundformen der Reise-Ontologie
 ## Risiken
 
 - **Grenze zu eng:** Ein Dienst wird bei einer unerwarteten Spitze gedrosselt oder neu gestartet. Gegenmaßnahme: Faktor mindestens 3 über der Spitze von 60 Tagen, weiche Grenze vor der harten, Nachmessen in `docs/betrieb.md`.
-- **Veröffentlichen unter `schreiben`:** zu knappe Grenze würde Veröffentlichen abbrechen; darum bleibt die Grenze grob (5G) bis #624. Folge eines Abbruchs: Timer holt nach.
+- **Veröffentlichen unter `schreiben`:** zu knappe Grenze würde Veröffentlichen abbrechen; darum blieb die Grenze grob (5G), solange #624 offen war. Folge eines Abbruchs: Timer holt nach.
 - **Henne-Ei beim Hilfsprogramm:** bis zum Einmalschritt eine einmalige normale Meldung (AC-10), kein Alarm.
 - **Swap-Buchführung:** `MemorySwapMax` wirkt nur bei aktiver Swap-Buchführung des Kernels; der Nachweis (AC-12) prüft die Werte per `systemctl show`.
 
@@ -181,3 +181,4 @@ Betrieb, nicht Kern: Das Vorhaben berührt weder Grundformen der Reise-Ontologie
 
 - 2026-11-17: Initial spec created (Issue #538, Variante C aus der Analyse)
 - 2026-11-17: Abgrenzung zu Spec 552 als Nachtrag zu Entscheidung 8 in deren Changelog statt im gesperrten Entscheidungstext (Entscheidung Tech Lead); Test `test_doku_beschreibt_speichergrenzen` liest den Changelog
+- 2026-11-18: Folge #624 erledigt: Das Veröffentlichen läuft als eigener Dienst (Merker und Path-Einheit), `schreiben` trägt jetzt 384M/512M/256M (MemoryHigh/MemoryMax/MemorySwapMax) statt 4G/5G/1G; Wertetabelle in `docs/betrieb.md` nachgezogen

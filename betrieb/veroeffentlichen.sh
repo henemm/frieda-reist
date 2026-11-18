@@ -60,7 +60,9 @@
 # Stand nur Änderungen unter reisen/) baut nur die geänderten Reisen und überspringt die Prüfungen der Software, die für
 # genau diese Software schon grün waren. Ein Software-Wechsel (alles außerhalb von reisen/, auch das Submodul) prüft weiter
 # vollständig und baut alle Reisen; nur dann laufen auch die Tests des Reisen-Repos (nach dem Bauen, sie sperren nie).
-# Startet ein Lauf, während ein anderer die Sperre hält (Schreibweg während eines Timer-Laufs), merkt er das in
+# Anstoß aus dem Schreibweg (#624): Der Schreibweg legt nur den Merker <FR_DIENST>/veroeffentlichen-anstoss; die Path-Einheit
+# <instanz>-veroeffentlichen.path startet daraufhin den Dienst, und dieser Lauf entfernt den Merker vor der Sperre.
+# Startet ein Lauf, während ein anderer die Sperre hält (Anstoß während eines Timer-Laufs), merkt er das in
 # <FR_DIENST>/veroeffentlichen-nochmal; der laufende startet danach gleich noch einmal, statt bis zum Timer zu warten.
 # Alle Reisen im Speicher (#454, Lieferung 1): Im Speicher ist, was im Speicher steht (speicherreisen in gemeinsam.sh). Vor
 # dem Speicher-Teil schaltet der Lauf jede übrige Reise aus reisen/ des Bauordners selbst um (reisespeicher.py umschalten:
@@ -1115,6 +1117,10 @@ main() {
   # Sperre in FR_DIENST, nicht in FR_SPERREN (bis #552 mit der Vorgabe /tmp): Der Schreibweg startet diesen Lauf aus einem Dienst mit
   # PrivateTmp, sein /tmp ist nicht das des Timers, und die Sperre griff nicht (zwei Läufe gleichzeitig, #211)
   mkdir -p "$FR_DIENST"
+  # Anstoß-Merker des Schreibwegs (#624) vor der Sperre entfernen: Die Path-Einheit (PathExists) startet diesen Dienst, solange
+  # er liegt; bliebe er liegen, liefe der Dienst ohne Ende. Ein Anstoß nach diesem Punkt legt ihn neu, systemd prüft nach dem
+  # Ende des Laufs erneut und startet noch einmal; bei belegter Sperre greift zusätzlich veroeffentlichen-nochmal.
+  rm -f "$FR_DIENST/veroeffentlichen-anstoss"
   exec 9>"${VF_SPERRE:-$FR_DIENST/veroeffentlichen.lock}"
   chmod 644 "${VF_SPERRE:-$FR_DIENST/veroeffentlichen.lock}" 2>/dev/null || true   # der Kartendienst liest sie als anderer Benutzer
   if ! flock -n 9; then

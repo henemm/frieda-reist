@@ -21,8 +21,8 @@ steht, und eine neue Reise entsteht immer dort):
            ein (erwartet = Stand des Exports). Nach einem Abbruch wird lokal im Speicher nachgesehen. Kein git.
   Git-Weg  jede andere Reise, bis zum Umzug (#454, engine/schreiben_git.py): Arbeitskopie <Wurzel>-schreiben-<reise>
            (FR_SCHREIBKOPIE) auf origin/main, `anwenden` mit dem Code dieser Arbeitskopie, Commit und Push nach main.
-Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh (im Hintergrund; bis Stufe 3, #348, baut es nur
-aus Git, eine Speicher-Reise wartet so lange). Der Pfad hängt von der Anordnung der Wurzel ab (veroeffentlichen_skript, #570):
+Veröffentlicht wird wie nach jedem Zusammenführen: betrieb/veroeffentlichen.sh, als eigener Dienst über den Merker
+<FR_DIENST>/veroeffentlichen-anstoss und die Path-Einheit (#624). Der Pfad hängt von der Anordnung der Wurzel ab (veroeffentlichen_skript, #570):
 im Software-Klon <Wurzel>/betrieb/veroeffentlichen.sh, in der alten Anordnung (Reisen-Repo mit Submodul frieda/)
 <Wurzel>/frieda/betrieb/veroeffentlichen.sh.
 
@@ -5656,42 +5656,24 @@ class Schreiber:
         return buchung_aus_routen(text, bid)
 
     def veroeffentlichen_anstossen(self):
-        """Veröffentlichen im Hintergrund (holt main in den Bauordner, baut, prüft). Hält ein anderer Lauf die Sperre,
-        merkt das Skript das, und der laufende Lauf veröffentlicht danach gleich noch einmal (#230). Niedrige Priorität wie im Dienst
-        veroeffentlichen.service, damit Schreibvorgänge während der Tests nicht warten (fehlen nice oder ionice, ohne sie).
-        Die Ausgabe geht in <FR_DIENST>/veroeffentlichen-anstoss.log (nach /dev/null, wenn die Datei nicht zu öffnen ist): Die
-        Ausgabe des Anwendens ist die Leitung zum Dienst, die das Skript sonst bis zu seinem Ende offen hielte; die Datei
-        zeigt, was der Anstoß tat (#398). Ein fehlgeschlagener Lauf wiederholt der Timer, mit Protokoll. Wirft nie.
-        Das Veröffentlichen baut auch Reisen aus dem Reisespeicher (Stufe 3, #348)."""
+        """Veröffentlichen anstoßen (#624): legt nur den Merker <FR_DIENST>/veroeffentlichen-anstoss an. Die Path-Einheit
+        <instanz>-veroeffentlichen.path startet daraufhin den eigenen Dienst <instanz>-veroeffentlichen.service (holt main in
+        den Bauordner, baut, prüft); das Skript entfernt den Merker vor seiner Sperre. Hält ein anderer Lauf die Sperre, merkt
+        das Skript das, und der laufende Lauf veröffentlicht danach gleich noch einmal (#230). Ohne aktive Path-Einheit
+        veröffentlicht der Timer. Der Schreibdienst startet keinen Prozess mehr (Speichergrenze, Rechte und Lebenszyklus
+        bleiben getrennt). Leer = aus wie bisher; ein fehlendes Skript gibt eine Zeile im Journal (#570). Wirft nie: ein
+        Fehler beim Anlegen steht nur im Protokoll (stderr, das Journal des Dienstes)."""
         if not self.veroeffentlichen:   # gewollt ausgeschaltet
             return
         if not Path(self.veroeffentlichen).exists():   # eine Zeile ins Journal des Dienstes statt stillem Zurückkehren (#570)
             print(f"Publishing not started ({self.veroeffentlichen}): script missing", file=sys.stderr)
             return
-        # Ohne TMPDIR: Der Schreib-Unterprozess setzt es auf seinen Arbeitsordner, der mit dem Vorgang verschwindet; das Skript
-        # (mktemp) fand dann keinen Ordner und baute eine Speicher-Reise erst im nächsten Takt des Timers (#398).
-        env = {**{k: v for k, v in os.environ.items() if k not in ("TMPDIR", "TMP", "TEMP")}, "FR_WURZEL": str(self.wurzel)}
-        prioritaet = (["nice", "-n", "10"] if shutil.which("nice") else []) + \
-                     (["ionice", "-c", "2", "-n", "7"] if shutil.which("ionice") else [])
         try:
-            datei = instanz.dienst() / "veroeffentlichen-anstoss.log"
-            if datei.exists() and datei.stat().st_size > 1_000_000:   # wächst nicht ohne Ende: ab 1 MB von vorn
-                datei.unlink()
-            protokoll = open(datei, "ab")
-        except OSError:
-            protokoll = subprocess.DEVNULL
-        for argv in ([*prioritaet, self.veroeffentlichen], [self.veroeffentlichen]):
-            try:
-                if protokoll is not subprocess.DEVNULL:
-                    protokoll.write(f"--- {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {' '.join(argv[:1])}\n".encode()); protokoll.flush()
-                subprocess.Popen(argv, env=env, stdin=subprocess.DEVNULL, stdout=protokoll, stderr=protokoll,
-                                 start_new_session=True)
-                return
-            except OSError as e:
-                sys.stderr.write(f"Publishing not started ({' '.join(argv[:1])}): {e}\n")
-            finally:
-                if protokoll is not subprocess.DEVNULL:
-                    protokoll.flush()
+            merker = instanz.dienst() / "veroeffentlichen-anstoss"
+            merker.parent.mkdir(parents=True, exist_ok=True)
+            merker.touch(exist_ok=True)
+        except Exception as e:   # noqa: BLE001 – der Anstoß darf das Speichern nie scheitern lassen
+            sys.stderr.write(f"Publishing not triggered (veroeffentlichen-anstoss): {e}\n")
 
 
 def buchung_anfrage_gueltig(reise, bid):

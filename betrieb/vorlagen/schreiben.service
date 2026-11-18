@@ -1,6 +1,6 @@
 # Schreibweg der Instanz __INSTANZ__ (engine/schreiben.py dienst, ADR-0001 Paket O-3): Was im AI-Client über den Konnektor
 # festgelegt wird (Arten und Merkmale der Reise), schreibt dieser Dienst sofort ins Reisen-Repo, prüft es mit einem Probebau,
-# sichert es als Commit nach main und stößt das Veröffentlichen an. Nur für den Konnektor erreichbar (127.0.0.1, Dienst-Geheimnis).
+# sichert es und stößt das Veröffentlichen über einen Merker an (#624). Nur für den Konnektor erreichbar (127.0.0.1, Dienst-Geheimnis).
 # Erzeugt von betrieb/einrichten.sh. Code aus __DIENST__ (legt deploy.sh an); den Schreibvorgang selbst führt er mit dem
 # Code der Arbeitskopie __WURZEL__-schreiben aus (ein Git-Worktree auf main, legt der Dienst an).
 # git pusht mit der Anmeldung von __BENUTZER__ (gh als Credential-Helfer); sie wird nur gelesen (ProtectHome=read-only).
@@ -40,12 +40,14 @@ ExecStart=__PYTHON__ __DIENST__/schreiben.py dienst
 Restart=on-failure
 RestartSec=5
 # Speichergrenzen (#538): weiche Drossel (MemoryHigh), harte Grenze (MemoryMax), Swap eigens begrenzt (MemorySwapMax).
-# Höchste gemessene Spitze der letzten 60 Tage: 3,4 GiB (das angestoßene Veröffentlichen läuft als Kindprozess in dieser cgroup), Messung vom 17.11.2026.
-# Bewusst grob, bis #624 das Veröffentlichen aus der cgroup des Schreibdienstes löst; danach sinkt die Grenze auf 512M.
+# Messung vom 17.11.2026: höchste Spitze der letzten 60 Tage 3,4 GiB, verursacht vom Veröffentlichen als Kindprozess in dieser
+# cgroup. Seit #624 legt der Schreibweg nur noch den Merker __DIENST__/veroeffentlichen-anstoss, das Veröffentlichen läuft als
+# eigener Dienst (__INSTANZ__-veroeffentlichen.path startet __INSTANZ__-veroeffentlichen.service); ohne Kindprozess reichen 512M,
+# Swap wie beim Konnektor eng (256M), damit ein Leck begrenzt statt verschleppt wird.
 # Nachmessen: Journalzeile „memory peak“ des Dienstes (journalctl -u __INSTANZ__-schreiben), Anleitung in docs/betrieb.md.
-MemoryHigh=4G
-MemoryMax=5G
-MemorySwapMax=1G
+MemoryHigh=384M
+MemoryMax=512M
+MemorySwapMax=256M
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict

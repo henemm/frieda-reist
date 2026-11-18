@@ -134,7 +134,8 @@ ersetze() {  # <vorlage> <ziel>
       -e "s|__KD_SPEICHER__|$KD_SPEICHER|g" -e "s|__KD_RUHE__|$KD_RUHE|g" -e "s|__KD_BILD__|$KD_BILD|g" \
       -e "s|__KD_BENUTZER__|$KD_BENUTZER|g" "$1" > "$2"
 }
-for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer; do
+# .path (#624): die Path-Einheit des Veröffentlichens startet den Dienst, sobald der Schreibweg seinen Merker legt
+for v in "$FR_BETRIEB"/vorlagen/*.service "$FR_BETRIEB"/vorlagen/*.timer "$FR_BETRIEB"/vorlagen/*.path; do
   ersetze "$v" "$ZIEL/systemd/$FR_INSTANZ-$(basename "$v")"
 done
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor-orte.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc"
@@ -226,6 +227,8 @@ sudo install -m 755 -o root -g root $ZIEL/sbin/$FR_INSTANZ-kartendienst $SBIN/
 sudo install -m 644 $ZIEL/kartendienst/* $SYSTEMD/
 TEXT
   echo "sudo systemctl daemon-reload"
+  # Anstoß des Schreibwegs (#624): ohne diese Einheit veröffentlicht nur der Timer (bis zu 5 Minuten später)
+  echo "sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.path"
 }
 echo
 echo "Activate (once the server block of $FR_ADRESSE contains  include $SNIPPETS/$FR_INSTANZ-*.conf;"
@@ -235,7 +238,7 @@ cat <<TEXT
   cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL betrieb/deploy.sh --dienste   (installs the code of the services; the check fails before the start)
   sudo systemctl enable --now $FR_INSTANZ-rueckmeldungen $FR_INSTANZ-konnektor $FR_INSTANZ-schreiben $FR_INSTANZ-push
   sudo nginx -t && sudo systemctl reload nginx
-  sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-waechter.timer
+  sudo systemctl enable --now $FR_INSTANZ-veroeffentlichen.timer $FR_INSTANZ-veroeffentlichen.path $FR_INSTANZ-waechter.timer
 Check:  curl -s 127.0.0.1:$FR_SB_PORT/gesund  answers {"gesund": true};  journalctl -u $FR_INSTANZ-veroeffentlichen -n 20
 sudo for $FR_BENUTZER only through fixed helpers and restarts of the own services (#552; --installieren writes these rules
 to /etc/sudoers.d/$FR_INSTANZ, generated in $ZIEL/sudoers/$FR_INSTANZ):

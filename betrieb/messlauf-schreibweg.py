@@ -22,7 +22,7 @@ größten echten Reise aufgefüllt ist (Fotos liegen bis Stufe 4 in der Datenban
 
 Schreibziele unter der Sandbox (#552, docs/specs/betrieb/dienstrechte-552.md, AC-3): SCHREIBZIELE ist genau die Liste
 ReadWritePaths= in vorlagen/schreiben.service (mit Platzhaltern wie dort; ein Test hält beide gleich). Läuft der Messlauf auf
-der Instanz unter der Unit (ProtectSystem=strict, ProtectHome=read-only) samt Hochladen und Veröffentlichen ohne verweigerten
+der Instanz unter der Unit (ProtectSystem=strict, ProtectHome=read-only) samt Hochladen und Anstoß (Merker, #624) ohne verweigerten
 Schreibzugriff durch, reichen diese Ziele; braucht er ein weiteres, kommt es in beide Listen, mit Begründung in der Vorlage.
 """
 import argparse
@@ -61,7 +61,17 @@ def umgebung(tmp, wurzel):
         os.environ[name] = str(tmp / ordner)
     os.environ["FR_WURZEL"] = str(wurzel)
     os.environ["FR_SCHREIBKOPIE"] = str(tmp / "arbeit")
-    os.environ["SB_VEROEFFENTLICHEN"] = str(tmp / "ohne-veroeffentlichen")   # gibt es nicht: kein Veröffentlichen
+    # Der Anstoß legt nur den Merker <FR_DIENST>/veroeffentlichen-anstoss (#624); das Skript muss es geben, gestartet wird es nie
+    skript = tmp / "veroeffentlichen-stummel.sh"
+    skript.write_text("#!/bin/sh\nexit 0\n")
+    os.environ["SB_VEROEFFENTLICHEN"] = str(skript)
+
+
+def anstoss_pruefen(tmp):
+    """Nach dem Lauf: liegt der Anstoß-Merker im Dienstordner der Sandbox (#624)? Gestartet wird dabei nichts."""
+    merker = tmp / "dienst" / "veroeffentlichen-anstoss"
+    print(f"Anstoß: Merker veroeffentlichen-anstoss {'gesetzt' if merker.is_file() else 'FEHLT'}")
+    return merker.is_file()
 
 
 GROSS = {}   # leer oder {"gross-erfunden": Quellordner}, gesetzt von main() bei --auffuellen
@@ -220,13 +230,14 @@ def main():
         kennzahlen("nacheinander", lauf(sb, wurzel, reisen, o.anzahl, 1, zaehler))
         kennzahlen("parallel", lauf(sb, wurzel, reisen, o.anzahl, max(2, o.parallel), zaehler))
         teilzeiten(o.weg, reisen)
+        anstoss_ok = anstoss_pruefen(tmp)
         if "gross-erfunden" in ZEITEN_JE_REISE:
             z = ZEITEN_JE_REISE["gross-erfunden"]
             print(f"gross-erfunden ({o.auffuellen} MB) einzeln: Anzahl {len(z)}, Mittel {statistics.mean(z):.2f} s, "
                   f"p90 {quantil(z, 0.9):.2f} s, Maximum {max(z):.2f} s")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
-    return 0
+    return 0 if anstoss_ok else 1
 
 
 if __name__ == "__main__":

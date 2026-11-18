@@ -2125,14 +2125,15 @@ def test_einrichten_erzeugt_einheiten_ohne_platzhalter(tmp_path):
     namen = sorted(p.name for p in (aus / "systemd").iterdir())
     # kein Einarbeiten mehr (ADR-0001, O-3): keine Einheit ruft Claude Code auf, kein Pfad-Wächter auf die Ablage
     assert namen == ["probe-konnektor.service", "probe-push.service", "probe-rueckmeldungen.service", "probe-schreiben.service",
-                     "probe-veroeffentlichen.service", "probe-veroeffentlichen.timer", "probe-waechter.service",
-                     "probe-waechter.timer"]
+                     "probe-veroeffentlichen.path", "probe-veroeffentlichen.service", "probe-veroeffentlichen.timer",
+                     "probe-waechter.service", "probe-waechter.timer"]   # .path: Anstoß des Schreibwegs (#624)
     for p in [*(aus / "systemd").iterdir(), *(aus / "nginx").iterdir()]:
         assert not re.search(r"__[A-Z_]+__", p.read_text()), p.name
         assert "einarbeiten" not in p.read_text() and "claude -p" not in p.read_text(), p.name
     srv = tmp_path / "srv/probe"
     einh = {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
     assert f"ExecStart={tmp_path}/repo/betrieb/veroeffentlichen.sh" in einh["probe-veroeffentlichen.service"]   # Klon (#454)
+    assert f"ExecStartPre=-/bin/rm -f {srv}/_dienst/veroeffentlichen-anstoss" in einh["probe-veroeffentlichen.service"]   # #624
     assert f"Environment=FR_DIENST={srv}/_dienst" in einh["probe-veroeffentlichen.service"]
     assert f"Environment=FR_WURZEL={tmp_path}/repo" in einh["probe-veroeffentlichen.service"]
     assert "User=reisen" in einh["probe-veroeffentlichen.service"] and "/home/reisen/.local/bin" in einh["probe-veroeffentlichen.service"]
@@ -2618,6 +2619,17 @@ def test_veroeffentlichen_path_vorlage():
     assert "Unit=__INSTANZ__-veroeffentlichen.service" in zeilen
     assert "WantedBy=paths.target" in zeilen
     assert not [z for z in zeilen if z.startswith("PathChanged=")]
+
+
+def test_veroeffentlichen_service_entfernt_merker_vor_start():
+    """#624, Nachbesserung: Die Einheit entfernt den Anstoß-Merker vor dem Skript (ExecStartPre), damit ein früher Abbruch
+    von veroeffentlichen.sh keine Startschleife der Path-Einheit auslöst."""
+    zeilen = [z.strip() for z in (BETRIEB / "vorlagen" / "veroeffentlichen.service").read_text(encoding="utf-8").splitlines()
+              if z.strip() and z.strip()[0] not in "#;"]
+    vorher = "ExecStartPre=-/bin/rm -f __DIENST__/veroeffentlichen-anstoss"
+    assert zeilen.count(vorher) == 1
+    start = [i for i, z in enumerate(zeilen) if z.startswith("ExecStart=")]
+    assert len(start) == 1 and zeilen.index(vorher) < start[0]
 
 
 def test_merker_vor_sperre_entfernt(vf):
