@@ -138,6 +138,53 @@ Status F001: GESCHLOSSEN (Behebung bestätigt). Restrisiko: ein Abbruch nach dem
 
 **Implementierer:** (nicht beteiligt.)
 
+### Runde 4
+**Adversary:** Nachgebesserte Spec (Entscheidung 3, Risiken) und neue Tests gegen den Code geprüft; Code seit Runde 3 unverändert. Testlauf: `adversary-test-output.txt`.
+
+Confirmation:
+  AC: Entscheidung 3 (zweite Sicherung ExecStartPre)
+  Code reference: betrieb/vorlagen/veroeffentlichen.service:21
+  Evidence: `ExecStartPre=-/bin/rm -f __DIENST__/veroeffentlichen-anstoss` steht genau einmal und vor `ExecStart=` (Zeile 22). Der Pfad ist derselbe Platzhalter `__DIENST__` wie in `PathExists=` der Path-Vorlage; `ersetze()` in einrichten.sh setzt ihn für alle Vorlagen gleich. Das Präfix `-` verhindert, dass ein rm-Fehler den Start blockiert. Wirkung bei Timer-Läufen: der Merker wird ebenfalls entfernt, der Lauf veröffentlicht ohnehin den neuesten Stand; ein Anstoß während des Laufs legt den Merker neu, PathExists startet danach erneut.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: Neue Tests prüfen mehr als trivial
+  Code reference: engine/tests/test_betrieb.py:2624
+  Evidence: `test_veroeffentlichen_service_entfernt_merker_vor_start` filtert Kommentare, verlangt genau ein Vorkommen der Zeile (count == 1) und Index vor dem einzigen `ExecStart=`. Ein entfernter, doppelter, nachgestellter oder auskommentierter rm würde rot. Schwäche (LOW, F003): prüft Reihenfolge und Text, nicht, dass der Pfad dem der Path-Vorlage entspricht; das deckt die Zusicherung in `test_einrichten_erzeugt_einheiten_ohne_platzhalter` (Platzhalter ersetzt) nur indirekt.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: Schreibweg legt nur den Merker an
+  Code reference: engine/schreiben.py:5672
+  Evidence: `merker = instanz.dienst() / "veroeffentlichen-anstoss"`, `mkdir`, `touch`, Fehler nur nach stderr; kein Prozessstart. Gleicher Dateiname wie im Dienst und im Skript.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: Skript-rm bleibt zweite Absicherung
+  Code reference: betrieb/veroeffentlichen.sh:1123
+  Evidence: `rm -f "$FR_DIENST/veroeffentlichen-anstoss"` vor `exec 9>` und flock; `test_merker_vor_sperre_entfernt` (test_betrieb.py:2635) prüft Reihenfolge und Lauf.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: Gesperrte Einheiten / Messlauf
+  Code reference: betrieb/units.py:17
+  Evidence: Path-Einheiten und neue Zeilen wie ExecStartPre stehen nicht in ERLAUBT und werden nur gemeldet, nie automatisch installiert (Sicherheitsgrenze unverändert). Messlauf: `betrieb/messlauf-schreibweg.py:72` prüft den Merker statt eines Prozessstarts.
+  Status: CONFIRMED
+
+Finding:
+  ID: F003
+  Severity: LOW
+  Category: edge_case
+  Code reference: betrieb/units.py:60
+  Description: Bestehende Instanzen haben die installierte veroeffentlichen.service ohne ExecStartPre; `schluessel()` kennt ExecStartPre nicht, die Abweichung wird als gesperrt gemeldet und nicht automatisch eingespielt.
+  Spec requirement: Entscheidung 3 (zweite Sicherung)
+  Conflict: Auf bereits eingerichteten Instanzen fehlt die zweite Sicherung, bis `einrichten.sh` mit sudo neu läuft; die erste Sicherung (Skript-rm) wirkt weiter. Bewusste Sicherheitsgrenze, kein Defekt.
+  Remediation: Beim Ausliefern einmal einrichten.sh laufen lassen (wie für die Path-Einheit); keine Codeänderung.
+
+Status: Keine Spec-Verletzung gefunden, F003 nur Hinweis.
+
+**Implementierer:** (nicht beteiligt.)
+
 ## Herkunft der Vorbedingungen
 
 kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
@@ -145,8 +192,8 @@ kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
 ## Verdict
 
 VERDICT: VERIFIED
-Tests: 633 passed, 0 failed, 0 übersprungen.
-Edge cases: F001 (MEDIUM, in Runde 3 geschlossen durch ExecStartPre) und F002 (LOW) dokumentiert, keine Spec-Verletzung.
+Tests: 634 passed, 0 failed, 0 übersprungen.
+Edge cases: F001 (MEDIUM, in Runde 3 geschlossen durch ExecStartPre), F002 und F003 (beide LOW) dokumentiert, keine Spec-Verletzung.
 Regressions: keine gefunden.
 Checklist: 16/17 bewiesen; AC-14 offen, nach Auslieferung (kein Defekt).
 
@@ -160,6 +207,7 @@ Checklist: 16/17 bewiesen; AC-14 offen, nach Auslieferung (kein Defekt).
 - sha256:63c1a7e8c87ff3ecf18af0c57c5d4812006e0be995a7824f1ee72311bf65c93d  betrieb/vorlagen/veroeffentlichen.path
 - sha256:f264d684b44f34f52b214f7915cd21d0bed49ae646b36067275479dc0836ae1e  betrieb/vorlagen/veroeffentlichen.service
 - sha256:caf9e78605059b1ce0b912699489563c03ea03fcd727f7768560d1a10d1564bc  engine/schreiben.py
+- sha256:9e241d8554145597fe96e523da4dd0072cfe4b1c527bcc6214eff5c5f4078b2f  engine/tests/test_betrieb.py
 
 ## Prüfbasis
 
@@ -172,26 +220,4 @@ Checklist: 16/17 bewiesen; AC-14 offen, nach Auslieferung (kein Defekt).
 - blob:effd74d637cd928a70d6e41f090d072d0a8ba675  betrieb/vorlagen/veroeffentlichen.path
 - blob:b00fb737b2635658b630683fb4b2f8381c5b7d02  betrieb/vorlagen/veroeffentlichen.service
 - blob:b9f6707a36986abf189dc869095c46ed1b8b0aab  engine/schreiben.py
-
-## Geprüfte Dateien
-
-- sha256:17925d65786135ed0756dacff5a8e875129204cda4488f4f1179a2c29c64c23e  betrieb/einrichten.sh
-- sha256:057289a8699cbcc5373c980e0972161ee950935da36e4a7c13c34e494f89529f  betrieb/messlauf-schreibweg.py
-- sha256:b7403e8fbd4261728334feba6dc2dce3d807983757c517cfc49317d868bedf93  betrieb/units.py
-- sha256:3c0587e571b1a103da61316b76b467cca60a3a1366d2da986f02ee7c59ef0e32  betrieb/veroeffentlichen.sh
-- sha256:bdcee2f95cc636b3ff050d2ed75d0926e8d2269adf366707b9972f230968fda8  betrieb/vorlagen/schreiben.service
-- sha256:63c1a7e8c87ff3ecf18af0c57c5d4812006e0be995a7824f1ee72311bf65c93d  betrieb/vorlagen/veroeffentlichen.path
-- sha256:f264d684b44f34f52b214f7915cd21d0bed49ae646b36067275479dc0836ae1e  betrieb/vorlagen/veroeffentlichen.service
-- sha256:caf9e78605059b1ce0b912699489563c03ea03fcd727f7768560d1a10d1564bc  engine/schreiben.py
-
-## Prüfbasis
-
-- base: b809523b37ef8d17fc67893b234912851fdfa25c
-- blob:eefc314c24d579b148118c22ac425b2782185881  betrieb/einrichten.sh
-- blob:80ce70bc941da859bf8cfbb4ce97688f34015cb8  betrieb/messlauf-schreibweg.py
-- blob:6d0357dc7e6a3214497682149f564f934dd6d217  betrieb/units.py
-- blob:7ff14e53992b5b8aa94f1cb6528b46ddbaf32a4b  betrieb/veroeffentlichen.sh
-- blob:744d8255ada19bfdc8bda083c1273fcc2f73c097  betrieb/vorlagen/schreiben.service
-- blob:effd74d637cd928a70d6e41f090d072d0a8ba675  betrieb/vorlagen/veroeffentlichen.path
-- blob:b00fb737b2635658b630683fb4b2f8381c5b7d02  betrieb/vorlagen/veroeffentlichen.service
-- blob:b9f6707a36986abf189dc869095c46ed1b8b0aab  engine/schreiben.py
+- blob:996895d809d875b8797b707b20fdf12cb21992a5  engine/tests/test_betrieb.py
