@@ -225,6 +225,21 @@ def test_fehlende_einstellungen_git_weg_unveraendert(repo, monkeypatch, tmp_path
     assert git(origin, "rev-parse", "main") == a["commit"] != vorher
 
 
+@pytest.mark.parametrize("reise", sorted(REISEN))
+def test_speichern_legt_anstoss_merker(speicher, reise):
+    """#624 AC-4: Ein gelungenes Speichern über den Speicherweg legt den Merker <FR_DIENST>/veroeffentlichen-anstoss; das
+    Skript (Stummel) läuft nicht im Schreibweg, und das Anstoß-Protokoll veroeffentlichen-anstoss.log entsteht nicht mehr."""
+    import time
+    org, _ = REISEN[reise]
+    dienst = speicher.tmp.parent / "_dienst"
+    code, a = schreib(speicher, reise, "frage_anlegen", {**org, "args": {"text": "Gibt es dort einen Bäcker? (Beispielwert)"}})
+    assert code == 200 and a["ok"], a
+    assert (dienst / "veroeffentlichen-anstoss").is_file()
+    assert not (dienst / "veroeffentlichen-anstoss.log").exists()
+    time.sleep(0.3)
+    assert not speicher.stempel.exists(), "Der Schreibweg hat das Skript selbst gestartet"
+
+
 # ---------- AC-6: ein Vorgang je Schreibvorgang ----------
 
 @pytest.mark.parametrize("reise", sorted(REISEN))

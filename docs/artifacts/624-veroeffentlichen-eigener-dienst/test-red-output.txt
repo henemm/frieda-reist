@@ -1,0 +1,420 @@
+bringing up nodes...
+bringing up nodes...
+
+........F.FFF..F........F.......F.FFF.F..F.F.F.F.FF                      [100%]
+=================================== FAILURES ===================================
+_________________________ test_anstoss_legt_nur_merker _________________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw1/test_anstoss_legt_nur_merker0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x795101b64380>
+
+    def test_anstoss_legt_nur_merker(tmp_path, monkeypatch):
+        """#624 AC-1: Mit gesetztem SB_VEROEFFENTLICHEN legt der Anstoß nur den Merker <FR_DIENST>/veroeffentlichen-anstoss an;
+        das Skript selbst startet die Path-Einheit, nicht der Schreibweg (kein Kindprozess, kein Lauf des Stummels)."""
+        gerufen = kein_start(monkeypatch)
+        w = wurzel_anlegen(tmp_path, "klon")
+        marke = tmp_path / "gelaufen"
+        stummel = tmp_path / "veroeffentlichen.sh"
+        stummel.write_text(f"#!/bin/sh\ntouch '{marke}'\n")
+        stummel.chmod(0o755)
+        monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stummel))
+        sb.Schreiber(w, tmp_path / "arbeit").veroeffentlichen_anstossen()
+>       assert merker(tmp_path).is_file(), "Anstoß-Merker fehlt"
+E       AssertionError: Anstoß-Merker fehlt
+E       assert False
+E        +  where False = is_file()
+E        +    where is_file = PosixPath('<tmp>/popen-gw1/test_anstoss_legt_nur_merker0/dienst/veroeffentlichen-anstoss').is_file
+E        +      where PosixPath('<tmp>/popen-gw1/test_anstoss_legt_nur_merker0/dienst/veroeffentlichen-anstoss') = merker(PosixPath('<tmp>/popen-gw1/test_anstoss_legt_nur_merker0'))
+
+engine/tests/test_anstoss_pfad_570.py:98: AssertionError
+____________________________ test_anstoss_wirft_nie ____________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw2/test_anstoss_wirft_nie0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74edaf4c3ce0>
+capsys = <_pytest.capture.CaptureFixture object at 0x74edaf4c1490>
+
+    def test_anstoss_wirft_nie(tmp_path, monkeypatch, capsys):
+        """#624 AC-3: Ist der Dienstordner nicht beschreibbar (hier: ein Pfad unter einer Datei), wirft der Anstoß nicht; der
+        Fehler steht als Zeile im Protokoll (stderr, das Journal des Dienstes)."""
+        gerufen = kein_start(monkeypatch)
+        stummel = tmp_path / "veroeffentlichen.sh"
+        stummel.write_text("#!/bin/sh\nexit 0\n")
+        stummel.chmod(0o755)
+        keine_mappe = tmp_path / "datei"
+        keine_mappe.write_text("kein Ordner")
+        monkeypatch.setenv("FR_DIENST", str(keine_mappe / "dienst"))
+        monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stummel))
+        sb.Schreiber(wurzel_anlegen(tmp_path, "klon"), tmp_path / "arbeit").veroeffentlichen_anstossen()
+        err = capsys.readouterr().err
+>       assert "veroeffentlichen-anstoss" in err, err
+E       AssertionError: 
+E       assert 'veroeffentlichen-anstoss' in ''
+
+engine/tests/test_anstoss_pfad_570.py:128: AssertionError
+________________________ test_path_einheit_in_einheiten ________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_path_einheit_in_einheiten():
+        """#624 AC-9: Der Abgleich kennt .path-Einheiten (neben .service und .timer)."""
+        u = units()
+>       assert u.EINHEITEN.match("probe-veroeffentlichen.path")
+E       AssertionError: assert None
+E        +  where None = <built-in method match of re.Pattern object at 0x7bd72b1ec600>('probe-veroeffentlichen.path')
+E        +    where <built-in method match of re.Pattern object at 0x7bd72b1ec600> = re.compile('^[A-Za-z0-9_.-]+\\.(?:service|timer)$').match
+E        +      where re.compile('^[A-Za-z0-9_.-]+\\.(?:service|timer)$') = <module 'units' from 'betrieb/units.py'>.EINHEITEN
+
+engine/tests/test_units.py:339: AssertionError
+_____________________ test_anstoss_startet_keinen_prozess ______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_anstoss_startet_keinen_prozess():
+        """#624 AC-13: Der Quelltext des Anstoßes startet keinen Prozess (kein Popen, kein subprocess, kein nice/ionice)."""
+        import inspect
+        quelle = inspect.getsource(sb.Schreiber.veroeffentlichen_anstossen)
+        for wort in ("Popen", "subprocess", "ionice", "os.system", "os.spawn"):
+>           assert wort not in quelle, wort
+E           AssertionError: Popen
+E           assert 'Popen' not in '    def ver...ll.flush()\n'
+E             
+E             'Popen' is contained here:
+E               ubprocess.Popen(argv, env=env, stdin=subprocess.DEVNULL, stdout=protokoll, stderr=protokoll,
+E             ?           +++++
+E                                                start_new_session=True)
+E                               return
+E                           except OSError as e:...
+E             
+E             ...Full output truncated (4 lines hidden), use '-vv' to show
+
+engine/tests/test_anstoss_pfad_570.py:137: AssertionError
+___________________ test_fehlende_path_einheit_ist_gesperrt ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw0/test_fehlende_path_einheit_ist0')
+
+    def test_fehlende_path_einheit_ist_gesperrt(tmp_path):
+        """#624 AC-9: Fehlt die installierte Path-Einheit, ist das eine gesperrte Abweichung (Ausgang 4), mit ihrem Namen."""
+        systemd, env = _installierte_einheiten(tmp_path)
+>       assert (systemd / "probe-veroeffentlichen.path").exists(), "einrichten.sh --erzeugen schreibt keine .path-Einheit"
+E       AssertionError: einrichten.sh --erzeugen schreibt keine .path-Einheit
+E       assert False
+E        +  where False = exists()
+E        +    where exists = (PosixPath('<tmp>/popen-gw0/test_fehlende_path_einheit_ist0/systemd') / 'probe-veroeffentlichen.path').exists
+
+engine/tests/test_units.py:346: AssertionError
+_____________ test_dauerdienste_tragen_speichergrenzen[schreiben] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+art = 'schreiben'
+
+    @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
+    def test_dauerdienste_tragen_speichergrenzen(art):
+        """AC-1: Jede Dauerdienst-Vorlage trägt genau eine Zeile MemoryHigh, MemoryMax, MemorySwapMax mit den Werten der Spec;
+        jeder Wert passt auf das Muster der Erlaubnisliste. Der Kommentar nennt das Messdatum."""
+        zeilen = _service_zeilen(art)
+        for schluessel, soll in zip(("MemoryHigh", "MemoryMax", "MemorySwapMax"), SPEICHERGRENZEN[art]):
+            werte = [w for k, w in zeilen if k == schluessel]
+>           assert werte == [soll], (art, schluessel, werte)
+E           AssertionError: ('schreiben', 'MemoryHigh', ['4G'])
+E           assert ['4G'] == ['384M']
+E             
+E             At index 0 diff: '4G' != '384M'
+E             Use -v to get more diff
+
+engine/tests/test_betrieb.py:2571: AssertionError
+______________________ test_veroeffentlichen_path_vorlage ______________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_veroeffentlichen_path_vorlage():
+        """#624 AC-5: Die Path-Einheit startet den eigenen Dienst, sobald der Merker liegt (PathExists, nicht PathChanged)."""
+>       zeilen = [z.strip() for z in (BETRIEB / "vorlagen" / "veroeffentlichen.path").read_text(encoding="utf-8").splitlines()
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                  if z.strip() and z.strip()[0] not in "#;"]
+
+engine/tests/test_betrieb.py:2614: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('betrieb/vorlagen/veroeffentlichen.path')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'betrieb/vorlagen/veroeffentlichen.path'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_______________________ test_merker_vor_sperre_entfernt ________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7fe2d167c7c0>, 'deploys': <function vf.<locals>.deploys at 0x7fe2d167c400>, '...f.<locals>.anzahl_pings at 0x7fe2d167c5e0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7fe2d167c0e0>, ...}
+
+    def test_merker_vor_sperre_entfernt(vf):
+        """#624 AC-6: veroeffentlichen.sh entfernt den Anstoß-Merker vor der Sperre (Skripttext und Lauf mit freier Sperre)."""
+        text = (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+        entfernen = re.search(r'(?m)^\s*rm -f "?\$FR_DIENST/veroeffentlichen-anstoss"?\s*$', text)
+>       assert entfernen, "rm -f des Anstoß-Merkers fehlt"
+E       AssertionError: rm -f des Anstoß-Merkers fehlt
+E       assert None
+
+engine/tests/test_betrieb.py:2627: AssertionError
+_________________________ test_messlauf_prueft_merker __________________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_messlauf_prueft_merker():
+        """#624 AC-11: Der Messlauf prüft in der Sandbox den Anstoß-Merker und startet kein Skript des Veröffentlichens."""
+        text = (BETRIEB / "messlauf-schreibweg.py").read_text(encoding="utf-8")
+>       assert "veroeffentlichen-anstoss" in text
+E       assert 'veroeffentlichen-anstoss' in '#!/usr/bin/env python3\n"""Messlauf des Schreibwegs (Stufe 2, #347, docs/specs/betrieb/schreibweg-speicher-347.md): w...\n        shutil.rmtree(tmp, ignore_errors=True)\n    return 0\n\n\nif __name__ == "__main__":\n    sys.exit(main())\n'
+
+engine/tests/test_betrieb.py:2671: AssertionError
+____________________ test_einrichten_aktiviert_path_einheit ____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw2/test_einrichten_aktiviert_path0')
+
+    def test_einrichten_aktiviert_path_einheit(tmp_path):
+        """#624 AC-8: einrichten.sh erzeugt .path-Vorlagen wie .service und .timer (Platzhalter ersetzt) und aktiviert
+        <instanz>-veroeffentlichen.path."""
+        ziel = tmp_path / "soll"
+        env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "EI_ZIEL": str(ziel)}
+        r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        einheit = ziel / "systemd" / "probe-veroeffentlichen.path"
+>       assert einheit.exists(), sorted(p.name for p in (ziel / "systemd").iterdir())
+E       AssertionError: ['probe-konnektor.service', 'probe-push.service', 'probe-rueckmeldungen.service', 'probe-schreiben.service', 'probe-veroeffentlichen.service', 'probe-veroeffentlichen.timer', ...]
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('<tmp>/popen-gw2/test_einrichten_aktiviert_path0/soll/systemd/probe-veroeffentlichen.path').exists
+
+engine/tests/test_betrieb.py:2661: AssertionError
+_________________ test_doku_beschreibt_veroeffentlichen_dienst _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_doku_beschreibt_veroeffentlichen_dienst():
+        """#624 AC-12: docs/betrieb.md beschreibt Merker, Path-Einheit, 512M, den Auslieferungsschritt und den Wegfall des
+        Anstoß-Protokolls; „bis #624“ steht nirgends mehr als offener Zustand. Der Changelog von Spec 538 nennt #624 erledigt."""
+        doku = (BETRIEB.parent / "docs" / "betrieb.md").read_text(encoding="utf-8")
+        for wort in ("veroeffentlichen-anstoss", "veroeffentlichen.path", "512M", "einrichten.sh --installieren",
+                     "veroeffentlichen-anstoss.log"):
+>           assert wort in doku, wort
+E           AssertionError: veroeffentlichen-anstoss
+E           assert 'veroeffentlichen-anstoss' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+
+engine/tests/test_betrieb.py:2681: AssertionError
+______________________ test_belegte_sperre_setzt_nochmal _______________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+vf = {'lauf': <function vf.<locals>.lauf at 0x7bd72b1776a0>, 'deploys': <function vf.<locals>.deploys at 0x7bd72b1772e0>, '...f.<locals>.anzahl_pings at 0x7bd72b177600>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x7bd72b177880>, ...}
+
+    def test_belegte_sperre_setzt_nochmal(vf):
+        """#624 AC-6: Ist die Sperre belegt, ist der Anstoß-Merker trotzdem weg (keine Endlosschleife der Path-Einheit), der
+        Nachlauf-Merker veroeffentlichen-nochmal ist gesetzt, und es läuft nichts weiter."""
+        import fcntl
+        merker = vf["tmp"] / "dienst" / "veroeffentlichen-anstoss"
+        nochmal = vf["tmp"] / "dienst" / "veroeffentlichen-nochmal"
+        merker.parent.mkdir(parents=True, exist_ok=True)
+        merker.touch()
+        with open(vf["tmp"] / "dienst" / "veroeffentlichen.lock", "w") as f:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            r = vf["lauf"]()
+        assert r.returncode == 0 and "Already running" in r.stdout, r.stdout + r.stderr
+>       assert not merker.exists() and nochmal.exists()
+E       AssertionError: assert (not True)
+E        +  where True = exists()
+E        +    where exists = PosixPath('<tmp>/popen-gw0/test_belegte_sperre_setzt_noch0/dienst/veroeffentlichen-anstoss').exists
+
+engine/tests/test_betrieb.py:2649: AssertionError
+___________ test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht ___________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('<tmp>/popen-gw3/test_art_anlegen_geht_nach_mai0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('<tmp>/popen-gw3/test_art_anlegen_geht_nach_mai0/veroeffentlicht'))
+
+    def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
+        wurzel, origin, arbeit, stempel = repo
+        s = schreiber(repo)
+        vorher = git(origin, "rev-parse", "main")
+        a = s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt",
+                                                                             "beschreibung": "bewirtschaftete Berghütte", "grund": "GR-Etappen"}})
+        assert a["ok"] and "Refugi" in a["text"] and "refugi" in a["text"] and "Aufenthalt" in a["text"]
+        assert git(origin, "rev-parse", "main") == a["commit"] != vorher
+        import texte
+        en = texte.Satz.aus_json(a["text_teile"]).text("en")   # dieselbe Bestätigung für eine englische Person (M9)
+        assert en.startswith("Kind “Refugi” created: key refugi, basic form ") and "angelegt" not in en, en
+        arten, text = arten_auf_main(origin)
+        r = arten["refugi"]
+        assert r["grundform"] == "aufenthalt" and r["name"] == "Refugi" and r["beschreibung"] == "bewirtschaftete Berghütte"
+        assert r["farbe"] not in {x.get("farbe") for k, x in arten.items() if k != "refugi" and x["grundform"] == "aufenthalt"}
+        assert "merkmale" not in r                       # Merkmale kommen im Gespräch dazu (merkmal_definieren)
+        assert text.startswith("# Arten und Merkmale dieser Reise") and meldet(text, "inhalt.schreiben.gepflegt") and "Ida" in text
+        assert "hotel" in arten and arten["hotel"]["merkmale"]["preis"]["name"] == "Preis pro Nacht"   # Bestand unverändert
+        nachricht = git(origin, "log", "-1", "--format=%B", "main")
+        assert nachricht.startswith("Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt")
+        assert "Ida (organisator)" in nachricht and "art_definieren" in nachricht and "Grund: GR-Etappen" in nachricht
+>       assert anstoss_merker(repo).is_file() and not stempel.exists()   # #624: Merker statt Skriptlauf
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert (False)
+E        +  where False = is_file()
+E        +    where is_file = PosixPath('<tmp>/popen-gw3/test_art_anlegen_geht_nach_mai0/_dienst/veroeffentlichen-anstoss').is_file
+E        +      where PosixPath('<tmp>/popen-gw3/test_art_anlegen_geht_nach_mai0/_dienst/veroeffentlichen-anstoss') = anstoss_merker((PosixPath('<tmp>/popen-gw3/test_art_anlegen_geht_nach_mai0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('<tmp>/popen-gw3/test_art_anlegen_geht_nach_mai0/veroeffentlicht')))
+
+engine/tests/test_schreiben.py:174: AssertionError
+_____ test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie _____
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('<tmp>/popen-gw2/test_dienst_nur_fuer_den_konne0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('<tmp>/popen-gw2/test_dienst_nur_fuer_den_konne0/veroeffentlicht'))
+
+    def test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie(repo):
+        import konten
+        wurzel, origin, arbeit, stempel = repo
+        sb.Dienst.schreiber = sb.Schreiber(wurzel, arbeit)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), sb.Dienst)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        basis = f"http://127.0.0.1:{server.server_address[1]}"
+    
+        def post(pfad, daten, geheim):
+            kopf = {"Content-Type": "application/json"}
+            if geheim is not None:
+                kopf["X-Frieda-Dienst"] = geheim
+            req = urllib.request.Request(f"{basis}/{pfad}", data=json.dumps(daten).encode(), method="POST", headers=kopf)
+            try:
+                with urllib.request.urlopen(req) as r:
+                    return r.status, json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                return e.code, json.loads(e.read())
+        try:
+            with urllib.request.urlopen(f"{basis}/gesund") as r:
+                assert json.loads(r.read()) == {"gesund": True}
+            anfrage = {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}}
+            assert post("beispielreise/art_definieren", anfrage, None)[0] == 403
+            assert post("beispielreise/art_definieren", anfrage, "falsch")[0] == 403
+            assert not arbeit.exists()
+            geheim = konten.dienst_geheimnis()
+            assert post("beispielreise/loeschen", anfrage, geheim)[0] == 404
+            assert post("Reise_X/art_definieren", anfrage, geheim)[0] == 404
+            code, a = post("beispielreise/art_definieren", anfrage, geheim)
+            assert code == 200 and a["ok"] and "Refugi" in a["text"], a
+            assert git(origin, "rev-parse", "main") == a["commit"] and "refugi" in arten_auf_main(origin)[0]
+>           assert anstoss_merker(repo).is_file() and not stempel.exists()   # #624: Merker statt Skriptlauf
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AssertionError: assert (False)
+E            +  where False = is_file()
+E            +    where is_file = PosixPath('<tmp>/popen-gw2/test_dienst_nur_fuer_den_konne0/_dienst/veroeffentlichen-anstoss').is_file
+E            +      where PosixPath('<tmp>/popen-gw2/test_dienst_nur_fuer_den_konne0/_dienst/veroeffentlichen-anstoss') = anstoss_merker((PosixPath('<tmp>/popen-gw2/test_dienst_nur_fuer_den_konne0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('<tmp>/popen-gw2/test_dienst_nur_fuer_den_konne0/veroeffentlicht')))
+
+engine/tests/test_schreiben.py:447: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /gesund 200
+POST /beispielreise/art_definieren 403
+POST /beispielreise/art_definieren 403
+POST /beispielreise/loeschen 404
+POST /Reise_X/art_definieren 404
+Done art_definieren 200 in 0.9 s
+POST /beispielreise/art_definieren 200
+_____________ test_speichern_legt_anstoss_merker[stadtwochenende] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engin...1/test_speichern_legt_anstoss_me0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7951001afc40>)
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", sorted(REISEN))
+    def test_speichern_legt_anstoss_merker(speicher, reise):
+        """#624 AC-4: Ein gelungenes Speichern über den Speicherweg legt den Merker <FR_DIENST>/veroeffentlichen-anstoss; das
+        Skript (Stummel) läuft nicht im Schreibweg, und das Anstoß-Protokoll veroeffentlichen-anstoss.log entsteht nicht mehr."""
+        import time
+        org, _ = REISEN[reise]
+        dienst = speicher.tmp.parent / "_dienst"
+        code, a = schreib(speicher, reise, "frage_anlegen", {**org, "args": {"text": "Gibt es dort einen Bäcker? (Beispielwert)"}})
+        assert code == 200 and a["ok"], a
+>       assert (dienst / "veroeffentlichen-anstoss").is_file()
+E       AssertionError: assert False
+E        +  where False = is_file()
+E        +    where is_file = (PosixPath('<tmp>/popen-gw1/test_speichern_legt_anstoss_me0/_dienst') / 'veroeffentlichen-anstoss').is_file
+
+engine/tests/test_schreiben_speicher.py:237: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done frage_anlegen 200 in 0.4 s
+______________ test_speichern_legt_anstoss_merker[beispielreise] _______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engin...0/test_speichern_legt_anstoss_me0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7bd729d01c60>)
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", sorted(REISEN))
+    def test_speichern_legt_anstoss_merker(speicher, reise):
+        """#624 AC-4: Ein gelungenes Speichern über den Speicherweg legt den Merker <FR_DIENST>/veroeffentlichen-anstoss; das
+        Skript (Stummel) läuft nicht im Schreibweg, und das Anstoß-Protokoll veroeffentlichen-anstoss.log entsteht nicht mehr."""
+        import time
+        org, _ = REISEN[reise]
+        dienst = speicher.tmp.parent / "_dienst"
+        code, a = schreib(speicher, reise, "frage_anlegen", {**org, "args": {"text": "Gibt es dort einen Bäcker? (Beispielwert)"}})
+        assert code == 200 and a["ok"], a
+>       assert (dienst / "veroeffentlichen-anstoss").is_file()
+E       AssertionError: assert False
+E        +  where False = is_file()
+E        +    where is_file = (PosixPath('<tmp>/popen-gw0/test_speichern_legt_anstoss_me0/_dienst') / 'veroeffentlichen-anstoss').is_file
+
+engine/tests/test_schreiben_speicher.py:237: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done frage_anlegen 200 in 0.7 s
+_______________________ test_git_weg_legt_anstoss_merker _______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+repo = (PosixPath('<tmp>/popen-gw2/test_git_weg_legt_anstoss_merk0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('<tmp>/popen-gw2/test_git_weg_legt_anstoss_merk0/veroeffentlicht'))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74edaf4b8ad0>
+
+    def test_git_weg_legt_anstoss_merker(repo, monkeypatch):
+        """#624 AC-4: Ein gelungenes Speichern über den Git-Weg legt den Merker <FR_DIENST>/veroeffentlichen-anstoss; der
+        Schreibweg startet keinen Prozess, und das Anstoß-Protokoll veroeffentlichen-anstoss.log entsteht nicht mehr."""
+        wurzel, _, arbeit, stempel = repo
+        gerufen = []
+        original = sb.subprocess.Popen
+    
+        def zaehlen(argv, *a, **k):
+            if str(argv[-1] if isinstance(argv, (list, tuple)) else argv).endswith("veroeffentlichen.sh"):
+                gerufen.append(argv)
+            return original(argv, *a, **k)
+    
+        monkeypatch.setattr(sb.subprocess, "Popen", zaehlen)
+        code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
+                                     {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
+        assert code == 200 and a["ok"], (code, a)
+        dienst = wurzel.parent / "_dienst"
+>       assert (dienst / "veroeffentlichen-anstoss").is_file()
+E       AssertionError: assert False
+E        +  where False = is_file()
+E        +    where is_file = (PosixPath('<tmp>/popen-gw2/test_git_weg_legt_anstoss_merk0/_dienst') / 'veroeffentlichen-anstoss').is_file
+
+engine/tests/test_schreiben.py:1532: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done art_definieren 200 in 0.8 s
+=========================== short test summary info ============================
+FAILED engine/tests/test_anstoss_pfad_570.py::test_anstoss_legt_nur_merker - ...
+FAILED engine/tests/test_anstoss_pfad_570.py::test_anstoss_wirft_nie - Assert...
+FAILED engine/tests/test_units.py::test_path_einheit_in_einheiten - Assertion...
+FAILED engine/tests/test_anstoss_pfad_570.py::test_anstoss_startet_keinen_prozess
+FAILED engine/tests/test_units.py::test_fehlende_path_einheit_ist_gesperrt - ...
+FAILED engine/tests/test_betrieb.py::test_dauerdienste_tragen_speichergrenzen[schreiben]
+FAILED engine/tests/test_betrieb.py::test_veroeffentlichen_path_vorlage - Fil...
+FAILED engine/tests/test_betrieb.py::test_merker_vor_sperre_entfernt - Assert...
+FAILED engine/tests/test_betrieb.py::test_messlauf_prueft_merker - assert 've...
+FAILED engine/tests/test_betrieb.py::test_einrichten_aktiviert_path_einheit
+FAILED engine/tests/test_betrieb.py::test_doku_beschreibt_veroeffentlichen_dienst
+FAILED engine/tests/test_betrieb.py::test_belegte_sperre_setzt_nochmal - Asse...
+FAILED engine/tests/test_schreiben.py::test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht
+FAILED engine/tests/test_schreiben.py::test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie
+FAILED engine/tests/test_schreiben_speicher.py::test_speichern_legt_anstoss_merker[stadtwochenende]
+FAILED engine/tests/test_schreiben_speicher.py::test_speichern_legt_anstoss_merker[beispielreise]
+FAILED engine/tests/test_schreiben.py::test_git_weg_legt_anstoss_merker - Ass...
+17 failed, 34 passed in 6.53s

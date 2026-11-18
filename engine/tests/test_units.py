@@ -329,3 +329,23 @@ def test_alter_helfer_nur_normale_meldung(tmp_path):
     assert (systemd / "probe-push.service").read_text() == vorher
     r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
     assert r.returncode == 3, r.stdout
+
+
+# ---------- Path-Einheit des Veröffentlichens (#624) ----------
+
+def test_path_einheit_in_einheiten():
+    """#624 AC-9: Der Abgleich kennt .path-Einheiten (neben .service und .timer)."""
+    u = units()
+    assert u.EINHEITEN.match("probe-veroeffentlichen.path")
+    assert u.EINHEITEN.match("probe-konnektor.service") and u.EINHEITEN.match("probe-veroeffentlichen.timer")
+
+
+def test_fehlende_path_einheit_ist_gesperrt(tmp_path):
+    """#624 AC-9: Fehlt die installierte Path-Einheit, ist das eine gesperrte Abweichung (Ausgang 4), mit ihrem Namen."""
+    systemd, env = _installierte_einheiten(tmp_path)
+    assert (systemd / "probe-veroeffentlichen.path").exists(), "einrichten.sh --erzeugen schreibt keine .path-Einheit"
+    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    (systemd / "probe-veroeffentlichen.path").unlink()
+    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 4 and "probe-veroeffentlichen.path" in r.stdout and "BLOCKED" in r.stdout, r.stdout + r.stderr

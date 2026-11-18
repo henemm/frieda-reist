@@ -99,6 +99,11 @@ def schreiber(repo):
     return s
 
 
+def anstoss_merker(repo):
+    """Der Anstoß-Merker des Veröffentlichens im Dienstordner der Fixture (#624)."""
+    return repo[0].parent / "_dienst" / "veroeffentlichen-anstoss"
+
+
 def warten_auf(datei, versuche=50):
     import time
     for _ in range(versuche):
@@ -166,7 +171,7 @@ def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
     nachricht = git(origin, "log", "-1", "--format=%B", "main")
     assert nachricht.startswith("Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt")
     assert "Ida (organisator)" in nachricht and "art_definieren" in nachricht and "Grund: GR-Etappen" in nachricht
-    assert warten_auf(stempel) and stempel.read_text().strip() == str(wurzel)
+    assert anstoss_merker(repo).is_file() and not stempel.exists()   # #624: Merker statt Skriptlauf
     assert not git(arbeit, "status", "--porcelain")   # Arbeitskopie sauber, steht auf dem neuen Stand
     assert git(arbeit, "rev-parse", "HEAD") == a["commit"]
 
@@ -320,7 +325,7 @@ def test_probebau_lehnt_ab_und_laesst_nichts_zurueck(repo):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "fruehstueck",
                                                                              "werte": ["ja", "nein"]}})
     assert not git(arbeit, "status", "--porcelain")
-    assert git(origin, "rev-parse", "main") == stand and not stempel.exists()
+    assert git(origin, "rev-parse", "main") == stand and not stempel.exists() and not anstoss_merker(repo).exists()
     # Issue #142: der Probebau liefert die Warnungen des Baus (bezug, text); die Beispielreise hat keine
     assert s.probebau(arbeit / "reisen" / "beispielreise") == []
 
@@ -439,7 +444,7 @@ def test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie(repo):
         code, a = post("beispielreise/art_definieren", anfrage, geheim)
         assert code == 200 and a["ok"] and "Refugi" in a["text"], a
         assert git(origin, "rev-parse", "main") == a["commit"] and "refugi" in arten_auf_main(origin)[0]
-        assert warten_auf(stempel)
+        assert anstoss_merker(repo).is_file() and not stempel.exists()   # #624: Merker statt Skriptlauf
         code, a = post("beispielreise/art_definieren", {**KARL, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}}, geheim)
         assert code == 422 and not a["ok"] and "organisers" in a["fehler"]
         code, a = post("beispielreise/art_definieren", anfrage, geheim)
@@ -1507,46 +1512,26 @@ def test_haengendes_vorbereiten_gibt_504_in_der_zeit(repo, monkeypatch):
     assert code == 504 and not a["ok"] and "nicht eingetragen" in a["fehler"]
 
 
-def test_veroeffentlichen_startet_mit_niedriger_prioritaet(repo, monkeypatch):
-    wurzel, _, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
+def test_git_weg_legt_anstoss_merker(repo, monkeypatch):
+    """#624 AC-4: Ein gelungenes Speichern über den Git-Weg legt den Merker <FR_DIENST>/veroeffentlichen-anstoss; der
+    Schreibweg startet keinen Prozess, und das Anstoß-Protokoll veroeffentlichen-anstoss.log entsteht nicht mehr."""
+    wurzel, _, arbeit, stempel = repo
     gerufen = []
+    original = sb.subprocess.Popen
 
-    class Stummel:
-        def __init__(self, argv, *a, **k):
+    def zaehlen(argv, *a, **k):
+        if str(argv[-1] if isinstance(argv, (list, tuple)) else argv).endswith("veroeffentlichen.sh"):
             gerufen.append(argv)
+        return original(argv, *a, **k)
 
-    monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
-    s.veroeffentlichen_anstossen()
-    argv = gerufen[0]
-    assert argv[0] == "nice" and "ionice" in argv and argv[-1] == s.veroeffentlichen
-
-
-def test_anstoss_schreibt_seine_ausgabe_in_ein_protokoll(repo, monkeypatch, tmp_path):
-    """#398: Die Ausgabe des Anstoßes geht nicht nach /dev/null, sondern in <FR_DIENST>/veroeffentlichen-anstoss.log;
-    ohne beschreibbaren Dienstordner bleibt es bei /dev/null, und der Anstoß wirft nie."""
-    wurzel, _, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
-    dienst = tmp_path / "dienst"
-    dienst.mkdir()
-    monkeypatch.setenv("FR_DIENST", str(dienst))
-    gesehen = []
-
-    class Stummel:
-        def __init__(self, argv, *a, **k):
-            gesehen.append(k)
-
-    monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
-    monkeypatch.setenv("TMPDIR", str(tmp_path / "weg"))   # der Arbeitsordner des Schreib-Unterprozesses, danach gelöscht
-    s.veroeffentlichen_anstossen()
-    assert "TMPDIR" not in gesehen[0]["env"] and gesehen[0]["env"]["FR_WURZEL"] == str(s.wurzel)   # #398: sonst scheitert mktemp
-    assert gesehen[0]["stdout"].name == str(dienst / "veroeffentlichen-anstoss.log")
-    assert gesehen[0]["stderr"] is gesehen[0]["stdout"]
-    assert (dienst / "veroeffentlichen-anstoss.log").read_text().startswith("--- ")
-    monkeypatch.setenv("FR_DIENST", str(tmp_path / "gibt-es-nicht"))
-    gesehen.clear()
-    s.veroeffentlichen_anstossen()
-    assert gesehen[0]["stdout"] is sb.subprocess.DEVNULL
+    monkeypatch.setattr(sb.subprocess, "Popen", zaehlen)
+    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
+                                 {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
+    assert code == 200 and a["ok"], (code, a)
+    dienst = wurzel.parent / "_dienst"
+    assert (dienst / "veroeffentlichen-anstoss").is_file()
+    assert not (dienst / "veroeffentlichen-anstoss.log").exists()
+    assert gerufen == [] and not stempel.exists()
 
 
 def test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde(repo, monkeypatch, capsys):
@@ -1609,36 +1594,6 @@ def test_dauer_steht_im_protokoll(repo, monkeypatch, capsys):
     assert codes() == ["429"]
 
 
-def test_langes_veroeffentlichen_haelt_die_antwort_nicht_auf(repo, monkeypatch, capsys, tmp_path):
-    # Das Veröffentlichen läuft im Hintergrund weiter; es darf die Ausgabe des Anwendens nicht offen halten
-    import time
-    wurzel, _, arbeit, _ = repo
-    marke = tmp_path / "marke"
-    stub = tmp_path / "langsam.sh"
-    stub.write_text(f"#!/bin/sh\necho $$ > {marke}.pid\ntouch {marke}.start\necho Ausgabe; echo Fehler >&2\n"
-                    f"sleep 6\ntouch {marke}.ende\n")
-    stub.chmod(0o755)
-    monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stub))
-    s = sb.Schreiber(wurzel, arbeit)
-    try:
-        code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren",
-                                     {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
-        err = capsys.readouterr().err
-        assert code == 200 and a["ok"], (code, a)
-        assert "abgebrochen" not in err
-        for _ in range(40):
-            if Path(f"{marke}.start").exists():
-                break
-            time.sleep(0.05)
-        assert Path(f"{marke}.start").exists(), "Veröffentlichen wurde nicht gestartet"
-        assert not Path(f"{marke}.ende").exists(), "Die Antwort hat auf das Ende des Veröffentlichens gewartet"
-    finally:
-        try:
-            os.killpg(int(Path(f"{marke}.pid").read_text()), 9)
-        except (OSError, ValueError):
-            pass
-
-
 def test_unerwarteter_fehler_gibt_500_und_protokoll(repo, monkeypatch, capsys, tmp_path):
     # z. B. fehlt der Ordner der Sperrdateien
     wurzel, _, arbeit, _ = repo
@@ -1663,31 +1618,6 @@ def test_veraltete_sperre_von_git_blockiert_die_reise_nicht(repo, capsys):
                                  {**IDA, "args": {"bezeichnung": "Finca", "grundform": "aufenthalt"}})
     assert code == 200, (code, a, capsys.readouterr().err)
     assert not (gitdir / "index.lock").exists()
-
-
-def test_veroeffentlichen_ohne_nice_und_ionice(repo, monkeypatch):
-    # Fehlen nice oder ionice, startet es ohne Priorität; scheitert auch das, kommt trotzdem die Antwort
-    wurzel, _, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
-    gerufen = []
-    monkeypatch.setattr(sb.shutil, "which", lambda name: None if name == "ionice" else f"/usr/bin/{name}")
-
-    class Stummel:
-        fehler = 0
-
-        def __init__(self, argv, *a, **k):
-            gerufen.append(argv)
-            if len(gerufen) <= Stummel.fehler:
-                raise FileNotFoundError(argv[0])
-
-    monkeypatch.setattr(sb.subprocess, "Popen", Stummel)
-    s.veroeffentlichen_anstossen()
-    assert gerufen[0][0] == "nice" and "ionice" not in gerufen[0] and gerufen[0][-1] == s.veroeffentlichen
-    for fehler in (1, 2):
-        gerufen.clear()
-        Stummel.fehler = fehler
-        s.veroeffentlichen_anstossen()      # wirft nie
-        assert len(gerufen) == 2 and gerufen[1] == [s.veroeffentlichen]
 
 
 # ---------- Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen ----------

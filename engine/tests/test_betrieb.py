@@ -2538,7 +2538,7 @@ SPEICHERGRENZEN = {   # Spec speichergrenzen-538, Entscheidung 2: (MemoryHigh, M
     "rueckmeldungen": ("192M", "256M", "128M"),
     "push": ("192M", "256M", "128M"),
     "konnektor": ("768M", "1G", "256M"),
-    "schreiben": ("4G", "5G", "1G"),
+    "schreiben": ("384M", "512M", "256M"),   # #624: ohne Kindprozess des Veröffentlichens
 }
 SPEICHERWERT = re.compile(r"[1-9][0-9]{0,4}[MG]")
 
@@ -2573,7 +2573,7 @@ def test_dauerdienste_tragen_speichergrenzen(art):
     text = (BETRIEB / "vorlagen" / f"{art}.service").read_text(encoding="utf-8")
     assert "17.11.2026" in text, art
     if art == "schreiben":
-        assert "#624" in text
+        assert "bis #624" not in text and "#624" in text   # #624 AC-7: der Kommentar nennt den neuen Stand
 
 
 @pytest.mark.parametrize("art", sorted(SPEICHERGRENZEN))
@@ -2596,7 +2596,7 @@ def test_doku_beschreibt_speichergrenzen():
     assert "Speichergrenzen (#538)" in doku
     abschnitt = doku[doku.index("Speichergrenzen (#538)"):]
     for wort in ("MemoryHigh", "MemoryMax", "MemorySwapMax", "^[1-9][0-9]{0,4}[MG]$", "einrichten.sh --installieren", "#624",
-                 "192M", "768M", "5G"):
+                 "192M", "768M", "512M"):
         assert wort in abschnitt, wort
     abgleich = doku[doku.index("## Einheiten abgleichen (#260)"):]
     abgleich = abgleich[:abgleich.index("\n## ", 5)]
@@ -2605,6 +2605,84 @@ def test_doku_beschreibt_speichergrenzen():
     changelog = spec[spec.index("## Changelog"):]
     assert [z for z in changelog.splitlines()
             if all(w in z for w in ("Entscheidung 8", "Ressourcengrenzen", "#538", "Sandbox"))], changelog
+
+
+# ---------- Veröffentlichen als eigener Dienst (#624) ----------
+
+def test_veroeffentlichen_path_vorlage():
+    """#624 AC-5: Die Path-Einheit startet den eigenen Dienst, sobald der Merker liegt (PathExists, nicht PathChanged)."""
+    zeilen = [z.strip() for z in (BETRIEB / "vorlagen" / "veroeffentlichen.path").read_text(encoding="utf-8").splitlines()
+              if z.strip() and z.strip()[0] not in "#;"]
+    assert "[Path]" in zeilen and "[Install]" in zeilen
+    assert "PathExists=__DIENST__/veroeffentlichen-anstoss" in zeilen
+    assert "Unit=__INSTANZ__-veroeffentlichen.service" in zeilen
+    assert "WantedBy=paths.target" in zeilen
+    assert not [z for z in zeilen if z.startswith("PathChanged=")]
+
+
+def test_merker_vor_sperre_entfernt(vf):
+    """#624 AC-6: veroeffentlichen.sh entfernt den Anstoß-Merker vor der Sperre (Skripttext und Lauf mit freier Sperre)."""
+    text = (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+    entfernen = re.search(r'(?m)^\s*rm -f "?\$FR_DIENST/veroeffentlichen-anstoss"?\s*$', text)
+    assert entfernen, "rm -f des Anstoß-Merkers fehlt"
+    assert entfernen.start() < text.index("flock -n 9")
+    merker = vf["tmp"] / "dienst" / "veroeffentlichen-anstoss"
+    merker.parent.mkdir(parents=True, exist_ok=True)
+    merker.touch()
+    r = vf["lauf"]()
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not merker.exists() and vf["deploys"]() == ["beispielreise", "zweitreise"]
+
+
+def test_belegte_sperre_setzt_nochmal(vf):
+    """#624 AC-6: Ist die Sperre belegt, ist der Anstoß-Merker trotzdem weg (keine Endlosschleife der Path-Einheit), der
+    Nachlauf-Merker veroeffentlichen-nochmal ist gesetzt, und es läuft nichts weiter."""
+    import fcntl
+    merker = vf["tmp"] / "dienst" / "veroeffentlichen-anstoss"
+    nochmal = vf["tmp"] / "dienst" / "veroeffentlichen-nochmal"
+    merker.parent.mkdir(parents=True, exist_ok=True)
+    merker.touch()
+    with open(vf["tmp"] / "dienst" / "veroeffentlichen.lock", "w") as f:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        r = vf["lauf"]()
+    assert r.returncode == 0 and "Already running" in r.stdout, r.stdout + r.stderr
+    assert not merker.exists() and nochmal.exists()
+    assert vf["deploys"]() == []
+
+
+def test_einrichten_aktiviert_path_einheit(tmp_path):
+    """#624 AC-8: einrichten.sh erzeugt .path-Vorlagen wie .service und .timer (Platzhalter ersetzt) und aktiviert
+    <instanz>-veroeffentlichen.path."""
+    ziel = tmp_path / "soll"
+    env = {**SAUBER, "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "EI_ZIEL": str(ziel)}
+    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    einheit = ziel / "systemd" / "probe-veroeffentlichen.path"
+    assert einheit.exists(), sorted(p.name for p in (ziel / "systemd").iterdir())
+    inhalt = einheit.read_text()
+    assert not re.search(r"__[A-Z_]+__", inhalt) and "Unit=probe-veroeffentlichen.service" in inhalt
+    text = (BETRIEB / "einrichten.sh").read_text(encoding="utf-8")
+    assert re.search(r"enable --now [^\n]*\$FR_INSTANZ-veroeffentlichen\.path", text)
+
+
+def test_messlauf_prueft_merker():
+    """#624 AC-11: Der Messlauf prüft in der Sandbox den Anstoß-Merker und startet kein Skript des Veröffentlichens."""
+    text = (BETRIEB / "messlauf-schreibweg.py").read_text(encoding="utf-8")
+    assert "veroeffentlichen-anstoss" in text
+    assert "ohne-veroeffentlichen" not in text
+
+
+def test_doku_beschreibt_veroeffentlichen_dienst():
+    """#624 AC-12: docs/betrieb.md beschreibt Merker, Path-Einheit, 512M, den Auslieferungsschritt und den Wegfall des
+    Anstoß-Protokolls; „bis #624“ steht nirgends mehr als offener Zustand. Der Changelog von Spec 538 nennt #624 erledigt."""
+    doku = (BETRIEB.parent / "docs" / "betrieb.md").read_text(encoding="utf-8")
+    for wort in ("veroeffentlichen-anstoss", "veroeffentlichen.path", "512M", "einrichten.sh --installieren",
+                 "veroeffentlichen-anstoss.log"):
+        assert wort in doku, wort
+    assert "bis #624" not in doku
+    spec = (BETRIEB.parent / "docs" / "specs" / "betrieb" / "speichergrenzen-538.md").read_text(encoding="utf-8")
+    changelog = spec[spec.index("## Changelog"):]
+    assert [z for z in changelog.splitlines() if "#624" in z and "512M" in z], changelog
 
 
 # ---------- nginx-Bausteine abgleichen beim Veröffentlichen (#206, test_nginx.py prüft den Abgleich selbst) ----------

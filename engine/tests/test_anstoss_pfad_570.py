@@ -15,7 +15,7 @@ import schreiben as sb  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def ohne_umgebung(monkeypatch, tmp_path):
-    """Kein SB_VEROEFFENTLICHEN aus der Umgebung; Anstoß-Protokoll in einen Ordner unter tmp_path."""
+    """Kein SB_VEROEFFENTLICHEN aus der Umgebung; Dienstordner (Anstoß-Merker, #624) unter tmp_path."""
     monkeypatch.delenv("SB_VEROEFFENTLICHEN", raising=False)
     dienst = tmp_path / "dienst"
     dienst.mkdir()
@@ -79,19 +79,63 @@ def test_vorrang_argument_umgebung_vorgabe(tmp_path, monkeypatch):
     assert sb.Schreiber(w, arbeit, "").veroeffentlichen == ""
 
 
-def test_anstoss_neue_anordnung_startet_skript(tmp_path):
-    """AC-5: Im Software-Klon ohne SB_VEROEFFENTLICHEN startet der Anstoß <wurzel>/betrieb/veroeffentlichen.sh."""
+def merker(tmp_path):
+    """Der Anstoß-Merker im Dienstordner der Fixture (#624)."""
+    return tmp_path / "dienst" / "veroeffentlichen-anstoss"
+
+
+def test_anstoss_legt_nur_merker(tmp_path, monkeypatch):
+    """#624 AC-1: Mit gesetztem SB_VEROEFFENTLICHEN legt der Anstoß nur den Merker <FR_DIENST>/veroeffentlichen-anstoss an;
+    das Skript selbst startet die Path-Einheit, nicht der Schreibweg (kein Kindprozess, kein Lauf des Stummels)."""
+    gerufen = kein_start(monkeypatch)
     w = wurzel_anlegen(tmp_path, "klon")
-    (w / "betrieb").mkdir()
     marke = tmp_path / "gelaufen"
-    stummel = w / "betrieb" / "veroeffentlichen.sh"
+    stummel = tmp_path / "veroeffentlichen.sh"
     stummel.write_text(f"#!/bin/sh\ntouch '{marke}'\n")
     stummel.chmod(0o755)
+    monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stummel))
     sb.Schreiber(w, tmp_path / "arbeit").veroeffentlichen_anstossen()
-    ende = time.monotonic() + 10
-    while not marke.exists() and time.monotonic() < ende:
-        time.sleep(0.05)
-    assert marke.exists(), "Veröffentlichen im Software-Klon nicht angestoßen"
+    assert merker(tmp_path).is_file(), "Anstoß-Merker fehlt"
+    time.sleep(0.3)
+    assert gerufen == [] and not marke.exists(), "Der Schreibweg hat das Skript selbst gestartet"
+    assert not (tmp_path / "dienst" / "veroeffentlichen-anstoss.log").exists()   # das Anstoß-Protokoll entfällt
+    # Ein zweiter Anstoß, solange der Merker liegt: wirft nicht, der Merker bleibt einer
+    sb.Schreiber(w, tmp_path / "arbeit").veroeffentlichen_anstossen()
+    assert merker(tmp_path).is_file() and gerufen == []
+
+
+def test_leeres_skript_legt_keinen_merker(tmp_path, monkeypatch):
+    """#624 AC-2: Leer = aus: Ist SB_VEROEFFENTLICHEN leer gesetzt, entsteht kein Merker."""
+    gerufen = kein_start(monkeypatch)
+    monkeypatch.setenv("SB_VEROEFFENTLICHEN", "")
+    sb.Schreiber(wurzel_anlegen(tmp_path, "klon"), tmp_path / "arbeit").veroeffentlichen_anstossen()
+    assert not merker(tmp_path).exists() and gerufen == []
+
+
+def test_anstoss_wirft_nie(tmp_path, monkeypatch, capsys):
+    """#624 AC-3: Ist der Dienstordner nicht beschreibbar (hier: ein Pfad unter einer Datei), wirft der Anstoß nicht; der
+    Fehler steht als Zeile im Protokoll (stderr, das Journal des Dienstes)."""
+    gerufen = kein_start(monkeypatch)
+    stummel = tmp_path / "veroeffentlichen.sh"
+    stummel.write_text("#!/bin/sh\nexit 0\n")
+    stummel.chmod(0o755)
+    keine_mappe = tmp_path / "datei"
+    keine_mappe.write_text("kein Ordner")
+    monkeypatch.setenv("FR_DIENST", str(keine_mappe / "dienst"))
+    monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stummel))
+    sb.Schreiber(wurzel_anlegen(tmp_path, "klon"), tmp_path / "arbeit").veroeffentlichen_anstossen()
+    err = capsys.readouterr().err
+    assert "veroeffentlichen-anstoss" in err, err
+    assert gerufen == []
+
+
+def test_anstoss_startet_keinen_prozess():
+    """#624 AC-13: Der Quelltext des Anstoßes startet keinen Prozess (kein Popen, kein subprocess, kein nice/ionice)."""
+    import inspect
+    quelle = inspect.getsource(sb.Schreiber.veroeffentlichen_anstossen)
+    for wort in ("Popen", "subprocess", "ionice", "os.system", "os.spawn"):
+        assert wort not in quelle, wort
+    assert "veroeffentlichen-anstoss" in quelle
 
 
 def test_fehlendes_skript_schreibt_eine_zeile(tmp_path, monkeypatch, capsys):
@@ -103,13 +147,15 @@ def test_fehlendes_skript_schreibt_eine_zeile(tmp_path, monkeypatch, capsys):
     zeilen = capsys.readouterr().err.splitlines()
     assert zeilen == [f"Publishing not started ({fehlt}): script missing"]
     assert gerufen == []
+    assert not merker(tmp_path).exists()
 
 
 def test_leerer_pfad_bleibt_still(tmp_path, monkeypatch, capsys):
-    """AC-7: Leerer Pfad (Veröffentlichen ausgeschaltet): still, kein Start."""
+    """AC-7: Leerer Pfad (Veröffentlichen ausgeschaltet): still, kein Start, kein Merker (#624)."""
     gerufen = kein_start(monkeypatch)
     s = sb.Schreiber(wurzel_anlegen(tmp_path, "klon"), tmp_path / "arbeit")
     s.veroeffentlichen = ""
     s.veroeffentlichen_anstossen()
     assert capsys.readouterr().err == ""
     assert gerufen == []
+    assert not merker(tmp_path).exists()
