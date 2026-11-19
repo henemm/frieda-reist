@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import konten  # noqa: E402
 import texte  # noqa: E402
 from test_regeln import Umgebung  # noqa: E402
-from conftest import meldet  # noqa: E402
+from conftest import mailcode, meldet  # noqa: E402
 
 BASIS = "https://frieda.beispiel.invalid"
 SEITE = f"{BASIS}/beispielreise-0123456789abcdef01234567/"
@@ -67,7 +67,7 @@ def kopf(kopfzeilen, name):
 def code_aus(u, an):
     zeilen = [json.loads(z) for z in u.mails.read_text().splitlines()]
     m = [z for z in zeilen if z["an"] == an][-1]
-    return re.search(r"Dein Code für Frieda: (\d{3}) (\d{3})", m["text"]).expand(r"\1\2")
+    return mailcode(m["text"])
 
 
 def anmelden(u, an, name=None, einladung="", zurueck=""):
@@ -117,7 +117,7 @@ def test_link_aus_der_mail_ohne_code(welt):
     abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": "ida+reise@beispiel.invalid"})
     m = json.loads(u.mails.read_text().splitlines()[-1])["text"]
     link = re.search(r"https://frieda\.beispiel\.invalid(/anmelden\?\S+)", m).group(1)
-    code = re.search(r"(\d{3}) (\d{3})", m).expand(r"\1\2")
+    code = mailcode(m)
     assert code not in link and "ida%2Breise%40beispiel.invalid" in link
     s, h, t = abruf(f"{u.kurl}{link}")
     assert s == 200 and meldet(t, "konto.code.titel") and "ida+reise@beispiel.invalid" in t and not kopf(h, "Set-Cookie")
@@ -258,7 +258,7 @@ def test_kontoseite(welt):
     neu = "mo.neu@beispiel.invalid"
     s, _, t = abruf(f"{u.kurl}/konto", "POST", {"aktion": "adresse_code", "email": neu}, cookie=mo)
     assert meldet(t, "konto.adresse.code_gesendet")
-    code = re.search(r"(\d{3}) (\d{3})", json.loads(u.mails.read_text().splitlines()[-1])["text"]).expand(r"\1\2")
+    code = mailcode(json.loads(u.mails.read_text().splitlines()[-1])["text"])
     assert abruf(f"{u.kurl}/konto", "POST", {"aktion": "adresse", "email": neu, "code": code}, cookie=mo)[0] == 303
     assert konten.konto(mo_id)["email"] == neu
     # Abmelden, überall abmelden, löschen
@@ -326,8 +326,9 @@ def test_seiten_in_der_sprache_des_browsers_und_des_kontos(welt):
     # Ablauf mit englischem Browser: die Mail ist englisch, das Konto bekommt Englisch
     abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": KARL}, kopf={"Accept-Language": "en"})
     zeilen = [json.loads(z) for z in u.mails.read_text().splitlines()]
-    assert zeilen[-1]["betreff"].startswith("Frieda: your code") and "Your code for Frieda" in zeilen[-1]["text"]
-    code = re.search(r"Your code for Frieda: (\d{3}) (\d{3})", zeilen[-1]["text"]).expand(r"\1\2")
+    code = mailcode(zeilen[-1]["text"])
+    assert zeilen[-1]["betreff"].startswith(code) and meldet(zeilen[-1]["betreff"], "mail.code.betreff_anmelden", "en")
+    assert meldet(zeilen[-1]["text"], "mail.code.zeile_code", "en")
     s, h, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "code", "email": KARL, "code": code, "name": "Karl"},
                     kopf={"Accept-Language": "en"})
     assert s == 303
@@ -623,7 +624,7 @@ def test_anmeldecodes_an_fremde_adressen_haben_eine_tagesgrenze(welt, monkeypatc
     u = welt()
     anmelden(u, IDA, "Ida")
     konten.einladen("beispielreise", "karl", KARL, "mitwirkend", "Karl", "Ida")
-    an = lambda: [json.loads(z)["an"] for z in u.mails.read_text().splitlines() if "Dein Code" in z]   # noqa: E731
+    an = lambda: [json.loads(z)["an"] for z in u.mails.read_text().splitlines() if meldet(json.loads(z)["betreff"], "mail.code.betreff_anmelden")]   # noqa: E731
     antworten = []
     for i in range(4):
         s, _, t = abruf(f"{u.kurl}/anmelden", "POST", {"schritt": "adresse", "email": f"fremd{i}@beispiel.invalid"})

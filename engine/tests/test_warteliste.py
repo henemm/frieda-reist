@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import konten  # noqa: E402
 import texte  # noqa: E402
-from conftest import meldet  # noqa: E402
+from conftest import mailcode, meldet  # noqa: E402
 from test_anmeldung import BASIS, abruf, anmelden as seite_anmelden, welt  # noqa: E402,F401  (welt: Fixture)
 
 IDA, KARL, MO, LEA = "ida@beispiel.invalid", "karl@beispiel.invalid", "mo@beispiel.invalid", "lea@beispiel.invalid"
@@ -91,7 +91,7 @@ def test_doppelter_eintrag_kein_zweiter_datensatz_mail_nur_solange_unbestaetigt(
 def test_antwort_ist_fuer_jeden_stand_gleich(umgebung):
     mf = umgebung["tmp"] / "mails.jsonl"
     konten.code_anfordern(KARL)
-    code = re.search(r"(\d{3}) (\d{3})", mails(mf, KARL)[-1]["text"]).expand(r"\1\2")
+    code = mailcode(mails(mf, KARL)[-1]["text"])
     konten.anmelden(KARL, code, name="Karl")                    # Karl hat schon ein Konto
     eintragen_und_bestaetigen(umgebung, IDA)
     konten.freigeben(IDA)                                       # Ida ist freigegeben
@@ -199,7 +199,7 @@ def test_nur_bestaetigte_eintraege_lassen_sich_freigeben(umgebung):
 def test_freigabe_mit_konto_setzt_das_recht_sofort_und_schickt_mail_in_der_sprache_des_eintrags(umgebung):
     mf = umgebung["tmp"] / "mails.jsonl"
     konten.code_anfordern(IDA)
-    code = re.search(r"(\d{3}) (\d{3})", mails(mf, IDA)[-1]["text"]).expand(r"\1\2")
+    code = mailcode(mails(mf, IDA)[-1]["text"])
     _, k = konten.anmelden(IDA, code, name="Ida")
     assert not konten.recht(konten.konto(k["id"]), "reise_anlegen")
     eintragen_und_bestaetigen(umgebung, IDA, sprache="en")
@@ -217,12 +217,12 @@ def test_freigabe_ohne_konto_gilt_beim_ersten_anmelden(umgebung):
     konten.freigeben(LEA)
     assert konten.konto_per_email(LEA) is None
     konten.code_anfordern(LEA)
-    code = re.search(r"(\d{3}) (\d{3})", mails(mf, LEA)[-1]["text"]).expand(r"\1\2")
+    code = mailcode(mails(mf, LEA)[-1]["text"])
     _, k = konten.anmelden(LEA, code, name="Lea")
     assert konten.recht(konten.konto(k["id"]), "reise_anlegen")
     # wer nie auf der Liste stand, bekommt das Recht nicht
     konten.code_anfordern(MO)
-    code = re.search(r"(\d{3}) (\d{3})", mails(mf, MO)[-1]["text"]).expand(r"\1\2")
+    code = mailcode(mails(mf, MO)[-1]["text"])
     _, k2 = konten.anmelden(MO, code, name="Mo")
     assert not konten.recht(konten.konto(k2["id"]), "reise_anlegen")
 
@@ -239,7 +239,7 @@ def test_zweite_freigabe_aendert_nichts_und_schickt_keine_mail(umgebung):
 def test_scheitert_die_mail_der_freigabe_bleibt_der_eintrag_wartend(umgebung, monkeypatch):
     mf = umgebung["tmp"] / "mails.jsonl"
     konten.code_anfordern(IDA)
-    code = re.search(r"(\d{3}) (\d{3})", mails(mf, IDA)[-1]["text"]).expand(r"\1\2")
+    code = mailcode(mails(mf, IDA)[-1]["text"])
     _, k = konten.anmelden(IDA, code, name="Ida")
     eintragen_und_bestaetigen(umgebung, IDA)
     echt = konten.mail_senden

@@ -237,8 +237,8 @@ def test_abo_ueber_den_konnektor(umgebung):
 def anmelden_ida(u):
     konten.code_anfordern("ida@beispiel.invalid")
     m = json.loads((u.mails).read_text().splitlines()[-1])
-    import re
-    code = re.search(r"(\d{3}) (\d{3})", m["text"]).expand(r"\1\2")
+    from conftest import mailcode
+    code = mailcode(m["text"])
     token, _ = konten.anmelden("ida@beispiel.invalid", code)
     return {"Cookie": f"__Host-frieda={token}", "Origin": "https://frieda.beispiel.invalid"}
 

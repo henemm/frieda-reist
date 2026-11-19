@@ -298,7 +298,7 @@ def test_mail_senden_antwort_an_smtp(tmp_path, monkeypatch):
     monkeypatch.setattr(konten.smtplib, "SMTP", Spion)
     konten.mail_senden(BETR_DE, "Betreff", "Text", antwort_an=IDA)
     konten.mail_senden(BETR_DE, "Betreff", "Text")
-    assert gesendet[0]["Reply-To"] == IDA and gesendet[0]["From"] == "frieda@beispiel.invalid"
+    assert gesendet[0]["Reply-To"] == IDA and gesendet[0]["From"] == "Frieda <frieda@beispiel.invalid>"
     assert gesendet[1]["Reply-To"] is None
     # FR_MAIL_DATEI: ohne antwort_an dieselbe Zeile wie bisher, mit antwort_an ein Feld mehr
     datei = tmp_path / "m.jsonl"

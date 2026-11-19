@@ -117,6 +117,12 @@ def meldet(ausgabe, schluessel, /, sprache="de"):
     return all(t in ausgabe or html.escape(t, quote=False) in ausgabe or html.escape(t) in ausgabe for t in teile)
 
 
+def mailcode(text):
+    """Der Anmeldecode aus einer Mail: sechs zusammenhängende Ziffern, ohne Leerzeichen (#532)."""
+    import re
+    return re.search(r"(?<!\d)(\d{6})(?!\d)", text).group(1)
+
+
 def mcp_intern(token, nachricht):
     """Den Konnektor als eine Person einer Reise aufrufen, ohne Anmeldung über OAuth. Die Tests geben Personen Kurznamen in
     einer Datei (KN_ZUGAENGE, {kurzname: {"reise", "person"}}); das waren bis #421 die geheimen

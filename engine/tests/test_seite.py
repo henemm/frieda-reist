@@ -20,7 +20,7 @@ import bauen  # noqa: E402
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
-from conftest import meldet  # noqa: E402
+from conftest import mailcode, meldet  # noqa: E402
 
 
 def bilder_fehlen_melden(e):
@@ -592,8 +592,8 @@ def test_anmeldung_auf_der_seite(tmp_path, monkeypatch, browser):
     monkeypatch.setenv("FR_BASIS", basis)          # die Seite liegt auf Friedas Adresse
     konten.einladen("beispielreise", "karl", "karl@beispiel.invalid", "mitwirkend", "Karl", "Ida")
     konten.code_anfordern("karl@beispiel.invalid")
-    code = re.search(r"(\d{3}) (\d{3})", json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
-    token, karl = konten.anmelden("karl@beispiel.invalid", code.expand(r"\1\2"))
+    code = mailcode(json.loads((tmp_path / "mails.jsonl").read_text().splitlines()[-1])["text"])
+    token, karl = konten.anmelden("karl@beispiel.invalid", code)
     konten.sprache_setzen(karl["id"], "de")   # angemeldet folgt die Seite der Sprache des Kontos (#188)
     rm.meldung_anlegen(tmp_path / "ablage" / "beispielreise", ["Karl"], "hinweis", "allgemein", "Treffpunkt ist jetzt 8:40 Uhr.")
     import push
@@ -653,8 +653,8 @@ def test_anmeldeseiten_im_browser(tmp_path, monkeypatch, browser):
             if mails.exists() and mails.read_text().strip():
                 break
             time.sleep(0.1)
-        code = re.search(r"(\d{3}) (\d{3})", json.loads(mails.read_text().splitlines()[-1])["text"])
-        out, err = proc.communicate(code.expand(r"\1\2") + "\n", timeout=60)
+        code = mailcode(json.loads(mails.read_text().splitlines()[-1])["text"])
+        out, err = proc.communicate(code + "\n", timeout=60)
     finally:
         k.shutdown()
     assert proc.returncode == 0, err[-2000:]

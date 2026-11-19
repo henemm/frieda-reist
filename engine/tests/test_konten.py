@@ -13,7 +13,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import konten  # noqa: E402
 import texte  # noqa: E402
-from conftest import meldet  # noqa: E402
+from conftest import mailcode, meldet  # noqa: E402
 
 IDA, KARL, MO = "ida@beispiel.invalid", "karl@beispiel.invalid", "mo@beispiel.invalid"
 
@@ -36,7 +36,7 @@ def mails(umgebung, an=None):
 
 def letzter_code(umgebung, an):
     an = an.strip().lower()
-    return re.search(r"Dein Code für Frieda: (\d{3}) (\d{3})", mails(umgebung, an)[-1]["text"]).expand(r"\1\2")
+    return mailcode(mails(umgebung, an)[-1]["text"])
 
 
 def einloggen(umgebung, an, name=None, **kw):
@@ -147,11 +147,11 @@ def test_szenario6_adresse_aendern(umgebung):
     konten.code_anfordern(neu, zweck="adresse", konto=ida["id"])
     m = mails(umgebung, neu)[-1]
     assert meldet(m["betreff"], "mail.code.betreff_adresse") and "/anmelden?" not in m["text"]
-    code = re.search(r"(\d{3}) (\d{3})", m["text"]).expand(r"\1\2")
+    code = mailcode(m["text"])
     with pytest.raises(konten.KontoFehler):            # Code gehört zu Idas Konto, nicht zu Karls
         konten.adresse_aendern(karl["id"], neu, code)
     konten.code_anfordern(neu, zweck="adresse", konto=ida["id"])
-    code = re.search(r"(\d{3}) (\d{3})", mails(umgebung, neu)[-1]["text"]).expand(r"\1\2")
+    code = mailcode(mails(umgebung, neu)[-1]["text"])
     assert konten.adresse_aendern(ida["id"], " Ida.Neu@beispiel.invalid", code) == neu
     assert konten.konto(ida["id"])["email"] == neu and konten.konto_per_email(IDA) is None
     _, wieder = einloggen(umgebung, neu)
@@ -330,7 +330,7 @@ def test_mail_per_smtp(umgebung, monkeypatch):
         monkeypatch.setenv(k, w)
     konten.code_anfordern(IDA)
     assert gesendet[:3] == [("verbinde", "smtp.beispiel.invalid", 587), "starttls", ("login", "u")]
-    assert gesendet[3][0] == IDA and gesendet[3][2].startswith("Frieda: dein Code")
+    assert gesendet[3][0] == IDA and re.match(r"\d{6} ", gesendet[3][2]) and meldet(gesendet[3][2], "mail.code.betreff_anmelden")
 
 
 def test_befehle(umgebung, capsys):
@@ -407,10 +407,11 @@ def test_neues_konto_bekommt_die_sprache_der_anmeldeseite(umgebung):
     konten.anmelden(KARL, letzter_code(umgebung, KARL), name="Karl", sprache=texte.aus_header("de-AT,de;q=0.9"))
     assert konten.konto_per_email(KARL)["sprache"] == "de"
     konten.code_anfordern(MO, sprache="en")
-    code = re.search(r"code for Frieda: (\d{3}) (\d{3})", mails(umgebung, MO)[-1]["text"]).expand(r"\1\2")
+    code = mailcode(mails(umgebung, MO)[-1]["text"])
     konten.anmelden(MO, code, name="Mo", sprache=texte.aus_header("fr"))
     assert konten.konto_per_email(MO)["sprache"] == "en"     # unbekannte Sprache: Vorgabe
-    assert "Frieda: your code" in mails(umgebung, MO)[-1]["betreff"]
+    betreff = mails(umgebung, MO)[-1]["betreff"]
+    assert betreff.startswith(code) and meldet(betreff, "mail.code.betreff_anmelden", "en")
 
 
 def test_alte_datenbank_ohne_spalte_wird_migriert(umgebung):

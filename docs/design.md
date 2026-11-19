@@ -292,6 +292,23 @@ Das ersetzt die Festlegung vom selben Tag (Wortmarke „Anmerken“ mit „i“ 
 
 Ein Wegweiser mit zwei Richtungsschildern, weiß und gelb auf dem Akzentgrün (`engine/marke/frieda.svg`). Er steht für Reisen und für Entscheiden zwischen Wegen und bleibt auch in 16 Pixeln erkennbar. Buchstaben sind bewusst nicht im Symbol: Ein einzelnes F liegt zu nah an bekannten Markenzeichen. Der Konnektor-Dienst liefert es unter Friedas Adresse als Favicon und App-Symbol aus und gibt es der Claude-App in `serverInfo.icons` mit. claude.ai beachtet diese Angabe bei eigenen Konnektoren bisher nicht. Es zeigt das Google-Favicon der Hauptdomain (anthropics/claude-ai-mcp#152, offen, Stand 28.10.2026). Sobald Claude die Angabe liest, erscheint das Symbol ohne weitere Änderung. Nach einer Änderung am SVG: `engine/.venv/bin/python engine/marke/erzeugen.py`. Die Reiseseiten behalten ihr eigenes Symbol je Reise.
 
+## Mail-Rahmen (#532)
+
+Die Code-Mail (Anmeldecode und Code für eine neue Adresse) hat neben dem Text-Teil einen HTML-Teil aus
+`engine/mailrahmen.py`. Die Mail ist keine Seite: Der Rahmen ist ein Baustein in Python, kein Baustein der Vorlage im Sinn
+von ADR-0002, steht deshalb nicht in der Ebenen-Tabelle oben und nicht im Kopfkommentar von `engine/vorlage.html` und hat
+keinen Eintrag in `GRUNDFORMEN`.
+
+- **Aufbau:** Titel, der Code groß in Festbreitenschrift in einer eigenen Zelle (ohne Leerzeichen, ein Doppelklick
+  markiert ihn), Gültigkeit, bei der Anmeldung ein Knopf zur Code-Eingabe (der Link enthält nie den Code),
+  Sicherheitshinweis, Fuß mit Grund, Betreiberangaben und Links auf Impressum und Datenschutz. Ein verstecktes
+  Vorschaufeld steht am Anfang.
+- **Regeln:** Tabellen-Layout und Inline-Stile, weil Mail-Programme Stilblöcke oft verwerfen; der einzige Stilblock
+  enthält nur `@media (prefers-color-scheme: dark)`, die Mail bleibt ohne ihn lesbar. Keine Bilder, kein Logo, keine
+  Zählpixel, keine externen Ressourcen, keine Webschriften. Jeder eingesetzte Wert ist maskiert. Alle Wörter stehen im
+  Katalog (`mail.code.*`, `mail.fuss.*`), Text- und HTML-Teil nutzen dieselben Schlüssel.
+- **Heimat:** Impressum und Datenschutz haben ihre Heimat auf der Seite (ADR-0003); die Mail verlinkt nur dorthin.
+
 ## Bausteinseite und Prüfung
 
 `#bausteine` zeigt alle Bausteine mit den Daten der jeweiligen Reise, gezeichnet mit denselben Funktionen wie die Seiten. Sie steht nicht in der Leiste. Wo die Reise einen Fall nicht hat, steht ein als „Muster“ benannter Wert.

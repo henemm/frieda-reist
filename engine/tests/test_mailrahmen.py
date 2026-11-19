@@ -154,7 +154,7 @@ def test_absender_ohne_header_injektion(smtp, monkeypatch, absender):
     monkeypatch.setenv("FR_ABSENDER", absender)
     with pytest.raises(konten.KontoFehler) as f:
         konten.mail_senden(IDA, "Betreff", "Text")
-    assert f.value.args[0] == "konto.fehler.mail_nicht_eingerichtet"
+    assert f.value.schluessel == "konto.fehler.mail_nicht_eingerichtet"
     assert smtp == []
     assert all(m["Bcc"] is None for m in smtp)
 
@@ -164,7 +164,7 @@ def test_absender_ohne_header_injektion_code_bleibt(smtp, monkeypatch):
     monkeypatch.setenv("FR_ABSENDER", "a@b.invalid\nBcc: x@y.invalid")
     with pytest.raises(konten.KontoFehler) as f:
         konten.code_anfordern(IDA)
-    assert f.value.args[0] == "konto.fehler.mail_nicht_eingerichtet"
+    assert f.value.schluessel == "konto.fehler.mail_nicht_eingerichtet"
     assert smtp == []
 
 

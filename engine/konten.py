@@ -39,6 +39,7 @@ Aufrufe:
 """
 import datetime
 import email.message
+import email.utils
 import hashlib
 import json
 import os
@@ -54,6 +55,7 @@ from contextlib import closing
 from pathlib import Path
 
 import instanz
+import mailrahmen
 import texte
 from reise import rolle_neu
 
@@ -261,12 +263,16 @@ def basis():
     return os.environ.get("FR_BASIS", "").rstrip("/")
 
 
-def mail_senden(an, betreff, text, antwort_an=None):
+def mail_senden(an, betreff, text, antwort_an=None, html=None):
     """Eine Mail verschicken (SMTP mit STARTTLS) oder, mit FR_MAIL_DATEI, in eine Datei schreiben.
-    antwort_an: Adresse für „Antworten“ (Reply-To); der Absender bleibt die Adresse der Instanz."""
+    antwort_an: Adresse für „Antworten“ (Reply-To); der Absender bleibt die Adresse der Instanz.
+    html: optionaler HTML-Teil; dann geht die Mail als Mehrteiler (text/plain zuerst, text/html als Alternative).
+    Der Absender trägt immer den Anzeigenamen „Frieda“ vor der Adresse aus FR_ABSENDER (#532)."""
     datei = os.environ.get("FR_MAIL_DATEI")
     if datei:
         zeile = {"an": an, "betreff": betreff, "text": text}
+        if html:
+            zeile["html"] = html
         if antwort_an:
             zeile["antwort_an"] = antwort_an
         with open(datei, "a", encoding="utf-8") as f:
@@ -276,11 +282,17 @@ def mail_senden(an, betreff, text, antwort_an=None):
     absender = os.environ.get("FR_ABSENDER")
     if not host or not absender:
         raise KontoFehler("konto.fehler.mail_nicht_eingerichtet")
+    # Nur die Adresse aus FR_ABSENDER zählt, der Name ist immer „Frieda“; mehrzeilig oder ohne Adresse: nicht eingerichtet
+    adresse_von = email.utils.parseaddr(absender)[1]
+    if "\n" in absender or "\r" in absender or "@" not in adresse_von:
+        raise KontoFehler("konto.fehler.mail_nicht_eingerichtet")
     m = email.message.EmailMessage()
-    m["From"], m["To"], m["Subject"] = absender, an, betreff
+    m["From"], m["To"], m["Subject"] = email.utils.formataddr(("Frieda", adresse_von)), an, betreff
     if antwort_an:
         m["Reply-To"] = antwort_an
     m.set_content(text)
+    if html:
+        m.add_alternative(html, subtype="html")
     try:
         with smtplib.SMTP(host, int(os.environ.get("FR_SMTP_PORT", "587")), timeout=20) as s:
             s.starttls()
@@ -345,15 +357,10 @@ def code_anfordern(roh, ip="", zweck="anmelden", konto=None, sprache=None):
     if still:
         sys.stderr.write("Daily limit for sign-in codes to addresses without an account reached (FR_GRENZE_CODES_TAG); no mail sent.\n")
         return
-    lesbar = f"{code[:3]} {code[3:]}"
-    zeilen = [texte.t(sprache, "mail.code.zeile_code", code=lesbar), "",
-              texte.t(sprache, "mail.code.zeile_eingabe", minuten=CODE_MINUTEN), ""]
-    if zweck == "anmelden" and basis():   # Link ohne Code: der Code gehört nicht in Protokolle und Verläufe
-        zeilen += [texte.t(sprache, "mail.code.zeile_link"),
-                   f"{basis()}/anmelden?{urllib.parse.urlencode({'schritt': 'code', 'email': e})}", ""]
-    zeilen += [texte.t(sprache, "mail.code.zeile_loeschen")]
-    betreff = texte.t(sprache, "mail.code.betreff_anmelden" if zweck == "anmelden" else "mail.code.betreff_adresse", code=lesbar)
-    mail_senden(e, betreff, "\n".join(zeilen))
+    # Link ohne Code: der Code gehört nicht in Protokolle und Verläufe
+    link = mailrahmen.code_link(basis(), e) if zweck == "anmelden" else None
+    betreff, text, html = mailrahmen.code_mail(sprache, zweck, code, CODE_MINUTEN, link, basis())
+    mail_senden(e, betreff, text, html=html)
 
 
 def _code_einloesen(v, e, zweck, code):

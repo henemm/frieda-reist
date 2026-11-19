@@ -200,6 +200,23 @@ Ohne Handarbeit (`docs/neue-reise.md`): Nach dem Veröffentlichen ruft `veroeffe
 
 Von Hand: `freischalten.sh <reise>` für die Seite (die Option `--person` ist mit den Links für die Claude-App entfallen). Links stehen nie im Protokoll, im Repo, in Issues oder Nachrichten.
 
+## Mails (#532)
+
+Alle Mails gehen über `mail_senden` in `engine/konten.py`: SMTP mit STARTTLS (`FR_SMTP_HOST`, `FR_SMTP_PORT`,
+`FR_SMTP_USER`, `FR_SMTP_PASS`). Der Absender trägt immer den Anzeigenamen „Frieda“ vor der Adresse aus `FR_ABSENDER`
+(steht dort schon ein Name, wird er ersetzt). Enthält `FR_ABSENDER` einen Zeilenumbruch oder keine Adresse mit „@“, geht
+nichts hinaus und die Meldung lautet „nicht eingerichtet“.
+
+- **Code-Mail** (Anmeldecode und Code für eine neue Adresse): Mehrteiler aus `text/plain` (vollständig, allein lesbar) und
+  `text/html` (Gerüst aus `engine/mailrahmen.py`, `docs/design.md`, „Mail-Rahmen“). Der Betreff beginnt mit dem Code. Im
+  Fuß stehen der Grund der Mail, die Betreiberangaben aus `FR_BETREIBER_NAME` und `FR_BETREIBER_ANSCHRIFT` und Links auf
+  Impressum und Datenschutz unter `FR_BASIS`. Fehlt eine Betreiberangabe, wird der Fuß kürzer, nie fehlerhaft; ohne
+  gültiges `FR_BASIS` (nur `http://` oder `https://`) gibt es keine Links, nur die Wörter.
+- **Übrige Mails** (Warteliste, Freigabe, Einladung, Reise löschen, Betreiber-Meldung) bleiben reine Textmails.
+- **`FR_MAIL_DATEI`** (nur Tests und Entwicklung): Statt zu senden, schreibt `mail_senden` je Mail eine JSON-Zeile in
+  diese Datei, mit den Feldern `an`, `betreff`, `text`, optional `html` (nur, wenn die Mail einen HTML-Teil hat) und
+  optional `antwort_an` (Reply-To), in dieser Reihenfolge.
+
 ## Warteliste (#382)
 
 Interessenten tragen sich auf `<FR_BASIS>/warteliste` ein und bestätigen ihre Adresse über den Link aus der Mail

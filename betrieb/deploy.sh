@@ -23,16 +23,16 @@ DIENST="$FR_DIENST"
 # Sprachdateien (texte_<kürzel>.py): jede Datei im Ordner engine/ zählt, eine neue Sprache braucht hier keinen Eintrag (docs/sprachen.md)
 SPRACHDATEIEN=""
 for f in "$WURZEL"/engine/texte_??.py "$WURZEL"/engine/texte_???.py; do [ -e "$f" ] && SPRACHDATEIEN="$SPRACHDATEIEN $(basename "$f")"; done
-RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
-KN_MODULE="konnektor.py entwicklung.py schnittstelle.py reise.py routen.py packliste.py bilder.py karte.py konten.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py seitenbild.mjs texte.py textform.py $SPRACHDATEIEN"
+RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py mailrahmen.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
+KN_MODULE="konnektor.py entwicklung.py schnittstelle.py reise.py routen.py packliste.py bilder.py karte.py konten.py mailrahmen.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py seitenbild.mjs texte.py textform.py $SPRACHDATEIEN"
 # Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): Für eine Reise im Speicher (Stufe 2, #347; #454) läuft auch der
 # Schreibvorgang (`anwenden`: Werkzeuge, Probebau, Reisespeicher) mit dem Code aus <FR_DIENST>, deshalb steht hier jedes
 # Modul, das schreiben.py auch in Funktionen lädt (engine/tests/test_betrieb.py prüft es gegen die Importe), dazu unten
 # Vorlage, vendor/ und reisevorlage/. Für Git-Reisen kommt der Code des Schreibvorgangs bis Stufe 5 aus der Arbeitskopie.
 # konten.py lädt beim Konto-Löschen rueckmeldungen.py (Rollen, Ablage; #381), das wiederum belege.py.
-SB_MODULE="schreiben.py schreiben_git.py kartendienst.py reisespeicher.py bauen.py routen.py packliste.py bilder.py gpx.py karte.py neu.py schnittstelle.py konten.py rueckmeldungen.py belege.py reise.py instanz.py kalender.py stand.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
+SB_MODULE="schreiben.py schreiben_git.py kartendienst.py reisespeicher.py bauen.py routen.py packliste.py bilder.py gpx.py karte.py neu.py schnittstelle.py konten.py mailrahmen.py rueckmeldungen.py belege.py reise.py instanz.py kalender.py stand.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
 # Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
-PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
+PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py mailrahmen.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
 
 # Quelle der Reise (Stufe 3, #348): Eine Reise im Speicher baut aus dem Ordner, in den veroeffentlichen.sh sie aus
 # dem Reisespeicher materialisiert hat (<FR_DIENST>/bau/reisen/<reise>, außerhalb des Git-Bauordners); jede andere aus Git.
