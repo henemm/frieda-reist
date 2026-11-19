@@ -1,0 +1,269 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+rootdir: ~/frieda-reist/.claude/worktrees/sunny-drifting-turing
+plugins: xdist-3.8.0
+created: 4/4 workers
+4 workers [9 items]
+
+scheduling tests via LoadScheduling
+
+engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[chromium] 
+engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[chromium] 
+engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[chromium] 
+engine/tests/test_wackel_599.py::test_alter_ablauf_ist_unter_verzoegerung_rot[webkit] 
+[gw0] [ 11%] FAILED engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[chromium] 
+engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[webkit] 
+[gw0] [ 22%] FAILED engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[webkit] 
+engine/tests/test_wackel_599.py::test_quelltext_wartet_auf_zustand 
+[gw0] [ 33%] FAILED engine/tests/test_wackel_599.py::test_quelltext_wartet_auf_zustand 
+[gw2] [ 44%] FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[chromium] 
+engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[webkit] 
+[gw2] [ 55%] FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[webkit] 
+[gw1] [ 66%] FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[chromium] 
+engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[webkit] 
+[gw3] [ 77%] PASSED engine/tests/test_wackel_599.py::test_alter_ablauf_ist_unter_verzoegerung_rot[webkit] 
+engine/tests/test_wackel_599.py::test_echter_fehler_bleibt_rot[webkit] 
+[gw3] [ 88%] FAILED engine/tests/test_wackel_599.py::test_echter_fehler_bleibt_rot[webkit] 
+[gw1] [100%] FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[webkit] 
+
+=================================== FAILURES ===================================
+____________ test_karte_unter_verzoegertem_resizeobserver[chromium] ____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw0/test_karte_unter_verzoegertem_0')
+browser = 'chromium'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7e0b595026c0>
+
+    @browsertest
+    @BROWSER
+    def test_karte_unter_verzoegertem_resizeobserver(tmp_path, browser, monkeypatch):
+        """AC-1: Der ResizeObserver der Karte meldet sich erst 1,5 s später; gemessen wird trotzdem der fertige Ausschnitt."""
+        aus = _karte(tmp_path, browser, monkeypatch, {"resizeobserver": 1500})
+        for breite in ("390", "1300"):
+>           assert _ansicht_stimmt(aus[breite]["ansicht"]), (breite, aus[breite]["ansicht"])
+E           AssertionError: ('390', {'zoom': 18, 'spanne': [0, 0], 'alle': False, 'punkte': 2})
+E           assert False
+E            +  where False = _ansicht_stimmt({'zoom': 18, 'spanne': [0, 0], 'alle': False, 'punkte': 2})
+
+engine/tests/test_wackel_599.py:101: AssertionError
+_____________ test_karte_unter_verzoegertem_resizeobserver[webkit] _____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw0/test_karte_unter_verzoegertem_1')
+browser = 'webkit'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7e0b588672c0>
+
+    @browsertest
+    @BROWSER
+    def test_karte_unter_verzoegertem_resizeobserver(tmp_path, browser, monkeypatch):
+        """AC-1: Der ResizeObserver der Karte meldet sich erst 1,5 s später; gemessen wird trotzdem der fertige Ausschnitt."""
+        aus = _karte(tmp_path, browser, monkeypatch, {"resizeobserver": 1500})
+        for breite in ("390", "1300"):
+>           assert _ansicht_stimmt(aus[breite]["ansicht"]), (breite, aus[breite]["ansicht"])
+E           AssertionError: ('390', {'zoom': 18, 'spanne': [0, 0], 'alle': False, 'punkte': 2})
+E           assert False
+E            +  where False = _ansicht_stimmt({'zoom': 18, 'spanne': [0, 0], 'alle': False, 'punkte': 2})
+
+engine/tests/test_wackel_599.py:101: AssertionError
+______________________ test_quelltext_wartet_auf_zustand _______________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_quelltext_wartet_auf_zustand():
+        """AC-7 (statisch): Die Karte wartet nicht mehr fest 600 ms, sondern auf einen Zustand mit Frist und weiter bei Ablauf;
+        die Leiste hängt vor der Größenänderung einen resize-Hörer ein und wartet nach dem Verlassen des Felds nicht in Node-Zeit."""
+        karte = (HIER / "seiten_karte_popup.mjs").read_text(encoding="utf-8")
+        nach_ansicht = karte.split(".kartenansichten button", 1)[1]
+>       assert "waitForTimeout(600)" not in nach_ansicht
+E       assert 'waitForTimeout(600)' not in ':text-is("$...r, aus}));\n'
+E         
+E         'waitForTimeout(600)' is contained here:
+E           :text-is("${ansicht}")`);
+E             await p.waitForSelector(".kartenbox .rh-ding", {state: "attached"});
+E             await p.waitForTimeout(600);
+E             a.ansicht = await p.evaluate(() => {
+E               const bb = KARTE.getBounds();...
+E         
+E         ...Full output truncated (9 lines hidden), use '-vv' to show
+
+engine/tests/test_wackel_599.py:148: AssertionError
+_______________ test_leiste_unter_verzoegertem_resize[chromium] ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw2/test_leiste_unter_verzoegertem0')
+browser = 'chromium'
+
+    @browsertest
+    @BROWSER
+    def test_leiste_unter_verzoegertem_resize(tmp_path, browser):
+        """AC-3: resize-Ereignisse kommen 1,5 s später an; nach einer Größenänderung wird erst nach dem Ereignis gemessen."""
+        leiste = _leiste(tmp_path, browser, {"resize": 1500})
+>       assert _leiste_stimmt(leiste), leiste
+E       AssertionError: {'app': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 788, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}}
+E       assert False
+E        +  where False = _leiste_stimmt({'app': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 788, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}})
+
+engine/tests/test_wackel_599.py:118: AssertionError
+________________ test_leiste_unter_verzoegertem_resize[webkit] _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw2/test_leiste_unter_verzoegertem1')
+browser = 'webkit'
+
+    @browsertest
+    @BROWSER
+    def test_leiste_unter_verzoegertem_resize(tmp_path, browser):
+        """AC-3: resize-Ereignisse kommen 1,5 s später an; nach einer Größenänderung wird erst nach dem Ereignis gemessen."""
+        leiste = _leiste(tmp_path, browser, {"resize": 1500})
+>       assert _leiste_stimmt(leiste), leiste
+E       AssertionError: {'app': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 788, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}}
+E       assert False
+E        +  where False = _leiste_stimmt({'app': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 788, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}})
+
+engine/tests/test_wackel_599.py:118: AssertionError
+______________ test_leiste_unter_verzoegertem_zeitgeber[chromium] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw1/test_leiste_unter_verzoegertem0')
+browser = 'chromium'
+
+    @browsertest
+    @BROWSER
+    def test_leiste_unter_verzoegertem_zeitgeber(tmp_path, browser):
+        """AC-2: setTimeout der Seite läuft 700 ms später; nach dem Verlassen des Suchfelds wird erst nach der Messung der Vorlage
+        gemessen."""
+        leiste = _leiste(tmp_path, browser, {"zeitgeber": 700})
+>       assert _leiste_stimmt(leiste), leiste
+E       AssertionError: {'app': {'start': 788, 'klein': 788, 'tippt': 488, 'zu': 488, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}}
+E       assert False
+E        +  where False = _leiste_stimmt({'app': {'start': 788, 'klein': 788, 'tippt': 488, 'zu': 488, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}})
+
+engine/tests/test_wackel_599.py:110: AssertionError
+____________________ test_echter_fehler_bleibt_rot[webkit] _____________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw3/test_echter_fehler_bleibt_rot_0')
+browser = 'webkit'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70398c107440>
+
+    @browsertest
+    @pytest.mark.parametrize("browser", ["webkit"])
+    def test_echter_fehler_bleibt_rot(tmp_path, browser, monkeypatch):
+        """AC-5: Erreicht die Karte ihren Ausschnitt nie (der ResizeObserver meldet sich erst nach 60 s), misst das Skript nach
+        Ablauf seiner Frist trotzdem und meldet den echten Wert; die Prüfung aus test_karte_popup_310 ist dann rot."""
+>       aus = _karte(tmp_path, browser, monkeypatch, {"resizeobserver": 60000})
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_wackel_599.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_wackel_599.py:45: in _karte
+    return t310._seite(tmp_path, browser)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw3/test_echter_fehler_bleibt_rot_0')
+browser = 'webkit'
+
+    def _seite(tmp_path, browser):
+        quelle = tmp_path / "quelle"
+        shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
+        cfg = json.loads((quelle / "reise.json").read_text(encoding="utf-8"))
+        del cfg["routen"]["karte"]
+        (quelle / "reise.json").write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+        (quelle / "plan" / "karte.yaml").unlink()
+        y = quelle / "reise.yaml"
+        y.write_text(y.read_text(encoding="utf-8").replace("bausteine: [varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche]",
+                                                           "bausteine: [karte, tagesseiten, rueckmeldungen, fragen, aufgaben]"), encoding="utf-8")
+        r = quelle / "plan" / "routen.yaml"
+        d = yaml.safe_load(r.read_text(encoding="utf-8"))
+        mit_lagen(d)
+        a01 = d["aufenthalte"]["A-01"]
+        a01["punkt"] = punkt([50.9785, 14.1140])
+        a01["merkmale"]["eintritt"] = {"wert": "6 €", "quelle": "erfunden (Test)"}         # Stufe „gut zu wissen“ (Vorgabe)
+        a01["merkmale"]["dauer"] = {"wert": "zwei Stunden (Test)", "quelle": "erfunden (Test)"}   # Stufe „zusätzlich“: nicht im Popup
+        # Zweite Besichtigung 300 m daneben, ohne Tag (Beispielwert): die Ansicht „Burg“ hat nur diese beiden eng liegenden Punkte
+        d["aufenthalte"]["A-03"] = {"name": "Aussicht am Burgweg", "ort": "O-03", "art": "besichtigung", "quelle": "erfunden (Test)",
+                                    "punkt": punkt([50.9810, 14.1160])}
+        d["karten_ansichten"] = [{"titel": "Burg", "arten": ["besichtigung"]}]
+        r.write_text(yaml.safe_dump(d, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        bauen.bauen(quelle, tmp_path / "web" / "beispiel")
+    
+        class Handler(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+    
+        s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
+        threading.Thread(target=s.serve_forever, daemon=True).start()
+        try:
+            aus = subprocess.run(["node", str(Path(__file__).parent / "seiten_karte_popup.mjs"), str(PLAYWRIGHT),
+                                  f"http://127.0.0.1:{s.server_address[1]}/beispiel/", "A-01", "Burg"],
+                                 capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
+        finally:
+            s.shutdown()
+>       assert aus.returncode == 0, aus.stderr[-2000:]
+E       AssertionError: node:internal/modules/run_main:123
+E             triggerUncaughtException(
+E             ^
+E         
+E         elementHandle.tap: Timeout 30000ms exceeded.
+E         Call log:
+E         [2m  - attempting tap action[22m
+E         [2m    2 × waiting for element to be visible, enabled and stable[22m
+E         [2m      - element is visible, enabled and stable[22m
+E         [2m      - scrolling into view if needed[22m
+E         [2m      - done scrolling[22m
+E         [2m      - element is outside of the viewport[22m
+E         [2m    - retrying tap action[22m
+E         [2m    - waiting 20ms[22m
+E         [2m    2 × waiting for element to be visible, enabled and stable[22m
+E         [2m      - element is visible, enabled and stable[22m
+E         [2m      - scrolling into view if needed[22m
+E         [2m      - done scrolling[22m
+E         [2m      - element is outside of the viewport[22m
+E         [2m    - retrying tap action[22m
+E         [2m      - waiting 100ms[22m
+E         [2m    54 × waiting for element to be visible, enabled and stable[22m
+E         [2m       - element is visible, enabled and stable[22m
+E         [2m       - scrolling into view if needed[22m
+E         [2m       - done scrolling[22m
+E         [2m       - element is outside of the viewport[22m
+E         [2m     - retrying tap action[22m
+E         [2m       - waiting 500ms[22m
+E         
+E             at engine/tests/seiten_karte_popup.mjs:23:13 {
+E           name: 'TimeoutError'
+E         }
+E         
+E         Node.js v22.22.2
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', 'engine/tests/seiten_karte_popup.mjs', 'engine/tests/verzoegerung.mjs', 'http://127.0.0.1:34545/beispiel/', 'A-01', 'Burg'], returncode=1, stdout='', stderr="node:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nelementHandle.tap: Timeout 30000ms exceeded.\nCall log:\n\x1b[2m  - attempting tap action\x1b[22m\n\x1b[2m    2 × waiting for element to be visible, enabled and stable\x1b[22m\n\x1b[2m      - element is visible, enabled and stable\x1b[22m\n\x1b[2m      - scrolling into view if needed\x1b[22m\n\x1b[2m      - done scrolling\x1b[22m\n\x1b[2m      - element is outside of the viewport\x1b[22m\n\x1b[2m    - retrying tap action\x1b[22m\n\x1b[2m    - waiting 20ms\x1b[22m\n\x1b[2m    2 × waiting for element to be visible, enabled and stable\x1b[22m\n\x1b[2m      - element is visible, enabled and stable\x1b[22m\n\x1b[2m      - scrolling into view if needed\x1b[22m\n\x1b[2m      - done scrolling\x1b[22m\n\x1b[2m      - element is outside of the viewport\x1b[22m\n\x1b[2m    - retrying tap action\x1b[22m\n\x1b[2m      - waiting 100ms\x1b[22m\n\x1b[2m    54 × waiting for element to be visible, enabled and stable\x1b[22m\n\x1b[2m       - element is visible, enabled and stable\x1b[22m\n\x1b[2m       - scrolling into view if needed\x1b[22m\n\x1b[2m       - done scrolling\x1b[22m\n\x1b[2m       - element is outside of the viewport\x1b[22m\n\x1b[2m     - retrying tap action\x1b[22m\n\x1b[2m       - waiting 500ms\x1b[22m\n\n    at engine/tests/seiten_karte_popup.mjs:23:13 {\n  name: 'TimeoutError'\n}\n\nNode.js v22.22.2\n").returncode
+
+engine/tests/test_karte_popup_310.py:59: AssertionError
+_______________ test_leiste_unter_verzoegertem_zeitgeber[webkit] _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-19137/popen-gw1/test_leiste_unter_verzoegertem1')
+browser = 'webkit'
+
+    @browsertest
+    @BROWSER
+    def test_leiste_unter_verzoegertem_zeitgeber(tmp_path, browser):
+        """AC-2: setTimeout der Seite läuft 700 ms später; nach dem Verlassen des Suchfelds wird erst nach der Messung der Vorlage
+        gemessen."""
+        leiste = _leiste(tmp_path, browser, {"zeitgeber": 700})
+>       assert _leiste_stimmt(leiste), leiste
+E       AssertionError: {'app': {'start': 788, 'klein': 788, 'tippt': 488, 'zu': 488, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}}
+E       assert False
+E        +  where False = _leiste_stimmt({'app': {'start': 788, 'klein': 788, 'tippt': 488, 'zu': 488, ...}, 'browser': {'start': 788, 'klein': 488, 'tippt': 488, 'zu': 488, ...}})
+
+engine/tests/test_wackel_599.py:110: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[chromium]
+FAILED engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[webkit]
+FAILED engine/tests/test_wackel_599.py::test_quelltext_wartet_auf_zustand - a...
+FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[chromium]
+FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[webkit]
+FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[chromium]
+FAILED engine/tests/test_wackel_599.py::test_echter_fehler_bleibt_rot[webkit]
+FAILED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[webkit]
+=================== 8 failed, 1 passed in 405.82s (0:06:45) ====================

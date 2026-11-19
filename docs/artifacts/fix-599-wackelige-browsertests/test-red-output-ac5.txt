@@ -1,0 +1,9 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+rootdir: ~/frieda-reist/.claude/worktrees/sunny-drifting-turing
+plugins: xdist-3.8.0
+collecting ... collected 1 item
+
+engine/tests/test_wackel_599.py::test_echter_fehler_bleibt_rot[webkit] PASSED [100%]
+
+============================== 1 passed in 5.66s ===============================
