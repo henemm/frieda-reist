@@ -1,0 +1,78 @@
+RED-Lauf #628 (2026-11-19T11:23:15Z, vor der Änderung)
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+____________________ test_sw_legt_keine_playwright_kopie_an ____________________
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x709da79df240>, neuer_commit=<function sw.<locals>.neuer_commit at 0x709...laywright_0/nginx.sh', 'VF_ROTMELDEN': '<tmp>/test_sw_legt_keine_playwright_0/rotmelden.sh'})
+
+    def test_sw_legt_keine_playwright_kopie_an(sw):
+        """AC-1: Mit npm im PATH erreicht der Software-Weg im Test nie npm; unter dem Dienstordner liegt keine
+        Playwright-Installation, die Ausgabe nennt „npm missing“."""
+        protokoll = sw.t / "npm.log"
+        _npm_attrappe(sw.t / "bin", protokoll)
+        ausgaben = []
+        r = sw.lauf()
+        ausgaben.append(r.stdout + r.stderr)
+        sw.nachweis_gruen()
+        sw.neuer_commit()
+        r = sw.lauf()
+        ausgaben.append(r.stdout + r.stderr)
+        assert r.returncode == 0, ausgaben
+>       assert not protokoll.exists(), protokoll.read_text()
+E       AssertionError: <tmp>/test_sw_legt_keine_playwright_0/seiten/_dienst/playwright ci --silent --no-audit --no-fund
+E         <tmp>/test_sw_legt_keine_playwright_0/seiten/_dienst/playwright exec --no -- playwright install chromium webkit
+E         
+E       assert not True
+E        +  where True = exists()
+E        +    where exists = PosixPath('<tmp>/test_sw_legt_keine_playwright_0/npm.log').exists
+
+engine/tests/test_playwright_tmp_628.py:39: AssertionError
+_______________________ test_instanz_leeren_setzt_vf_npm _______________________
+
+    def test_instanz_leeren_setzt_vf_npm():
+        """AC-2: Nach instanz_leeren zeigt VF_NPM auf eine Datei, die es nicht gibt; Unterprozesse mit os.environ erreichen
+        so nie ein echtes npm."""
+        wert = os.environ.get("VF_NPM")
+>       assert wert, "VF_NPM ist nicht gesetzt"
+E       AssertionError: VF_NPM ist nicht gesetzt
+E       assert None
+
+engine/tests/test_playwright_tmp_628.py:48: AssertionError
+______________________ test_waechter_erkennt_installation ______________________
+
+    def test_waechter_erkennt_installation():
+        """AC-3: Die Wächter-Prüfung findet eine Playwright-Installation bis Tiefe 3 und nennt den Fundort; tiefer liegt
+        die bewusste Grenze. Die Attrappe liegt außerhalb von tmp_path, damit der Wächter dieses Tests selbst still bleibt."""
+        with tempfile.TemporaryDirectory() as d:
+            wurzel = Path(d)
+            for tiefe, teile in enumerate([(), ("a",), ("a", "b")], start=1):
+                ziel = wurzel.joinpath(*teile, "playwright", "node_modules")
+                ziel.mkdir(parents=True)
+>               funde = conftest.playwright_funde(wurzel)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+E               AttributeError: module 'conftest' has no attribute 'playwright_funde'
+
+engine/tests/test_playwright_tmp_628.py:60: AttributeError
+___________________ test_waechter_schweigt_ohne_installation ___________________
+
+tmp_path = PosixPath('<tmp>/test_waechter_schweigt_ohne_in0')
+
+    def test_waechter_schweigt_ohne_installation(tmp_path):
+        """AC-3: Ohne Playwright-Installation, aber mit ähnlich benannten Ordnern, meldet der Wächter nichts."""
+        (tmp_path / "playwright").mkdir()
+        (tmp_path / "x" / "playwright" / "browser").mkdir(parents=True)
+        (tmp_path / "node_modules" / "playwright").mkdir(parents=True)
+>       assert conftest.playwright_funde(tmp_path) == []
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'conftest' has no attribute 'playwright_funde'
+
+engine/tests/test_playwright_tmp_628.py:74: AttributeError
+=========================== short test summary info ============================
+FAILED engine/tests/test_playwright_tmp_628.py::test_sw_legt_keine_playwright_kopie_an
+FAILED engine/tests/test_playwright_tmp_628.py::test_instanz_leeren_setzt_vf_npm
+FAILED engine/tests/test_playwright_tmp_628.py::test_waechter_erkennt_installation
+FAILED engine/tests/test_playwright_tmp_628.py::test_waechter_schweigt_ohne_installation
+4 failed in 2.26s
+--- AC-4 (bestehender Test mit npm-Attrappe, muss grün bleiben):
+.                                                                        [100%]
+1 passed in 1.03s
