@@ -18,6 +18,9 @@ def instanz_leeren(monkeypatch, tmp_path):
     monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))   # Reise-Stände (engine/stand.py) nie in den Ordner des Servers
     monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))   # Reisespeicher (engine/reisespeicher.py, #346)
     monkeypatch.setenv("FR_PUSH_DIENSTE", ".invalid")   # Push-Abos der Tests zeigen auf erfundene Hosts (….invalid)
+    # Kein Test erreicht ein echtes npm (#628): sonst legte der Software-Weg je Test eine Playwright-Installation
+    # (rund 930 MB) unter tmp_path ab. Tests mit eigener npm-Attrappe setzen VF_NPM selbst.
+    monkeypatch.setenv("VF_NPM", str(tmp_path / "kein-npm"))
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -34,6 +37,36 @@ def ohne_instanz_im_lauf(tmp_path_factory):
 def ohne_instanz(tmp_path, monkeypatch):
     """Je Test eigene Ordner, damit kein Test die Konten oder Stände eines anderen sieht."""
     instanz_leeren(monkeypatch, tmp_path)
+
+
+def playwright_funde(wurzel):
+    """Ordner playwright/node_modules direkt unter wurzel, eine und zwei Ebenen tiefer (tiefer bewusst nicht, #628)."""
+    from pathlib import Path
+    wurzel = Path(wurzel)
+    muster = ("playwright/node_modules", "*/playwright/node_modules", "*/*/playwright/node_modules")
+    return [p for m in muster for p in sorted(wurzel.glob(m)) if p.is_dir()]
+
+
+# Tests, die unter tmp_path bewusst eine Attrappe der Playwright-Installation anlegen (wenige Bytes, kein npm); nur
+# diese übergeht der Wächter. Die Liste darf nur kürzer werden.
+PLAYWRIGHT_ATTRAPPEN = {
+    "test_betrieb.py::test_deploy_startprobe_findet_playwright_der_instanz_ohne_umgebungswert",   # Modul-Attrappe, #387
+    "test_betrieb.py::test_veroeffentlichen_installiert_playwright_fest_und_startet_dienste_einmal_neu",   # npm-Attrappe
+    "test_seite_ansehen.py::test_umgebung_des_browsers",   # leere Modul-Datei, Umgebung des Seitenbilds
+}
+
+
+@pytest.fixture(autouse=True)
+def ohne_playwright_kopie(request, tmp_path):
+    """Wächter (#628): Nach jedem Test darf unter tmp_path keine Playwright-Installation liegen; eine echte belegt
+    rund 930 MB und füllt bei parallelen Läufen die Platte."""
+    yield
+    if f"{request.node.path.name}::{request.node.originalname}" in PLAYWRIGHT_ATTRAPPEN:
+        return
+    funde = playwright_funde(tmp_path)
+    if funde:
+        pytest.fail("Playwright-Installation unter tmp_path gefunden (#628, VF_NPM auf eine nicht vorhandene Datei "
+                    "setzen): " + ", ".join(str(f) for f in funde))
 
 
 @pytest.fixture(autouse=True)

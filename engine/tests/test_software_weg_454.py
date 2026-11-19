@@ -342,7 +342,7 @@ esac
            "FR_GRUNDKARTE_AUTO": "0", "FR_HEARTBEAT_VEROEFFENTLICHEN": "https://example.invalid/hb",
            "FR_MELDEN": str(melden), "PATH": f"{t / 'bin'}:{os.environ['PATH']}",
            "VF_DEPLOY": str(deploy), "VF_PRUEFEN": str(pruefen), "VF_CINACHWEIS": str(nachweis),
-           "VF_NACHZIEHEN": str(nachziehen),
+           "VF_NACHZIEHEN": str(nachziehen), "VF_NPM": str(t / "kein-npm"),   # nie ein echtes npm (#628)
            "VF_FREISCHALTEN": str(ausfuehrbar(t / "frei.sh", "#!/bin/sh\nexit 0\n")),
            "VF_UNITS": str(ausfuehrbar(t / "units.sh", "#!/bin/sh\nexit 0\n")),
            "VF_NGINX": str(ausfuehrbar(t / "nginx.sh", "#!/bin/sh\nexit 0\n")),
@@ -653,7 +653,7 @@ esac
     nachweis = ausfuehrbar(t / "nachweis.sh", "#!/bin/sh\necho true\n")
     extra = {**GIT_ERLAUBT, "FR_SEITEN": str(seiten), "FR_PYTHON": sys.executable, "VF_VENV": str(venv),
              "VF_UNITS": str(units), "VF_CINACHWEIS": str(nachweis), "FR_ABLAGE": str(t / "ablage"),
-             "FR_GRUNDKARTE_AUTO": "0"}
+             "FR_GRUNDKARTE_AUTO": "0", "VF_NPM": str(t / "kein-npm")}   # nie ein echtes npm (#628)
     klon = seiten / "_software"
 
     def lauf_alt(**mehr):

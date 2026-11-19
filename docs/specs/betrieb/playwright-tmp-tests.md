@@ -28,7 +28,7 @@ Ein Testlauf legt je Test der Software-Weg-Tests eine vollständige Playwright-I
 
 1. `betrieb/veroeffentlichen.sh` ruft im Software-Weg seit #618 bedingungslos `abhaengigkeiten_playwright` auf (Browser für das Seitenbild des Konnektors). Die Funktion nimmt `npm="${VF_NPM:-npm}"`; ist npm im PATH, laufen `npm ci` und `playwright install chromium webkit` in den Dienstordner.
 2. Die Fixture `sw` in `engine/tests/test_software_weg_454.py` baut ihre Umgebung selbst (`env = {**SAUBER, …}`), `SAUBER` entfernt beim Import alle `VF_`-Werte. Ein `VF_NPM` aus `conftest.py` käme dort nicht an. Das Software-Repo der Fixture verlinkt `engine/` auf die echte Engine, daher liegt die Sperrdatei der Playwright-Module vor und die Installation läuft wirklich.
-3. Die Fixture `vf` und `lauf_neu` bauen ohne Sperrdatei; `abhaengigkeiten_playwright` kehrt dort sofort zurück und ist unkritisch.
+3. Die Fixture `alt` (`lauf_alt`, `lauf_neu`) baut mit `_software_repo` ebenfalls ein Repo mit Verweis auf die echte Engine und installierte daher auch; sie setzt `VF_NPM` jetzt ebenso (in der Umsetzung vom Wächter gefunden). Die Fixture `vf` baut ohne Sperrdatei und ist unkritisch.
 4. Die CI hat npm ebenfalls, installierte also auch dort je `sw`-Test; die Änderung spart dort Zeit.
 
 ## Source
@@ -53,7 +53,7 @@ Ein Testlauf legt je Test der Software-Weg-Tests eine vollständige Playwright-I
 
 | File | Change Type | Description |
 |------|-------------|-------------|
-| `engine/tests/test_software_weg_454.py` | MODIFY | Fixture `sw`: `VF_NPM` auf eine nicht vorhandene Datei setzen, wie die übrigen `VF_`-Haken |
+| `engine/tests/test_software_weg_454.py` | MODIFY | Fixtures `sw` und `alt`: `VF_NPM` auf eine nicht vorhandene Datei setzen, wie die übrigen `VF_`-Haken |
 | `engine/tests/conftest.py` | MODIFY | `instanz_leeren` setzt `VF_NPM` ebenso (für Tests, die `os.environ` weiterreichen); autouse-Wächter prüft nach jedem Test, ob unter `tmp_path` eine Playwright-Installation liegt, und lässt den Test sonst scheitern |
 | `engine/tests/test_playwright_tmp_628.py` | CREATE | Nachweistests (siehe Test Plan) |
 
@@ -114,7 +114,7 @@ Alle in `engine/tests/test_playwright_tmp_628.py`.
 ## Risks
 
 - **Wächter zu eng:** Er sucht nur `playwright/node_modules` bis Tiefe 3. Legt ein künftiger Weg die Installation tiefer oder unter anderem Namen ab, wird das nicht erkannt. Akzeptiert: der beobachtete Fehler ist abgedeckt, die Prüfung bleibt billig.
-- **Wächter zu breit:** Ein Test, der bewusst eine Playwright-Struktur unter `tmp_path` anlegt, scheitert. Solche Tests nutzen zurzeit keine; für Test 3 liegt die Attrappe in einem eigenen Ordner, den der Test selbst vor dem Ende entfernt.
+- **Wächter zu breit:** Ein Test, der bewusst eine Playwright-Struktur unter `tmp_path` anlegt, scheitert. Drei bestehende Tests tun das mit einer Attrappe von wenigen Bytes (zwei in `test_betrieb.py`, einer in `test_seite_ansehen.py`); sie stehen in der Ausnahmeliste `PLAYWRIGHT_ATTRAPPEN` in `conftest.py`, die nur kürzer werden darf. Verworfen: den Wächter erst bei `playwright-core` anschlagen zu lassen, weil er dann eine Installation ohne dieses Modul übersähe und Test 3 seine Wirkung nicht mehr an der einfachen Attrappe zeigen könnte. Für Test 3 liegt die Attrappe außerhalb von `tmp_path`.
 - **Test erwartet echtes npm:** Keiner gefunden; der Test in `test_betrieb.py` setzt eine eigene Attrappe.
 
 ## Definition of Done
@@ -127,3 +127,4 @@ Alle in `engine/tests/test_playwright_tmp_628.py`.
 ## Changelog
 
 - 2026-11-19: Initiale Spec (#628)
+- 2026-11-19: Umsetzung: zweite Quelle Fixture `alt`, Ausnahmeliste für drei Attrappen-Tests (#628)

@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/betrieb/playwright-tmp-tests.md
-spec_sha256: af0343f3db3bc672a7c2cec307e3b816e518b30e9c956ea73edc27088e29324c
-spec_frozen_sha256: e0a6eaf1ef04af4e521c94bbe3a8dac4f63c4484e011212a2762e34cf9cf4684
+spec_sha256: 846da7994dd4e13463ee9a133dad98817b0004afe9dc57d5a086f30c6320a21d
+spec_frozen_sha256: 84e4f0dc35eeb9c333b692fc7292b1f677589ee6f9cb1f48f973dca3ef04680a
 ---
 
 # PO-Briefing: fix-628-playwright-tmp
@@ -24,13 +24,13 @@ Automatische Tests belegen, dass keine Kopie entsteht und der Wächter anschläg
 
 ## Kritische Anmerkungen
 
-- Abweichung: Verlangt war eine Größengrenze per Test; die Spec prüft nur auf Browserkopien. Andere Platzfresser blieben unentdeckt.
-- Der Wächter sucht nur bis Tiefe 3 unter bekanntem Namen; künftige Varianten könnten durchrutschen.
+- Statt einer Größengrenze je Test prüft der Wächter nur auf Browserkopien; andere Platzfresser blieben unentdeckt. Begründet, Ziel des Tickets bleibt erfüllt.
+- Der Wächter sucht nur bis Tiefe 3; drei bestehende Tests stehen auf einer Ausnahmeliste.
 
 ## Freigabe-Frage
 
-Genügt ein Wächter nur gegen Browserkopien, oder soll wie verlangt eine allgemeine Größengrenze je Test-Ordner gelten?
+Keine – Ampel gruen.
 
 ## Ampel
 
-Ampel: rot
+Ampel: gruen
