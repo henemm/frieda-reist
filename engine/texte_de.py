@@ -3318,6 +3318,8 @@ TEXTE = {
     "push.mail.zusammenfassung.betreff.other": "Frieda: {n} Neuigkeiten aus deinen Reisen",
     "push.mail.zusammenfassung.einleitung": "Das ist seit der letzten Zusammenfassung neu:",
     "push.mail.zusammenfassung.warum": "Diese Zusammenfassung kommt einmal am Tag, weil du sie unter „Mein Konto“ eingeschaltet hast. Ausschalten:",
+    "push.titel_ohne_reise": "Frieda",
+    "push.mail.zusammenfassung.ohne_reise": "Konto und Anfragen",
     "push.probe": "Probe: Benachrichtigungen kommen an.",
     "pruefung.gpx.1": "gpx: {sid}: {rel} nicht lesbar ({e}).",
     "pruefung.gpx.2": "gpx: {sid}: {rel} enthält keinen Track.",

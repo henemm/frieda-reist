@@ -3317,6 +3317,8 @@ TEXTE = {
     "push.mail.zusammenfassung.betreff.other": "Frieda: {n} updates from your trips",
     "push.mail.zusammenfassung.einleitung": "New since the last summary:",
     "push.mail.zusammenfassung.warum": "This summary comes once a day because you turned it on under “My account”. Turn it off:",
+    "push.titel_ohne_reise": "Frieda",
+    "push.mail.zusammenfassung.ohne_reise": "Account and requests",
     "push.probe": "Test: notifications arrive.",
     "pruefung.gpx.1": "gpx: {sid}: {rel} cannot be read ({e}).",
     "pruefung.gpx.2": "gpx: {sid}: {rel} contains no track.",

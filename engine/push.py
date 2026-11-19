@@ -307,8 +307,26 @@ def sammeln_reise(reise, jetzt=None):
     return n
 
 
+def sammeln_ohne_reise(jetzt=None):
+    """Meldungen der Ablage ohne Reise (<Konten>/neu/meldungen.jsonl, #631) vormerken: Anfragen an Betreiber:innen
+    (Warteliste, Bitte „Reisen anlegen“), neue Reise, Löschung. Empfänger sind die Konto-Kennungen in an, die ein
+    bestehendes, nicht gesperrtes Konto sind; Namen als Rückfall fallen weg. Fehlt die Ablage, zählt sie als leer, damit
+    der erste Lauf nur den Stand merkt. -> Zahl der vorgemerkten Nachrichten."""
+    o = rm.ordner_neu()
+    n = 0
+    for m in neue(_jsonl(o / "meldungen.jsonl") if o is not None else [], f"meldungen:{rm.NEU}"):
+        ziel = "freischalten" if str(m.get("art") or "").startswith("anfrage_") else "meldungen"
+        for kid in dict.fromkeys(str(a) for a in (m.get("an") or [])):
+            k = konten.konto(kid)
+            if not k or k["gesperrt"]:
+                continue
+            text = rm.meldung_text_in(m, sprache_von(kid)) or m.get("text", "")
+            n += einreihen(kid, "", "meldung", text, ziel, jetzt, kategorie("meldung", m))
+    return n
+
+
 def sammeln(jetzt=None):
-    return sum(sammeln_reise(r, jetzt) for r in _reisen())
+    return sum(sammeln_reise(r, jetzt) for r in _reisen()) + sammeln_ohne_reise(jetzt)
 
 
 # ---------- Zustellen ----------
@@ -346,8 +364,17 @@ def ziele(abos, reise):
 
 
 def nachricht(kid, reise, eintraege):
-    """Inhalt der Nachricht an ein Gerät: Titel (Kurzname der Reise), Text, Link zur Stelle, Kennung für das Ersetzen."""
+    """Inhalt der Nachricht an ein Gerät: Titel (Kurzname der Reise), Text, Link zur Stelle, Kennung für das Ersetzen.
+    Ohne Reise (#631): Titel aus dem Katalog, Link auf Mein Konto."""
     sp = sprache_von(kid)
+    if not reise:
+        if len(eintraege) == 1:
+            text, ziel = eintraege[0]["text"], eintraege[0]["ziel"] or "meldungen"
+        else:
+            text = texte.t(sp, "push.mehrere", n=len(eintraege), zuletzt=eintraege[-1]["text"])
+            ziel = "meldungen"
+        return {"titel": texte.t(sp, "push.titel_ohne_reise"), "text": _kurz(text),
+                "url": f"{konten.basis()}/konto#{ziel}", "tag": "frieda-konto"}
     seite = seite_von(reise) or ""
     if len(eintraege) == 1:
         e = eintraege[0]
@@ -558,8 +585,9 @@ MAX_SAMMEL = 200   # Einträge je Konto bis zur nächsten Zusammenfassung
 
 
 def sammeln_fuer_mail(kid, reise, text, jetzt=None):
-    """Einen Eintrag für die tägliche Zusammenfassung eines Kontos merken (nur Reisen mit Kanal mail)."""
-    if not _mail_an((rm.zustand(reise) or {}).get("regeln")):
+    """Einen Eintrag für die tägliche Zusammenfassung eines Kontos merken (nur Reisen mit Kanal mail; ohne Reise gilt die
+    Vorgabe meldekanal)."""
+    if not _mail_an((rm.zustand(reise) or {}).get("regeln") if reise else None):
         return
     liste = stand(f"sammel:{kid}") or []
     liste.append({"reise": reise, "text": _kurz(text), "zeit": jetzt or time.time()})
@@ -592,7 +620,11 @@ def zusammenfassungen(senden=None, jetzt=None):
         sp = sprache_von(kid)
         zeilen = [texte.t(sp, "push.mail.anrede", name=k["name"]), "", texte.t(sp, "push.mail.zusammenfassung.einleitung")]
         for reise in dict.fromkeys(e["reise"] for e in liste):
-            zeilen += ["", titel_von(reise) + (f" ({seite_von(reise)})" if seite_von(reise) else "") + ":"]
+            if reise:
+                zeilen += ["", titel_von(reise) + (f" ({seite_von(reise)})" if seite_von(reise) else "") + ":"]
+            else:   # Meldungen ohne Reise (#631): eigene Überschrift, Link auf Mein Konto
+                konto_link = f" ({konten.basis()}/konto#meldungen)" if konten.basis() else ""
+                zeilen += ["", texte.t(sp, "push.mail.zusammenfassung.ohne_reise") + konto_link + ":"]
             zeilen += [f"- {e['text']}" for e in liste if e["reise"] == reise]
         zeilen += ["", texte.t(sp, "push.mail.zusammenfassung.warum")]
         if konten.basis():
