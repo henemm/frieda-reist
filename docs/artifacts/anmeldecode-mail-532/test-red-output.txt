@@ -1,0 +1,1587 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+rootdir: engine
+plugins: xdist-3.8.0
+created: 3/3 workers
+3 workers [67 items]
+
+scheduling tests via LoadScheduling
+
+tests/test_mailrahmen.py::test_absender_ohne_header_injektion[a@b.invalid\r\nBcc: x@y.invalid] 
+tests/test_mailrahmen.py::test_mehrteiler_text_und_html_smtp 
+tests/test_mailrahmen.py::test_dateizeile_mit_html 
+[gw0] [  1%] FAILED tests/test_mailrahmen.py::test_mehrteiler_text_und_html_smtp 
+[gw2] [  2%] FAILED tests/test_mailrahmen.py::test_dateizeile_mit_html 
+tests/test_mailrahmen.py::test_absender_anzeigename_frieda[frieda@beispiel.invalid] 
+tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[anmelden-de] 
+[gw0] [  4%] FAILED tests/test_mailrahmen.py::test_absender_anzeigename_frieda[frieda@beispiel.invalid] 
+tests/test_mailrahmen.py::test_absender_anzeigename_frieda[Andere Person <frieda@beispiel.invalid>] 
+[gw0] [  5%] FAILED tests/test_mailrahmen.py::test_absender_anzeigename_frieda[Andere Person <frieda@beispiel.invalid>] 
+tests/test_mailrahmen.py::test_absender_anzeigename_frieda[Frieda <frieda@beispiel.invalid>] 
+[gw0] [  7%] PASSED tests/test_mailrahmen.py::test_absender_anzeigename_frieda[Frieda <frieda@beispiel.invalid>] 
+tests/test_mailrahmen.py::test_absender_ohne_header_injektion[a@b.invalid\nBcc: x@y.invalid] 
+[gw1] [  8%] FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[a@b.invalid\r\nBcc: x@y.invalid] 
+tests/test_mailrahmen.py::test_absender_ohne_header_injektion[keine-adresse] 
+[gw1] [ 10%] FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[keine-adresse] 
+tests/test_mailrahmen.py::test_absender_ohne_header_injektion[Frieda <ohne-at>] 
+[gw1] [ 11%] FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[Frieda <ohne-at>] 
+tests/test_mailrahmen.py::test_absender_ohne_header_injektion_code_bleibt 
+[gw2] [ 13%] FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[anmelden-de] 
+tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[anmelden-en] 
+[gw0] [ 14%] FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[a@b.invalid\nBcc: x@y.invalid] 
+tests/test_mailrahmen.py::test_code_nie_in_einem_link[anmelden-de] 
+[gw2] [ 16%] FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[anmelden-en] 
+tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[adresse-de] 
+[gw0] [ 17%] FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[anmelden-de] 
+tests/test_mailrahmen.py::test_code_nie_in_einem_link[anmelden-en] 
+[gw1] [ 19%] FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion_code_bleibt 
+tests/test_mailrahmen.py::test_dateizeile_ohne_html_unveraendert 
+[gw1] [ 20%] PASSED tests/test_mailrahmen.py::test_dateizeile_ohne_html_unveraendert 
+tests/test_mailrahmen.py::test_link_nur_bei_anmelden_mit_basis[en] 
+[gw2] [ 22%] FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[adresse-de] 
+tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[adresse-en] 
+[gw0] [ 23%] FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[anmelden-en] 
+tests/test_mailrahmen.py::test_code_nie_in_einem_link[adresse-de] 
+[gw1] [ 25%] FAILED tests/test_mailrahmen.py::test_link_nur_bei_anmelden_mit_basis[en] 
+tests/test_mailrahmen.py::test_link_nicht_bei_neuer_adresse[de] 
+[gw2] [ 26%] FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[adresse-en] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-javascript:alert(1)] 
+[gw0] [ 28%] FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[adresse-de] 
+tests/test_mailrahmen.py::test_code_nie_in_einem_link[adresse-en] 
+[gw1] [ 29%] FAILED tests/test_mailrahmen.py::test_link_nicht_bei_neuer_adresse[de] 
+tests/test_mailrahmen.py::test_link_nicht_bei_neuer_adresse[en] 
+[gw2] [ 31%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-javascript:alert(1)] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-ftp://frieda.beispiel.invalid] 
+[gw0] [ 32%] FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[adresse-en] 
+tests/test_mailrahmen.py::test_link_nur_bei_anmelden_mit_basis[de] 
+[gw1] [ 34%] FAILED tests/test_mailrahmen.py::test_link_nicht_bei_neuer_adresse[en] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-None] 
+[gw2] [ 35%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-ftp://frieda.beispiel.invalid] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-frieda.beispiel.invalid] 
+[gw0] [ 37%] FAILED tests/test_mailrahmen.py::test_link_nur_bei_anmelden_mit_basis[de] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-javascript:alert(1)] 
+[gw1] [ 38%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-None] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-] 
+[gw2] [ 40%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-frieda.beispiel.invalid] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-None] 
+[gw0] [ 41%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-javascript:alert(1)] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-ftp://frieda.beispiel.invalid] 
+[gw1] [ 43%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-] 
+tests/test_mailrahmen.py::test_text_teil_vollstaendig[10-en] 
+[gw2] [ 44%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-None] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-] 
+[gw0] [ 46%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-ftp://frieda.beispiel.invalid] 
+tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-frieda.beispiel.invalid] 
+[gw1] [ 47%] FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[10-en] 
+tests/test_mailrahmen.py::test_text_teil_vollstaendig[17-de] 
+[gw2] [ 49%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-] 
+tests/test_mailrahmen.py::test_titel_der_neuen_adresse[en] 
+[gw0] [ 50%] FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-frieda.beispiel.invalid] 
+tests/test_mailrahmen.py::test_text_teil_vollstaendig[10-de] 
+[gw1] [ 52%] FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[17-de] 
+tests/test_mailrahmen.py::test_text_teil_vollstaendig[17-en] 
+[gw2] [ 53%] FAILED tests/test_mailrahmen.py::test_titel_der_neuen_adresse[en] 
+tests/test_mailrahmen.py::test_eine_mail_je_anforderung_und_still 
+[gw0] [ 55%] FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[10-de] 
+tests/test_mailrahmen.py::test_html_geruest_dunkelmodus_inline_stile[en] 
+[gw1] [ 56%] FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[17-en] 
+tests/test_mailrahmen.py::test_titel_der_neuen_adresse[de] 
+[gw2] [ 58%] FAILED tests/test_mailrahmen.py::test_eine_mail_je_anforderung_und_still 
+tests/test_mailrahmen.py::test_html_geruest_dunkelmodus_inline_stile[de] 
+[gw0] [ 59%] FAILED tests/test_mailrahmen.py::test_html_geruest_dunkelmodus_inline_stile[en] 
+tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[anmelden-de] 
+[gw1] [ 61%] FAILED tests/test_mailrahmen.py::test_titel_der_neuen_adresse[de] 
+tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[adresse-de] 
+[gw2] [ 62%] FAILED tests/test_mailrahmen.py::test_html_geruest_dunkelmodus_inline_stile[de] 
+tests/test_mailrahmen.py::test_html_alles_escaped 
+[gw0] [ 64%] FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[anmelden-de] 
+tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[anmelden-en] 
+[gw1] [ 65%] FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[adresse-de] 
+tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[adresse-en] 
+[gw2] [ 67%] FAILED tests/test_mailrahmen.py::test_html_alles_escaped 
+tests/test_mailrahmen.py::test_fuss_mit_betreiberwerten_und_links[de] 
+[gw0] [ 68%] FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[anmelden-en] 
+tests/test_mailrahmen.py::test_fuss_mit_betreiberwerten_und_links[en] 
+[gw2] [ 70%] FAILED tests/test_mailrahmen.py::test_fuss_mit_betreiberwerten_und_links[de] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-None-Beispielweg 1\n12345 Musterstadt] 
+[gw1] [ 71%] FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[adresse-en] 
+[gw0] [ 73%] FAILED tests/test_mailrahmen.py::test_fuss_mit_betreiberwerten_und_links[en] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-Erfundene Reisewerkstatt-None] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-None-None] 
+[gw2] [ 74%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-None-Beispielweg 1\n12345 Musterstadt] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-   - \n ] 
+[gw1] [ 76%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-Erfundene Reisewerkstatt-None] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de--] 
+[gw0] [ 77%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-None-None] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-None-None] 
+[gw2] [ 79%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-   - \n ] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-Erfundene Reisewerkstatt-None] 
+[gw1] [ 80%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de--] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-None-Beispielweg 1\n12345 Musterstadt] 
+[gw0] [ 82%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-None-None] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-   - \n ] 
+[gw2] [ 83%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-Erfundene Reisewerkstatt-None] 
+tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en--] 
+[gw1] [ 85%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-None-Beispielweg 1\n12345 Musterstadt] 
+tests/test_mailrahmen.py::test_mail_texte_vollstaendig_de_en 
+[gw1] [ 86%] FAILED tests/test_mailrahmen.py::test_mail_texte_vollstaendig_de_en 
+tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[RM_MODULE] 
+[gw0] [ 88%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-   - \n ] 
+tests/test_mailrahmen.py::test_mailrahmen_importiert_anmeldung_nicht 
+[gw1] [ 89%] FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[RM_MODULE] 
+tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[KN_MODULE] 
+[gw1] [ 91%] FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[KN_MODULE] 
+tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[PS_MODULE] 
+[gw1] [ 92%] FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[PS_MODULE] 
+[gw0] [ 94%] FAILED tests/test_mailrahmen.py::test_mailrahmen_importiert_anmeldung_nicht 
+tests/test_mailrahmen.py::test_doku_mailrahmen_und_mail_datei 
+tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[SB_MODULE] 
+[gw1] [ 95%] FAILED tests/test_mailrahmen.py::test_doku_mailrahmen_und_mail_datei 
+[gw0] [ 97%] FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[SB_MODULE] 
+[gw2] [ 98%] FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en--] 
+tests/test_mailrahmen.py::test_andere_mails_unveraendert 
+[gw2] [100%] PASSED tests/test_mailrahmen.py::test_andere_mails_unveraendert 
+
+=================================== FAILURES ===================================
+______________________ test_mehrteiler_text_und_html_smtp ______________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = []
+
+    def test_mehrteiler_text_und_html_smtp(smtp):
+>       konten.mail_senden(IDA, "Betreff", "Nur Text", html="<p>Mit HTML</p>")
+E       TypeError: mail_senden() got an unexpected keyword argument 'html'
+
+tests/test_mailrahmen.py:129: TypeError
+___________________________ test_dateizeile_mit_html ___________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_dateizeile_mit_html0'), 'uhr': {'t': 1800000000.0}}
+
+    def test_dateizeile_mit_html(umgebung):
+        datei = umgebung["tmp"] / "mails.jsonl"
+>       konten.mail_senden(IDA, "B", "T", html="<p>H</p>")
+E       TypeError: mail_senden() got an unexpected keyword argument 'html'
+
+tests/test_mailrahmen.py:182: TypeError
+__________ test_absender_anzeigename_frieda[frieda@beispiel.invalid] ___________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = [<email.message.EmailMessage object at 0x7a6e1d3b7770>]
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d3b6ea0>
+absender = 'frieda@beispiel.invalid'
+
+    @pytest.mark.parametrize("absender", ["frieda@beispiel.invalid", "Andere Person <frieda@beispiel.invalid>",
+                                          "Frieda <frieda@beispiel.invalid>"])
+    def test_absender_anzeigename_frieda(smtp, monkeypatch, absender):
+        monkeypatch.setenv("FR_ABSENDER", absender)
+        konten.mail_senden(IDA, "Betreff", "Text")
+        von = smtp[0]["From"]
+>       assert str(von) == "Frieda <frieda@beispiel.invalid>"
+E       AssertionError: assert 'frieda@beispiel.invalid' == 'Frieda <frie...piel.invalid>'
+E         
+E         - Frieda <frieda@beispiel.invalid>
+E         ? --------                       -
+E         + frieda@beispiel.invalid
+
+tests/test_mailrahmen.py:147: AssertionError
+__ test_absender_anzeigename_frieda[Andere Person <frieda@beispiel.invalid>] ___
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = [<email.message.EmailMessage object at 0x7a6e1d3f41d0>]
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d3b44a0>
+absender = 'Andere Person <frieda@beispiel.invalid>'
+
+    @pytest.mark.parametrize("absender", ["frieda@beispiel.invalid", "Andere Person <frieda@beispiel.invalid>",
+                                          "Frieda <frieda@beispiel.invalid>"])
+    def test_absender_anzeigename_frieda(smtp, monkeypatch, absender):
+        monkeypatch.setenv("FR_ABSENDER", absender)
+        konten.mail_senden(IDA, "Betreff", "Text")
+        von = smtp[0]["From"]
+>       assert str(von) == "Frieda <frieda@beispiel.invalid>"
+E       AssertionError: assert 'Andere Perso...piel.invalid>' == 'Frieda <frie...piel.invalid>'
+E         
+E         - Frieda <frieda@beispiel.invalid>
+E         ? ^ - ^^
+E         + Andere Person <frieda@beispiel.invalid>
+E         ? ^^^^  ^^^^^^^
+
+tests/test_mailrahmen.py:147: AssertionError
+_____ test_absender_ohne_header_injektion[a@b.invalid\r\nBcc: x@y.invalid] _____
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = []
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c8b05f0>
+absender = 'a@b.invalid\r\nBcc: x@y.invalid'
+
+    @pytest.mark.parametrize("absender", ["a@b.invalid\nBcc: x@y.invalid", "a@b.invalid\r\nBcc: x@y.invalid",
+                                          "keine-adresse", "Frieda <ohne-at>"])
+    def test_absender_ohne_header_injektion(smtp, monkeypatch, absender):
+        monkeypatch.setenv("FR_ABSENDER", absender)
+        with pytest.raises(konten.KontoFehler) as f:
+>           konten.mail_senden(IDA, "Betreff", "Text")
+
+tests/test_mailrahmen.py:156: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+konten.py:280: in mail_senden
+    m["From"], m["To"], m["Subject"] = absender, an, betreff
+    ^^^^^^^^^
+/usr/lib/python3.12/email/message.py:437: in __setitem__
+    self._headers.append(self.policy.header_store_parse(name, val))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = EmailPolicy(), name = 'From', value = 'a@b.invalid\r\nBcc: x@y.invalid'
+
+    def header_store_parse(self, name, value):
+        """+
+        The name is returned unchanged.  If the input value has a 'name'
+        attribute and it matches the name ignoring case, the value is returned
+        unchanged.  Otherwise the name and value are passed to header_factory
+        method, and the resulting custom header object is returned as the
+        value.  In this case a ValueError is raised if the input value contains
+        CR or LF characters.
+    
+        """
+        if hasattr(value, 'name') and value.name.lower() == name.lower():
+            return (name, value)
+        if isinstance(value, str) and len(value.splitlines())>1:
+            # XXX this error message isn't quite right when we use splitlines
+            # (see issue 22233), but I'm not sure what should happen here.
+>           raise ValueError("Header values may not contain linefeed "
+                             "or carriage return characters")
+E           ValueError: Header values may not contain linefeed or carriage return characters
+
+/usr/lib/python3.12/email/policy.py:146: ValueError
+______________ test_absender_ohne_header_injektion[keine-adresse] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = [<email.message.EmailMessage object at 0x7a513c8b3f50>]
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c8b3320>
+absender = 'keine-adresse'
+
+    @pytest.mark.parametrize("absender", ["a@b.invalid\nBcc: x@y.invalid", "a@b.invalid\r\nBcc: x@y.invalid",
+                                          "keine-adresse", "Frieda <ohne-at>"])
+    def test_absender_ohne_header_injektion(smtp, monkeypatch, absender):
+        monkeypatch.setenv("FR_ABSENDER", absender)
+>       with pytest.raises(konten.KontoFehler) as f:
+E       Failed: DID NOT RAISE KontoFehler
+
+tests/test_mailrahmen.py:155: Failed
+____________ test_absender_ohne_header_injektion[Frieda <ohne-at>] _____________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = [<email.message.EmailMessage object at 0x7a513c902f00>]
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c8b0d10>
+absender = 'Frieda <ohne-at>'
+
+    @pytest.mark.parametrize("absender", ["a@b.invalid\nBcc: x@y.invalid", "a@b.invalid\r\nBcc: x@y.invalid",
+                                          "keine-adresse", "Frieda <ohne-at>"])
+    def test_absender_ohne_header_injektion(smtp, monkeypatch, absender):
+        monkeypatch.setenv("FR_ABSENDER", absender)
+>       with pytest.raises(konten.KontoFehler) as f:
+E       Failed: DID NOT RAISE KontoFehler
+
+tests/test_mailrahmen.py:155: Failed
+_____________ test_betreff_code_vorn_ohne_leerzeichen[anmelden-de] _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_betreff_code_vorn_ohne_le0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de', zweck = 'anmelden'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_betreff_code_vorn_ohne_leerzeichen(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:196: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: dein Code 808 846', 'text': 'Dein Code für Frieda: 808 846\n\nGib i...n?schritt=code&email=ida%40beispiel.invalid\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: dein Code 808 846'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+______ test_absender_ohne_header_injektion[a@b.invalid\nBcc: x@y.invalid] ______
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = []
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d3f7260>
+absender = 'a@b.invalid\nBcc: x@y.invalid'
+
+    @pytest.mark.parametrize("absender", ["a@b.invalid\nBcc: x@y.invalid", "a@b.invalid\r\nBcc: x@y.invalid",
+                                          "keine-adresse", "Frieda <ohne-at>"])
+    def test_absender_ohne_header_injektion(smtp, monkeypatch, absender):
+        monkeypatch.setenv("FR_ABSENDER", absender)
+        with pytest.raises(konten.KontoFehler) as f:
+>           konten.mail_senden(IDA, "Betreff", "Text")
+
+tests/test_mailrahmen.py:156: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+konten.py:280: in mail_senden
+    m["From"], m["To"], m["Subject"] = absender, an, betreff
+    ^^^^^^^^^
+/usr/lib/python3.12/email/message.py:437: in __setitem__
+    self._headers.append(self.policy.header_store_parse(name, val))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = EmailPolicy(), name = 'From', value = 'a@b.invalid\nBcc: x@y.invalid'
+
+    def header_store_parse(self, name, value):
+        """+
+        The name is returned unchanged.  If the input value has a 'name'
+        attribute and it matches the name ignoring case, the value is returned
+        unchanged.  Otherwise the name and value are passed to header_factory
+        method, and the resulting custom header object is returned as the
+        value.  In this case a ValueError is raised if the input value contains
+        CR or LF characters.
+    
+        """
+        if hasattr(value, 'name') and value.name.lower() == name.lower():
+            return (name, value)
+        if isinstance(value, str) and len(value.splitlines())>1:
+            # XXX this error message isn't quite right when we use splitlines
+            # (see issue 22233), but I'm not sure what should happen here.
+>           raise ValueError("Header values may not contain linefeed "
+                             "or carriage return characters")
+E           ValueError: Header values may not contain linefeed or carriage return characters
+
+/usr/lib/python3.12/email/policy.py:146: ValueError
+_____________ test_betreff_code_vorn_ohne_leerzeichen[anmelden-en] _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_betreff_code_vorn_ohne_le1'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en', zweck = 'anmelden'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_betreff_code_vorn_ohne_leerzeichen(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:196: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: your code 820 981', 'text': 'Your code for Frieda: 820 981\n\nEnter...nmelden?schritt=code&email=ida%40beispiel.invalid\n\nIf you did not request a code, you can simply delete this email.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: your code 820 981'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+___________________ test_code_nie_in_einem_link[anmelden-de] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_code_nie_in_einem_link_an0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de', zweck = 'anmelden'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_code_nie_in_einem_link(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: dein Code 003 595', 'text': 'Dein Code für Frieda: 003 595\n\nGib i...n?schritt=code&email=ida%40beispiel.invalid\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: dein Code 003 595'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+_______________ test_absender_ohne_header_injektion_code_bleibt ________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+smtp = []
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c901e50>
+
+    def test_absender_ohne_header_injektion_code_bleibt(smtp, monkeypatch):
+        """Ein ungültiger Absender sperrt nicht still: die Code-Anforderung meldet „nicht eingerichtet“, nichts geht hinaus."""
+        monkeypatch.setenv("FR_ABSENDER", "a@b.invalid\nBcc: x@y.invalid")
+        with pytest.raises(konten.KontoFehler) as f:
+>           konten.code_anfordern(IDA)
+
+tests/test_mailrahmen.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+konten.py:356: in code_anfordern
+    mail_senden(e, betreff, "\n".join(zeilen))
+konten.py:280: in mail_senden
+    m["From"], m["To"], m["Subject"] = absender, an, betreff
+    ^^^^^^^^^
+/usr/lib/python3.12/email/message.py:437: in __setitem__
+    self._headers.append(self.policy.header_store_parse(name, val))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = EmailPolicy(), name = 'From', value = 'a@b.invalid\nBcc: x@y.invalid'
+
+    def header_store_parse(self, name, value):
+        """+
+        The name is returned unchanged.  If the input value has a 'name'
+        attribute and it matches the name ignoring case, the value is returned
+        unchanged.  Otherwise the name and value are passed to header_factory
+        method, and the resulting custom header object is returned as the
+        value.  In this case a ValueError is raised if the input value contains
+        CR or LF characters.
+    
+        """
+        if hasattr(value, 'name') and value.name.lower() == name.lower():
+            return (name, value)
+        if isinstance(value, str) and len(value.splitlines())>1:
+            # XXX this error message isn't quite right when we use splitlines
+            # (see issue 22233), but I'm not sure what should happen here.
+>           raise ValueError("Header values may not contain linefeed "
+                             "or carriage return characters")
+E           ValueError: Header values may not contain linefeed or carriage return characters
+
+/usr/lib/python3.12/email/policy.py:146: ValueError
+_____________ test_betreff_code_vorn_ohne_leerzeichen[adresse-de] ______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_betreff_code_vorn_ohne_le2'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de', zweck = 'adresse'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_betreff_code_vorn_ohne_leerzeichen(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:196: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: neue Adresse bestätigen (454 788)', 'text': 'Dein Code für Frieda: ... dich gerade anmeldest. Er gilt 10 Minuten.\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: neue Adresse bestätigen (454 788)'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+___________________ test_code_nie_in_einem_link[anmelden-en] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_code_nie_in_einem_link_an1'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en', zweck = 'anmelden'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_code_nie_in_einem_link(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: your code 820 734', 'text': 'Your code for Frieda: 820 734\n\nEnter...nmelden?schritt=code&email=ida%40beispiel.invalid\n\nIf you did not request a code, you can simply delete this email.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: your code 820 734'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+___________________ test_link_nur_bei_anmelden_mit_basis[en] ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_link_nur_bei_anmelden_mit0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c8b3da0>
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nur_bei_anmelden_mit_basis(umgebung, monkeypatch, sprache):
+        m = code_mail(umgebung, sprache, "anmelden")
+        assert meldet(m["text"], "mail.code.zeile_link", sprache)
+        assert f"{BASIS}/anmelden?schritt=code&email=" in m["text"]
+>       assert any(h.startswith(f"{BASIS}/anmelden?") for h in map(html.unescape, hrefs(m["html"])))
+                                                                                        ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:228: KeyError
+_____________ test_betreff_code_vorn_ohne_leerzeichen[adresse-en] ______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_betreff_code_vorn_ohne_le3'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en', zweck = 'adresse'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_betreff_code_vorn_ohne_leerzeichen(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:196: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: confirm new address (457 335)', 'text': 'Your code for Frieda: 457 ...e you are signing in. It is valid for 10 minutes.\n\nIf you did not request a code, you can simply delete this email.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: confirm new address (457 335)'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+___________________ test_code_nie_in_einem_link[adresse-de] ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_code_nie_in_einem_link_ad0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de', zweck = 'adresse'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_code_nie_in_einem_link(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: neue Adresse bestätigen (974 585)', 'text': 'Dein Code für Frieda: ... dich gerade anmeldest. Er gilt 10 Minuten.\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: neue Adresse bestätigen (974 585)'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+____________________ test_link_nicht_bei_neuer_adresse[de] _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_link_nicht_bei_neuer_adre0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_bei_neuer_adresse(umgebung, sprache):
+        m = code_mail(umgebung, sprache, "adresse", an=IDA)
+        assert not meldet(m["text"], "mail.code.zeile_link", sprache)
+        assert "/anmelden" not in m["text"]
+>       assert not any("/anmelden" in h for h in hrefs(m["html"]))
+                                                       ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:236: KeyError
+_________ test_link_nicht_ohne_gueltige_basis[de-javascript:alert(1)] __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_link_nicht_ohne_gueltige_0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4d17a10>
+basis = 'javascript:alert(1)', sprache = 'de'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+___________________ test_code_nie_in_einem_link[adresse-en] ____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_code_nie_in_einem_link_ad1'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en', zweck = 'adresse'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_code_nie_in_einem_link(umgebung, sprache, zweck):
+        m = code_mail(umgebung, sprache, zweck)
+>       code = code_aus(m)
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:212: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: confirm new address (603 511)', 'text': 'Your code for Frieda: 603 ...e you are signing in. It is valid for 10 minutes.\n\nIf you did not request a code, you can simply delete this email.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: confirm new address (603 511)'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+____________________ test_link_nicht_bei_neuer_adresse[en] _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_link_nicht_bei_neuer_adre1'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_bei_neuer_adresse(umgebung, sprache):
+        m = code_mail(umgebung, sprache, "adresse", an=IDA)
+        assert not meldet(m["text"], "mail.code.zeile_link", sprache)
+        assert "/anmelden" not in m["text"]
+>       assert not any("/anmelden" in h for h in hrefs(m["html"]))
+                                                       ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:236: KeyError
+____ test_link_nicht_ohne_gueltige_basis[de-ftp://frieda.beispiel.invalid] _____
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_link_nicht_ohne_gueltige_1'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4d15fd0>
+basis = 'ftp://frieda.beispiel.invalid', sprache = 'de'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+___________________ test_link_nur_bei_anmelden_mit_basis[de] ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_link_nur_bei_anmelden_mit0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d043c80>
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nur_bei_anmelden_mit_basis(umgebung, monkeypatch, sprache):
+        m = code_mail(umgebung, sprache, "anmelden")
+        assert meldet(m["text"], "mail.code.zeile_link", sprache)
+        assert f"{BASIS}/anmelden?schritt=code&email=" in m["text"]
+>       assert any(h.startswith(f"{BASIS}/anmelden?") for h in map(html.unescape, hrefs(m["html"])))
+                                                                                        ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:228: KeyError
+_________________ test_link_nicht_ohne_gueltige_basis[de-None] _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_link_nicht_ohne_gueltige_0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c4a3dd0>
+basis = None, sprache = 'de'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+_______ test_link_nicht_ohne_gueltige_basis[de-frieda.beispiel.invalid] ________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_link_nicht_ohne_gueltige_2'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4d16c60>
+basis = 'frieda.beispiel.invalid', sprache = 'de'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+_________ test_link_nicht_ohne_gueltige_basis[en-javascript:alert(1)] __________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_link_nicht_ohne_gueltige_0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d3f4140>
+basis = 'javascript:alert(1)', sprache = 'en'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+___________________ test_link_nicht_ohne_gueltige_basis[de-] ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_link_nicht_ohne_gueltige_1'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c4a3680>
+basis = '', sprache = 'de'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+_________________ test_link_nicht_ohne_gueltige_basis[en-None] _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_link_nicht_ohne_gueltige_3'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4bb5070>
+basis = None, sprache = 'en'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+____ test_link_nicht_ohne_gueltige_basis[en-ftp://frieda.beispiel.invalid] _____
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_link_nicht_ohne_gueltige_1'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d3b7230>
+basis = 'ftp://frieda.beispiel.invalid', sprache = 'en'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+______________________ test_text_teil_vollstaendig[10-en] ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_text_teil_vollstaendig_100'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c4a2db0>
+sprache = 'en', minuten = 10
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("minuten", [10, 17])
+    def test_text_teil_vollstaendig(umgebung, monkeypatch, sprache, minuten):
+        if minuten != 10:
+            monkeypatch.setattr(konten, "CODE_MINUTEN", minuten)
+        else:
+            assert konten.CODE_MINUTEN == 10
+        m = code_mail(umgebung, sprache, "anmelden")
+        t = m["text"]
+>       assert code_aus(m) in t
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:266: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: your code 693 821', 'text': 'Your code for Frieda: 693 821\n\nEnter...nmelden?schritt=code&email=ida%40beispiel.invalid\n\nIf you did not request a code, you can simply delete this email.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: your code 693 821'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+___________________ test_link_nicht_ohne_gueltige_basis[en-] ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_link_nicht_ohne_gueltige_4'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4bb4e00>
+basis = '', sprache = 'en'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+_______ test_link_nicht_ohne_gueltige_basis[en-frieda.beispiel.invalid] ________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_link_nicht_ohne_gueltige_2'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d3b4740>
+basis = 'frieda.beispiel.invalid', sprache = 'en'
+
+    @pytest.mark.parametrize("basis", [None, "", "javascript:alert(1)", "ftp://frieda.beispiel.invalid",
+                                       "frieda.beispiel.invalid"])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_link_nicht_ohne_gueltige_basis(umgebung, monkeypatch, basis, sprache):
+        if basis is None:
+            monkeypatch.delenv("FR_BASIS", raising=False)
+        else:
+            monkeypatch.setenv("FR_BASIS", basis)
+        m = code_mail(umgebung, sprache, "anmelden")
+>       assert hrefs(m["html"]) == [], "ohne gültige Basis gibt es keinen einzigen Link"
+                     ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:248: KeyError
+______________________ test_text_teil_vollstaendig[17-de] ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_text_teil_vollstaendig_170'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c641100>
+sprache = 'de', minuten = 17
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("minuten", [10, 17])
+    def test_text_teil_vollstaendig(umgebung, monkeypatch, sprache, minuten):
+        if minuten != 10:
+            monkeypatch.setattr(konten, "CODE_MINUTEN", minuten)
+        else:
+            assert konten.CODE_MINUTEN == 10
+        m = code_mail(umgebung, sprache, "anmelden")
+        t = m["text"]
+>       assert code_aus(m) in t
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:266: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: dein Code 989 112', 'text': 'Dein Code für Frieda: 989 112\n\nGib i...n?schritt=code&email=ida%40beispiel.invalid\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: dein Code 989 112'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+_______________________ test_titel_der_neuen_adresse[en] _______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_titel_der_neuen_adresse_e0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_titel_der_neuen_adresse(umgebung, sprache):
+        m = code_mail(umgebung, sprache, "adresse")
+>       assert meldet(m["text"], "mail.code.titel_adresse", sprache)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_mailrahmen.py:281: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Your code for Frieda: 422 548\n\nEnter it where you are signing in. It is valid for 10 minutes.\n\nIf you did not request a code, you can simply delete this email.'
+schluessel = 'mail.code.titel_adresse', sprache = 'en'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel mail.code.titel_adresse fehlt im Katalog
+E       assert 'mail.code.titel_adresse' != 'mail.code.titel_adresse'
+
+tests/conftest.py:115: AssertionError
+______________________ test_text_teil_vollstaendig[10-de] ______________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_text_teil_vollstaendig_100'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d174b30>
+sprache = 'de', minuten = 10
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("minuten", [10, 17])
+    def test_text_teil_vollstaendig(umgebung, monkeypatch, sprache, minuten):
+        if minuten != 10:
+            monkeypatch.setattr(konten, "CODE_MINUTEN", minuten)
+        else:
+            assert konten.CODE_MINUTEN == 10
+        m = code_mail(umgebung, sprache, "anmelden")
+        t = m["text"]
+>       assert code_aus(m) in t
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:266: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: dein Code 634 379', 'text': 'Dein Code für Frieda: 634 379\n\nGib i...n?schritt=code&email=ida%40beispiel.invalid\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: dein Code 634 379'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+______________________ test_text_teil_vollstaendig[17-en] ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_text_teil_vollstaendig_171'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c6410a0>
+sprache = 'en', minuten = 17
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("minuten", [10, 17])
+    def test_text_teil_vollstaendig(umgebung, monkeypatch, sprache, minuten):
+        if minuten != 10:
+            monkeypatch.setattr(konten, "CODE_MINUTEN", minuten)
+        else:
+            assert konten.CODE_MINUTEN == 10
+        m = code_mail(umgebung, sprache, "anmelden")
+        t = m["text"]
+>       assert code_aus(m) in t
+               ^^^^^^^^^^^
+
+tests/test_mailrahmen.py:266: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: your code 905 289', 'text': 'Your code for Frieda: 905 289\n\nEnter...nmelden?schritt=code&email=ida%40beispiel.invalid\n\nIf you did not request a code, you can simply delete this email.'}
+
+    def code_aus(m):
+        """Der Code steht als sechs zusammenhängende Ziffern vorn im Betreff."""
+        treffer = re.match(r"(\d{6})(?!\d)", m["betreff"])
+>       assert treffer, f"Betreff beginnt nicht mit dem Code: {m['betreff']!r}"
+E       AssertionError: Betreff beginnt nicht mit dem Code: 'Frieda: your code 905 289'
+E       assert None
+
+tests/test_mailrahmen.py:82: AssertionError
+___________________ test_eine_mail_je_anforderung_und_still ____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_eine_mail_je_anforderung_0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4d17620>
+
+    def test_eine_mail_je_anforderung_und_still(umgebung, monkeypatch):
+        assert konten.code_anfordern(IDA) is None
+        alle = mails(umgebung)
+>       assert len(alle) == 1 and alle[0]["an"] == IDA and "html" in alle[0]
+E       AssertionError: assert (1 == 1 and 'ida@beispiel.invalid' == 'ida@beispiel.invalid'
+E        +  where 1 = len([{'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: dein Code 666 296', 'text': 'Dein Code für Frieda: 666 296\n\nGib ihn dort ein, wo du dich gerade anmeldest. Er gilt 10 Minuten.\n\nZur Code-Eingabe auf diesem Gerät:\nhttps://frieda.beispiel.invalid/anmelden?schritt=code&email=ida%40beispiel.invalid\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'}])
+E         
+E           ida@beispiel.invalid and 'html' in {'an': 'ida@beispiel.invalid', 'betreff': 'Frieda: dein Code 666 296', 'text': 'Dein Code für Frieda: 666 296\n\nGib ihn dort ein, wo du dich gerade anmeldest. Er gilt 10 Minuten.\n\nZur Code-Eingabe auf diesem Gerät:\nhttps://frieda.beispiel.invalid/anmelden?schritt=code&email=ida%40beispiel.invalid\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'})
+
+tests/test_mailrahmen.py:288: AssertionError
+________________ test_html_geruest_dunkelmodus_inline_stile[en] ________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_html_geruest_dunkelmodus_0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_html_geruest_dunkelmodus_inline_stile(umgebung, sprache):
+        m = code_mail(umgebung, sprache)
+>       h, code = m["html"], code_aus(m)
+                  ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:301: KeyError
+_______________________ test_titel_der_neuen_adresse[de] _______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_titel_der_neuen_adresse_d0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_titel_der_neuen_adresse(umgebung, sprache):
+        m = code_mail(umgebung, sprache, "adresse")
+>       assert meldet(m["text"], "mail.code.titel_adresse", sprache)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_mailrahmen.py:281: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Dein Code für Frieda: 990 002\n\nGib ihn dort ein, wo du dich gerade anmeldest. Er gilt 10 Minuten.\n\nHast du keinen Code angefordert, kannst du diese Mail einfach löschen.'
+schluessel = 'mail.code.titel_adresse', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel mail.code.titel_adresse fehlt im Katalog
+E       assert 'mail.code.titel_adresse' != 'mail.code.titel_adresse'
+
+tests/conftest.py:115: AssertionError
+________________ test_html_geruest_dunkelmodus_inline_stile[de] ________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_html_geruest_dunkelmodus_0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_html_geruest_dunkelmodus_inline_stile(umgebung, sprache):
+        m = code_mail(umgebung, sprache)
+>       h, code = m["html"], code_aus(m)
+                  ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:301: KeyError
+__________ test_html_ohne_bild_pixel_externe_ressourcen[anmelden-de] ___________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_html_ohne_bild_pixel_exte0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de', zweck = 'anmelden'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_html_ohne_bild_pixel_externe_ressourcen(umgebung, sprache, zweck):
+>       h = code_mail(umgebung, sprache, zweck)["html"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:337: KeyError
+___________ test_html_ohne_bild_pixel_externe_ressourcen[adresse-de] ___________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_html_ohne_bild_pixel_exte0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de', zweck = 'adresse'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_html_ohne_bild_pixel_externe_ressourcen(umgebung, sprache, zweck):
+>       h = code_mail(umgebung, sprache, zweck)["html"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:337: KeyError
+___________________________ test_html_alles_escaped ____________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_html_alles_escaped0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4d161e0>
+
+    def test_html_alles_escaped(umgebung, monkeypatch):
+        boese = '<script>alert(1)</script> & "x"'
+        monkeypatch.setenv("FR_BETREIBER_NAME", boese)
+        monkeypatch.setenv("FR_BETREIBER_ANSCHRIFT", f"{boese}\nZweite <b>Zeile</b>")
+        m = code_mail(umgebung, "de", "anmelden", an="a+<b>@beispiel.invalid")
+>       h, t = m["html"], m["text"]
+               ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:352: KeyError
+__________ test_html_ohne_bild_pixel_externe_ressourcen[anmelden-en] ___________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_html_ohne_bild_pixel_exte1'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en', zweck = 'anmelden'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_html_ohne_bild_pixel_externe_ressourcen(umgebung, sprache, zweck):
+>       h = code_mail(umgebung, sprache, zweck)["html"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:337: KeyError
+_________________ test_fuss_mit_betreiberwerten_und_links[de] __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_fuss_mit_betreiberwerten_0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_mit_betreiberwerten_und_links(umgebung, sprache):
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:364: KeyError
+___________ test_html_ohne_bild_pixel_externe_ressourcen[adresse-en] ___________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_html_ohne_bild_pixel_exte1'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en', zweck = 'adresse'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    @pytest.mark.parametrize("zweck", ZWECKE)
+    def test_html_ohne_bild_pixel_externe_ressourcen(umgebung, sprache, zweck):
+>       h = code_mail(umgebung, sprache, zweck)["html"]
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:337: KeyError
+_________________ test_fuss_mit_betreiberwerten_und_links[en] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_fuss_mit_betreiberwerten_0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_mit_betreiberwerten_und_links(umgebung, sprache):
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:364: KeyError
+___ test_fuss_ohne_betreiberwerte[de-None-Beispielweg 1\n12345 Musterstadt] ____
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_fuss_ohne_betreiberwerte_0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4bb7800>
+name = None, anschrift = 'Beispielweg 1\n12345 Musterstadt', sprache = 'de'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+_______ test_fuss_ohne_betreiberwerte[de-Erfundene Reisewerkstatt-None] ________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_fuss_ohne_betreiberwerte_0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c900b00>
+name = 'Erfundene Reisewerkstatt', anschrift = None, sprache = 'de'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+_________________ test_fuss_ohne_betreiberwerte[de-None-None] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_fuss_ohne_betreiberwerte_0'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d176420>
+name = None, anschrift = None, sprache = 'de'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+__________________ test_fuss_ohne_betreiberwerte[de-   - \n ] __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_fuss_ohne_betreiberwerte_1'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4bb5f70>
+name = '   ', anschrift = ' \n ', sprache = 'de'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+_____________________ test_fuss_ohne_betreiberwerte[de--] ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_fuss_ohne_betreiberwerte_1'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c900320>
+name = '', anschrift = '', sprache = 'de'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+_________________ test_fuss_ohne_betreiberwerte[en-None-None] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_fuss_ohne_betreiberwerte_1'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d12dd90>
+name = None, anschrift = None, sprache = 'en'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+_______ test_fuss_ohne_betreiberwerte[en-Erfundene Reisewerkstatt-None] ________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_fuss_ohne_betreiberwerte_2'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4bb6270>
+name = 'Erfundene Reisewerkstatt', anschrift = None, sprache = 'en'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+___ test_fuss_ohne_betreiberwerte[en-None-Beispielweg 1\n12345 Musterstadt] ____
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw1/test_fuss_ohne_betreiberwerte_2'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a513c8b0950>
+name = None, anschrift = 'Beispielweg 1\n12345 Musterstadt', sprache = 'en'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+______________________ test_mail_texte_vollstaendig_de_en ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_mail_texte_vollstaendig_de_en():
+        def platzhalter(s):
+            return sorted(re.findall(r"\{(\w+)\}", s))
+        for schluessel in NEUE_SCHLUESSEL:
+            de, en = (texte.t(s, schluessel) for s in SPRACHEN)
+>           assert de != schluessel and en != schluessel, f"{schluessel} fehlt im Katalog"
+E           AssertionError: mail.code.titel_anmelden fehlt im Katalog
+E           assert ('mail.code.titel_anmelden' != 'mail.code.titel_anmelden')
+
+tests/test_mailrahmen.py:400: AssertionError
+__________________ test_fuss_ohne_betreiberwerte[en-   - \n ] __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw0/test_fuss_ohne_betreiberwerte_2'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7a6e1d3b4740>
+name = '   ', anschrift = ' \n ', sprache = 'en'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+______________ test_deploy_listen_enthalten_mailrahmen[RM_MODULE] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+liste = 'RM_MODULE'
+
+    @pytest.mark.parametrize("liste", ["RM_MODULE", "KN_MODULE", "SB_MODULE", "PS_MODULE"])
+    def test_deploy_listen_enthalten_mailrahmen(liste):
+        module = _deploy_liste(liste)
+>       assert "konten.py" in module and "mailrahmen.py" in module
+E       AssertionError: assert ('konten.py' in {'$SPRACHDATEIEN', 'belege.py', 'instanz.py', 'kalender.py', 'konten.py', 'reise.py', ...} and 'mailrahmen.py' in {'$SPRACHDATEIEN', 'belege.py', 'instanz.py', 'kalender.py', 'konten.py', 'reise.py', ...})
+
+tests/test_mailrahmen.py:452: AssertionError
+______________ test_deploy_listen_enthalten_mailrahmen[KN_MODULE] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+liste = 'KN_MODULE'
+
+    @pytest.mark.parametrize("liste", ["RM_MODULE", "KN_MODULE", "SB_MODULE", "PS_MODULE"])
+    def test_deploy_listen_enthalten_mailrahmen(liste):
+        module = _deploy_liste(liste)
+>       assert "konten.py" in module and "mailrahmen.py" in module
+E       AssertionError: assert ('konten.py' in {'$SPRACHDATEIEN', 'anmeldung.py', 'belege.py', 'bilder.py', 'entwicklung.py', 'instanz.py', ...} and 'mailrahmen.py' in {'$SPRACHDATEIEN', 'anmeldung.py', 'belege.py', 'bilder.py', 'entwicklung.py', 'instanz.py', ...})
+
+tests/test_mailrahmen.py:452: AssertionError
+______________ test_deploy_listen_enthalten_mailrahmen[PS_MODULE] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+liste = 'PS_MODULE'
+
+    @pytest.mark.parametrize("liste", ["RM_MODULE", "KN_MODULE", "SB_MODULE", "PS_MODULE"])
+    def test_deploy_listen_enthalten_mailrahmen(liste):
+        module = _deploy_liste(liste)
+>       assert "konten.py" in module and "mailrahmen.py" in module
+E       AssertionError: assert ('konten.py' in {'$SPRACHDATEIEN', 'belege.py', 'instanz.py', 'kalender.py', 'konten.py', 'push.py', ...} and 'mailrahmen.py' in {'$SPRACHDATEIEN', 'belege.py', 'instanz.py', 'kalender.py', 'konten.py', 'push.py', ...})
+
+tests/test_mailrahmen.py:452: AssertionError
+__________________ test_mailrahmen_importiert_anmeldung_nicht __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_mailrahmen_importiert_anmeldung_nicht():
+>       quelle = (ENGINE / "mailrahmen.py").read_text(encoding="utf-8")
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_mailrahmen.py:410: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('engine/mailrahmen.py')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'engine/mailrahmen.py'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_____________________ test_doku_mailrahmen_und_mail_datei ______________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_doku_mailrahmen_und_mail_datei():
+        design = (WURZEL / "docs" / "design.md").read_text(encoding="utf-8")
+>       assert re.search(r"^#+ .*Mail-Rahmen", design, flags=re.M), "eigener Abschnitt „Mail-Rahmen“"
+E       AssertionError: eigener Abschnitt „Mail-Rahmen“
+E       assert None
+E        +  where None = <function search at 0x7a513e5fcf40>('^#+ .*Mail-Rahmen', '# Design: Grundregeln und Bausteine\n\nDie Seite folgt einem Designsystem (Issue #18): wenige Bausteine, die jede Ansicht zusammensetzt, statt dass jede Ansicht dieselbe Sache selbst zeichnet. So bekommt eine neue Art von Alternative (Fähre, Restaurant, Flug) kein neues Design, sondern bringt nur ihre Merkmale mit. Seit dem 27.10.2026 gilt das Gesicht **„Freundlich“ (B2)**, erarbeitet an echten Seiten (frieda-reist#52).\n\n## Aufbau: Atomic Design und drei Achsen\n\nDie Ebenen folgen Brad Frosts Atomic Design; festgelegt in [ADR-0002](adr/0002-atomic-design.md) (mit der Pflicht, neue Bausteine an vier Stellen einzutragen). Skript und Stile in `engine/vorlage.html` sind gleich geordnet: Der Stilblock beginnt mit den Tokens, dann Grundlagen (Seite, Text, Pico CSS, Reisetexte), Atome, Moleküle, Organismen, Vorlagen, der Rahmen der Seite (Kopf, Meldungen, Glas, Leiste, Fuß) und zuletzt die Breiten. Der Fuß nennt vorn den Reise-Stand (Epic #223): „Reise-Stand 42 · veröffentlicht 02.11., 09:47 Uhr · Frieda Release 357“. Nummer und letzte Änderungen kommen mit der Seite, die Zeit der Veröffentlichung fragt sie beim Server (`api/stand`, nie aus dem Speicher des Service Workers), in der ...ndes Bild steht in `bilderFehlen` der Ausgabe von `seiten_browser.mjs` und führt in `test_seite.py` zu einer Warnung, nicht zu einem roten Lauf; die Bilder dienen nur der Durchsicht.\n\nFür Umbauten ohne sichtbare Änderung:\n\n- **Inhalt:** `node engine/tests/seiten_browser.mjs <playwright> <url> vorher.json` vor und nach dem Umbau, dann die beiden Dateien vergleichen; jede Abweichung ist eine sichtbare Änderung.\n- **Stile:** `node engine/tests/stil_abzug.mjs <playwright> <url> vorher.json` vor und nach dem Umbau, dann `node engine/tests/stil_abzug.mjs vergleich vorher.json nachher.json`. Der Abzug hält für jedes Element jeder Route (390 und 1200 px, hell und dunkel; mit `RH_BREITEN=320,390,700,900,1100,1300` andere Breiten) Lage, Größe und rund 50 berechnete Eigenschaften fest; so wurde das Ordnen des Stilblocks nach Atomic Design als Umbau ohne sichtbare Änderung belegt.\n\n`engine/tests/test_tagesseite.py` prüft die Tagesseite bei 390 und 1300 px: kein Überstand, genau ein Kasten, Reihenfolge der Ebenen je Gerät, Reiter mit Klick und Pfeiltasten, Tiefenlinks in einen Reiter und in die Quellen, Kennung und Fenster, Merkmallisten ohne doppelte Kennzahlen, gestapelte Tabellen.\n', flags=re.MULTILINE)
+E        +    where <function search at 0x7a513e5fcf40> = re.search
+E        +    and   re.MULTILINE = re.M
+
+tests/test_mailrahmen.py:457: AssertionError
+______________ test_deploy_listen_enthalten_mailrahmen[SB_MODULE] ______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+liste = 'SB_MODULE'
+
+    @pytest.mark.parametrize("liste", ["RM_MODULE", "KN_MODULE", "SB_MODULE", "PS_MODULE"])
+    def test_deploy_listen_enthalten_mailrahmen(liste):
+        module = _deploy_liste(liste)
+>       assert "konten.py" in module and "mailrahmen.py" in module
+E       AssertionError: assert ('konten.py' in {'$SPRACHDATEIEN', 'bauen.py', 'belege.py', 'bilder.py', 'gpx.py', 'instanz.py', ...} and 'mailrahmen.py' in {'$SPRACHDATEIEN', 'bauen.py', 'belege.py', 'bilder.py', 'gpx.py', 'instanz.py', ...})
+
+tests/test_mailrahmen.py:452: AssertionError
+_____________________ test_fuss_ohne_betreiberwerte[en--] ______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+umgebung = {'tmp': PosixPath('<tmp>/popen-gw2/test_fuss_ohne_betreiberwerte_3'), 'uhr': {'t': 1800000000.0}}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7cfbb4bb6d50>
+name = '', anschrift = '', sprache = 'en'
+
+    @pytest.mark.parametrize("name, anschrift", [(None, None), (BETREIBER_NAME, None), (None, BETREIBER_ANSCHRIFT),
+                                                 ("   ", " \n "), ("", "")])
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fuss_ohne_betreiberwerte(umgebung, monkeypatch, name, anschrift, sprache):
+        for schluessel, wert in (("FR_BETREIBER_NAME", name), ("FR_BETREIBER_ANSCHRIFT", anschrift)):
+            if wert is None:
+                monkeypatch.delenv(schluessel, raising=False)
+            else:
+                monkeypatch.setenv(schluessel, wert)
+        m = code_mail(umgebung, sprache)
+>       for teil in (m["text"], m["html"]):
+                                ^^^^^^^^^
+E       KeyError: 'html'
+
+tests/test_mailrahmen.py:383: KeyError
+=========================== short test summary info ============================
+FAILED tests/test_mailrahmen.py::test_mehrteiler_text_und_html_smtp - TypeErr...
+FAILED tests/test_mailrahmen.py::test_dateizeile_mit_html - TypeError: mail_s...
+FAILED tests/test_mailrahmen.py::test_absender_anzeigename_frieda[frieda@beispiel.invalid]
+FAILED tests/test_mailrahmen.py::test_absender_anzeigename_frieda[Andere Person <frieda@beispiel.invalid>]
+FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[a@b.invalid\r\nBcc: x@y.invalid]
+FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[keine-adresse]
+FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[Frieda <ohne-at>]
+FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[anmelden-de]
+FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion[a@b.invalid\nBcc: x@y.invalid]
+FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[anmelden-en]
+FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[anmelden-de] - A...
+FAILED tests/test_mailrahmen.py::test_absender_ohne_header_injektion_code_bleibt
+FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[adresse-de]
+FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[anmelden-en] - A...
+FAILED tests/test_mailrahmen.py::test_link_nur_bei_anmelden_mit_basis[en] - K...
+FAILED tests/test_mailrahmen.py::test_betreff_code_vorn_ohne_leerzeichen[adresse-en]
+FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[adresse-de] - As...
+FAILED tests/test_mailrahmen.py::test_link_nicht_bei_neuer_adresse[de] - KeyE...
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-javascript:alert(1)]
+FAILED tests/test_mailrahmen.py::test_code_nie_in_einem_link[adresse-en] - As...
+FAILED tests/test_mailrahmen.py::test_link_nicht_bei_neuer_adresse[en] - KeyE...
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-ftp://frieda.beispiel.invalid]
+FAILED tests/test_mailrahmen.py::test_link_nur_bei_anmelden_mit_basis[de] - K...
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-None]
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-frieda.beispiel.invalid]
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-javascript:alert(1)]
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[de-] - K...
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-None]
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-ftp://frieda.beispiel.invalid]
+FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[10-en] - Asserti...
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-] - K...
+FAILED tests/test_mailrahmen.py::test_link_nicht_ohne_gueltige_basis[en-frieda.beispiel.invalid]
+FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[17-de] - Asserti...
+FAILED tests/test_mailrahmen.py::test_titel_der_neuen_adresse[en] - Assertion...
+FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[10-de] - Asserti...
+FAILED tests/test_mailrahmen.py::test_text_teil_vollstaendig[17-en] - Asserti...
+FAILED tests/test_mailrahmen.py::test_eine_mail_je_anforderung_und_still - As...
+FAILED tests/test_mailrahmen.py::test_html_geruest_dunkelmodus_inline_stile[en]
+FAILED tests/test_mailrahmen.py::test_titel_der_neuen_adresse[de] - Assertion...
+FAILED tests/test_mailrahmen.py::test_html_geruest_dunkelmodus_inline_stile[de]
+FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[anmelden-de]
+FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[adresse-de]
+FAILED tests/test_mailrahmen.py::test_html_alles_escaped - KeyError: 'html'
+FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[anmelden-en]
+FAILED tests/test_mailrahmen.py::test_fuss_mit_betreiberwerten_und_links[de]
+FAILED tests/test_mailrahmen.py::test_html_ohne_bild_pixel_externe_ressourcen[adresse-en]
+FAILED tests/test_mailrahmen.py::test_fuss_mit_betreiberwerten_und_links[en]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-None-Beispielweg 1\n12345 Musterstadt]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-Erfundene Reisewerkstatt-None]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-None-None]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de-   - \n ]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[de--] - KeyErr...
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-None-None]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-Erfundene Reisewerkstatt-None]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-None-Beispielweg 1\n12345 Musterstadt]
+FAILED tests/test_mailrahmen.py::test_mail_texte_vollstaendig_de_en - Asserti...
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en-   - \n ]
+FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[RM_MODULE]
+FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[KN_MODULE]
+FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[PS_MODULE]
+FAILED tests/test_mailrahmen.py::test_mailrahmen_importiert_anmeldung_nicht
+FAILED tests/test_mailrahmen.py::test_doku_mailrahmen_und_mail_datei - Assert...
+FAILED tests/test_mailrahmen.py::test_deploy_listen_enthalten_mailrahmen[SB_MODULE]
+FAILED tests/test_mailrahmen.py::test_fuss_ohne_betreiberwerte[en--] - KeyErr...
+========================= 64 failed, 3 passed in 1.81s =========================
