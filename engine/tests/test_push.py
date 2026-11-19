@@ -541,3 +541,241 @@ def test_taegliche_zusammenfassung(reise):
     assert push.zusammenfassungen(post, morgen_frueh + 2 * 3600) == 1 and "Noch was" in gesendet[1][2]
     # Karl hat nichts gewählt: keine Zusammenfassung
     assert all(a == IDA for a, _, _ in gesendet)
+
+
+# ---------- Meldungen ohne Reise: Warteliste, Bitte „Reisen anlegen“, neue Reise, Löschung (#631) ----------
+# Sie liegen in der Ablage ohne Reise (<Konten>/neu/meldungen.jsonl) und gehen an Konto-Kennungen. Der Push-Dienst liest
+# sie wie die Meldungen einer Reise: Gruppe rueckmeldungen, Ruhezeit, tägliche Zusammenfassung, einmal je Eintrag.
+
+import anmeldung  # noqa: E402
+import texte  # noqa: E402
+from conftest import text  # noqa: E402
+
+BEISPIELE = Path(__file__).resolve().parents[2] / "beispiel" / "reisen"
+TOM = {"name": "Tom", "email": "tom@beispiel.invalid"}
+
+
+def betreiber(kid, email, name, sprache="de", rechte="betreiber", gesperrt=0):
+    """Erfundenes Konto mit Rechten und Sprache (Betreiber:innen bekommen die Anfragen ohne Reise)."""
+    with closing(konten.db()) as v, v:
+        v.execute("INSERT INTO konten (id, email, name, angelegt, sprache, rechte, gesperrt) VALUES (?,?,?,?,?,?,?)",
+                  (kid, email, name, "2026-11-01", sprache, rechte, gesperrt))
+    return kid
+
+
+def warteschlange():
+    with closing(konten.db()) as v:
+        return [dict(z) for z in v.execute("SELECT konto, reise, art, text, ziel FROM push_warteschlange ORDER BY id")]
+
+
+@pytest.fixture
+def betrieb(welt):
+    """Ida (deutsch) und Karl (englisch) betreiben die Instanz; beide haben die Frieda-App mit Benachrichtigungen (Berlin).
+    Der erste Lauf geschieht, bevor es die Ablage ohne Reise gibt: die erste Meldung danach kommt trotzdem an."""
+    u = welt()
+    u.ida = betreiber("K-ida", IDA, "Ida")
+    u.karl = betreiber("K-karl", KARL, "Karl", sprache="en")
+    for kid, n in ((u.ida, "ida"), (u.karl, "karl")):
+        konten.push_abo_speichern(kid, abo(n), "", f"{BASIS}/konto", f"geraet-{n}-1", "Europe/Berlin")
+    assert push.sammeln(MITTAG) == 0
+    u.gesendet = []
+
+    def senden(a, inhalt):
+        u.gesendet.append((a["endpoint"].rsplit("-", 1)[1], inhalt))
+        return "ok"
+    u.senden = senden
+    return u
+
+
+def warteliste(email="lea@beispiel.invalid"):
+    """Wie anmeldung.py, wenn jemand die Adresse auf der Warteliste bestätigt."""
+    anmeldung.betreiber_melden(None, "anfrage_warteliste",
+                               texte.t(texte.VORGABE_REISE, "konto.betreiber.warteliste", email=email),
+                               [("konto.meldungen.text.anfrage_warteliste", {"email": email})])
+
+
+def test_warteliste_meldung_geht_als_push_an_betreiber(betrieb):
+    u = betrieb
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [u.ida], "anfrage_warteliste", "reise", "lea@beispiel.invalid wartet.")
+    assert push.sammeln(MITTAG) == 1
+    [w] = warteschlange()
+    assert (w["konto"], w["reise"], w["art"], w["ziel"]) == (u.ida, "", "meldung", "freischalten")
+    erg = push.zustellen(u.senden, MITTAG)
+    assert erg["nachrichten"] == 1 and erg["geraete"] == 1
+    [(geraet, inhalt)] = u.gesendet
+    assert geraet == "ida" and inhalt["text"] == "lea@beispiel.invalid wartet."
+
+
+def test_bitte_reisen_anlegen_geht_als_push(betrieb):
+    u = betrieb
+    anmeldung.betreiber_melden(TOM)                                   # an alle Betreiber:innen
+    assert push.sammeln(MITTAG) == 2
+    push.zustellen(u.senden, MITTAG)
+    an = dict(u.gesendet)
+    assert set(an) == {"ida", "karl"}
+    assert an["ida"]["text"] == text("konto.meldungen.text.anfrage_reisen", **TOM)
+    assert an["ida"]["url"] == f"{BASIS}/konto#freischalten"
+
+
+@pytest.mark.parametrize("sprache", ["de", "en"])
+def test_nachricht_ohne_reise_hat_titel_und_ziel_mein_konto(betrieb, monkeypatch, sprache):
+    u = betrieb
+    kid = u.ida if sprache == "de" else u.karl
+    assert text("push.titel_ohne_reise", sprache) != "push.titel_ohne_reise", "Schlüssel fehlt im Katalog"
+    for ziel in ("freischalten", "meldungen"):
+        n = push.nachricht(kid, "", [{"art": "meldung", "text": "Etwas Neues", "ziel": ziel}])
+        assert n["titel"] == text("push.titel_ohne_reise", sprache)
+        assert n["url"] == f"{BASIS}/konto#{ziel}" and n["tag"] == "frieda-konto" and n["text"] == "Etwas Neues"
+    # mehrere: eine Nachricht, Ziel die Meldungen auf Mein Konto
+    n = push.nachricht(kid, "", [{"art": "meldung", "text": "A", "ziel": "freischalten"},
+                                 {"art": "meldung", "text": "B", "ziel": "meldungen"}])
+    assert n["titel"] == text("push.titel_ohne_reise", sprache) and n["url"] == f"{BASIS}/konto#meldungen"
+    assert "#reise" not in n["url"] and n["tag"] == "frieda-konto"
+    monkeypatch.delenv("FR_BASIS")
+    assert push.nachricht(kid, "", [{"art": "meldung", "text": "x", "ziel": "freischalten"}])["url"] == "/konto#freischalten"
+
+
+def test_ruhezeit_haelt_meldung_ohne_reise_zurueck(betrieb):
+    u = betrieb
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [u.ida], "anfrage_warteliste", "reise", "Spät bestätigt")
+    assert push.sammeln(NACHT) == 1
+    erg = push.zustellen(u.senden, NACHT)                            # 0:00 in Berlin
+    assert erg["warten"] == 1 and not u.gesendet
+    rm.meldung_anlegen(rm.ordner_neu(), [u.ida], "anfrage_reisen", "reise", "Noch jemand")
+    push.sammeln(NACHT + 60)
+    erg = push.zustellen(u.senden, NACHT + 7.5 * 3600)               # 7:30: beide als eine Nachricht
+    assert erg["nachrichten"] == 1
+    [(geraet, inhalt)] = u.gesendet
+    assert geraet == "ida" and inhalt["text"].endswith("Noch jemand") and inhalt["tag"] == "frieda-konto"
+
+
+def test_gruppe_rueckmeldungen_aus_kein_push(betrieb):
+    u = betrieb
+    push.einstellungen_von(u.ida, {"push": {"rueckmeldungen": False}})
+    konten.push_abo_entfernen(u.karl, abo("karl")["endpoint"])        # Karl ohne Gerät
+    anmeldung.betreiber_melden(TOM)
+    assert push.sammeln(MITTAG) == 0 and warteschlange() == []
+    assert push.stand("meldungen:_neu") is not None                  # gesehen ist es trotzdem
+
+
+def test_mail_taeglich_nimmt_meldung_ohne_reise_mit_eigener_ueberschrift(betrieb):
+    u = betrieb
+    push.einstellungen_von(u.ida, {"mail": {"rueckmeldungen": "taeglich"}})
+    push.einstellungen_von(u.karl, {"mail": {"rueckmeldungen": "taeglich"}})
+    konten.push_abo_entfernen(u.karl, abo("karl")["endpoint"])        # auch ohne Gerät in die Zusammenfassung
+    warteliste()
+    push.sammeln(MITTAG)
+    gesendet = []
+    post = lambda an, betreff, text_: gesendet.append((an, betreff, text_))  # noqa: E731
+    assert push.zusammenfassungen(post, MITTAG) == 2
+    mails = {an: t for an, _, t in gesendet}
+    for an, sp in ((IDA, "de"), (KARL, "en")):
+        assert text("push.mail.zusammenfassung.ohne_reise", sp) != "push.mail.zusammenfassung.ohne_reise"
+        zeilen = mails[an].splitlines()
+        kopf = [z for z in zeilen if text("push.mail.zusammenfassung.ohne_reise", sp) in z]
+        assert len(kopf) == 1 and f"{BASIS}/konto" in kopf[0], mails[an]
+        eintrag = f"- {text('konto.meldungen.text.anfrage_warteliste', sp, email='lea@beispiel.invalid')}"
+        assert eintrag in zeilen and zeilen.index(eintrag) > zeilen.index(kopf[0])
+        assert ":" not in [z.strip() for z in zeilen], "keine leere Überschrift einer Reise"
+    # Mail „nie“: kein Eintrag
+    for kid in (u.ida, u.karl):
+        push.einstellungen_von(kid, {"mail": {"rueckmeldungen": "nie"}})
+    warteliste("max@beispiel.invalid")
+    push.sammeln(MITTAG + 86400)
+    assert push.zusammenfassungen(post, MITTAG + 86400) == 0 and len(gesendet) == 2
+
+
+def test_erster_lauf_merkt_nur(welt):
+    welt()
+    ida = betreiber("K-ida", IDA, "Ida")
+    konten.push_abo_speichern(ida, abo("ida"), "", f"{BASIS}/konto", "geraet-ida-1", "Europe/Berlin")
+    push.einstellungen_von(ida, {"mail": {"rueckmeldungen": "taeglich"}})
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [ida], "anfrage_warteliste", "reise", "Altbestand")
+    assert push.sammeln(MITTAG) == 0
+    assert warteschlange() == [] and not push.stand(f"sammel:{ida}")
+    rm.meldung_anlegen(rm.ordner_neu(), [ida], "anfrage_warteliste", "reise", "Danach")
+    assert push.sammeln(MITTAG) == 1 and [w["text"] for w in warteschlange()] == ["Danach"]
+
+
+def test_kein_doppelversand(betrieb):
+    u = betrieb
+    o = rm.ordner_neu(anlegen=True)
+    rm.meldung_anlegen(o, [u.ida], "anfrage_warteliste", "reise", "Erste")
+    assert push.sammeln(MITTAG) == 1
+    assert push.sammeln(MITTAG) == 0 and push.sammeln(MITTAG) == 0 and len(warteschlange()) == 1
+    # zwei Meldungen in derselben Sekunde gehen beide durch, auch über zwei Läufe
+    zeit = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
+    rm.meldung_anlegen(o, [u.ida], "anfrage_warteliste", "reise", "Zweite", zeit=zeit)
+    assert push.sammeln(MITTAG) == 1
+    rm.meldung_anlegen(o, [u.ida], "anfrage_warteliste", "reise", "Dritte", zeit=zeit)
+    assert push.sammeln(MITTAG) == 1 and push.sammeln(MITTAG) == 0
+    assert [w["text"] for w in warteschlange()] == ["Erste", "Zweite", "Dritte"]
+
+
+def test_nur_bestehende_nicht_gesperrte_konten(betrieb):
+    u = betrieb
+    gesperrt = betreiber("K-weg", "weg@beispiel.invalid", "Weg", gesperrt=1)
+    konten.push_abo_speichern(gesperrt, abo("weg"), "", f"{BASIS}/konto", "geraet-weg-1", "Europe/Berlin")
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [gesperrt, "K-unbekannt", "Karl", u.ida], "anfrage_reisen", "reise", "Bitte")
+    assert push.sammeln(MITTAG) == 1
+    assert [w["konto"] for w in warteschlange()] == [u.ida]
+
+
+def test_neue_reise_und_loeschung_laufen_denselben_weg(betrieb):
+    u = betrieb
+    o = rm.ordner_neu(anlegen=True)
+    rm.meldung_anlegen(o, [u.ida], "neue_reise", "neue-reise", "Deine neue Reise ist angelegt.",
+                       teile=[("konto.meldungen.text.neue_reise", {"titel": "Neue Reise"})])
+    rm.meldung_anlegen(o, ["Karl"], "neue_reise", "andere-reise", "Rückfall mit Namen")   # Name statt Kennung: nichts
+    rm.meldung_anlegen(o, [u.karl], "loeschung", "reise", "Die Reise wird gelöscht.")
+    assert push.sammeln(MITTAG) == 2
+    assert [(w["konto"], w["reise"], w["art"], w["ziel"]) for w in warteschlange()] == [
+        (u.ida, "", "meldung", "meldungen"), (u.karl, "", "meldung", "meldungen")]
+    push.zustellen(u.senden, MITTAG)
+    an = dict(u.gesendet)
+    assert an["ida"]["url"] == an["karl"]["url"] == f"{BASIS}/konto#meldungen"
+    assert an["ida"]["titel"] == text("push.titel_ohne_reise") and an["karl"]["titel"] == text("push.titel_ohne_reise", "en")
+    # gleiche Gruppe: ausgeschaltet kommt nichts
+    push.einstellungen_von(u.ida, {"push": {"rueckmeldungen": False}})
+    rm.meldung_anlegen(o, [u.ida], "loeschung", "reise", "Noch eine Löschung")
+    assert push.sammeln(MITTAG) == 0
+
+
+def test_text_in_sprache_des_empfaengers(betrieb):
+    u = betrieb
+    warteliste()                                                     # mit Teilen: je Sprache aus dem Katalog
+    rm.meldung_anlegen(rm.ordner_neu(), [u.ida, u.karl], "anfrage_reisen", "reise", "Nur gespeicherter Text")
+    assert push.sammeln(MITTAG) == 4
+    texte_je = {}
+    for w in warteschlange():
+        texte_je.setdefault(w["konto"], []).append(w["text"])
+    email = "lea@beispiel.invalid"
+    assert texte_je[u.ida] == [text("konto.meldungen.text.anfrage_warteliste", "de", email=email), "Nur gespeicherter Text"]
+    assert texte_je[u.karl] == [text("konto.meldungen.text.anfrage_warteliste", "en", email=email), "Nur gespeicherter Text"]
+
+
+def test_bestand_mit_beiden_beispielreisen_unveraendert(reise):
+    """Beide Beispielreisen in der Ablage: Meldungen der Reise kommen wie bisher, die ohne Reise zusätzlich und getrennt."""
+    import bauen
+    u = reise
+    bauen.bauen(BEISPIELE / "stadtwochenende", u.seiten / "stadtwochenende")
+    (u.ablage / "stadtwochenende").mkdir()
+    with closing(konten.db()) as v, v:
+        v.execute("UPDATE konten SET rechte = 'betreiber' WHERE id = ?", (u.ida_id,))
+    assert push.sammeln(MITTAG) == 0                                 # ohne neue Meldungen: nichts
+    rm.meldung_anlegen(u.o, ["Karl"], "konflikt", "V-01", "Ida und Max haben verschieden entschieden.")
+    warteliste()
+    assert push.sammeln(MITTAG) == 2 and push.sammeln(MITTAG) == 0
+    assert {(w["konto"], w["reise"]) for w in warteschlange()} == {(u.karl_id, "beispielreise"), (u.ida_id, "")}
+    assert push.stand("meldungen:stadtwochenende") is not None and push.stand("meldungen:beispielreise") is not None
+    push.zustellen(u.senden, MITTAG)
+    an = dict(u.gesendet)
+    assert an["karl"]["url"] == SEITE + "#V-01" and an["karl"]["tag"] == "frieda-beispielreise"
+    assert an["ida"]["url"] == f"{BASIS}/konto#freischalten" and an["ida"]["tag"] == "frieda-konto"
+
+
+def test_neue_texte_in_allen_sprachen():
+    for sp in texte.SPRACHEN:
+        for k in ("push.titel_ohne_reise", "push.mail.zusammenfassung.ohne_reise"):
+            assert texte.t(sp, k) != k, f"{k} fehlt in {sp}"
+            assert not re.search(r"\{[^{}]*\}", texte.t(sp, k)), f"{k} hat in {sp} Platzhalter"

@@ -1,0 +1,242 @@
+..............................FFFFFFFFFFFFFF                             [100%]
+=================================== FAILURES ===================================
+______________ test_warteliste_meldung_geht_als_push_an_betreiber ______________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc1f30170>
+
+    def test_warteliste_meldung_geht_als_push_an_betreiber(betrieb):
+        u = betrieb
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [u.ida], "anfrage_warteliste", "reise", "lea@beispiel.invalid wartet.")
+>       assert push.sammeln(MITTAG) == 1
+E       assert 0 == 1
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:600: AssertionError
+___________________ test_bitte_reisen_anlegen_geht_als_push ____________________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc014b440>
+
+    def test_bitte_reisen_anlegen_geht_als_push(betrieb):
+        u = betrieb
+        anmeldung.betreiber_melden(TOM)                                   # an alle Betreiber:innen
+>       assert push.sammeln(MITTAG) == 2
+E       assert 0 == 2
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:612: AssertionError
+_________ test_nachricht_ohne_reise_hat_titel_und_ziel_mein_konto[de] __________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc1f5f650>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4cc00a6240>
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_nachricht_ohne_reise_hat_titel_und_ziel_mein_konto(betrieb, monkeypatch, sprache):
+        u = betrieb
+        kid = u.ida if sprache == "de" else u.karl
+>       assert text("push.titel_ohne_reise", sprache) != "push.titel_ohne_reise", "Schlüssel fehlt im Katalog"
+E       AssertionError: Schlüssel fehlt im Katalog
+E       assert 'push.titel_ohne_reise' != 'push.titel_ohne_reise'
+E        +  where 'push.titel_ohne_reise' = text('push.titel_ohne_reise', 'de')
+
+engine/tests/test_push.py:624: AssertionError
+_________ test_nachricht_ohne_reise_hat_titel_und_ziel_mein_konto[en] __________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc0136390>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7d4cc0137440>
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_nachricht_ohne_reise_hat_titel_und_ziel_mein_konto(betrieb, monkeypatch, sprache):
+        u = betrieb
+        kid = u.ida if sprache == "de" else u.karl
+>       assert text("push.titel_ohne_reise", sprache) != "push.titel_ohne_reise", "Schlüssel fehlt im Katalog"
+E       AssertionError: Schlüssel fehlt im Katalog
+E       assert 'push.titel_ohne_reise' != 'push.titel_ohne_reise'
+E        +  where 'push.titel_ohne_reise' = text('push.titel_ohne_reise', 'en')
+
+engine/tests/test_push.py:624: AssertionError
+________________ test_ruhezeit_haelt_meldung_ohne_reise_zurueck ________________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc017f9b0>
+
+    def test_ruhezeit_haelt_meldung_ohne_reise_zurueck(betrieb):
+        u = betrieb
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [u.ida], "anfrage_warteliste", "reise", "Spät bestätigt")
+>       assert push.sammeln(NACHT) == 1
+E       assert 0 == 1
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810332000.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:641: AssertionError
+___________________ test_gruppe_rueckmeldungen_aus_kein_push ___________________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cbb7bb470>
+
+    def test_gruppe_rueckmeldungen_aus_kein_push(betrieb):
+        u = betrieb
+        push.einstellungen_von(u.ida, {"push": {"rueckmeldungen": False}})
+        konten.push_abo_entfernen(u.karl, abo("karl")["endpoint"])        # Karl ohne Gerät
+        anmeldung.betreiber_melden(TOM)
+        assert push.sammeln(MITTAG) == 0 and warteschlange() == []
+>       assert push.stand("meldungen:_neu") is not None                  # gesehen ist es trotzdem
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert None is not None
+E        +  where None = <function stand at 0x7d4cc23728e0>('meldungen:_neu')
+E        +    where <function stand at 0x7d4cc23728e0> = push.stand
+
+engine/tests/test_push.py:658: AssertionError
+_____ test_mail_taeglich_nimmt_meldung_ohne_reise_mit_eigener_ueberschrift _____
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc0150b90>
+
+    def test_mail_taeglich_nimmt_meldung_ohne_reise_mit_eigener_ueberschrift(betrieb):
+        u = betrieb
+        push.einstellungen_von(u.ida, {"mail": {"rueckmeldungen": "taeglich"}})
+        push.einstellungen_von(u.karl, {"mail": {"rueckmeldungen": "taeglich"}})
+        konten.push_abo_entfernen(u.karl, abo("karl")["endpoint"])        # auch ohne Gerät in die Zusammenfassung
+        warteliste()
+        push.sammeln(MITTAG)
+        gesendet = []
+        post = lambda an, betreff, text_: gesendet.append((an, betreff, text_))  # noqa: E731
+>       assert push.zusammenfassungen(post, MITTAG) == 2
+E       assert 0 == 2
+E        +  where 0 = <function zusammenfassungen at 0x7d4cc23739c0>(<function test_mail_taeglich_nimmt_meldung_ohne_reise_mit_eigener_ueberschrift.<locals>.<lambda> at 0x7d4cbb7f2b60>, 1810288800.0)
+E        +    where <function zusammenfassungen at 0x7d4cc23739c0> = push.zusammenfassungen
+
+engine/tests/test_push.py:670: AssertionError
+__________________________ test_erster_lauf_merkt_nur __________________________
+
+welt = <function welt.<locals>.neu at 0x7d4cc28c7ba0>
+
+    def test_erster_lauf_merkt_nur(welt):
+        welt()
+        ida = betreiber("K-ida", IDA, "Ida")
+        konten.push_abo_speichern(ida, abo("ida"), "", f"{BASIS}/konto", "geraet-ida-1", "Europe/Berlin")
+        push.einstellungen_von(ida, {"mail": {"rueckmeldungen": "taeglich"}})
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [ida], "anfrage_warteliste", "reise", "Altbestand")
+        assert push.sammeln(MITTAG) == 0
+        assert warteschlange() == [] and not push.stand(f"sammel:{ida}")
+        rm.meldung_anlegen(rm.ordner_neu(), [ida], "anfrage_warteliste", "reise", "Danach")
+>       assert push.sammeln(MITTAG) == 1 and [w["text"] for w in warteschlange()] == ["Danach"]
+E       assert (0 == 1)
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:697: AssertionError
+___________________________ test_kein_doppelversand ____________________________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc01481a0>
+
+    def test_kein_doppelversand(betrieb):
+        u = betrieb
+        o = rm.ordner_neu(anlegen=True)
+        rm.meldung_anlegen(o, [u.ida], "anfrage_warteliste", "reise", "Erste")
+>       assert push.sammeln(MITTAG) == 1
+E       assert 0 == 1
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:704: AssertionError
+__________________ test_nur_bestehende_nicht_gesperrte_konten __________________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cbb7ba2a0>
+
+    def test_nur_bestehende_nicht_gesperrte_konten(betrieb):
+        u = betrieb
+        gesperrt = betreiber("K-weg", "weg@beispiel.invalid", "Weg", gesperrt=1)
+        konten.push_abo_speichern(gesperrt, abo("weg"), "", f"{BASIS}/konto", "geraet-weg-1", "Europe/Berlin")
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [gesperrt, "K-unbekannt", "Karl", u.ida], "anfrage_reisen", "reise", "Bitte")
+>       assert push.sammeln(MITTAG) == 1
+E       assert 0 == 1
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:720: AssertionError
+______________ test_neue_reise_und_loeschung_laufen_denselben_weg ______________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cbb7a4bc0>
+
+    def test_neue_reise_und_loeschung_laufen_denselben_weg(betrieb):
+        u = betrieb
+        o = rm.ordner_neu(anlegen=True)
+        rm.meldung_anlegen(o, [u.ida], "neue_reise", "neue-reise", "Deine neue Reise ist angelegt.",
+                           teile=[("konto.meldungen.text.neue_reise", {"titel": "Neue Reise"})])
+        rm.meldung_anlegen(o, ["Karl"], "neue_reise", "andere-reise", "Rückfall mit Namen")   # Name statt Kennung: nichts
+        rm.meldung_anlegen(o, [u.karl], "loeschung", "reise", "Die Reise wird gelöscht.")
+>       assert push.sammeln(MITTAG) == 2
+E       assert 0 == 2
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:731: AssertionError
+_____________________ test_text_in_sprache_des_empfaengers _____________________
+
+betrieb = <test_regeln.Umgebung object at 0x7d4cc1f4f650>
+
+    def test_text_in_sprache_des_empfaengers(betrieb):
+        u = betrieb
+        warteliste()                                                     # mit Teilen: je Sprache aus dem Katalog
+        rm.meldung_anlegen(rm.ordner_neu(), [u.ida, u.karl], "anfrage_reisen", "reise", "Nur gespeicherter Text")
+>       assert push.sammeln(MITTAG) == 4
+E       assert 0 == 4
+E        +  where 0 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:748: AssertionError
+_____________ test_bestand_mit_beiden_beispielreisen_unveraendert ______________
+
+reise = <test_regeln.Umgebung object at 0x7d4cc01878f0>
+
+    def test_bestand_mit_beiden_beispielreisen_unveraendert(reise):
+        """Beide Beispielreisen in der Ablage: Meldungen der Reise kommen wie bisher, die ohne Reise zusätzlich und getrennt."""
+        import bauen
+        u = reise
+        bauen.bauen(BEISPIELE / "stadtwochenende", u.seiten / "stadtwochenende")
+        (u.ablage / "stadtwochenende").mkdir()
+        with closing(konten.db()) as v, v:
+            v.execute("UPDATE konten SET rechte = 'betreiber' WHERE id = ?", (u.ida_id,))
+        assert push.sammeln(MITTAG) == 0                                 # ohne neue Meldungen: nichts
+        rm.meldung_anlegen(u.o, ["Karl"], "konflikt", "V-01", "Ida und Max haben verschieden entschieden.")
+        warteliste()
+>       assert push.sammeln(MITTAG) == 2 and push.sammeln(MITTAG) == 0
+E       assert (1 == 2)
+E        +  where 1 = <function sammeln at 0x7d4cc2372f20>(1810288800.0)
+E        +    where <function sammeln at 0x7d4cc2372f20> = push.sammeln
+
+engine/tests/test_push.py:768: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+______________________ test_neue_texte_in_allen_sprachen _______________________
+
+    def test_neue_texte_in_allen_sprachen():
+        for sp in texte.SPRACHEN:
+            for k in ("push.titel_ohne_reise", "push.mail.zusammenfassung.ohne_reise"):
+>               assert texte.t(sp, k) != k, f"{k} fehlt in {sp}"
+E               AssertionError: push.titel_ohne_reise fehlt in de
+E               assert 'push.titel_ohne_reise' != 'push.titel_ohne_reise'
+E                +  where 'push.titel_ohne_reise' = <function t at 0x7d4cc21b98a0>('de', 'push.titel_ohne_reise')
+E                +    where <function t at 0x7d4cc21b98a0> = texte.t
+
+engine/tests/test_push.py:780: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_push.py::test_warteliste_meldung_geht_als_push_an_betreiber
+FAILED engine/tests/test_push.py::test_bitte_reisen_anlegen_geht_als_push - a...
+FAILED engine/tests/test_push.py::test_nachricht_ohne_reise_hat_titel_und_ziel_mein_konto[de]
+FAILED engine/tests/test_push.py::test_nachricht_ohne_reise_hat_titel_und_ziel_mein_konto[en]
+FAILED engine/tests/test_push.py::test_ruhezeit_haelt_meldung_ohne_reise_zurueck
+FAILED engine/tests/test_push.py::test_gruppe_rueckmeldungen_aus_kein_push - ...
+FAILED engine/tests/test_push.py::test_mail_taeglich_nimmt_meldung_ohne_reise_mit_eigener_ueberschrift
+FAILED engine/tests/test_push.py::test_erster_lauf_merkt_nur - assert (0 == 1)
+FAILED engine/tests/test_push.py::test_kein_doppelversand - assert 0 == 1
+FAILED engine/tests/test_push.py::test_nur_bestehende_nicht_gesperrte_konten
+FAILED engine/tests/test_push.py::test_neue_reise_und_loeschung_laufen_denselben_weg
+FAILED engine/tests/test_push.py::test_text_in_sprache_des_empfaengers - asse...
+FAILED engine/tests/test_push.py::test_bestand_mit_beiden_beispielreisen_unveraendert
+FAILED engine/tests/test_push.py::test_neue_texte_in_allen_sprachen - Asserti...
+14 failed, 30 passed in 43.23s
