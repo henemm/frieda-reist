@@ -162,9 +162,12 @@ for (const app of [true, false]) {
     };
     requestAnimationFrame(bild);
   }));
+  // Die Vorlage misst am resize-Ereignis; der Hörer wird vor der Größenänderung eingehängt, gemessen wird erst nach dem
+  // Ereignis und der neuen innerHeight (#599).
   const hoehe = async h => {
+    await p.evaluate(() => { window.__rhResize = false; addEventListener("resize", () => { window.__rhResize = true; }, {once: true}); });
     await p.setViewportSize({width: 390, height: h});
-    await p.waitForFunction(h => window.innerHeight === h, h);
+    await p.waitForFunction(h => window.innerHeight === h && window.__rhResize, h);
   };
   const m = {start: await unten()};
   await hoehe(500);
@@ -172,7 +175,9 @@ for (const app of [true, false]) {
   await p.evaluate(() => document.querySelector("#suchKnopf").click());
   m.tippt = await unten();
   await p.evaluate(() => document.activeElement && document.activeElement.blur());
-  await p.waitForTimeout(500);   // die Vorlage misst nach dem Verlassen eines Felds nach 50 und 400 ms
+  // Die Vorlage misst nach dem Verlassen eines Felds per Zeitgeber nach 50 und 400 ms; ein eigener Zeitgeber in der Seite
+  // (450 ms) läuft nach ihrem, auch wenn die Seite langsam ist (#599).
+  await p.evaluate(() => new Promise(r => setTimeout(r, 450)));
   m.zu = await unten();
   await hoehe(800);
   m.voll = await unten();

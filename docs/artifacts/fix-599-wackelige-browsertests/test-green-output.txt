@@ -1,0 +1,14 @@
+..............................................                           [100%]
+46 passed in 1043.70s (0:17:23)
+
+# Gesamtlauf engine/.venv/bin/python -m pytest -q -n 3 engine/tests (nach der Änderung):
+# 1 failed, 3324 passed in 1845.50s. Rot: test_software_weg_454.py::test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen,
+# unabhängig von #599: einzeln 3 von 3 rot, ebenso auf dem unveränderten Stand origin/main (5f36075). Kein Browsertest rot,
+# auch test_wackel_599.py::test_echter_fehler_bleibt_rot grün (kein Tap-Wackler).
+# Nur test_wackel_599.py mit -n 3: 9 passed in 402.47s.
+#
+# Laufzeit ohne Verzögerung (AC-6), --durations, vorher (Stand vor der Änderung) / nachher:
+#   test_seite.py::test_alle_ansichten_der_beispielreise[webkit]          31.25 s / 30.34 s
+#   test_seite.py::test_alle_ansichten_der_beispielreise[chromium]        21.82 s / 21.96 s
+#   test_karte_popup_310.py::...ausschnitt_310[webkit]                     5.23 s /  4.53 s
+#   test_karte_popup_310.py::...ausschnitt_310[chromium]                   4.57 s /  3.87 s

@@ -37,7 +37,16 @@ for (const breite of [390, 1300]) {
   }
   await p.click(`.kartenansichten button:text-is("${ansicht}")`);
   await p.waitForSelector(".kartenbox .rh-ding", {state: "attached"});
-  await p.waitForTimeout(600);
+  // Warten, bis die neu gebaute Karte vermessen ist (Größe > 0), alle Punkte der Ansicht im Ausschnitt liegen und keine Zoom-
+  // oder Schwenk-Animation läuft (#599). Läuft die Frist ab, wird trotzdem gemessen; die Prüfung macht der Python-Test.
+  await p.waitForFunction(() => {
+    if (typeof KARTE === "undefined" || !KARTE) return false;
+    const g = KARTE.getSize();
+    if (!(g.x > 0 && g.y > 0) || KARTE._animatingZoom || (KARTE._panAnim && KARTE._panAnim._inProgress)) return false;
+    const bb = KARTE.getBounds(), lagen = [];
+    KARTE.eachLayer(l => { if (l.getLatLng && l.options.icon && /rh-pw/.test(l.options.icon.options.className || "")) lagen.push(l.getLatLng()); });
+    return lagen.length > 0 && lagen.every(x => bb.contains(x));
+  }, null, {timeout: 10000}).catch(() => {});
   a.ansicht = await p.evaluate(() => {
     const bb = KARTE.getBounds();
     const lagen = [];
