@@ -49,9 +49,9 @@ WAHL = ("wahlstellen:\n  V-01:", """wahlstellen:
 
 
 def routen(ersetzen):
-    d = pathlib.Path(tempfile.mkdtemp())
-    seiten = reise_bauen(d, routen_ersetzen=ersetzen)
-    daten = json.loads((pathlib.Path(seiten) / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
+    with tempfile.TemporaryDirectory() as d:   # räumt auch nach einem Fehler auf; mkdtemp ließ je Lauf 9 MB in /tmp liegen
+        seiten = reise_bauen(pathlib.Path(d), routen_ersetzen=ersetzen)
+        daten = json.loads((pathlib.Path(seiten) / "beispielreise" / "daten.json").read_text(encoding="utf-8"))
     return daten["route"]
 
 

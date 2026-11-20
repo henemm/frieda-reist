@@ -35,9 +35,9 @@ def alte_form(tmp_path):
     return q
 
 
-def test_beispielreise_hat_punkte_als_dinge():
+def test_beispielreise_hat_punkte_als_dinge(tmp_path):
     """Die Beispielreise im Repo ist umgestellt: jeder bisherige Punkt hat eine ID und eine Art, die Kategorien sind Arten."""
-    d = bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", Path(__import__("tempfile").mkdtemp()) / "x")
+    d = bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", tmp_path / "x")
     r = d["route"]
     punkte = {aid: a for aid, a in r["aufenthalte"].items() if r["eltern"].get(aid, "")[:2] in ("E-", "W-")}
     assert len(punkte) == 30 and all(a["art"] in KATEGORIEN for a in punkte.values())
