@@ -427,7 +427,7 @@ def _orte_der_reise(reise):
 
 def _seitenlink_entfernen(reise):
     """Den geheimen Link der Reise aus seiten.json des Konnektors nehmen (betrieb/freischalten.sh schreibt ihn). Der
-    nginx-Baustein des Links bleibt (Root-Rechte); er zeigt danach auf einen leeren Ort und liefert 404."""
+    nginx-Baustein des Links entfernt der nächste Lauf von Veröffentlichen (#527); bis dahin liefert er 404."""
     p = Path(os.environ.get("KN_SEITENLINKS") or instanz.konnektor() / "seiten.json")
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
@@ -449,7 +449,9 @@ def loeschungen_ausfuehren():
     """Täglicher Lauf (#381): entfernt jede Reise mit abgelaufener Schonfrist und jede Reise des Löschprotokolls, die nach
     dem Rückspielen einer alten Sicherung wieder auftaucht. Vorher ein Schnappschuss, nach jeder Reise pruefen über alle
     verbleibenden Reisen (nicht grün: Abbruch mit Fehler, keine weitere Reise), am Ende verdichten und ein frischer
-    Schnappschuss, dann Vormerkung weg und Eintrag ins Löschprotokoll. -> entfernte Reisen."""
+    Schnappschuss, dann Vormerkung weg und Eintrag ins Löschprotokoll. Den nginx-Baustein der Reise entfernt danach der
+    nächste Lauf von Veröffentlichen mit Root-Rechten (betrieb/veroeffentlichen.sh, #527); der Wächter hat keine.
+    -> entfernte Reisen."""
     import reisespeicher as rs
     im_speicher = set(rs.reisen(mit_vorgemerkten=True))
     reisen = konten.faellige_loeschungen()

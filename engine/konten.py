@@ -36,6 +36,7 @@ Aufrufe:
   python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
   python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Reisen-Repo
   python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
+  python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
 """
 import datetime
 import email.message
@@ -1719,6 +1720,9 @@ def main(a):
             zusammenfuehren(_per_email(a[1])["id"], _per_email(a[2])["id"])
         elif a[:1] == ["vorgemerkt"] and len(a) == 1:
             for r in sorted(vorgemerkte_reisen()):
+                print(r)
+        elif a[:1] == ["entfernt"] and len(a) == 1:   # #527: liest nur, ohne Datenbank keine Ausgabe
+            for r in loeschprotokoll():
                 print(r)
         elif a[:1] == ["sichern"] and len(a) == 1:
             z = sichern()   # ohne Datenbank: nichts zu sichern, keine Ausgabe

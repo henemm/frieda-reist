@@ -272,6 +272,43 @@ vorgemerkte_entfernen() {  # #381: Reisen, die zur Löschung vorgemerkt oder sch
   return 0
 }
 
+entfernte_bausteine() {  # #527: nginx-Baustein <FR_NGINX_SNIPPETS>/<instanz>-<reise>.conf jeder endgültig entfernten Reise
+  # (Löschprotokoll, engine/konten.py entfernt; nicht die Schonfrist, dort kann die Reise mit ihrem Link zurückkommen) über das
+  # Hilfsprogramm mit --entfernen löschen (Sicherung, nginx -t, Rückweg, Reload; #552). Der Wächter hat keine Root-Rechte.
+  # Die noch liegende Datei ist die Vormerkung: geprüft ohne Root, sudo nur bei echter Arbeit. Ohne Root-Rechte oder bei
+  # einem Fehler des Hilfsprogramms holt es der nächste Lauf nach. Kein Ausfall (die Seite liefert ohnehin 404): nur
+  # Warnzeilen, immer Rückgabe 0.
+  local r liste datei helfer fehler_datei hrc grund
+  [ -e "$FR_KONTEN/konten.db" ] || [ -e "$FR_ABLAGE/_konten/konten.db" ] || return 0
+  liste="$("$FR_PYTHON" "$FR_BETRIEB/../engine/konten.py" entfernt)" \
+    || { echo "Warning: the list of removed trips cannot be read, nginx blocks stay until the next run."; return 0; }
+  helfer="${FR_NGINX_REISE_HELFER:-/usr/local/sbin/$FR_INSTANZ-nginx-reise-installieren}"
+  for r in $liste; do
+    [[ "$r" =~ ^[a-z0-9][a-z0-9-]{1,39}$ ]] || continue   # Muster des Hilfsprogramms und von freischalten.sh
+    datei="${FR_NGINX_SNIPPETS:-/etc/nginx/snippets}/$FR_INSTANZ-$r.conf"
+    [ -e "$datei" ] || continue
+    if ! root_geht; then
+      echo "Note: nginx block of $r not removed in this run (no root rights); the next timer run does it."
+      continue
+    fi
+    if [ ! -x "$helfer" ]; then
+      echo "Warning: nginx block of $r not removed, helper $helfer is missing (einrichten.sh --installieren)."
+      continue
+    fi
+    fehler_datei="$(mktemp)"
+    hrc=0
+    printf '%s\n' "$r" | ${FR_SUDO-sudo -n} "$helfer" --entfernen > /dev/null 2> "$fehler_datei" || hrc=$?
+    grund="$(tr '\n' ' ' < "$fehler_datei" | sed 's/ *$//')"
+    rm -f "$fehler_datei"
+    case "$hrc" in
+      0) echo "Block removed: $r" ;;
+      2) ;;   # nichts mehr da (Wettlauf)
+      *) echo "Warning: nginx block of $r not removed (exit $hrc), the next run tries again: ${grund:-no reason}" ;;
+    esac
+  done
+  return 0
+}
+
 ist_vorgemerkt() {  # <reise>: steht sie in der Liste aus vorgemerkte_entfernen?
   [[ " $(echo $vorgemerkt_liste) " == *" $1 "* ]]
 }
@@ -872,6 +909,7 @@ main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
   mkdir -p "$FR_DIENST"
   umzug_fertig_im_klon
   vorgemerkte_entfernen || return 1
+  entfernte_bausteine
   speicherreisen_lesen || return 1
   speicher_reisen_lauf || return 1   # mit der Software, die jetzt da ist
   ausstehende_neustarts
@@ -1151,6 +1189,7 @@ main() {
   # Reisen aus dem Reisespeicher zuerst und ohne Netz (#348): Scheitert git fetch (kein GitHub), sind sie schon veröffentlicht.
   # Ohne Reisen im Speicher geschieht hier nichts. Vorher verschwinden die Seiten gelöschter Reisen (#381).
   vorgemerkte_entfernen || return 1
+  entfernte_bausteine
   speicherreisen_lesen || return 1   # im Speicher ist, was im Speicher steht (#454)
   git_reisen_umschalten || return 1  # übrige Git-Reisen auf den Speicher umschalten (#454, Lieferung 1)
   speicher_reisen_lauf || return 1

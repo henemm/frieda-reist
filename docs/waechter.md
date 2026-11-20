@@ -63,3 +63,5 @@ python3 engine/waechter.py lauf [<reise>…] [--heute …] [--bericht DATEI]
 ```
 
 `lauf` ohne Reise läuft über alle Reisen der Rückmelde-Ablage. Gleiche Meldungen werden nicht doppelt angelegt (`schluessel`). Gedacht ist ein täglicher Lauf; ein zweiter am selben Tag meldet nichts Neues.
+
+`python3 engine/waechter.py loeschen` entfernt Reisen nach der Schonfrist (#381, Ablauf in `docs/betrieb.md`). Der Wächter hat keine Root-Rechte; den nginx-Baustein einer entfernten Reise entfernt der nächste Lauf von Veröffentlichen (#527).
