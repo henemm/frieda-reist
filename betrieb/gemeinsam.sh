@@ -1,13 +1,13 @@
 # Gemeinsame Grundlage der Betriebsskripte (wird mit „. gemeinsam.sh“ eingelesen, nicht aufgerufen).
 #
-# Eine Instanz baut aus dem Software-Klon <FR_SEITEN>/_software (#454, docs/betrieb.md „Bauordner“), früher aus einem
-# Reisen-Repo mit dieser Software als Submodul frieda/ (alte Anordnung, bis zum Umzug). Die Skripte hier kennen keine
-# Instanz: Pfade, Adressen, Namen, Meldeweg und Überwachung kommen aus den Einstellungen.
+# Eine Instanz baut aus dem Software-Klon <FR_SEITEN>/_software (#454, docs/betrieb.md „Bauordner“); eine andere Anordnung
+# gibt es seit #557 nicht mehr. Die Skripte hier kennen keine Instanz: Pfade, Adressen, Namen, Meldeweg und Überwachung
+# kommen aus den Einstellungen.
 #
-#   FR_WURZEL         Bauordner: der Software-Klon (neu) oder das Reisen-Repo (alt). Ohne Angabe das Repo, das diese Software
-#                     als Submodul einbindet. deploy.sh und veroeffentlichen.sh verlangen die Angabe (nur_bauordner, unten).
-#   FR_EINSTELLUNGEN  Einstellungsdatei der Instanz, Vorgabe <FR_DIENST>/instanz/einstellungen.env (#454); fehlt sie dort, gilt
-#                     (Übergang) der alte Ort <FR_WURZEL>/betrieb/einstellungen.env (Vorlage: betrieb/einstellungen.beispiel).
+#   FR_WURZEL         Bauordner: der Software-Klon. Pflicht: ohne Angabe bricht jedes Skript ab (#137), damit kein Aufruf
+#                     von Hand den Ordner nimmt, in dem das Skript zufällig liegt (etwa einen Arbeitsordner auf einem Branch).
+#   FR_EINSTELLUNGEN  Einstellungsdatei der Instanz, Vorgabe <FR_DIENST>/instanz/einstellungen.env (#454); fehlt sie dort,
+#                     <FR_WURZEL>/betrieb/einstellungen.env (Aufrufe von Hand, Tests; Vorlage: betrieb/einstellungen.beispiel).
 #                     Darin nur Zeilen NAME=wert mit Namen FR_…, ohne Shell-Auswertung. Was schon in der Umgebung steht
 #                     (systemd, Aufruf von Hand, Tests), gilt vor der Datei. FR_DIENST für diese Suche kommt aus der Umgebung
 #                     (sonst <FR_SEITEN>/_dienst bzw. /srv/<FR_INSTANZ>/_dienst), nie aus der Datei selbst.
@@ -34,35 +34,22 @@ fr_aufraeumen() {  # Werte entfernen, die nicht vom Aufruf stammen (Datei, betri
 }
 
 FR_BETRIEB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-fr_wurzel_angegeben="${FR_WURZEL:-}"
 
+# Gebaut und veröffentlicht wird nur im Bauordner der Instanz (docs/betrieb.md, Ordner; #137). Die Units und der
+# Schreibweg nennen ihn mit FR_WURZEL; ohne diese Angabe bricht jedes Skript ab.
 if [ -z "${FR_WURZEL:-}" ]; then
-  FR_WURZEL="$(git -C "$FR_BETRIEB" rev-parse --show-superproject-working-tree 2>/dev/null || true)"
-  [ -n "$FR_WURZEL" ] || { echo "ERROR: root of the instance unknown (set FR_WURZEL or include the software as a submodule)." >&2; exit 1; }
+  echo "ERROR: root of the instance unknown: FR_WURZEL is missing (FR_WURZEL=<FR_SEITEN>/_software betrieb/$(basename "$0") …)." >&2
+  exit 1
 fi
 FR_WURZEL="$(cd "$FR_WURZEL" && pwd)"
 export FR_WURZEL
 
-fr_alte_anordnung() {  # Bauordner in der alten Anordnung (#454): Reisen-Repo mit der Software als Submodul frieda/
-  [ -e "$FR_WURZEL/.gitmodules" ] || [ -d "$FR_WURZEL/frieda/betrieb" ]
-}
-
-# Gebaut und veröffentlicht wird nur im Bauordner der Instanz (docs/betrieb.md, Ordner; #137). Die Units und der
-# Schreibweg nennen ihn mit FR_WURZEL. Ohne diese Angabe nähme ein Aufruf von Hand den Ordner, in dem das Skript
-# zufällig liegt, etwa einen Arbeitsordner auf einem Branch.
-nur_bauordner() {  # [--main]: ohne FR_WURZEL abbrechen; mit --main auch, wenn HEAD nicht der Branch main ist
-  local skript zweig
-  skript="$(basename "$0")"
-  if [ -z "$fr_wurzel_angegeben" ]; then
-    echo "ERROR: FR_WURZEL is missing. $skript runs only in the build folder: FR_WURZEL=<Bauordner> frieda/betrieb/$skript …" >&2
+fr_nur_main() {  # abbrechen, wenn der Bauordner nicht auf dem Branch main steht (deploy.sh: gebaut wird nur, was auf main ist)
+  local zweig
+  zweig="$(git -C "$FR_WURZEL" symbolic-ref -q --short HEAD 2>/dev/null || echo "detached HEAD")"
+  if [ "$zweig" != main ]; then
+    echo "ERROR: $FR_WURZEL is not on main ($zweig). Only what is on main gets built." >&2
     exit 1
-  fi
-  if [ "${1:-}" = --main ]; then
-    zweig="$(git -C "$FR_WURZEL" symbolic-ref -q --short HEAD 2>/dev/null || echo "detached HEAD")"
-    if [ "$zweig" != main ]; then
-      echo "ERROR: $FR_WURZEL is not on main ($zweig). Only what is on main gets built." >&2
-      exit 1
-    fi
   fi
 }
 
@@ -84,8 +71,8 @@ fr_einlesen() {  # <datei>: NAME=wert-Zeilen übernehmen, Vorhandenes bleibt; nu
   done < "$1"
 }
 
-# Ort der Einstellungen (#454): <FR_DIENST>/instanz/einstellungen.env, sonst (Übergang) der alte Ort im Reisen-Repo. Der
-# Dienstordner kommt hier nur aus der Umgebung; die Datei kann ihn nicht selbst nennen.
+# Ort der Einstellungen (#454): <FR_DIENST>/instanz/einstellungen.env, sonst <FR_WURZEL>/betrieb/einstellungen.env (Aufrufe
+# von Hand, Tests). Der Dienstordner kommt hier nur aus der Umgebung; die Datei kann ihn nicht selbst nennen.
 fr_dienst_vorab="${FR_DIENST:-${FR_SEITEN:-/srv/${FR_INSTANZ:-frieda}}/_dienst}"
 if [ -n "${FR_EINSTELLUNGEN:-}" ]; then
   fr_einstellungen_datei="$FR_EINSTELLUNGEN"
@@ -109,23 +96,16 @@ fr_einlesen "$FR_DIENST/betrieb.env"
 : "${FR_RM_PORT:=8771}"
 : "${FR_KN_PORT:=8772}"
 : "${FR_SB_PORT:=8773}"
-: "${FR_SCHREIBKOPIE:=$FR_WURZEL-schreiben}"
 : "${FR_ADRESSE:=}"
 : "${FR_KN_ADRESSE:=$FR_ADRESSE}"   # Konnektor an der Wurzel der Adresse (/mcp, Anmeldung, OAuth; #163)
-# Python der Dienste (#454): fest unter <FR_DIENST>/python, außerhalb des Software-Klons; in der alten Anordnung (Submodul
-# frieda/ im Reisen-Repo) bis zum Umzug weiter <FR_WURZEL>/engine/.venv, außer die neue Umgebung steht schon
-if fr_alte_anordnung && [ ! -x "$FR_DIENST/python/bin/python" ]; then
-  : "${FR_PYTHON:=$FR_WURZEL/engine/.venv/bin/python}"
-else
-  : "${FR_PYTHON:=$FR_DIENST/python/bin/python}"
-fi
+# Python der Dienste (#454): fest unter <FR_DIENST>/python, außerhalb des Software-Klons
+: "${FR_PYTHON:=$FR_DIENST/python/bin/python}"
 : "${FR_MELDEN:=}"
 : "${FR_UMZUG_NACH:=}"
 : "${FR_SPERREN:=$FR_DIENST}"   # Sperren im Dienstordner, nicht im gemeinsamen Ordner für Temporäres (#552)
 : "${FR_EIGENE_ADRESSEN:=}"   # Adressen, die nicht ins Anfragekontingent zählen: die des Servers selbst, getrennt durch Leerzeichen (nginx-zone.conf, #206)
 : "${FR_ZEITZONE:=UTC}"   # Zeitzone der Zeiten in Konnektor und Diensten, wenn die der Person unbekannt ist (#227)
 : "${FR_SPEICHER:=$FR_SEITEN/_speicher}"   # Reisespeicher (engine/reisespeicher.py, ADR-0009), wie instanz.speicher()
-: "${FR_SPEICHERREISEN:=}"   # nur noch Übergang (#454): gelesen, wirkungslos; im Speicher ist, was im Speicher steht
 # Meldeweg (#454): <FR_DIENST>/instanz/melden.sh, auch wenn die umgezogene Einstellung noch den alten relativen Pfad nennt;
 # sonst relativ zur Wurzel wie bisher. Ohne Meldeweg wird nichts gesendet.
 case "$FR_MELDEN" in
@@ -134,16 +114,15 @@ case "$FR_MELDEN" in
   *) if [ -x "$FR_DIENST/instanz/$(basename "$FR_MELDEN")" ]; then FR_MELDEN="$FR_DIENST/instanz/$(basename "$FR_MELDEN")"
      else FR_MELDEN="$FR_WURZEL/$FR_MELDEN"; fi ;;
 esac
-export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN FR_RM_PORT FR_KN_PORT FR_SB_PORT FR_SCHREIBKOPIE \
-  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH FR_NACHZIEHEN_WORKFLOW FR_ZEITZONE FR_EIGENE_ADRESSEN \
-  FR_SPEICHER FR_SPEICHERREISEN
+export FR_INSTANZ FR_TITEL FR_SEITEN FR_ABLAGE FR_DIENST FR_KONNEKTOR FR_KONTEN FR_RM_PORT FR_KN_PORT FR_SB_PORT \
+  FR_ADRESSE FR_KN_ADRESSE FR_PYTHON FR_MELDEN FR_SPERREN FR_UMZUG_NACH FR_ZEITZONE FR_EIGENE_ADRESSEN FR_SPEICHER
 
 # Eigener Kartendienst (#444, docs/betrieb.md): Overpass-Image per Digest gepinnt, damit ein Update des Images nichts ungeprüft
 # ändert (nicht mitgeliefert; Overpass AGPL, Daten ODbL). Ein neuer Digest ist eine bewusste Änderung mit Abnahme.
 KD_BILD="wiktorn/overpass-api@sha256:9bb5f4a9b54cd225bf828c04c67e7f4010650ff4d70b72157a9473a9ba02d93c"
 
-# Reisen im Speicher (#454): Im Speicher ist, was im Speicher steht (engine/reisespeicher.py speicherreisen, wie
-# instanz.speicherreisen()); FR_SPEICHERREISEN zählt nicht mehr. Ohne Datenbank keine (kein Python-Aufruf). Ist der Speicher
+# Reisen im Speicher (#454, #557): jede Reise mit Eintrag im Reisespeicher (engine/reisespeicher.py speicherreisen, wie
+# instanz.speicherreisen()). Ohne Datenbank keine (kein Python-Aufruf). Ist der Speicher
 # nicht lesbar: Fehlermeldung und Abbruch des Skripts (fail closed, #361), nie „keine Reisen“. Ein Lauf kann die Liste mit
 # speicherreisen_lesen einmal holen (Merker fr_speicherreisen_liste); sonst fragt jeder Aufruf den Speicher.
 fr_speicher_fehlt() {  # Exit 0 nur, wenn die Datenbank des Speichers sicher fehlt: keine reisen.db, und der nächste vorhandene
@@ -171,7 +150,7 @@ speicherreisen() {  # Reisen im Speicher, eine je Zeile
   [ -z "$fr_speicherreisen_liste" ] || printf '%s\n' "$fr_speicherreisen_liste"
 }
 
-ist_speicherreise() {  # <reise>: kommt sie aus dem Reisespeicher? Sonst aus Git (bis zum Umzug, #454).
+ist_speicherreise() {  # <reise>: steht sie im Reisespeicher?
   # Ohne Pipe: grep -q endete beim ersten Treffer, der Schreiber stürbe an SIGPIPE, und unter pipefail wäre die Antwort
   # zufällig „nein“
   local r
@@ -181,10 +160,6 @@ ist_speicherreise() {  # <reise>: kommt sie aus dem Reisespeicher? Sonst aus Git
   return 1
 }
 
-# Workflow des Reisen-Repos, den ein Anstoß von der Seite startet (veroeffentlichen.sh, docs/betrieb.md „Anstoß“)
-: "${FR_NACHZIEHEN_WORKFLOW:=software-nachziehen.yml}"
-# Anstoß vom Server (veroeffentlichen.sh, #250): denselben neuen Software-Stand frühestens nach so vielen Stunden erneut
-: "${FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN:=6}"
 # Was die Software (engine/) erwartet; ausdrücklich gesetzte Werte gelten weiter
 : "${RM_ABLAGE:=$FR_ABLAGE}"
 : "${KN_SEITEN:=$FR_SEITEN}"

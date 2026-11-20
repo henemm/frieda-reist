@@ -4,9 +4,11 @@
 # Aufruf:  FR_WURZEL=<Bauordner> betrieb/deploy.sh <reise>   (sonst ruft veroeffentlichen.sh es auf)
 # Exit:    0 gelungen, 2 Bau dieser Reise gescheitert, 1 alles andere (FR_WURZEL fehlt, Ordner nicht auf main, Reise
 #          oder Ordner fehlt, ungesicherte Änderungen, Prüfungen rot, Dienste nicht bereit, Kopieren gescheitert)
+# Die Reise kommt aus dem Ordner, in den veroeffentlichen.sh sie aus dem Reisespeicher materialisiert hat
+# (<FR_DIENST>/bau/reisen/<reise>, #348); einen anderen Ort gibt es seit #557 nicht mehr.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
-nur_bauordner --main
+fr_nur_main
 
 # deploy.sh --dienste: nur den Code der Dienste auf den Stand des Bauordners bringen und neu starten, ohne eine Reise zu bauen
 # (Rückfall auf den letzten guten Software-Stand, veroeffentlichen.sh, #454); die Seiten bleiben, wie sie sind.
@@ -23,33 +25,25 @@ DIENST="$FR_DIENST"
 # Sprachdateien (texte_<kürzel>.py): jede Datei im Ordner engine/ zählt, eine neue Sprache braucht hier keinen Eintrag (docs/sprachen.md)
 SPRACHDATEIEN=""
 for f in "$WURZEL"/engine/texte_??.py "$WURZEL"/engine/texte_???.py; do [ -e "$f" ] && SPRACHDATEIEN="$SPRACHDATEIEN $(basename "$f")"; done
-RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py mailrahmen.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
+RM_MODULE="rueckmeldungen.py belege.py reise.py konten.py mailrahmen.py instanz.py kalender.py stand.py reisespeicher.py texte.py textform.py $SPRACHDATEIEN"
 KN_MODULE="konnektor.py entwicklung.py schnittstelle.py reise.py routen.py packliste.py bilder.py karte.py konten.py mailrahmen.py anmeldung.py oauth.py instanz.py belege.py kalender.py push.py stand.py reisespeicher.py seitenbild.mjs texte.py textform.py $SPRACHDATEIEN"
-# Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): Für eine Reise im Speicher (Stufe 2, #347; #454) läuft auch der
-# Schreibvorgang (`anwenden`: Werkzeuge, Probebau, Reisespeicher) mit dem Code aus <FR_DIENST>, deshalb steht hier jedes
-# Modul, das schreiben.py auch in Funktionen lädt (engine/tests/test_betrieb.py prüft es gegen die Importe), dazu unten
-# Vorlage, vendor/ und reisevorlage/. Für Git-Reisen kommt der Code des Schreibvorgangs bis Stufe 5 aus der Arbeitskopie.
+# Schreibweg (engine/schreiben.py dienst, ADR-0001 O-3): Auch der Schreibvorgang (`anwenden`: Werkzeuge, Probebau,
+# Reisespeicher; Stufe 2, #347) läuft mit dem Code aus <FR_DIENST>, deshalb steht hier jedes Modul, das schreiben.py auch in
+# Funktionen lädt (engine/tests/test_betrieb.py prüft es gegen die Importe), dazu unten Vorlage, vendor/ und reisevorlage/.
 # konten.py lädt beim Konto-Löschen rueckmeldungen.py (Rollen, Ablage; #381), das wiederum belege.py.
-SB_MODULE="schreiben.py schreiben_git.py kartendienst.py reisespeicher.py bauen.py routen.py packliste.py bilder.py gpx.py karte.py neu.py schnittstelle.py konten.py mailrahmen.py rueckmeldungen.py belege.py reise.py instanz.py kalender.py stand.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
+SB_MODULE="schreiben.py kartendienst.py reisespeicher.py bauen.py routen.py packliste.py bilder.py gpx.py karte.py neu.py schnittstelle.py konten.py mailrahmen.py rueckmeldungen.py belege.py reise.py instanz.py kalender.py stand.py texte.py textform.py $SPRACHDATEIEN"
 # Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
-PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py mailrahmen.py instanz.py kalender.py stand.py reisespeicher.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
+PS_MODULE="push.py rueckmeldungen.py belege.py reise.py konten.py mailrahmen.py instanz.py kalender.py stand.py reisespeicher.py texte.py textform.py $SPRACHDATEIEN"
 
-# Quelle der Reise (Stufe 3, #348): Eine Reise im Speicher baut aus dem Ordner, in den veroeffentlichen.sh sie aus
-# dem Reisespeicher materialisiert hat (<FR_DIENST>/bau/reisen/<reise>, außerhalb des Git-Bauordners); jede andere aus Git.
-if [ -n "$NUR_DIENSTE" ]; then
-  REISEN=""; GIT_PFADE="engine"; GIT_TEXT="engine/"
-elif ist_speicherreise "$REISE"; then
-  REISEN="$DIENST/bau/reisen"; GIT_PFADE="engine"; GIT_TEXT="engine/"
-else
-  REISEN="$WURZEL/reisen"; GIT_PFADE="engine reisen/$REISE"; GIT_TEXT="engine/ or reisen/$REISE"
-fi
-[ -n "$NUR_DIENSTE" ] || [ -d "$REISEN/$REISE" ] || { echo "Trip '$REISE' does not exist."; exit 1; }
+# Quelle der Reise (Stufe 3, #348): der Ordner, in den veroeffentlichen.sh sie aus dem Reisespeicher materialisiert hat
+# (<FR_DIENST>/bau/reisen/<reise>, außerhalb des Software-Klons)
+REISEN="$DIENST/bau/reisen"
+[ -n "$NUR_DIENSTE" ] || [ -d "$REISEN/$REISE" ] || { echo "Trip '$REISE' does not exist in $REISEN (materialised from the trip store)."; exit 1; }
 [ -d "$FR_SEITEN" ] && [ -w "$FR_SEITEN" ] || { echo "$FR_SEITEN is missing or not writable (einrichten.sh, docs/betrieb.md)."; exit 1; }
 
-# Nur gesicherten Stand veröffentlichen: ungesicherte Änderungen an Software oder Reise brechen ab
-# shellcheck disable=SC2086
-if ! git -C "$WURZEL" diff --quiet HEAD -- $GIT_PFADE || [ -n "$(git -C "$WURZEL" ls-files --others --exclude-standard -- $GIT_PFADE)" ]; then
-  echo "ERROR: uncommitted changes in $GIT_TEXT. Commit first, then publish."; exit 1
+# Nur gesicherten Stand veröffentlichen: ungesicherte Änderungen an der Software brechen ab
+if ! git -C "$WURZEL" diff --quiet HEAD -- engine || [ -n "$(git -C "$WURZEL" ls-files --others --exclude-standard -- engine)" ]; then
+  echo "ERROR: uncommitted changes in engine/. Commit first, then publish."; exit 1
 fi
 # Bau: der erste Schritt mit Wirkung. Scheitert er (Baufehler dieser Reise, deterministisch), endet deploy.sh mit 2;
 # veroeffentlichen.sh macht dann mit den anderen Reisen weiter, die Seite bleibt auf ihrem letzten guten Stand.
@@ -58,7 +52,7 @@ if [ -z "$NUR_DIENSTE" ]; then
 "$FR_PYTHON" "$WURZEL/engine/bauen.py" --reisen "$REISEN" --ziel "$WURZEL/dist" "$REISE" \
   || { echo "ERROR: build of $REISE failed, the page stays at the last good state."; exit 2; }
 fi
-# Prüfungen nur der Software (engine/tests); tests/ des Reisen-Repos prüft Inhalt und sperrt nie (docs/betrieb.md).
+# Prüfungen nur der Software (engine/tests); die Prüfungen der Instanz (<FR_DIENST>/instanz/tests) laufen in veroeffentlichen.sh.
 # veroeffentlichen.sh prüft einmal für alle Reisen und setzt FR_GEPRUEFT auf den geprüften Stand
 if [ "${FR_GEPRUEFT:-}" != "$(git -C "$WURZEL" rev-parse HEAD)" ]; then
   pruef_tmp="$(mktemp -d)"   # eigener Ordner für die Testdateien, Grund in veroeffentlichen.sh

@@ -1,91 +1,63 @@
 #!/usr/bin/env bash
 # Veröffentlicht automatisch (docs/betrieb.md, Veröffentlichen). Gestartet alle 5 Minuten vom Timer
 # <instanz>-veroeffentlichen.timer und gleich nach jedem Schreibvorgang des Schreibwegs (engine/schreiben.py).
-# Aufruf von Hand:  FR_WURZEL=<Bauordner> betrieb/veroeffentlichen.sh          (nur wenn es Neues gibt)
-#                   FR_WURZEL=<Bauordner> betrieb/veroeffentlichen.sh --immer  (auch ohne neuen Stand, auch
+# Aufruf von Hand:  FR_WURZEL=<Bauordner> <Bauordner>/betrieb/veroeffentlichen.sh          (nur wenn es Neues gibt)
+#                   FR_WURZEL=<Bauordner> <Bauordner>/betrieb/veroeffentlichen.sh --immer  (auch ohne neuen Stand, auch
 #                   einen bekannten roten). Ohne FR_WURZEL bricht es ab (#137).
 #
-# Software direkt (#454, neue Anordnung): Der Bauordner ist der Software-Klon <FR_SEITEN>/_software (FR_WURZEL, das Skript
-# läuft aus ihm). Ablauf eines Laufs (main_klon): Speicher-Teil mit der bisherigen Software; git fetch origin main im Klon
-# (öffentlich, ohne Anmeldung); ein neuer Commit C wird geprüft, bevor der Klon umschaltet: Nachweis der Pflichtprüfungen
-# genau dieses Commits auf GitHub (ohne gh, einmal je Stand), sonst Tests auf dem Server in einem eigenen Arbeitsbaum von C
-# (git worktree), der Klon bleibt dabei unberührt. Rot: Rot-Datei am Software-Commit, Alarm wie bisher (einmal je Rot-Phase),
-# der Klon bleibt auf dem letzten guten Stand. Grün: Python-Umgebung <FR_DIENST>/python (neu bei geänderter
-# engine/requirements.txt), Klon vorspulen (ff-only), ändert sich dabei dieses Skript, Neustart mit exec; dann zieht der
-# Speicher-Teil jede Reise auf C nach und deploy.sh bringt die Dienste auf C. Scheitert ein Deploy mit C (Exit 1), fällt der
-# Klon auf <FR_DIENST>/software-gut zurück und die Dienste werden mit diesem Stand neu gebaut (Rückfall). Erst nach einem ganz
-# grünen Lauf: veroeffentlicht = software-gut = C, Units und nginx abgleichen, Heartbeat. Prüfungen der Instanz aus
-# <FR_DIENST>/instanz/tests laufen danach, wenn es sie gibt, und sperren nie (Warnung). Ein Reisen-Repo, gh und Workflows
-# gibt es in diesem Weg nicht; ein Anstoß von der Seite (_anstoss.json) ist nur dieser Lauf.
-# Umzug (#454, alte Anordnung: Reisen-Repo mit Submodul frieda/): Nach jedem grünen Lauf zieht umzug_454 die Instanz in den
-# neuen Zustand um, ohne Handschritt und wiederholbar: Klon anlegen (auf dem Commit des Submoduls), Einstellungen, Meldeweg und
-# Prüfungen der Instanz nach <FR_DIENST>/instanz/ kopieren (nie über Neueres), Python-Umgebung bauen und den Klon prüfen,
-# zuletzt die Units nur prüfen: Der Lauf stellt sie nie selbst um, das macht der Tech Lead einmalig bei der Auslieferung
-# (einrichten.sh --installieren aus dem Klon). Bis dahin eine Warnzeile je Commit und der alte Weg. Zeigen die Units auf den
-# Klon, <FR_DIENST>/umzug-454 = fertig und Neustart aus dem Klon; startet ein Lauf schon aus dem Klon, setzt er fertig selbst,
-# wenn die Units auf den Klon zeigen (eine frische Instanz ohne Umzug bekommt keinen Zustand).
-# Scheitert ein Schritt, bleibt alles beim alten Weg (Warnzeile, kein Alarm), der nächste Lauf versucht es wieder. Der alte
-# Bauordner bleibt unangetastet (Rückweg, docs/betrieb.md „Umzug“).
+# Software direkt (#454): Der Bauordner ist der Software-Klon <FR_SEITEN>/_software (FR_WURZEL, das Skript läuft aus ihm);
+# einen anderen Weg gibt es seit #557 nicht mehr (kein Reisen-Repo, keine eingebundene Software, kein Workflow, kein gh). Ablauf eines
+# Laufs (main_klon): Speicher-Teil mit der bisherigen Software; git fetch origin main im Klon (öffentlich, ohne Anmeldung);
+# ein neuer Commit C wird geprüft, bevor der Klon umschaltet: Nachweis der Pflichtprüfungen genau dieses Commits auf GitHub
+# (ohne gh, einmal je Stand), sonst Tests auf dem Server in einem eigenen Arbeitsbaum von C (git worktree), der Klon bleibt
+# dabei unberührt. Rot: Rot-Datei am Software-Commit, Alarm wie bisher (einmal je Rot-Phase), der Klon bleibt auf dem letzten
+# guten Stand. Grün: Python-Umgebung <FR_DIENST>/python (neu bei geänderter engine/requirements.txt), Klon vorspulen
+# (ff-only), ändert sich dabei dieses Skript, Neustart mit exec; dann zieht der Speicher-Teil jede Reise auf C nach und
+# deploy.sh bringt die Dienste auf C. Scheitert ein Deploy mit C (Exit 1), fällt der Klon auf <FR_DIENST>/software-gut zurück
+# und die Dienste werden mit diesem Stand neu gebaut (Rückfall). Erst nach einem ganz grünen Lauf: veroeffentlicht =
+# software-gut = C, Units und nginx abgleichen, Heartbeat. Prüfungen der Instanz aus <FR_DIENST>/instanz/tests laufen danach,
+# wenn es sie gibt, und sperren nie (Warnung). Ein Anstoß von der Seite (_anstoss.json) ist nur dieser Lauf.
+# Umzug (#454): Ein Lauf aus dem Klon setzt <FR_DIENST>/umzug-454 auf fertig, wenn es Spuren des Umzugs gibt und die Units auf
+# den Klon zeigen (umzug_fertig_im_klon); eine frische Instanz ohne Umzug bekommt keinen Zustand.
+# Aufräumen (#557, altbau_entfernen, docs/betrieb.md „Aufräumen nach dem Umzug“): Liegt noch der alte Bauordner
+# <FR_SEITEN>/_bau (das frühere Reisen-Repo) oder eine alte Arbeitskopie <FR_SEITEN>/_bau-schreiben-*, archiviert der Lauf
+# _bau nach <FR_DIENST>/archiv/ und entfernt beides, aber nur wenn umzug-454 = fertig ist, keine Unit mehr auf _bau zeigt und
+# jede Reise aus _bau/reisen im Reisespeicher steht (oder gelöscht ist). Vorher: Platzprüfung, Archiv gelesen und geprüft,
+# jeder Pfad aufgelöst innerhalb von FR_SEITEN und kein Link. Danach der Merker <FR_DIENST>/altbau-557; mit ihm tut der
+# Schritt nichts mehr. Fehler sind eine Warnzeile, einmal je Störung, kein Alarm, kein Abbruch; der nächste Lauf versucht es
+# erneut. Einen Rückweg auf den alten Weg gibt es nicht (Entscheidung des Product Owners, 20.11.2026).
 #
-# Alte Anordnung (bis zum Umzug, Beschreibung unten): holt origin/main in den Bauordner, bringt die Software (Submodul) auf
-# den festgehaltenen Stand und ruft deploy.sh für jede Reise auf, sobald main einen neuen Stand hat.
-# Ist der Bauordner nicht auf main oder nicht sauber, wird nichts angefasst und nichts gemerkt.
 # Tor (#142): Sperren können nur die Tests der Software (engine/tests) und ein gescheiterter Bau einer Reise (deploy.sh
-# Exit 2). Die Tests des Reisen-Repos (tests/) prüfen Inhalt: rot dort ist nur eine Warnung (einmal je Commit eine
-# Nachricht an den Betrieb). Eine rote Reise hält die anderen nicht auf; sie bleibt auf ihrem letzten guten Stand.
+# Exit 2). Eine rote Reise hält die anderen nicht auf; sie bleibt auf ihrem letzten guten Stand.
 # Rot-Datei <FR_DIENST>/veroeffentlichen-rot: merkt einen roten Stand (commit, art, reisen, seit, gemeldet). Derselbe
 # Commit wird ohne --immer nicht noch einmal geprüft („Bekannter roter Stand“). Ab FR_ROT_MELDEN_NACH_MINUTEN Minuten
 # Rot geht genau einmal je Rot-Phase ein Alarm an den Betrieb, bei roten Reisen dazu eine Meldung an deren
-# Organisator:innen (engine/waechter.py rot-melden). Infrastrukturfehler (deploy.sh Exit 1, Vorspulen, Submodul) werden
-# nicht gemerkt; der nächste Lauf wiederholt sie, weil nur ein ganz gelungener Lauf den Stand merkt.
+# Organisator:innen (engine/waechter.py rot-melden). Infrastrukturfehler (deploy.sh Exit 1, Vorspulen) werden nicht
+# gemerkt; der nächste Lauf wiederholt sie, weil nur ein ganz gelungener Lauf den Stand merkt.
 # Überwachung: Nach fachlichem Erfolg (nichts Neues oder alles veröffentlicht) wird <FR_DIENST>/veroeffentlichen-erfolg
 # berührt; ist FR_HEARTBEAT_VEROEFFENTLICHEN gesetzt (Adresse, in <FR_DIENST>/betrieb.env), wird sie zusätzlich abgerufen.
 # Übersprungene Läufe, rote Stände (auch teilweise rot) und Fehler tun beides nicht.
 # Neue Reisen: Nach dem Veröffentlichen ruft das Skript freischalten.sh für jede gelungene Reise auf (legt einer neuen Reise
 # ihren geheimen Link an, prüft die Seite, schreibt seiten.json) und stellt ausstehende Links neuer Reisen aus der
 # Claude-App zu (zustellen.py). Links stehen nie im Protokoll.
-# Die Prüfungen (pytest) laufen einmal je Lauf vor allen Reisen; deploy.sh überspringt sie dann für genau diesen Stand
-# (FR_GEPRUEFT). Sonst liefen sie je Reise einmal, und der Lauf stieße bei drei Reisen an die Zeitgrenze der Unit.
-# Anstoß von der Seite (Organisator:innen, „Veröffentlichen anstoßen“ im Fuß; engine/rueckmeldungen.py api/aktualisieren):
-# Liegt <FR_ABLAGE>/_anstoss.json, startet der Lauf den Workflow „Software nachziehen“ des Reisen-Repos (gh workflow run
-# FR_NACHZIEHEN_WORKFLOW) und schreibt das Ergebnis nach _anstoss-ergebnis.json; die Seite zeigt es. Der Workflow zieht das
-# Submodul nach, und ein späterer Lauf veröffentlicht den neuen Stand wie sonst auch.
-# Anstoß vom Server (#250): Hat main der Software (git ls-remote, URL aus .gitmodules) einen anderen Stand als das
-# eingebundene Submodul, startet der Lauf denselben Workflow, einmal je Stand; Stand und Zeit stehen danach in
-# <FR_DIENST>/nachziehen-angestossen („SHA Epoche“, nur nach Erfolg von gh). Für denselben Stand startet er erst nach
-# FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN wieder. Fehler dabei sind Warnungen, das Veröffentlichen läuft weiter.
 # Reise-Stand (Epic #223, engine/stand.py): Je Reise schreibt der Lauf ihren Zustand nach <FR_DIENST>/reise-stand/<reise>.lauf.json
 # (baut, veroeffentlicht mit Dauer seit dem Sichern, fehlgeschlagen mit Grund); api/stand und publish_status lesen ihn.
-# Zeitziel 2 Minuten vom Sichern bis zur Veröffentlichung (#230): Ein reiner Inhaltsstand (seit dem zuletzt veröffentlichten
-# Stand nur Änderungen unter reisen/) baut nur die geänderten Reisen und überspringt die Prüfungen der Software, die für
-# genau diese Software schon grün waren. Ein Software-Wechsel (alles außerhalb von reisen/, auch das Submodul) prüft weiter
-# vollständig und baut alle Reisen; nur dann laufen auch die Tests des Reisen-Repos (nach dem Bauen, sie sperren nie).
 # Anstoß aus dem Schreibweg (#624): Der Schreibweg legt nur den Merker <FR_DIENST>/veroeffentlichen-anstoss; die Path-Einheit
 # <instanz>-veroeffentlichen.path startet daraufhin den Dienst, und dieser Lauf entfernt den Merker vor der Sperre.
 # Startet ein Lauf, während ein anderer die Sperre hält (Anstoß während eines Timer-Laufs), merkt er das in
 # <FR_DIENST>/veroeffentlichen-nochmal; der laufende startet danach gleich noch einmal, statt bis zum Timer zu warten.
-# Alle Reisen im Speicher (#454, Lieferung 1): Im Speicher ist, was im Speicher steht (speicherreisen in gemeinsam.sh). Vor
-# dem Speicher-Teil schaltet der Lauf jede übrige Reise aus reisen/ des Bauordners selbst um (reisespeicher.py umschalten:
-# Anfangsvorgang aus dem Git-Stand, Vergleich, Stempel „gleich“), nur wenn eine Datenbank des Speichers schon da ist; ist sie
-# nicht gleich, bleibt sie in Git, mit einer Warnzeile und ohne Meldung.
-# Umschaltung (Stufe 5, #350, docs/betrieb.md „Umschaltung einer Reise“): Eine Reise im Speicher, die in Git
-# liegt und noch nie aus dem Speicher veröffentlicht wurde (kein <FR_DIENST>/reise-stand/<reise>.gebaut), baut der
-# Speicher-Teil nur mit gültigem Stempel „gleich“ von betrieb/vergleichslauf.sh (reisespeicher.py umschaltung); sonst
-# überspringt er sie mit einem Hinweis im Protokoll, der Lauf bleibt grün.
-# Ohne GitHub (Stufe 5): Scheitert git fetch bei einer Instanz mit Reisen im Speicher, ist das kein Fehler des Laufs. Die
-# Reisen aus dem Speicher sind dann schon veröffentlicht; Software und Git-Reisen warten. Exit 1 nur bei roten Reisen aus
-# dem Speicher; Stempel und Heartbeat nur, wenn keine Reise mehr in Git liegt. Merker <FR_DIENST>/software-wartet (seit,
-# gemeldet); nach FR_SOFTWARE_WARTET_STUNDEN (Vorgabe 6) genau eine Warnzeile je Störung, keine Nachricht an den Betrieb.
-# Gelingt git fetch wieder, wird der Merker gelöscht. Ohne Reisen im Speicher endet ein gescheitertes git fetch wie bisher
-# mit Fehler.
+# Alle Reisen im Speicher (#454, #557): Gebaut werden nur Reisen aus dem Reisespeicher (speicherreisen in gemeinsam.sh).
+# Ohne GitHub: Scheitert git fetch, ist das kein Fehler des Laufs. Die Reisen aus dem Speicher sind dann schon
+# veröffentlicht; nur die Software wartet. Merker <FR_DIENST>/software-wartet (seit, gemeldet); nach
+# FR_SOFTWARE_WARTET_STUNDEN (Vorgabe 6) genau eine Warnzeile je Störung, keine Nachricht an den Betrieb. Gelingt git fetch
+# wieder, wird der Merker gelöscht.
 # Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT,
-# VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden),
-# VF_NACHZIEHEN (Befehl statt gh workflow run), VF_LSREMOTE (Befehl statt git ls-remote), VF_CINACHWEIS (Nachweis der
-# Pflichtprüfungen: <url> <commit>, gibt „true“ aus), VF_VENV (<ordner> <requirements>: baut die Python-Umgebung),
-# VF_UNITS (Abgleich der Units).
+# VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden), VF_CINACHWEIS
+# (Nachweis der Pflichtprüfungen: <url> <commit>, gibt „true“ aus), VF_VENV (<ordner> <requirements>: baut die
+# Python-Umgebung), VF_UNITS (Abgleich der Units), VF_PLATZ (<ordner>: freier Platz in Bytes) und VF_ARCHIV (<archivdatei>
+# <ordner>: baut das Archiv des alten Bauordners) für das Aufräumen.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
-nur_bauordner
 
 erfolg_melden() {
   mkdir -p "$FR_DIENST"
@@ -154,26 +126,13 @@ zustellen() {  # ausstehende Links neuer Reisen (nur wenn welche anstehen)
 
 jetzt() { echo "${VF_JETZT:-$(date +%s)}"; }
 
-einstellungen_summe() {  # <datei>: Prüfsumme, leer ohne lesbare Datei wie in fr_einlesen (Erscheinen und Verschwinden
-  # zählen als Änderung, #242)
-  [ ! -r "$1" ] || sha256sum < "$1" | cut -d' ' -f1
-}
-
 iso() { [[ "${1:-}" =~ ^[0-9]+$ ]] && date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ || true; }
 
 reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands für api/stand und publish_status
-  # (engine/stand.py). nummer wie dort: Commits, die reisen/<reise>/ ändern; im flachen Klon keine. Dauer bei „veroeffentlicht“:
-  # Sekunden seit dem Sichern (Zeit des Schreibwegs, sonst des Commits); steht auch im Protokoll (Messung des Zeitziels).
-  # Reise aus dem Reisespeicher (#348): nummer ist die Stand-Nummer des materialisierten Inhalts (<ordner>.stand), die Zeit
-  # des Sicherns kommt nur vom Schreibweg.
+  # (engine/stand.py). nummer ist die Stand-Nummer des materialisierten Inhalts (<ordner>.stand, #348). Dauer bei
+  # „veroeffentlicht“: Sekunden seit dem Sichern (Zeit des Schreibwegs); steht auch im Protokoll (Messung des Zeitziels).
   local r="$1" z="$2" g="${3:-}" n c="" t dauer=null datei gz gn seite
-  if ist_speicherreise "$r"; then
-    n="$(cat "$FR_DIENST/bau/reisen/$r.stand" 2>/dev/null || true)"
-  else
-    [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = false ] || return 0
-    n="$(git rev-list --count HEAD -- "reisen/$r" 2>/dev/null)" || return 0
-    c="$(git log -1 --format=%ct -- "reisen/$r" 2>/dev/null || true)"
-  fi
+  n="$(cat "$FR_DIENST/bau/reisen/$r.stand" 2>/dev/null || true)"
   [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -gt 0 ] || return 0
   datei="$FR_DIENST/reise-stand/$r.gesichert.json"
   gn="$(sed -n 's/.*"nummer": *\([0-9]*\).*/\1/p' "$datei" 2>/dev/null || true)"
@@ -181,7 +140,7 @@ reise_stand_schreiben() {  # <reise> <zustand> [grund]: Zustand des Reise-Stands
   if [ "$gn" = "$n" ] && [ -n "$gz" ] && gz="$(date -u -d "$gz" +%s 2>/dev/null)"; then c="$gz"; fi
   t="$(jetzt)"
   # Stand, der schon auf der Seite war (<reise>.seite, nach jeder Veröffentlichung): Ein Neubau desselben Stands (--immer,
-  # Software-Wechsel, Umschaltung auf den Speicher) hat keine Wartezeit und wird nicht gemessen (#465)
+  # Software-Wechsel) hat keine Wartezeit und wird nicht gemessen (#465)
   seite="$FR_DIENST/reise-stand/$r.seite"
   if [ "$z" = veroeffentlicht ] && [ "$(cat "$seite" 2>/dev/null || true)" = "$n" ]; then
     echo "Published $r state $n again (already on the page)."
@@ -210,46 +169,13 @@ baugrund() {  # Grund eines gescheiterten Baus aus der Ausgabe von deploy.sh: di
   printf '%s' "$g"
 }
 
-haengende_reisen() {  # Reisen, die nach einem abgebrochenen Lauf auf „baut“ stehen geblieben sind (#397). Die Sperre hält dieser
-  # Lauf, es baut also keiner mehr: Sie gehören in diesen Lauf, sonst zeigte publish_status „wird gebaut“ bis zum nächsten
-  # Software-Wechsel. Nur Git-Reisen, die es gibt (Reisen aus dem Speicher baut der Speicher-Teil).
-  local f r
-  { grep -l '"zustand": "baut"' "$FR_DIENST"/reise-stand/*.lauf.json 2>/dev/null || true; } | while read -r f; do
-    r="$(basename "$f" .lauf.json)"
-    if [ -e "reisen/$r/reise.json" ] && ! ist_speicherreise "$r"; then echo "$r"; fi
-  done
-  return 0
-}
-
-reisen_des_laufs() {  # <alt> <neu>: Reisen, die dieser Lauf baut, eine je Zeile. Ohne bekannten alten Stand, mit --immer oder
-  # bei einem Software-Wechsel alle; sonst die, deren Ordner sich seit dem zuletzt veröffentlichten Stand geändert hat, und
-  # die zuletzt roten (sie bleiben rot gemeldet, bis ihr Bau gelingt). Reisen aus dem Reisespeicher baut der Speicher-Teil;
-  # ihre Git-Kopie bleibt bis Stufe 5 liegen und wird nie gebaut (#348).
-  local r
-  if [ -n "$software" ]; then
-    for r in reisen/*/reise.json; do
-      [ -e "$r" ] || continue
-      r="$(basename "$(dirname "$r")")"
-      ist_speicherreise "$r" || ist_vorgemerkt "$r" || echo "$r"
-    done
-    return 0
-  fi
-  { git diff --name-only "$1" "$2" -- reisen | cut -d/ -f2
-    [ "$rot_art" != reise ] || printf '%s\n' ${rot_reisen//,/ }
-    haengende_reisen
-  } | sort -u | while read -r r; do
-    if [ -n "$r" ] && [ -e "reisen/$r/reise.json" ] && ! ist_speicherreise "$r" && ! ist_vorgemerkt "$r"; then echo "$r"; fi
-  done
-  return 0
-}
-
-software_kennung() {  # [<commit>]: Stand der Software eines Commits im Bauordner: das Submodul frieda/, ohne Submodul (Tests)
-  # der Commit selbst. Beschreibt, mit welcher Software eine Reise aus dem Reisespeicher gebaut wurde (#348).
+software_kennung() {  # [<commit>]: Stand der Software eines Commits im Software-Klon: der Commit selbst. Beschreibt, mit
+  # welcher Software eine Reise aus dem Reisespeicher gebaut wurde (#348).
   local c="${1:-HEAD}"
-  git rev-parse -q --verify "$c:frieda" 2>/dev/null || git rev-parse -q --verify "$c^{commit}" 2>/dev/null || true
+  git rev-parse -q --verify "$c^{commit}" 2>/dev/null || true
 }
 
-rot_vereinigt() {  # <reisen…>: Liste der roten Reisen für die Rot-Datei, Git-Reisen und Reisen aus dem Speicher zusammen
+rot_vereinigt() {  # <reisen…>: Liste der roten Reisen für die Rot-Datei, ohne Doppelte, durch Komma getrennt
   printf '%s\n' "$@" | tr ', ' '\n\n' | sed '/^$/d' | sort -u | paste -sd, -
 }
 
@@ -314,15 +240,13 @@ ist_vorgemerkt() {  # <reise>: steht sie in der Liste aus vorgemerkte_entfernen?
 }
 
 speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen im Speicher (#454: was dort steht) bauen, vor
-  # git fetch und ohne Netz (kein git fetch, kein gh, kein ls-remote). Eine Reise ohne Stempel .gebaut, die in Git liegt, wird
-  # ohne gültigen Stempel des Vergleichslaufs übersprungen (Stufe 5, #350, reisespeicher.py umschaltung; Hinweis im
-  # Protokoll, kein Rot). Gebaut wird eine Reise, wenn ihre Stand-Nummer im
+  # git fetch und ohne Netz. Gebaut wird eine Reise, wenn ihre Stand-Nummer im
   # Speicher nicht die der Seite ist, mit --immer, ohne Stempel <FR_DIENST>/reise-stand/<reise>.gebaut („<nummer>
   # <software-kennung>“, nur nach gelungenem Deploy) oder nach einem Software-Wechsel; dann stellt neu.py
   # nachziehen-speicher sie vorher um (ein Vorgang, nur bei grünem Probebau). Eine neue Software-Kennung gilt erst, wenn der
-  # Git-Teil sie vollständig veröffentlicht hat (Datei veroeffentlicht); bis dahin bleibt jede Reise mit älterem Stempel
+  # Lauf sie geprüft oder vollständig veröffentlicht hat (Datei veroeffentlicht); bis dahin bleibt jede Reise mit älterem Stempel
   # stehen. Ergebnis: speicher_gut, speicher_rote; Exit 1 bei einer Störung (Speicher nicht lesbar, deploy Exit 1).
-  local liste r n pub gn gk modus rc ordner aus kennung geprueft="" vorher log gepr_stand="" aus_pruefung
+  local liste r n pub gn gk modus rc ordner aus kennung geprueft="" vorher log gepr_stand=""
   liste="$(speicherreisen | while read -r r; do ist_vorgemerkt "$r" || echo "$r"; done | tr '\n' ' ')"
   [ -n "${liste// /}" ] || return 0
   speicher_aktiv=1
@@ -330,7 +254,7 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen im Speicher (#
   speicher_kennung="$kennung"
   vorher="$(cat "$stand" 2>/dev/null || true)"
   if [ -n "$vorher" ] && [ -n "$kennung" ] && [ "$(software_kennung "$vorher")" = "$kennung" ]; then
-    geprueft=1; gepr_stand="$(git rev-parse HEAD)"   # deploy.sh prüft dann nicht selbst (wie FR_GEPRUEFT im Git-Teil)
+    geprueft=1; gepr_stand="$(git rev-parse HEAD)"   # deploy.sh prüft dann nicht selbst (FR_GEPRUEFT)
   elif [ -n "$software_gepr" ] && [ "$software_gepr" = "$kennung" ]; then
     geprueft=1; gepr_stand="$(git rev-parse HEAD)"   # Software-Klon (#454): dieser Lauf hat den Commit eben geprüft
   fi
@@ -349,23 +273,11 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen im Speicher (#
     if [ "$n" = - ]; then
       echo "Note: $r has no entry in the trip store, skipped."; continue
     fi
-    # Sperre bei der ersten Umschaltung (Stufe 5, #350): ohne Stempel .gebaut entscheidet reisespeicher.py umschaltung
-    if [ ! -e "$FR_DIENST/reise-stand/$r.gebaut" ]; then
-      rc=0
-      aus_pruefung="$("$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" umschaltung "$r" 2>&1 < /dev/null)" || rc=$?
-      if [ "$rc" = 1 ] && [[ "$aus_pruefung" =~ ^gesperrt\ ([a-z_]+)$ ]]; then
-        echo "Note: $r is in git and not cleared for the switch (${BASH_REMATCH[1]}), it stays at its last state."
-        continue
-      elif [ "$rc" != 0 ]; then
-        echo "ERROR: the switch check of $r failed ($(printf '%s\n' "$aus_pruefung" | tail -1)), the next run tries again."
-        rm -f "$log"; return 1
-      fi
-    fi
     gn=""; gk=""
     if [ -r "$FR_DIENST/reise-stand/$r.gebaut" ]; then read -r gn gk < "$FR_DIENST/reise-stand/$r.gebaut" || true; fi
     if [ -n "$gk" ] && [ "$gk" != "$kennung" ]; then
       if [ -z "$geprueft" ]; then
-        echo "Note: software ${kennung:0:7} is not published yet (checks of the git part), $r waits at its last good state."
+        echo "Note: software ${kennung:0:7} is not checked yet, $r waits at its last good state."
         speicher_wartet=1; continue
       fi
       modus=nachziehen
@@ -416,7 +328,7 @@ speicher_reisen_lauf() {  # Speicher-Teil (Stufe 3, #348): Reisen im Speicher (#
     esac
   done 3<<< "$aus"
   rm -f "$log"; deploy_log=""
-  # Freischalten wie bei Git-Reisen (Ausgabe ohne Links), die Wege zum Konnektor einmal danach
+  # Freischalten (Ausgabe ohne Links), die Wege zum Konnektor einmal danach
   # shellcheck disable=SC2086
   freischalten_reisen $speicher_gut
   [ -z "$speicher_gut" ] || wege_pruefen
@@ -513,24 +425,7 @@ alarm_pruefen() {  # Alarm ab der Schwelle: Meldung an die Organisator:innen rot
   fi
 }
 
-ci_nachweis() {  # 0, wenn die Pflichtprüfungen der eingebundenen Software-Version auf GitHub grün sind (#403)
-  # main der Software ist geschützt: Ein Stand kommt nur dorthin, wenn genau sein Commit tests (leer), tests (instanz) und
-  # gitleaks grün hat. Dieser Nachweis ersetzt die zweite Testrunde auf dem Server (10 bis 15 Minuten, in denen alle Reisen
-  # warten). Ohne Nachweis (kein Submodul, kein Netz, nicht grün) oder mit FR_CI_NACHWEIS=0 laufen die Tests wie bisher.
-  [ "${FR_CI_NACHWEIS:-1}" = 1 ] || return 1
-  local url sha repo ok
-  url="$(git config --file .gitmodules submodule.frieda.url 2>/dev/null)" || return 1
-  sha="$(git rev-parse -q --verify HEAD:frieda 2>/dev/null)" || return 1
-  if [ -n "${VF_CINACHWEIS:-}" ]; then ok="$("$VF_CINACHWEIS" "$url" "$sha" 2>/dev/null)" || return 1
-  else
-    repo="$(printf '%s' "$url" | sed -E 's#^(https://github\.com/|git@github\.com:)##; s#\.git$##')"
-    [[ "$repo" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]] || return 1
-    ok="$(timeout 30 gh api "repos/$repo/commits/$sha/check-runs?per_page=100" --jq '[.check_runs[] | select(.conclusion == "success") | .name] as $g | (["tests (leer)", "tests (instanz)", "gitleaks"] | all(. as $n | $g | index($n) != null))' 2>/dev/null)" || return 1; fi
-  [ "$ok" = true ] || return 1
-  CI_STAND="${sha:0:7}"
-}
-
-pruefen_lauf() {  # <ordner>: pytest über engine/tests oder tests/ des Reisen-Repos; Ausgabe auch nach pruef_log
+pruefen_lauf() {  # <ordner>: pytest über engine/tests oder die Prüfungen der Instanz; Ausgabe auch nach pruef_log
   local rc=0
   if [ -n "$pruefen" ]; then "$pruefen" "$1" 2>&1 | tee "$pruef_log" || rc=${PIPESTATUS[0]}
   else
@@ -550,67 +445,7 @@ rote_tests() {  # die ersten roten Tests aus pruef_log und die erste Fehlerzeile
   printf '%s%s' "$namen" "${erste:+ (first error: $erste)}" | tr -d '\n'
 }
 
-anstoss_weitergeben() {  # Anstoß der Seite: Workflow „Software nachziehen“ starten, Ergebnis für die Seite ablegen
-  local datei="$FR_ABLAGE/_anstoss.json" ergebnis="$FR_ABLAGE/_anstoss-ergebnis.json" ok=true
-  [ -e "$datei" ] || return 0
-  if [ -n "${VF_NACHZIEHEN:-}" ]; then "$VF_NACHZIEHEN" > /dev/null 2>&1 || ok=false
-  else timeout 60 gh workflow run "$FR_NACHZIEHEN_WORKFLOW" --ref main > /dev/null 2>&1 || ok=false; fi
-  if [ "$ok" = true ]; then
-    echo "Request from the page: workflow $FR_NACHZIEHEN_WORKFLOW started."
-  else
-    echo "Warning: request from the page, workflow $FR_NACHZIEHEN_WORKFLOW could not be started (gh signed in, permission actions: write?)."
-    fr_melden normal "Publish request failed" "An organiser requested publishing on the page. gh workflow run $FR_NACHZIEHEN_WORKFLOW failed (gh signed in? permission to run workflows?). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 50"
-  fi
-  printf '{"zeit": "%s", "ok": %s}\n' "$(date -u +%Y-%m-%dT%H:%M:%S+00:00)" "$ok" > "$ergebnis.tmp" && mv "$ergebnis.tmp" "$ergebnis"
-  rm -f "$datei"
-}
-
-software_anstossen() {  # neuer Stand auf main der Software: Workflow „Software nachziehen“ starten, einmal je Stand (#250)
-  # Gelesen wird der Stand von origin/main (gerade geholt), nicht HEAD: So zählt auch ein Submodul, das erst mit diesem
-  # Lauf in den Bauordner kommt. Ohne Submodul frieda/ geschieht nichts.
-  local url eingebunden fern merk="$FR_DIENST/nachziehen-angestossen" m_stand="" m_zeit="" t
-  url="$(git config --blob origin/main:.gitmodules submodule.frieda.url 2>/dev/null)" || return 0
-  eingebunden="$(git rev-parse -q --verify origin/main:frieda 2>/dev/null)" || return 0
-  [ -n "$url" ] && [ -n "$eingebunden" ] || return 0
-  if [ -n "${VF_LSREMOTE:-}" ]; then fern="$("$VF_LSREMOTE" "$url" refs/heads/main 2>/dev/null)" || fern=""
-  else fern="$(timeout 30 git ls-remote "$url" refs/heads/main 2>/dev/null)" || fern=""; fi
-  fern="$(printf '%s\n' "$fern" | awk '$2 == "refs/heads/main" {print $1; exit}')"
-  if [ -z "$fern" ]; then
-    echo "Warning: state of main of the software unknown (git ls-remote failed), no request to update the software."
-    return 0
-  fi
-  [ "$fern" != "$eingebunden" ] || return 0
-  [ -f "$merk" ] && { read -r m_stand m_zeit < "$merk" || true; }
-  t="$(jetzt)"
-  local stunden="$FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN"
-  [[ "$stunden" =~ ^[0-9]+$ ]] || stunden=6
-  if [ "$m_stand" = "$fern" ] && [[ "$m_zeit" =~ ^[0-9]+$ ]] && [ $(( 10#$t - 10#$m_zeit )) -lt $(( 10#$stunden * 3600 )) ]; then
-    return 0
-  fi
-  local ok=true
-  if [ -n "${VF_NACHZIEHEN:-}" ]; then "$VF_NACHZIEHEN" > /dev/null 2>&1 || ok=false
-  else timeout 60 gh workflow run "$FR_NACHZIEHEN_WORKFLOW" --ref main > /dev/null 2>&1 || ok=false; fi
-  if [ "$ok" != true ]; then
-    echo "Warning: new software state on main, workflow $FR_NACHZIEHEN_WORKFLOW could not be started (gh signed in, permission actions: write?). The next run tries again."
-    return 0
-  fi
-  echo "New software state on main (${fern:0:7}, included ${eingebunden:0:7}): workflow $FR_NACHZIEHEN_WORKFLOW started."
-  mkdir -p "$FR_DIENST"
-  echo "$fern $t" > "$merk.tmp" && mv "$merk.tmp" "$merk"
-}
-
-git_reisen_uebrig() {  # Reisen, die noch in Git liegen (reisen/<name>/reise.json im Commit HEAD) und nicht in
-  # im Speicher stehen, eine je Zeile (Stufe 5, #350)
-  local r
-  { git ls-tree --name-only HEAD reisen/ 2>/dev/null || true; } | while IFS= read -r r; do
-    r="${r#reisen/}"
-    git cat-file -e "HEAD:reisen/$r/reise.json" 2>/dev/null || continue
-    ist_speicherreise "$r" || echo "$r"
-  done
-  return 0
-}
-
-software_wartet_merken() {  # git fetch gescheitert (Stufe 5, #350): Merker <FR_DIENST>/software-wartet (seit, gemeldet).
+software_wartet_merken() {  # git fetch gescheitert (#350): Merker <FR_DIENST>/software-wartet (seit, gemeldet).
   # Erst nach FR_SOFTWARE_WARTET_STUNDEN (Vorgabe 6) genau eine Warnzeile je Störung, keine Nachricht über fr_melden: Ein
   # GitHub-Ausfall ist kein Ausfall der Reisen; den Zustand zeigt der Monitor der Instanz aus dem Merker.
   local datei="$FR_DIENST/software-wartet" seit="" gemeldet="" zeile t stunden="${FR_SOFTWARE_WARTET_STUNDEN:-6}"
@@ -640,27 +475,6 @@ software_wartet_loeschen() {  # git fetch gelungen: die Störung ist vorbei, die
   rm -f "$FR_DIENST/software-wartet"
 }
 
-abhaengigkeiten() {  # Umgebung der Prüfungen wie in CI (#202): Bibliotheken und Playwright in festen Versionen aus dem Repo.
-  # Sonst fehlte nach einem Software-Stand mit neuer Bibliothek nur dem Server etwas, und die Prüfungen blieben rot,
-  # bis jemand von Hand installiert (rot 1.11.2026 wegen pyspellchecker). Installiert wird nur, wenn sich eine Liste
-  # geändert hat (Prüfsummen in FR_DIENST).
-  # Bibliotheken: engine/requirements.txt (Versionen und Hashes, erzeugt aus requirements.in) in FR_PYTHON. Danach
-  # starten die Dienste mit FR_PYTHON einmal neu (FR_BIBLIOTHEKEN_NEU an den ersten Deploy des Laufs).
-  local liste=engine/requirements.txt merk="$FR_DIENST/requirements.sha256" summe
-  if [ -f "$liste" ]; then
-    summe="$(sha256sum "$liste" | cut -d' ' -f1)"
-    if [ "$summe" != "$(cat "$merk" 2>/dev/null || true)" ]; then
-      echo "Installing libraries (engine/requirements.txt changed)."
-      if [ -n "${VF_PIP:-}" ]; then "$VF_PIP" -r "$liste"; else "$FR_PYTHON" -m pip install -q --disable-pip-version-check -r "$liste"; fi \
-        || return 1
-      mkdir -p "$FR_DIENST"
-      echo "$summe" > "$merk"
-      FR_BIBLIOTHEKEN_NEU=1; export FR_BIBLIOTHEKEN_NEU
-    fi
-  fi
-  abhaengigkeiten_playwright
-}
-
 abhaengigkeiten_playwright() {
   # Playwright: eigene Kopie in <FR_DIENST>/playwright nach engine/tests/playwright/package-lock.json, nie ein
   # Ordner, den andere mitbenutzen. Browser ohne --with-deps (kein sudo); Systembibliotheken richtet einrichten.sh ein.
@@ -685,38 +499,8 @@ abhaengigkeiten_playwright() {
   PLAYWRIGHT_BROWSERS_PATH="$pw_ziel/browser"; export PLAYWRIGHT_BROWSERS_PATH
 }
 
-git_reisen_umschalten() {  # Lieferung 1 (#454): jede Reise unter reisen/ des Bauordners, die nicht im Speicher steht, auf den
-  # Speicher umschalten (engine/reisespeicher.py umschalten). Nur mit vorhandener Datenbank des Speichers (eine Instanz ohne
-  # Speicher bleibt beim Git-Weg). „gleich“: ab jetzt Speicherreise. Unterschied oder Fehler: die Reise bleibt in Git, eine
-  # Warnzeile mit Grund, keine Meldung (kein Ausfall, #446). Es wird nie gelöscht.
-  # Ob es die Datenbank gibt, entscheidet engine/reisespeicher.py (datenbank: Exit 0 ja, 1 nein, 2 nicht lesbar): ein nicht
-  # durchsuchbarer Speicher ist ein Fehler des Laufs (Exit 1), nie „keine Datenbank“ (#361, #454 F001).
-  local r rc aus geschaltet=""
-  fr_speicher_fehlt && return 0
-  rc=0; aus="$("$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" datenbank 2>&1 < /dev/null)" || rc=$?
-  case "$rc" in
-    0) ;;
-    1) return 0 ;;
-    *) echo "ERROR: the trip store cannot be read ($(printf '%s\n' "$aus" | tail -1)), the next run tries again."; return 1 ;;
-  esac
-  for r in reisen/*/reise.json; do
-    [ -e "$r" ] || continue
-    r="$(basename "$(dirname "$r")")"
-    ist_speicherreise "$r" && continue
-    ist_vorgemerkt "$r" && continue
-    rc=0; aus="$("$FR_PYTHON" "$FR_BETRIEB/../engine/reisespeicher.py" umschalten "$r" 2>&1 < /dev/null)" || rc=$?
-    case "$rc" in
-      0) echo "$r switched to the trip store ($(printf '%s\n' "$aus" | tail -1))."; geschaltet=1 ;;
-      1) echo "Warning: $r stays in git: it differs from the trip store (betrieb/vergleichslauf.sh $r lists the differences)." ;;
-      3) ;;
-      *) echo "Warning: $r stays in git: switch to the trip store failed ($(printf '%s\n' "$aus" | tail -1))." ;;
-    esac
-  done
-  [ -z "$geschaltet" ] || speicherreisen_lesen || return 1
-}
-
-software_klon() {  # läuft das Skript aus dem Software-Klon, der zugleich der Bauordner ist (neue Anordnung, #454)?
-  ! fr_alte_anordnung && [ "$(cd "$FR_BETRIEB/.." && pwd -P)" = "$(cd "$FR_WURZEL" && pwd -P)" ]
+software_klon() {  # läuft das Skript aus dem Software-Klon, der zugleich der Bauordner ist (#454)?
+  [ "$(cd "$FR_BETRIEB/.." && pwd -P)" = "$(cd "$FR_WURZEL" && pwd -P)" ]
 }
 
 anstoss_lauf() {  # Anstoß der Seite im Software-Klon (#454): dieser Lauf ist der angestoßene; kein Workflow, kein gh
@@ -897,7 +681,7 @@ rueckfall() {  # <grund>: Klon zurück auf <FR_DIENST>/software-gut, Dienste mit
     || echo "ERROR: the services could not be restored to ${gut:0:7}, the next run tries again."
 }
 
-main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
+main_klon() {  # ein Lauf im Software-Klon (#454), Ablauf im Kopf
   local neu kopf grund rc
   anstoss_lauf
   if [ "$(git rev-parse --abbrev-ref HEAD)" != main ]; then
@@ -911,6 +695,7 @@ main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
   vorgemerkte_entfernen || return 1
   entfernte_bausteine
   speicherreisen_lesen || return 1
+  altbau_entfernen                   # #557: alter Bauordner nach Archiv weg; Fehler nur als Warnzeile
   speicher_reisen_lauf || return 1   # mit der Software, die jetzt da ist
   ausstehende_neustarts
   ausstehende_freischalten
@@ -993,7 +778,7 @@ main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
     return 1
   fi
   if ! speicher_reisen_lauf; then
-    # Speicher kurz nicht lesbar, Umschaltprüfung oder Deploy einer Reise gescheitert: kein Rückfall (die Dienste laufen
+    # Speicher kurz nicht lesbar oder Deploy einer Reise gescheitert: kein Rückfall (die Dienste laufen
     # mit kopf, Reisen sind womöglich schon umgestellt), der Lauf ist rot und der nächste versucht es wieder
     echo "ERROR: publishing the trips with software ${kopf:0:7} failed, the next run tries again."
     return 1
@@ -1012,106 +797,11 @@ main_klon() {  # ein Lauf in der neuen Anordnung (#454), Ablauf im Kopf
   erfolg_melden
 }
 
-umzug_kopieren() {  # <quelle> <ziel>: Datei kopieren, wenn das Ziel fehlt oder älter ist; nie über Neueres (#454)
-  [ -e "$1" ] || return 0
-  if [ ! -e "$2" ] || [ "$1" -nt "$2" ]; then
-    mkdir -p "$(dirname "$2")"
-    cp -p "$1" "$2.neu" && mv "$2.neu" "$2"
-    echo "Move (#454): $(basename "$1") copied to $(dirname "$2")."
-  fi
-}
-
-umzug_454() {  # Umzug einer Instanz der alten Anordnung in den Software-Klon (#454, docs/betrieb.md „Umzug“); nur nach einem
-  # grünen Lauf. Jeder Schritt ist wiederholbar; Units erst, wenn 1 bis 3 grün sind (nur prüfen). Fehler: Warnzeile, kein Alarm.
-  # Schritte 1 und 3 (Klon, Python-Umgebung, Prüfung) laufen je Software-Commit einmal: Sind sie für diesen Commit grün,
-  # steht er in <FR_DIENST>/umzug-454.geprueft, und die folgenden Läufe gehen gleich zu Schritt 4 (F004). Schritt 2 (Kopieren,
-  # nie über Neueres) läuft jedes Mal, er kostet nichts und nimmt eine inzwischen geänderte Einstellung mit.
-  local zustand_datei="$FR_DIENST/umzug-454" klon="$FR_SEITEN/_software" url sub aus rc py zustand geprueft_datei units_merker
-  local fingerabdruck
-  geprueft_datei="$FR_DIENST/umzug-454.geprueft"; units_merker="$FR_DIENST/umzug-454.units"
-  zustand="$(cat "$zustand_datei" 2>/dev/null || true)"
-  [ "$zustand" != fertig ] && [ "$zustand" != alt ] || return 0   # fertig, oder Rückweg gewählt: kein neuer Umzug
-  url="$(git config --file .gitmodules submodule.frieda.url 2>/dev/null)" || return 0
-  sub="$(git rev-parse -q --verify HEAD:frieda 2>/dev/null)" || return 0
-  py="$FR_DIENST/python/bin/python"
-  if [ "$(cat "$geprueft_datei" 2>/dev/null || true)" = "$sub" ] && [ -d "$klon/.git" ] \
-     && [ "$(git -C "$klon" rev-parse HEAD 2>/dev/null)" = "$sub" ]; then
-    umzug_kopieren_alle
-  else
-    umzug_vorbereiten || return 0
-  fi
-  umzug_units
-}
-
-umzug_vorbereiten() {  # Schritte 1 bis 3 des Umzugs für den Commit sub (Variablen von umzug_454); Exit 1: nicht grün
-  # 1. Software-Klon (öffentlich, ohne Anmeldung, nur main), auf dem Commit, mit dem dieser Lauf grün war
-  if [ ! -d "$klon/.git" ]; then
-    echo "Move (#454): cloning the software to $klon."
-    rm -rf "${klon:?}.neu"
-    if ! git clone -q --branch main --single-branch "$url" "$klon.neu" > /dev/null 2>&1 || ! mv "$klon.neu" "$klon"; then
-      rm -rf "${klon:?}.neu"
-      echo "Warning: move (#454): software clone failed, publishing stays on the old way, the next run tries again."; return 1
-    fi
-  fi
-  git -C "$klon" fetch -q origin main 2>/dev/null || echo "Warning: move (#454): fetch in the software clone failed."
-  if [ "$(git -C "$klon" rev-parse HEAD)" != "$sub" ]; then
-    if ! git -C "$klon" merge-base --is-ancestor "$sub" origin/main 2>/dev/null; then
-      echo "Warning: move (#454): commit ${sub:0:7} of the submodule is not on main of the software, the next run tries again."; return 1
-    fi
-    git -C "$klon" reset -q --hard "$sub"
-  fi
-  # 2. Einstellungen, Meldeweg und Prüfungen der Instanz nach <FR_DIENST>/instanz/ (nie über Neueres)
-  umzug_kopieren_alle
-  # 3. Python-Umgebung unter <FR_DIENST>/python, geprüft mit dem Klon (Nachweis oder Tests im Klon)
-  if ! ( cd "$klon" && FR_PYTHON="$py" && python_umgebung "$sub" ); then
-    echo "Warning: move (#454): the Python environment $FR_DIENST/python cannot be built; publishing stays on the old way, the next run tries again."
-    return 1
-  fi
-  rc=0; ( cd "$klon" && FR_PYTHON="$py" && software_pruefen "$sub" ) || rc=$?
-  if [ "$rc" != 0 ]; then
-    echo "Warning: move (#454): checks of the software clone red or not possible; publishing stays on the old way, the next run tries again."
-    return 1
-  fi
-  echo "$sub" > "$geprueft_datei.neu" && mv "$geprueft_datei.neu" "$geprueft_datei"
-}
-
-umzug_kopieren_alle() {  # Schritt 2 des Umzugs: Einstellungen, Meldeweg und Prüfungen der Instanz nach <FR_DIENST>/instanz/
-  mkdir -p "$FR_DIENST/instanz"
-  umzug_kopieren "$wurzel/betrieb/einstellungen.env" "$FR_DIENST/instanz/einstellungen.env"
-  umzug_kopieren "$wurzel/betrieb/melden.sh" "$FR_DIENST/instanz/melden.sh"
-  if [ -d "$wurzel/tests" ] && [ ! -e "$FR_DIENST/instanz/tests" ]; then
-    cp -a "$wurzel/tests" "$FR_DIENST/instanz/tests.neu" && mv "$FR_DIENST/instanz/tests.neu" "$FR_DIENST/instanz/tests"
-  fi
-}
-
-umzug_units() {  # Schritte 4 und 5 des Umzugs (Variablen von umzug_454)
-  # 4. Zuletzt: Units auf den Klon. Der Lauf stellt sie nie selbst um: ExecStart und FR_WURZEL stehen nicht in der
-  # Erlaubnisliste des Root-Hilfsprogramms; der Tech Lead stellt sie einmalig bei der Auslieferung um (einrichten.sh
-  # --installieren aus dem Klon, docs/betrieb.md „Umzug“). Hier nur prüfen: weichen sie ab, Warnzeile und alter Weg.
-  local units="${VF_UNITS:-$FR_BETRIEB/units.py}"
-  rc=0; aus="$(FR_WURZEL="$klon" FR_PYTHON="$py" "$units" pruefen 2>&1)" || rc=$?
-  if [ "$rc" != 0 ]; then
-    # Warnzeile einmal je Commit und Befund (Fingerabdruck der Ausgabe), nicht in jedem Takt (F004)
-    fingerabdruck="$sub $rc $(printf '%s\n' "$aus" | sha256sum | cut -c1-16)"
-    if [ "$(cat "$units_merker" 2>/dev/null || true)" != "$fingerabdruck" ]; then
-      echo "Warning: move (#454): the units cannot be switched to $klon (exit $rc: $(printf '%s\n' "$aus" | tail -1)); publishing stays on the old way, the next run tries again."
-      echo "$fingerabdruck" > "$units_merker.neu" && mv "$units_merker.neu" "$units_merker"
-    else
-      echo "Move (#454): units still differ from the software clone (reported before), publishing stays on the old way."
-    fi
-    return 0
-  fi
-  rm -f "$units_merker"
-  # 5. fertig; der Rest dieses Laufs kommt aus dem Klon
-  echo fertig > "$zustand_datei.neu" && mv "$zustand_datei.neu" "$zustand_datei"
-  echo "Move (#454) done: the instance builds from the software clone $klon; the old build folder stays untouched (way back: docs/betrieb.md)."
-  umzug_neustart
-}
-
-umzug_fertig_im_klon() {  # Schritt 5 des Umzugs für einen Lauf, der schon aus dem Klon startet (Units bei der Auslieferung
-  # umgestellt): Zustand selbst auf fertig, falls er es noch nicht ist, aber nur wenn die Units wirklich auf den Klon zeigen
-  # (units.py pruefen ohne Abweichung; FR_WURZEL ist hier der Klon). Beim Rückweg (alt) bleibt er. Eine frische Instanz ohne
-  # Spur eines Umzugs (umzug-454, .geprueft, .units) bekommt keinen Zustand. Weichen die Units ab: stumm, nichts geschrieben.
+umzug_fertig_im_klon() {  # Schritt 5 des Umzugs (#454) für einen Lauf aus dem Klon (Units bei der Auslieferung umgestellt):
+  # Zustand selbst auf fertig, falls er es noch nicht ist, aber nur wenn die Units wirklich auf den Klon zeigen (units.py
+  # pruefen ohne Abweichung; FR_WURZEL ist hier der Klon). Ein anderer gesetzter Zustand (alt, aus der Zeit vor #557) bleibt,
+  # wie er ist; dann räumt altbau_entfernen auch nichts auf. Eine frische Instanz ohne Spur eines Umzugs (umzug-454,
+  # .geprueft, .units) bekommt keinen Zustand. Weichen die Units ab: stumm, nichts geschrieben.
   local zustand_datei="$FR_DIENST/umzug-454" zustand
   zustand="$(cat "$zustand_datei" 2>/dev/null || true)"
   [ "$zustand" != fertig ] && [ "$zustand" != alt ] || return 0
@@ -1122,24 +812,99 @@ umzug_fertig_im_klon() {  # Schritt 5 des Umzugs für einen Lauf, der schon aus 
   echo "Move (#454) done: this run starts from the software clone, the move is marked as done."
 }
 
-umzug_neustart() {  # Umzug fertig: den Lauf aus dem Klon fortsetzen (exec, FR_WURZEL = Klon, Python unter FR_DIENST, außer
-  # der Aufruf nannte FR_PYTHON selbst)
-  local klon="$FR_SEITEN/_software" py=""
-  [ -x "$klon/betrieb/veroeffentlichen.sh" ] || return 0
-  case "$_aufruf_namen" in *" FR_PYTHON "*) py="$FR_PYTHON" ;; esac
-  fr_aufraeumen
-  unset _neugestartet
-  cd "$klon"
-  if [ -n "$py" ]; then FR_WURZEL="$klon" FR_PYTHON="$py" exec "$klon/betrieb/veroeffentlichen.sh"; fi
-  FR_WURZEL="$klon" exec "$klon/betrieb/veroeffentlichen.sh"
+altbau_warnen() {  # <schlüssel> <text>: Warnzeile des Aufräumens, einmal je Störung (Merker <FR_DIENST>/altbau-557.warnung)
+  local merker="$FR_DIENST/altbau-557.warnung"
+  [ "$(cat "$merker" 2>/dev/null || true)" != "$1" ] || return 0
+  echo "Warning: old build folder not removed: $2; the next run tries again."
+  { mkdir -p "$FR_DIENST" && printf '%s\n' "$1" > "$merker"; } || true
 }
 
-# Alles steckt in main(), damit bash das Skript ganz einliest, bevor git es mit dem Submodul eventuell ersetzt.
+altbau_entfernen() {  # #557: alten Bauordner <FR_SEITEN>/_bau und <FR_SEITEN>/_bau-schreiben-* nach einem Archiv entfernen
+  # (Ablauf und Bedingungen im Kopf). Rückgabe immer 0: Fehler sind eine Warnzeile (altbau_warnen), nie ein Alarm.
+  local merker="$FR_DIENST/altbau-557" bau="$FR_SEITEN/_bau" ziele=() p real seiten_real fremd r frei bedarf
+  local units aus rc archiv_ordner archiv tmp liste
+  [ ! -e "$merker" ] || return 0
+  [ -n "$FR_SEITEN" ] && [ -d "$FR_SEITEN" ] || return 0
+  for p in "$bau" "$FR_SEITEN"/_bau-schreiben-*; do
+    if [ -e "$p" ] || [ -L "$p" ]; then ziele+=("$p"); fi
+  done
+  [ "${#ziele[@]}" -gt 0 ] || return 0
+  [ "$(cat "$FR_DIENST/umzug-454" 2>/dev/null || true)" = fertig ] || return 0
+  # Pfadprüfung vor allem anderen: kein Link, aufgelöst innerhalb von FR_SEITEN, nie FR_SEITEN selbst, der Klon oder der
+  # Dienstordner, und nichts davon liegt darin
+  seiten_real="$(cd "$FR_SEITEN" && pwd -P)"
+  for p in "${ziele[@]}"; do
+    real="$(realpath -e "$p" 2>/dev/null || true)"
+    if [ -L "$p" ] || [ ! -d "$p" ] || [ -z "$real" ] || [ "$real" != "$seiten_real/$(basename "$p")" ]; then
+      altbau_warnen "pfad $p" "$p is a link or not a folder inside $FR_SEITEN"; return 0
+    fi
+    for fremd in "$FR_WURZEL" "$FR_DIENST" "$FR_SPEICHER" "$FR_SEITEN/_software" "$FR_SEITEN/_dienst"; do
+      fremd="$(realpath -m "$fremd" 2>/dev/null || echo "$fremd")"
+      case "$fremd/" in "$real"/*)
+        altbau_warnen "pfad $p" "$p contains $fremd"; return 0 ;;
+      esac
+    done
+  done
+  # Jede Reise aus _bau/reisen steht im Reisespeicher (oder ist gelöscht, vorgemerkte_entfernen)
+  fremd=""
+  for p in "$bau"/reisen/*/; do
+    [ -f "$p/reise.yaml" ] || [ -f "$p/reise.json" ] || continue
+    r="$(basename "$p")"
+    ist_speicherreise "$r" || ist_vorgemerkt "$r" || fremd="${fremd:+$fremd, }$r"
+  done
+  if [ -n "$fremd" ]; then
+    altbau_warnen "reisen $fremd" "trips not in the trip store: $fremd"; return 0
+  fi
+  # Keine Unit zeigt mehr auf den alten Bauordner (units.py pruefen: keine Abweichung, die ihn nennt)
+  units="${VF_UNITS:-$FR_BETRIEB/units.py}"
+  rc=0; aus="$("$units" pruefen 2>&1)" || rc=$?
+  if { [ "$rc" != 0 ] && [ "$rc" != 3 ] && [ "$rc" != 4 ]; } || [[ "$aus" == *"$bau"* ]]; then
+    altbau_warnen "units $rc" "units still point to $bau or cannot be compared (exit $rc)"; return 0
+  fi
+  # Archiv von _bau (ohne _bau-schreiben-*) nach <FR_DIENST>/archiv/: erst Platz, dann bauen, lesen und prüfen
+  archiv_ordner="$FR_DIENST/archiv"
+  if [ -d "$bau" ]; then
+    bedarf=$(( $(du -sb "$bau" 2>/dev/null | cut -f1 || echo 0) + 536870912 ))   # unverdichtete Größe plus 512 MiB Reserve
+    if [ -n "${VF_PLATZ:-}" ]; then frei="$("$VF_PLATZ" "$FR_DIENST" 2>/dev/null || true)"
+    else frei="$(df -PB1 "$FR_DIENST" 2>/dev/null | awk 'NR == 2 {print $4}' || true)"; fi
+    if ! [[ "$frei" =~ ^[0-9]+$ ]] || [ "$frei" -lt "$bedarf" ]; then
+      altbau_warnen "platz" "not enough free space for the archive (free ${frei:-unknown} bytes, needed $bedarf)"; return 0
+    fi
+    mkdir -p "$archiv_ordner"
+    archiv="$archiv_ordner/bau-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
+    tmp="$archiv.neu"
+    rc=0
+    if [ -n "${VF_ARCHIV:-}" ]; then "$VF_ARCHIV" "$tmp" "$bau" > /dev/null 2>&1 || rc=$?
+    else tar -czf "$tmp" -C "$FR_SEITEN" _bau > /dev/null 2>&1 || rc=$?; fi
+    liste="$(tar -tzf "$tmp" 2>/dev/null)" || rc=2
+    if [ "$rc" = 0 ]; then
+      for p in "$bau"/reisen/*/; do
+        [ -f "$p/reise.yaml" ] || [ -f "$p/reise.json" ] || continue
+        r="$(basename "$p")"
+        grep -qE "(^|/)reisen/$r/reise\.(yaml|json)$" <<< "$liste" || { rc=3; break; }
+      done
+    fi
+    if [ "$rc" != 0 ]; then
+      rm -f "$tmp"
+      altbau_warnen "archiv" "the archive of $bau could not be built or read (exit $rc)"; return 0
+    fi
+    mv "$tmp" "$archiv"
+    echo "Old build folder archived: $archiv."
+  fi
+  # Löschen, erst danach der Merker (ein abgebrochenes Löschen versucht der nächste Lauf erneut)
+  for p in "${ziele[@]}"; do
+    [ ! -L "$p" ] || { altbau_warnen "pfad $p" "$p became a link"; return 0; }
+    rm -rf -- "${p:?}" || { altbau_warnen "loeschen" "$p could not be removed completely"; return 0; }
+  done
+  printf 'entfernt=%s\narchiv=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${archiv:-}" > "$merker.neu" && mv "$merker.neu" "$merker"
+  rm -f "$FR_DIENST/altbau-557.warnung"
+  echo "Old build folder removed (${#ziele[@]} folders), the archive stays in $archiv_ordner."
+  return 0
+}
+
+# Alles steckt in main(), damit bash das Skript ganz einliest, bevor das Vorspulen des Klons es eventuell ersetzt.
 main() {
-  local deploy alt neu reise freischalten aus rc gut="" rote="" grund laufreisen
-  local einstellungen="$fr_einstellungen_datei" einstellungen_vorher
   immer=""; start_ordner="$PWD"
-  case "$einstellungen" in /*) ;; *) einstellungen="$PWD/$einstellungen" ;; esac   # wie gemeinsam.sh sie las, vor dem cd
   wurzel="$FR_WURZEL"
   stand="${VF_STAND:-$FR_DIENST/veroeffentlicht}"
   deploy="${VF_DEPLOY:-$FR_BETRIEB/deploy.sh}"
@@ -1171,183 +936,14 @@ main() {
   rm -f "$nochmal"
 
   cd "$wurzel"
-  if software_klon; then main_klon "$@"; return; fi
-  # Alte Anordnung: Ist der Umzug fertig (#454), läuft der Lauf aus dem Klon (die Units zeigen dann schon dorthin)
-  if [ "$(cat "$FR_DIENST/umzug-454" 2>/dev/null || true)" = fertig ] && [ -x "$FR_SEITEN/_software/betrieb/veroeffentlichen.sh" ]; then
-    echo "Move (#454) is done, continuing from the software clone."
-    umzug_neustart
-  fi
-  anstoss_weitergeben
-  if [ "$(git rev-parse --abbrev-ref HEAD)" != main ]; then
-    echo "Build folder is not on main ($(git rev-parse --abbrev-ref HEAD)), skipped."; return 0
-  fi
-  if ! git diff --quiet HEAD || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-    echo "Uncommitted changes in the build folder, skipped."; return 0
-  fi
-
-  mkdir -p "$FR_DIENST"   # Zustand des Veröffentlichens (Stand, Rot-Datei, Merker der Warnung, Stempel)
-  # Reisen aus dem Reisespeicher zuerst und ohne Netz (#348): Scheitert git fetch (kein GitHub), sind sie schon veröffentlicht.
-  # Ohne Reisen im Speicher geschieht hier nichts. Vorher verschwinden die Seiten gelöschter Reisen (#381).
-  vorgemerkte_entfernen || return 1
-  entfernte_bausteine
-  speicherreisen_lesen || return 1   # im Speicher ist, was im Speicher steht (#454)
-  git_reisen_umschalten || return 1  # übrige Git-Reisen auf den Speicher umschalten (#454, Lieferung 1)
-  speicher_reisen_lauf || return 1
-  ausstehende_neustarts      # vorgemerkt von deploy.sh in einem Lauf ohne Root-Rechte (#494)
-  ausstehende_freischalten   # vorgemerkt von einem Lauf ohne Root-Rechte (#465); vor dem Abruf von GitHub, gilt also auch ohne Netz
-  einstellungen_vorher="$(einstellungen_summe "$einstellungen")"
-  if ! git fetch -q origin main; then
-    # Stufe 5 (#350): Ohne GitHub sind die Reisen aus dem Speicher schon veröffentlicht; nur Software und Git-Reisen warten.
-    # Ohne Reisen im Speicher ein Fehler wie bisher.
-    [ -n "$speicher_aktiv" ] || return 1
-    echo "Warning: git fetch failed (no network or GitHub down), software update and trips still in git wait."
-    software_wartet_merken
-    zustellen
-    if [ -n "$speicher_rote" ]; then neu="$(git rev-parse HEAD)"; speicher_rot_melden; return 1; fi
-    laufreisen="$(git_reisen_uebrig)"
-    if [ -n "$laufreisen" ]; then
-      echo "Note: trips still in git ($(echo $laufreisen)) stay at their state; no success stamp without GitHub."
-      return 0
-    fi
-    erfolg_melden
-    return 0
-  fi
-  software_wartet_loeschen
-  software_anstossen || true
-  neu="$(git rev-parse origin/main)"
-  alt="$(cat "$stand" 2>/dev/null || true)"
-  if [ -z "$immer" ] && [ "$neu" = "$alt" ] && [ -z "$(haengende_reisen)" ]; then
-    zustellen
-    if [ -n "$speicher_rote" ]; then speicher_rot_melden; return 1; fi
-    rm -f "$rot_datei"; erfolg_melden; umzug_454; return 0
-  fi
-
-  git merge -q --ff-only origin/main || { echo "ERROR: main cannot be fast-forwarded (local commits?)."; return 1; }
-  # Software (Submodul) auf den Stand bringen, den main festhält
-  git submodule update --init --quiet || { echo "ERROR: the software submodule cannot be fetched."; return 1; }
-  # Geänderte Einstellungen wirken im selben Lauf (#242): gemeinsam.sh hat die Datei schon vor dem Vorspulen gelesen.
-  # Neustart mit denselben Argumenten und ohne die alten Werte (nur die vom Aufruf bleiben), höchstens einmal je Lauf.
-  if [ "${_neugestartet:-}" != "$$" ] && [ "$(einstellungen_summe "$einstellungen")" != "$einstellungen_vorher" ]; then
-    echo "Settings changed by the update, restarting."
-    fr_aufraeumen
-    _neugestartet="$$"; export _neugestartet   # gilt nur für diesen Prozess (exec behält die PID)
-    cd "$start_ordner"   # $0 und eine relative FR_EINSTELLUNGEN gelten vom Ordner des Aufrufs aus
-    exec "$0" "$@"
-  fi
-
-  # Umgebung zuerst (feste Versionen, #202), damit ein bekannter roter Stand sie schon im Fingerabdruck sieht (#203)
-  abhaengigkeiten || { echo "ERROR: libraries or Playwright cannot be installed, the next run tries again."; return 1; }
-  # Bekannter roter Stand: nicht noch einmal prüfen und bauen (kostet Minuten), kein Stempel, kein Heartbeat; außer die
-  # Umgebung hat sich geändert oder rote Software wurde lange nicht geprüft (rot_erneut_pruefen)
-  rot_lesen
-  if [ -z "$immer" ] && [ -n "$rot_commit" ] && [ "$rot_commit" = "$neu" ]; then
-    if grund="$(rot_erneut_pruefen)"; then
-      echo "Known red state ${neu:0:7}, checking again ($grund)."
-    else
-      echo "Known red state ${neu:0:7}, skipped (kind: $rot_art${rot_reisen:+, trips: $rot_reisen}). It is checked again with a new commit, a changed environment, after ${FR_ROT_NEU_PRUEFEN_MINUTEN:-60} minutes (software) or with --immer."
-      zustellen
-      if [ -n "$speicher_aktiv" ] && [ "$rot_art" = reise ]; then
-        # Die Reisen aus dem Speicher wurden eben neu gebaut: ihr Ergebnis gilt statt des gemerkten
-        local rot_neu
-        rot_neu="$(rot_vereinigt "$(printf '%s\n' ${rot_reisen//,/ } | while read -r r; do ist_speicherreise "$r" || echo "$r"; done)" "$speicher_rote")"
-        [ "$rot_neu" = "$rot_reisen" ] || rot_schreiben "$rot_commit" reise "$rot_neu" "$rot_tests"
-      fi
-      alarm_pruefen
-      return 0
-    fi
-  fi
-
-  # Software-Wechsel oder reiner Inhaltsstand (#230): Software ist alles außerhalb von reisen/ (Submodul, Werkzeuge, Tests)
-  software=1
-  if [ -z "$immer" ] && [ -n "$alt" ] && git merge-base --is-ancestor "$alt" "$neu" 2>/dev/null \
-     && git diff --quiet "$alt" "$neu" -- . ':(exclude)reisen'; then
-    software=""
-  fi
-  laufreisen="$(reisen_des_laufs "$alt" "$neu")"
-  for reise in $laufreisen; do reise_stand_schreiben "$reise" baut; done
-
-  echo "Publishing $(git log -1 --format='%h %s')${software:- (content only: $(echo $laufreisen))}"
-  pruef_tmp="$(mktemp -d)"; pruef_log="$pruef_tmp.log"
-  if [ -n "$software" ]; then
-    # Eigener Ordner für die Testdateien: Mit der Vorgabe (/tmp/pytest-of-<user>) räumt jeder weitere pytest-Lauf auf dem
-    # Rechner die Ordner älterer Läufe weg, auch die eines noch laufenden (roter Lauf 29.10.2026 bei gleichzeitigen Tests).
-    if ci_nachweis; then
-      echo "Software ${CI_STAND}: required checks green on GitHub (same commit), server tests skipped (#403)."
-    elif ! pruefen_lauf engine/tests; then
-      rm -rf "$pruef_tmp"
-      echo "ERROR: checks red (engine/tests, software), nothing published."
-      rot_schreiben "$neu" software "" "$(rote_tests)"
-      rm -f "$pruef_log"
-      alarm_pruefen
-      return 1
-    fi
-  else
-    echo "Software unchanged since ${alt:0:7} (checked then), checks skipped."
-  fi
-  FR_GEPRUEFT="$(git rev-parse HEAD)"; export FR_GEPRUEFT
-  FR_WEGE_SPAETER=1; export FR_WEGE_SPAETER   # Wege zum Konnektor einmal nach dem Freischalten (wege_pruefen)
-  deploy_log="$pruef_tmp.deploy"
-  for reise in $laufreisen; do
-    # Offline-Grundkarte der automatischen Karte (Epic #225, #239): nur wenn sich ihr Rahmen geändert hat; ohne Netz baut die
-    # Reise trotzdem (die Karte bleibt schematisch oder beim alten Stand)
-    if [ "${FR_GRUNDKARTE_AUTO:-1}" = 1 ] && [ -x "${FR_PYTHON:-}" ]; then
-      "$FR_PYTHON" "${VF_GRUNDKARTE:-$FR_BETRIEB/../werkzeuge/grundkarte_auto.py}" "$reise" || echo "Warning: base map of $reise not fetched, built without the new one."
-    fi
-    rc=0; "$deploy" "$reise" 2>&1 | tee "$deploy_log" || rc=${PIPESTATUS[0]}
-    unset FR_BIBLIOTHEKEN_NEU   # Dienste mit FR_PYTHON nur beim ersten Deploy neu starten
-    case "$rc" in
-      0) gut="$gut $reise"; reise_stand_schreiben "$reise" veroeffentlicht ;;
-      2) echo "ERROR: build of $reise failed, the trip stays at its last good state."
-         reise_stand_schreiben "$reise" fehlgeschlagen "$(baugrund)"
-         rote="${rote:+$rote,}$reise" ;;
-      *) echo "ERROR: deploy of $reise failed (exit $rc), the next run tries again."; rm -rf "$pruef_tmp" "$deploy_log"; return 1 ;;
-    esac
-  done
-  rm -f "$deploy_log"
-  # Tests des Reisen-Repos prüfen Inhalt (Schnappschüsse der Reisen): rot sperrt nie, einmal je Commit eine Nachricht. Sie
-  # laufen nach dem Bauen und nur bei einem Software-Wechsel, damit sie keinen neuen Stand aufhalten (#230).
-  if [ -n "$software" ] && [ -d tests ] && ! pruefen_lauf tests; then
-    echo "Warning: tests of the trips repo red (they do not block)."
-    if [ "$(cat "$warnung" 2>/dev/null || true)" != "$neu" ]; then
-      fr_melden normal "Tests of the trips repo red" "State ${neu:0:7}: the tests in tests/ of the trips repo are red. They do not block publishing (docs/betrieb.md, convention for tests/). Log: journalctl -u $FR_INSTANZ-veroeffentlichen -n 100"
-      mkdir -p "$(dirname "$warnung")"
-      echo "$neu" > "$warnung"
-    fi
-  fi
-  rm -rf "$pruef_tmp" "$pruef_log"
-  # Freischalten nur gelungener Reisen: neue bekommen ihren Link, alle werden geprüft (Ausgabe ohne Links, die sind geheim)
-  # shellcheck disable=SC2086
-  freischalten_reisen $gut
-  [ -z "$gut" ] || wege_pruefen
-  if [ -n "$rote" ]; then
-    # Teil-Erfolg ist kein fachlicher Erfolg: Stand nicht merken, kein Stempel, kein Heartbeat. Die Rot-Datei nennt die roten
-    # Reisen beider Quellen (#348).
-    rote="$(rot_vereinigt "$rote" "$speicher_rote")"
-    rot_schreiben "$neu" reise "$rote"
-    zustellen
-    echo "Red: $(git log -1 --format='%h') partly online, not built: $rote."
-    alarm_pruefen
+  if ! software_klon; then
+    echo "ERROR: $FR_WURZEL is not the software clone this script runs from ($FR_BETRIEB); publishing runs only from <FR_SEITEN>/_software (#454, #557)." >&2
     return 1
   fi
-  [ -n "$speicher_rote" ] || rm -f "$rot_datei"
-  units_abgleichen
-  nginx_abgleichen
-  mkdir -p "$(dirname "$stand")"
-  echo "$neu" > "$stand"
-  # Software-Wechsel (#348): Die Reisen aus dem Speicher übernehmen die Software erst jetzt, da sie geprüft und veröffentlicht
-  # ist; der Nachlauf startet den Speicher-Teil gleich noch einmal, statt bis zum nächsten Takt zu warten.
-  if [ -n "$speicher_aktiv" ] && { [ -n "$speicher_wartet" ] || [ "$(software_kennung HEAD)" != "$speicher_kennung" ]; }; then
-    echo "Software changed, trips from the trip store follow in a second run."
-    touch "$nochmal"
-  fi
-  zustellen
-  if [ -n "$speicher_rote" ]; then speicher_rot_melden; return 1; fi
-  echo "Done: $(git log -1 --format='%h') is online."
-  erfolg_melden
-  umzug_454
+  main_klon "$@"
 }
 
-speicher_rot_melden() {  # Git-Teil grün, Reisen aus dem Speicher rot: Rot-Datei (art=reise), Alarm nach der Schwelle, kein
+speicher_rot_melden() {  # Software grün, Reisen aus dem Speicher rot: Rot-Datei (art=reise), Alarm nach der Schwelle, kein
   # Stempel, kein Heartbeat (#348). Der Server legt kein Issue an (A-2).
   rot_schreiben "$neu" reise "$(rot_vereinigt "$speicher_rote")"
   echo "Red: trips from the trip store not built: $speicher_rote."
@@ -1434,8 +1030,8 @@ nachlauf() {
   exit "$rc"
 }
 
-wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""; deploy_log=""; nochmal=""; software=1
-root_ok=""; frei_ausstehend=""; neustart_ausstehend=""
+wurzel=""; ausstehend=""; rot_datei=""; pruefen=""; pruef_tmp=""; pruef_log=""; deploy_log=""; nochmal=""
+root_ok=""; frei_ausstehend=""; neustart_ausstehend=""; deploy=""; freischalten=""; neu=""
 speicher_aktiv=""; speicher_kennung=""; speicher_wartet=""; speicher_gut=""; speicher_rote=""; vorgemerkt_liste=""
 software_gepr=""; rote_tests_text=""; python_neu=""; stand=""; warnung=""; immer=""; start_ordner="$PWD"
 rot_commit=""; rot_art=""; rot_reisen=""; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""

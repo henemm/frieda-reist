@@ -23,7 +23,6 @@ trap 'rc=$?; echo "ERROR: freischalten.sh stopped at line $LINENO (exit $rc): $B
 
 REISE="${1:?usage: freischalten.sh <trip>}"
 [ -z "${2:-}" ] || { echo "ERROR: freischalten.sh takes only the trip; links for the Claude app no longer exist (#421)."; exit 1; }
-WURZEL="$FR_WURZEL"
 BASIS="${FS_BASIS:-$FR_ADRESSE}"
 SUDO="${FS_SUDO-${FR_SUDO-sudo -n}}"
 HELFER="${FR_NGINX_REISE_HELFER:-/usr/local/sbin/$FR_INSTANZ-nginx-reise-installieren}"
@@ -34,10 +33,8 @@ abruf() {  # <url> -> HTTP-Code
 }
 
 [[ "$REISE" =~ ^[a-z0-9][a-z0-9-]{1,39}$ ]] || { echo "ERROR: trip “$REISE”: lowercase letters, digits and hyphen only."; exit 1; }
-# Ordner der Reisen: eine Reise aus dem Reisespeicher liegt materialisiert im Bau-Ordner (Stufe 3, #348), sonst in Git
-if [ -n "${FR_REISENORDNER:-}" ]; then REISENORDNER="$FR_REISENORDNER"
-elif ist_speicherreise "$REISE"; then REISENORDNER="$FR_DIENST/bau/reisen"
-else REISENORDNER="$WURZEL/reisen"; fi
+# Ordner der Reisen: eine Reise aus dem Reisespeicher liegt materialisiert im Bau-Ordner (Stufe 3, #348; #557: nur dort)
+REISENORDNER="${FR_REISENORDNER:-$FR_DIENST/bau/reisen}"
 [ -f "$REISENORDNER/$REISE/reise.yaml" ] || [ -f "$REISENORDNER/$REISE/reise.json" ] \
   || { echo "ERROR: trip “$REISE” does not exist."; exit 1; }
 [ -n "$BASIS" ] || { echo "ERROR: FR_ADRESSE is not set (settings of the instance)."; exit 1; }

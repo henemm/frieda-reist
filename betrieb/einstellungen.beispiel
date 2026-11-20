@@ -1,4 +1,4 @@
-# Einstellungen einer Instanz (docs/betrieb.md). Kopie nach <Reisen-Repo>/betrieb/einstellungen.env und anpassen.
+# Einstellungen einer Instanz (docs/betrieb.md). Kopie nach <FR_DIENST>/instanz/einstellungen.env und anpassen.
 # Form: je Zeile NAME=wert, ohne Leerzeichen um „=“, ohne Shell-Auswertung ($ und ` bleiben stehen).
 # Keine Geheimnisse hier, die Datei liegt im Repo: Überwachungsadressen und Meldeweg gehören nach <FR_DIENST>/betrieb.env.
 # Leer gelassene oder fehlende Werte bekommen die Vorgabe in Klammern.
@@ -29,13 +29,8 @@ FR_ADRESSE=https://reisen.example.org
 #FR_KONTEN=/srv/beispiel/_konten
 #FR_SPEICHER=/srv/beispiel/_speicher
 
-# Nur noch Übergang (#454), gelesen und wirkungslos: Im Speicher ist, was im Speicher steht. Jede Reise mit Eintrag im
-# Reisespeicher wird über ihn geschrieben und gebaut (materialisiert nach <FR_DIENST>/bau/reisen/<reise>), neue Reisen
-# entstehen dort, und übrige Reisen aus reisen/ eines alten Bauordners schaltet das Veröffentlichen selbst um, wenn sie
-# gleich sind (docs/betrieb.md, „Umschaltung einer Reise“). Die Zeile kann weg. (leer)
-#FR_SPEICHERREISEN=beispielreise,stadtwochenende
-# Ordner, in dem freischalten.sh die Reise sucht. Nur für Aufrufe von Hand; sonst wählt das Skript selbst Git (reisen/) oder
-# für eine Reise im Speicher den Bau-Ordner. (<Wurzel>/reisen bzw. <FR_DIENST>/bau/reisen)
+# Ordner, in dem freischalten.sh die Reise sucht. Nur für Aufrufe von Hand; sonst der Bau-Ordner, in den das
+# Veröffentlichen jede Reise aus dem Reisespeicher materialisiert. (<FR_DIENST>/bau/reisen)
 #FR_REISENORDNER=/srv/beispiel/_dienst/bau/reisen
 
 # Adressen, die nicht ins Anfragekontingent von nginx zählen (die des Servers selbst, getrennt durch Leerzeichen; die Schleife
@@ -50,32 +45,21 @@ FR_ADRESSE=https://reisen.example.org
 #FR_KN_PORT=8782
 #FR_SB_PORT=8783
 
-# Arbeitskopie des Schreibwegs (engine/schreiben.py): ein Git-Worktree des Reisen-Repos, den der Dienst selbst anlegt und
-# auf main hält. (<Wurzel>-schreiben)
-#FR_SCHREIBKOPIE=/home/reisen/reisen-schreiben
-
 # Benutzer, unter dem die Dienste laufen, und sein Home (für einrichten.sh). (aufrufender Benutzer)
 #FR_BENUTZER=reisen
 #FR_HOME=/home/reisen
 
-# Python mit den Paketen der Software. (<Wurzel>/engine/.venv/bin/python)
-#FR_PYTHON=/home/reisen/reisen/engine/.venv/bin/python
+# Python mit den Paketen der Software, außerhalb des Software-Klons (#454). (<FR_DIENST>/python/bin/python)
+#FR_PYTHON=/srv/beispiel/_dienst/python/bin/python
 
 # Nachrichten an den Betreiber: ausführbare Datei, aufgerufen als
 #   <befehl> <normal|high> <betreff> <text> [erledigt]
-# „erledigt“ heißt: reiner Bericht, keine Handlung nötig. Ein relativer Pfad gilt ab der Wurzel des Reisen-Repos.
-# Leer: keine Nachrichten. (leer)
-#FR_MELDEN=betrieb/melden.sh
+# „erledigt“ heißt: reiner Bericht, keine Handlung nötig. Leer: <FR_DIENST>/instanz/melden.sh, wenn es die Datei gibt,
+# sonst keine Nachrichten. (leer)
+#FR_MELDEN=/srv/beispiel/_dienst/instanz/melden.sh
 
-# Workflow „Software nachziehen“ im Reisen-Repo (.github/workflows/), den Organisator:innen von der Seite aus anstoßen
-# („Veröffentlichen anstoßen“ im Fuß); gestartet mit gh workflow run als Dienstbenutzer. (software-nachziehen.yml)
-#FR_NACHZIEHEN_WORKFLOW=software-nachziehen.yml
-# Diesen Workflow startet das Veröffentlichen auch selbst, sobald main der Software einen anderen Stand hat als das
-# Submodul, einmal je Stand. Für denselben Stand startet es erst nach so vielen Stunden wieder (ein Lauf, der nie startete
-# oder vorübergehend scheiterte). (6)
-#FR_NACHZIEHEN_WIEDERHOLEN_STUNDEN=6
 # Scheitert git fetch (GitHub oder Netz weg), veröffentlicht der Lauf die Reisen aus dem Reisespeicher trotzdem; nur die
-# Software-Aktualisierung wartet (Merker <FR_DIENST>/software-wartet, Stufe 5, #350). Nach so vielen Stunden steht genau
+# Software-Aktualisierung wartet (Merker <FR_DIENST>/software-wartet, #350). Nach so vielen Stunden steht genau
 # einmal je Störung eine Warnung im Protokoll und gemeldet=1 im Merker (für den Monitor), keine Nachricht. (6)
 #FR_SOFTWARE_WARTET_STUNDEN=6
 

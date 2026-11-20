@@ -38,14 +38,9 @@ KD_ORDNER="${FR_KARTENDIENST_ORDNER:-}"
 KD_PORT="${FR_KARTENDIENST_PORT:-12345}"
 KD_SPEICHER="${FR_KARTENDIENST_SPEICHER:-2g}"
 KD_RUHE="${FR_KARTENDIENST_RUHE:-15min}"
-# Ordner der Software, aus dem die Units die Skripte starten (#454): in der alten Anordnung das Submodul <FR_WURZEL>/frieda,
-# im Software-Klon der Bauordner selbst. FR_DIENST als Umgebungswert der Unit nur im Klon (dort liegen die Einstellungen
-# unter <FR_DIENST>/instanz/); in der alten Anordnung ein Kommentar, damit die Soll-Units den installierten gleichen
-if fr_alte_anordnung; then
-  SOFTWARE="$FR_WURZEL/frieda"; UMGEBUNG_DIENST="# FR_DIENST aus den Einstellungen (alte Anordnung, #454)"
-else
-  SOFTWARE="$FR_WURZEL"; UMGEBUNG_DIENST="Environment=FR_DIENST=$FR_DIENST"
-fi
+# Ordner der Software, aus dem die Units die Skripte starten (#454): der Software-Klon, zugleich der Bauordner. FR_DIENST
+# steht als Umgebungswert in jeder Unit (dort liegen die Einstellungen unter <FR_DIENST>/instanz/)
+SOFTWARE="$FR_WURZEL"; UMGEBUNG_DIENST="Environment=FR_DIENST=$FR_DIENST"
 # Der Kartendienst läuft unter einem eigenen Benutzer in der Gruppe docker, nie unter dem Dienstbenutzer (#552)
 KD_BENUTZER="$FR_INSTANZ-karte"
 # Zustandsordner des Kartendienstes und seine Daten (#552): feste, root-kontrollierte Pfade aus der Instanz. Alles, was als

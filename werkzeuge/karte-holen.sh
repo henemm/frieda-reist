@@ -4,9 +4,9 @@
 # Der Ausschnitt ist der Rahmen aus reisen/<reise>/plan/karte.yaml, die Datei landet unter
 # reisen/<reise>/medien/karte/grundkarte.pmtiles (nicht im Repo, .gitignore). Danach veröffentlichen.
 #
-# Aufruf:  frieda/werkzeuge/karte-holen.sh <reise>              (Detail bis Zoomstufe 15, Wege und Pfade)
-#          MAXZOOM=14 frieda/werkzeuge/karte-holen.sh <reise>   (etwa halb so groß)
-#          frieda/werkzeuge/karte-holen.sh <reise> <name>       (regionale Karte der Recherche: Rahmen und Zoom aus
+# Aufruf:  FR_WURZEL=<Bauordner> <Bauordner>/werkzeuge/karte-holen.sh <reise>              (Detail bis Zoomstufe 15)
+#          MAXZOOM=14 FR_WURZEL=<Bauordner> <Bauordner>/werkzeuge/karte-holen.sh <reise>   (etwa halb so groß)
+#          FR_WURZEL=<Bauordner> <Bauordner>/werkzeuge/karte-holen.sh <reise> <name>       (regionale Karte: Rahmen und Zoom aus
 #          grundkarten.<name> der Punkte-Datei in reise.json -> wissen_punkte; Ziel medien/karte/<name>.pmtiles)
 # Braucht Internet; das Werkzeug pmtiles kommt einmalig nach engine/.bin/.
 set -euo pipefail
@@ -75,4 +75,4 @@ echo "Schneide $BBOX bis Zoom $MAXZOOM aus $QUELLE …"
 "$WERKZEUG" verify "$ZIEL.neu" >/dev/null
 mv "$ZIEL.neu" "$ZIEL"
 echo "$QUELLE (Stand $TAG), Rahmen $BBOX, Zoom bis $MAXZOOM" > "$ZIEL.quelle.txt"
-echo "Fertig: $ZIEL ($(du -h "$ZIEL" | cut -f1)). Jetzt veröffentlichen: FR_WURZEL=$WURZEL frieda/betrieb/veroeffentlichen.sh --immer"
+echo "Fertig: $ZIEL ($(du -h "$ZIEL" | cut -f1)). Jetzt veröffentlichen: FR_WURZEL=$WURZEL $WURZEL/betrieb/veroeffentlichen.sh --immer"
