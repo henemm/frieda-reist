@@ -63,7 +63,7 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
                                           und Zeiten). Geht nie über den Speicher des Service Workers (sw.vorlage.js: api/)
   GET    /<reise>/aktualisieren           Stand des Anstoßes „neue Software veröffentlichen“ und ob die Person ihn geben darf
   POST   /<reise>/aktualisieren           Anstoß geben (Organisator:in, angemeldet): legt <ablage>/_anstoss.json an,
-                                          betrieb/veroeffentlichen.sh startet damit den Workflow „Software nachziehen“
+                                          betrieb/veroeffentlichen.sh veröffentlicht damit den neuesten Stand der Software
 
 Wer schreibt (Paket J, docs/konten.md): Der Konnektor schickt das Dienst-Geheimnis (X-Frieda-Dienst) und den Namen der
 Person, die er erkannt hat. Alles andere gilt als Seite: Name und Rolle kommen aus der Sitzung (Cookie __Host-frieda,

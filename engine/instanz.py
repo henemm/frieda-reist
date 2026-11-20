@@ -1,7 +1,7 @@
 """Ordner und Werte einer Instanz für die Software (docs/betrieb.md, Einstellungen).
 
 Die Betriebsskripte (betrieb/) setzen die Umgebung selbst. Ruft man die Software von Hand auf (etwa
-`python3 engine/rueckmeldungen.py liste <reise>` im Reisen-Repo) oder läuft ein Dienst nur mit einem Teil der Werte,
+`python3 engine/rueckmeldungen.py liste <reise>` im Software-Klon) oder läuft ein Dienst nur mit einem Teil der Werte,
 leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimmten Instanz zu kennen:
 
   Seiten   RM_SEITEN, KN_SEITEN, FR_SEITEN; sonst der Ordner über RM_ABLAGE; sonst aus den Einstellungen der Instanz
@@ -11,14 +11,14 @@ leitet dieses Modul den Rest nach derselben Ordnung ab, ohne Werte einer bestimm
   Konten   FR_KONTEN; sonst <Seiten>/_konten (Konten-Datenbank des Dienstes, nicht Teil einer Reise); eine ältere Datenbank
            unter <Ablage>/_konten/ gilt weiter, solange am neuen Ort keine liegt
   Speicher FR_SPEICHER; sonst <Seiten>/_speicher (Reisespeicher reisen.db, Versionen aller Reisen, ADR-0009, #346)
-  Speicherreisen Im Speicher ist, was im Speicher steht (#454): die Reisen mit Eintrag im Reisespeicher, deren Umschaltung
-           nicht offen ist (speicherreisen()). FR_SPEICHERREISEN ist nur noch Übergang: gelesen, wirkungslos
+  Speicherreisen Im Speicher ist, was im Speicher steht (#454, #557): jede Reise mit Eintrag im Reisespeicher
+           (speicherreisen()); einen anderen Weg gibt es nicht mehr
   Neu      <Konten>/neu (Anfragen nach neuen Reisen und Meldungen an Personen, gehört zu keiner Reise, #72); ein älterer
            Ordner <Ablage>/_neu/ gilt weiter, solange am neuen Ort nichts liegt
   Konnektor FR_KONNEKTOR; sonst der Ordner von KN_ZUGAENGE (alter Name aus den Units, bis sie neu erzeugt sind);
            sonst <Seiten>/_konnektor (seiten.json, neue-reisen-ausstehend.jsonl; die alten Links sind abgeschafft, #421)
 
-Einstellungen der Instanz (#454): FR_EINSTELLUNGEN, sonst <Dienst>/instanz/einstellungen.env, sonst (Übergang, alter Ort)
+Einstellungen der Instanz (#454): FR_EINSTELLUNGEN, sonst <Dienst>/instanz/einstellungen.env, sonst
 <FR_WURZEL bzw. aktueller Ordner>/betrieb/einstellungen.env; Zeilen NAME=wert wie in betrieb/einstellungen.beispiel. Die
 Umgebung gilt vor der Datei. Der Dienstordner für diese Suche kommt nur aus der Umgebung (FR_DIENST, sonst aus FR_SEITEN bzw.
 FR_INSTANZ), nie aus der Datei selbst.
@@ -31,7 +31,7 @@ KENNUNG = "Frieda-Reist/1 (+https://github.com/henemm/frieda-reist)"
 
 
 def wurzel():
-    """Wurzel des Reisen-Repos: FR_WURZEL, sonst der aktuelle Ordner (Aufrufe von Hand dort)."""
+    """Wurzel der Software (der Software-Klon der Instanz): FR_WURZEL, sonst der aktuelle Ordner (Aufrufe von Hand dort)."""
     return Path(os.environ.get("FR_WURZEL") or Path.cwd())
 
 
@@ -45,8 +45,8 @@ def _dienst_aus_umgebung():
 
 
 def _datei():
-    """Einstellungsdatei der Instanz (#454): FR_EINSTELLUNGEN, sonst <Dienst>/instanz/einstellungen.env, sonst (Übergang)
-    der alte Ort <Wurzel>/betrieb/einstellungen.env."""
+    """Einstellungsdatei der Instanz (#454): FR_EINSTELLUNGEN, sonst <Dienst>/instanz/einstellungen.env, sonst
+    <Wurzel>/betrieb/einstellungen.env (Aufrufe von Hand und Tests ohne Dienstordner)."""
     if os.environ.get("FR_EINSTELLUNGEN"):
         return Path(os.environ["FR_EINSTELLUNGEN"])
     neu = _dienst_aus_umgebung() / "instanz" / "einstellungen.env"
@@ -127,8 +127,8 @@ def speicher_ablage():
 
 class EinstellungenNichtLesbar(OSError):
     """Die Einstellungsdatei der Instanz existiert, kann aber nicht gelesen werden (#361), oder der Reisespeicher ist nicht
-    lesbar (SpeicherNichtLesbar, #454): Welche Reisen im Speicher liegen, ist dann unbekannt. Wer darüber den Weg einer Reise
-    wählt, muss laut abbrechen, nicht auf den Git-Weg ausweichen."""
+    lesbar (SpeicherNichtLesbar, #454): Welche Reisen im Speicher liegen, ist dann unbekannt. Wer darauf baut, muss laut
+    abbrechen, nie mit einer leeren Liste weitermachen."""
 
 
 class SpeicherNichtLesbar(EinstellungenNichtLesbar):
@@ -147,9 +147,8 @@ def einstellungen_pruefen():
 
 
 def speicherreisen():
-    """Reisen, die über den Reisespeicher geschrieben und gebaut werden (#454): Im Speicher ist, was im Speicher steht, also
-    jede Reise mit mindestens einem Vorgang, deren Umschaltung nicht offen ist (reisespeicher.speicherreisen). Sortiert.
-    FR_SPEICHERREISEN aus Umgebung oder Datei ist nur noch Übergang und wirkungslos. Ohne Datenbank: keine. Ist der Speicher
+    """Reisen, die über den Reisespeicher geschrieben und gebaut werden (#454, #557): jede Reise mit mindestens einem Vorgang
+    im Speicher (reisespeicher.speicherreisen), ohne Filter. Sortiert. Ohne Datenbank: keine. Ist der Speicher
     vorhanden, aber nicht lesbar, wird SpeicherNichtLesbar ausgelöst (fail closed, #361), nie eine leere Liste. Ebenso
     EinstellungenNichtLesbar, wenn die Einstellungsdatei vorhanden, aber nicht lesbar ist: Speicher und Dienstordner können
     dort stehen, die Antwort wäre ungewiss (#361)."""

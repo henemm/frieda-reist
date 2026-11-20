@@ -1,14 +1,12 @@
 """Reise-Stand (Epic #223): eine fortlaufende Nummer je Reise und der Weg eines Stands vom Sichern bis auf die Seite.
 
-Nummer: je gesichertem Schreibvorgang +1. Für eine Reise aus FR_SPEICHERREISEN ist sie die Stand-Nummer im Reisespeicher
-(engine/reisespeicher.py, ADR-0009, ab Stufe 2, #347), die Änderungsliste kommt aus seinem Verlauf. Für jede andere Reise
-zählt bis Stufe 5 weiter Git (engine/stand_git.py): die Zahl der Commits, die den Ordner der Reise ändern; ein
-Software-Update ändert den Ordner nicht und lässt sie stehen. Die Nummer steigt nur, Stand 43 enthält alles aus Stand 42.
-Sie gehört zur Reise, nicht zum Bau: Der Bau liest sie nur ab. Fehlt die Quelle (Reise ohne Speichereintrag, ohne Git,
-flacher Klon), fehlt die Nummer.
+Nummer: je gesichertem Schreibvorgang +1. Sie ist die Stand-Nummer im Reisespeicher (engine/reisespeicher.py, ADR-0009),
+die Änderungsliste kommt aus seinem Verlauf; seit #557 gibt es keinen anderen Weg mehr. Ein Software-Update ändert die
+Reise nicht und lässt sie stehen. Die Nummer steigt nur, Stand 43 enthält alles aus Stand 42. Sie gehört zur Reise, nicht
+zum Bau: Der Bau liest sie nur ab. Fehlt die Quelle (Reise ohne Speichereintrag), fehlt die Nummer.
 
 Weg eines Stands (docs/betrieb.md, „Reise-Stand“):
-  gesichert      der Schreibweg (engine/schreiben.py) hat den Vorgang eingetragen (Speicher) bzw. nach main gebracht (Git)
+  gesichert      der Schreibweg (engine/schreiben.py) hat den Vorgang im Reisespeicher eingetragen
   wird gebaut    betrieb/veroeffentlichen.sh baut die Seite der Reise neu
   veröffentlicht die Seite dieses Stands liegt auf dem Server (<Seiten>/<reise>/daten.json, reise_stand.nummer)
   auf dem Gerät  nur die Person sieht das, im Fuß der Seite
@@ -35,13 +33,6 @@ ZIEL_SEKUNDEN = 120          # Zeitziel vom Sichern bis zur Veröffentlichung (P
 AENDERUNGEN = 10             # so viele letzte Änderungen zeigt die Seite
 ZUSTAENDE = ("wartet", "baut", "veroeffentlicht", "fehlgeschlagen")
 ID_MUSTER = re.compile(r"(?<![\w-])([A-Z]{1,2}-\d+(?:\.[a-z0-9]+)?)(?![\w-])")
-PERSON_TRAILER = "Frieda-Person"   # Zeile im Commit des Schreibwegs: wer den Eintrag gemacht hat
-
-
-def nummer(ordner, rev="HEAD"):
-    """Reise-Stand einer Git-Reise auf rev -> int oder None (engine/stand_git.py, bis Stufe 5)."""
-    import stand_git
-    return stand_git.nummer(ordner, rev)
 
 
 def zeit_iso(t=None):
@@ -111,12 +102,6 @@ def ohne_kennungen(text, namen):
     return re.sub(r"\s{2,}", " ", re.sub(r"^\s+|\(\s*\)", "", neu)).strip()
 
 
-def aenderungen(ordner, namen=None, n=AENDERUNGEN):
-    """Die letzten n Änderungen einer Git-Reise -> [{nummer, zeit, was, wer}], neueste zuerst (engine/stand_git.py)."""
-    import stand_git
-    return stand_git.aenderungen(ordner, namen, n)
-
-
 def _materialisierter_stand(ordner):
     """Stand, den reisespeicher.materialisieren für diesen Ordner festhielt (<ordner>.stand), oder None (#348)."""
     try:
@@ -150,14 +135,10 @@ def _aus_dem_speicher(reise, namen, bis=None):
 
 def fuer_seite(ordner, daten):
     """Reise-Stand für die Seite (daten.reise_stand): {nummer, zeit, aenderungen} oder None ohne Quelle. Der Bau kennt nur
-    den Ordner; die Reise ist sein Name. Liegt sie im Reisespeicher (instanz.speicherreisen, #454), kommt alles aus ihm, mit dem Stand aus <ordner>.stand, wenn materialisieren ihn festhielt, sonst aus Git (engine/stand_git.py, bis Stufe 5). zeit ist der Zeitpunkt der letzten Änderung. Keine Bauzeit:
-    gleicher Inhalt ergibt dieselbe Seite (Service Worker, bauen.py)."""
-    if Path(ordner).name in instanz.speicherreisen():
-        # Stand des gebauten Inhalts (veroeffentlichen.sh materialisiert ihn, #348); fehlt die Datei, der neueste
-        n, liste = _aus_dem_speicher(Path(ordner).name, namen_der_ids(daten), _materialisierter_stand(ordner))
-    else:
-        n = nummer(ordner)
-        liste = aenderungen(ordner, namen_der_ids(daten)) if n is not None else []
+    den Ordner; die Reise ist sein Name. Alles kommt aus dem Reisespeicher (#557: kein Git-Zweig mehr), mit dem Stand aus
+    <ordner>.stand, wenn materialisieren ihn festhielt, sonst dem neuesten. zeit ist der Zeitpunkt der letzten Änderung.
+    Keine Bauzeit: gleicher Inhalt ergibt dieselbe Seite (Service Worker, bauen.py)."""
+    n, liste = _aus_dem_speicher(Path(ordner).name, namen_der_ids(daten), _materialisierter_stand(ordner))
     if n is None:
         return None
     return {"nummer": n, "zeit": liste[0]["zeit"] if liste else None, "aenderungen": liste}
@@ -185,7 +166,7 @@ def _schreiben(p, obj):
 
 
 def gesichert_schreiben(reise, n, commit=None, zeit=None):
-    """Der Schreibweg hat Stand n der Reise nach main gebracht. Wirft nie (das Sichern ist schon geschehen)."""
+    """Der Schreibweg hat Stand n der Reise gesichert. Wirft nie (das Sichern ist schon geschehen)."""
     if n is None:
         return
     try:

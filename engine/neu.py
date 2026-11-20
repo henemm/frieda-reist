@@ -1278,7 +1278,7 @@ def nachziehen_speicher(reise, ordner):
         except Exception as e:   # die Reise selbst lässt sich nicht umstellen (etwa kaputte reise.yaml): wie ein roter Bau
             return 2, [f"ERROR: {reise} cannot be converted, nothing written: {type(e).__name__}: {e}"]
         warnungen = [f"Warning: {m}" for m in meldungen if m.startswith(("OPEN", "OFFEN"))]
-        if not rs.vergleichen(reise, ordner, bis=basis):
+        if not rs.unterschiede(reise, ordner, bis=basis):
             zeilen = warnungen
             break
         try:
