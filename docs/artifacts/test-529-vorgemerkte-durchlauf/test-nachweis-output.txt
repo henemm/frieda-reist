@@ -1,0 +1,17 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: ~/frieda-reist/.claude/worktrees/inherited-purring-breeze
+plugins: xdist-3.8.0
+collecting ... collected 8 items
+
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut PASSED [ 12%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_andere_reise_bleibt_unberuehrt PASSED [ 25%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_immer_baut_vorgemerkte_reise_nicht PASSED [ 37%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_zurueckgeholte_reise_wird_wieder_gebaut PASSED [ 50%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_unlesbare_liste_fail_closed PASSED [ 62%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_alt_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut PASSED [ 75%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_alt_unlesbare_liste_fail_closed PASSED [ 87%]
+engine/tests/test_loeschen_reise.py::test_veroeffentlichen_kennt_vorgemerkte PASSED [100%]
+
+============================== 8 passed in 14.34s ==============================

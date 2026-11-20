@@ -1,0 +1,195 @@
+# Mutationsprobe (#529): beide Aufrufe von vorgemerkte_entfernen in betrieb/veroeffentlichen.sh voruebergehend entfernt (nicht eingecheckt). Erwartet rot: 6 von 7; test_neu_andere_reise_bleibt_unberuehrt prueft nur fehlende Nebenwirkung und bleibt gruen.
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: ~/frieda-reist/.claude/worktrees/inherited-purring-breeze
+plugins: xdist-3.8.0
+collecting ... collected 7 items
+
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut FAILED [ 14%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_andere_reise_bleibt_unberuehrt PASSED [ 28%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_immer_baut_vorgemerkte_reise_nicht FAILED [ 42%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_zurueckgeholte_reise_wird_wieder_gebaut FAILED [ 57%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_unlesbare_liste_fail_closed FAILED [ 71%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_alt_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut FAILED [ 85%]
+engine/tests/test_vorgemerkte_durchlauf_529.py::test_alt_unlesbare_liste_fail_closed FAILED [100%]
+
+=================================== FAILURES ===================================
+__________ test_neu_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut ___________
+
+swk = namespace(lauf=<function sw.<locals>.lauf at 0x77789fed2b60>, neuer_commit=<function sw.<locals>.neuer_commit at 0x777...wir0/rotmelden.sh'}, konten_ordner=PosixPath('<tmp>
+
+    def test_neu_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut(swk):
+        """AC-1: vorgemerkt → Exit 0, Seite weg, kein Deploy der Reise, Meldung in der Ausgabe."""
+        _beide_gebaut(swk)
+        konten.loeschung_vormerken(VORGEMERKT, "k-ida")
+        vorher = len(swk.zeilen("deploy.log"))
+        r = _ok(swk.lauf())
+>       assert not (swk.seiten / VORGEMERKT).exists(), r.stdout
+E       AssertionError: 
+E       assert not True
+E        +  where True = exists()
+E        +    where exists = (PosixPath('<tmp> / 'stadtwochenende').exists
+E        +      where PosixPath('<tmp> = namespace(lauf=<function sw.<locals>.lauf at 0x77789fed2b60>, neuer_commit=<function sw.<locals>.neuer_commit at 0x77789fed2a20>, zeilen=<function sw.<locals>.zeilen at 0x77789fed28e0>, kopf=<function sw.<locals>.kopf at 0x77789fed2c00>, lesen=<function sw.<locals>.lesen at 0x77789fed2980>, gebaut=<function sw.<locals>.gebaut at 0x77789fed2ac0>, nachweis_gruen=<function sw.<locals>.nachweis_gruen at 0x77789fed2ca0>, a='8ec4887fa598b918ea09922f8319344870aa2ad3', t=PosixPath('<tmp> klon=PosixPath('<tmp> dienst=PosixPath('<tmp> seiten=PosixPath('<tmp> quelle=PosixPath('<tmp> env={'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', 'CLAUDE_CODE_CHILD_SESSION': '1', 'TERM_PROGRAM_VERSION': '0.9.5', 'FNM_ARCH': 'x64', 'AI_AGENT': 'claude-code_2-1-329_agent', 'CLAUDE_CODE_SESSION_ID': '...a-reist/.claude/worktrees/inherited-purring-breeze/engine/.venv/bin/python', 'FR_SUDO': '', 'FR_GRUNDKARTE_AUTO': '0', 'FR_HEARTBEAT_VEROEFFENTLICHEN': 'https://example.invalid/hb', 'FR_MELDEN': '<tmp> 'VF_DEPLOY': '<tmp> 'VF_PRUEFEN': '<tmp> 'VF_CINACHWEIS': '<tmp> 'VF_NACHZIEHEN': '<tmp> 'VF_NPM': '<tmp> 'VF_FREISCHALTEN': '<tmp> 'VF_UNITS': '<tmp> 'VF_NGINX': '<tmp> 'VF_ROTMELDEN': '<tmp> konten_ordner=PosixPath('<tmp>
+
+engine/tests/test_vorgemerkte_durchlauf_529.py:90: AssertionError
+_________________ test_neu_immer_baut_vorgemerkte_reise_nicht __________________
+
+swk = namespace(lauf=<function sw.<locals>.lauf at 0x77789fed37e0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x777...rkt0/rotmelden.sh'}, konten_ordner=PosixPath('<tmp>
+
+    def test_neu_immer_baut_vorgemerkte_reise_nicht(swk):
+        """AC-3: mit --immer wird die andere Reise gebaut, die vorgemerkte nicht, ihre Seite bleibt weg."""
+        _beide_gebaut(swk)
+        konten.loeschung_vormerken(VORGEMERKT, "k-ida")
+        _ok(swk.lauf())
+        vorher = len(swk.zeilen("deploy.log"))
+        r = _ok(swk.lauf("--immer"))
+        neu = _neue_deploys(swk, vorher)
+        assert ANDERE in neu, r.stdout
+>       assert VORGEMERKT not in neu, r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Published beispielreise state 1 again (already on the page).
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Published stadtwochenende state 1 again (already on the page).
+E         Publishing software b114ed7 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Publishing beispielreise from the trip store, state 1.
+E         Published beispielreise state 1 again (already on the page).
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Published stadtwochenende state 1 again (already on the page).
+E         Done: software b114ed7 is online.
+E         
+E       assert 'stadtwochenende' not in ['beispielreise', 'stadtwochenende', 'beispielreise', 'stadtwochenende']
+
+engine/tests/test_vorgemerkte_durchlauf_529.py:116: AssertionError
+_______________ test_neu_zurueckgeholte_reise_wird_wieder_gebaut _______________
+
+swk = namespace(lauf=<function sw.<locals>.lauf at 0x77789fe9ef20>, neuer_commit=<function sw.<locals>.neuer_commit at 0x777...se_0/rotmelden.sh'}, konten_ordner=PosixPath('<tmp>
+
+    def test_neu_zurueckgeholte_reise_wird_wieder_gebaut(swk):
+        """AC-4: nach dem Zurückholen baut der nächste Lauf die Reise wieder, die Seite ist wieder da."""
+        _beide_gebaut(swk)
+        konten.loeschung_vormerken(VORGEMERKT, "k-ida")
+        _ok(swk.lauf())
+>       assert not (swk.seiten / VORGEMERKT).exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = (PosixPath('<tmp> / 'stadtwochenende').exists
+E        +      where PosixPath('<tmp> = namespace(lauf=<function sw.<locals>.lauf at 0x77789fe9ef20>, neuer_commit=<function sw.<locals>.neuer_commit at 0x77789fe9f240>, zeilen=<function sw.<locals>.zeilen at 0x77789fe9f060>, kopf=<function sw.<locals>.kopf at 0x77789fc48040>, lesen=<function sw.<locals>.lesen at 0x77789fc480e0>, gebaut=<function sw.<locals>.gebaut at 0x77789fc48180>, nachweis_gruen=<function sw.<locals>.nachweis_gruen at 0x77789fc48220>, a='23640fb378575e187934752372d4e23999e17d34', t=PosixPath('<tmp> klon=PosixPath('<tmp> dienst=PosixPath('<tmp> seiten=PosixPath('<tmp> quelle=PosixPath('<tmp> env={'SHELL': '/bin/bash', 'COREPACK_ENABLE_AUTO_PIN': '0', 'COLORTERM': 'truecolor', 'HERDR_PANE_ID': 'wY:p1', 'CLAUDE_CODE_CHILD_SESSION': '1', 'TERM_PROGRAM_VERSION': '0.9.5', 'FNM_ARCH': 'x64', 'AI_AGENT': 'claude-code_2-1-329_agent', 'CLAUDE_CODE_SESSION_ID': '...a-reist/.claude/worktrees/inherited-purring-breeze/engine/.venv/bin/python', 'FR_SUDO': '', 'FR_GRUNDKARTE_AUTO': '0', 'FR_HEARTBEAT_VEROEFFENTLICHEN': 'https://example.invalid/hb', 'FR_MELDEN': '<tmp> 'VF_DEPLOY': '<tmp> 'VF_PRUEFEN': '<tmp> 'VF_CINACHWEIS': '<tmp> 'VF_NACHZIEHEN': '<tmp> 'VF_NPM': '<tmp> 'VF_FREISCHALTEN': '<tmp> 'VF_UNITS': '<tmp> 'VF_NGINX': '<tmp> 'VF_ROTMELDEN': '<tmp> konten_ordner=PosixPath('<tmp>
+
+engine/tests/test_vorgemerkte_durchlauf_529.py:125: AssertionError
+_____________________ test_neu_unlesbare_liste_fail_closed _____________________
+
+swk = namespace(lauf=<function sw.<locals>.lauf at 0x77789fc484a0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x777...il_0/rotmelden.sh'}, konten_ordner=PosixPath('<tmp>
+
+    def test_neu_unlesbare_liste_fail_closed(swk):
+        """AC-5: Kontendatenbank ist kein SQLite → Exit 1, Fehlerzeile, kein Deploy, keine Seite entfernt."""
+        _beide_gebaut(swk)
+        seiten_vorher = {r: (swk.seiten / r / "daten.json").read_text() for r in (ANDERE, VORGEMERKT)}
+        _db_kaputt(swk.konten_ordner)
+        vorher = len(swk.zeilen("deploy.log"))
+        r = swk.lauf("--immer")
+>       assert r.returncode == 1, r.stdout + r.stderr
+E       AssertionError: Warning: the list of removed trips cannot be read, nginx blocks stay until the next run.
+E         Publishing beispielreise from the trip store, state 1.
+E         Published beispielreise state 1 again (already on the page).
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Published stadtwochenende state 1 again (already on the page).
+E         Publishing software c3977c1 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Publishing beispielreise from the trip store, state 1.
+E         Published beispielreise state 1 again (already on the page).
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Published stadtwochenende state 1 again (already on the page).
+E         Done: software c3977c1 is online.
+E         Traceback (most recent call last):
+E           File "<tmp> line 1758, in <module>
+E             sys.exit(main(sys.argv[1:]))
+E                      ^^^^^^^^^^^^^^^^^^
+E           File "<tmp> line 1725, in main
+E             for r in loeschprotokoll():
+E                      ^^^^^^^^^^^^^^^^^
+E           File "<tmp> line 1257, in loeschprotokoll
+E             with closing(db()) as v:
+E                          ^^^^
+E           File "<tmp> line 208, in db
+E             v.executescript(SCHEMA)
+E         sqlite3.DatabaseError: file is not a database
+E         
+E       assert 0 == 1
+E        +  where 0 = CompletedProcess(args=['<tmp> '--immer'], returncode=0, stdout='Warning: the list of removed trips cannot be read, nginx blocks stay until the next run.\nPublishing beispielreise from the trip store, state 1.\nPublished beispielreise state 1 again (already on the page).\nPublishing stadtwochenende from the trip store, state 1.\nPublished stadtwochenende state 1 again (already on the page).\nPublishing software c3977c1 A\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nPublishing beispielreise from the trip store, state 1.\nPublished beispielreise state 1 again (already on the page).\nPublishing stadtwochenende from the trip store, state 1.\nPublished stadtwochenende state 1 again (already on the page).\nDone: software c3977c1 is online.\n', stderr='Traceback (most recent call last):\n  File "<tmp> line 1758, in <module>\n    sys.exit(main(sys.argv[1:]))\n             ^^^^^^^^^^^^^^^^^^\n  File "<tmp> line 1725, in main\n    for r in loeschprotokoll():\n             ^^^^^^^^^^^^^^^^^\n  File "<tmp> line 1257, in loeschprotokoll\n    with closing(db()) as v:\n                 ^^^^\n  File "<tmp> line 208, in db\n    v.executescript(SCHEMA)\nsqlite3.DatabaseError: file is not a database\n').returncode
+
+engine/tests/test_vorgemerkte_durchlauf_529.py:140: AssertionError
+__________ test_alt_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut ___________
+
+kdb = {'lauf': <function kdb.<locals>.lauf at 0x77789fc49440>, 'deploys': <function vf.<locals>.deploys at 0x77789fc491c0>, ...f.<locals>.anzahl_pings at 0x77789fc48cc0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x77789fc48ea0>, ...}
+
+    def test_alt_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut(kdb):
+        """AC-6: alte Anordnung, vorgemerkt → Exit 0, Seite weg, kein Deploy, Meldung."""
+        _ok(kdb["lauf"]())
+        assert _seite_da(kdb["seiten"], VORGEMERKT)
+        kdb["deploys"]()
+        konten.loeschung_vormerken(VORGEMERKT, "k-ida")
+        r = _ok(kdb["lauf"]("--immer"))
+>       assert not (kdb["seiten"] / VORGEMERKT).exists(), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Published beispielreise state 1 again (already on the page).
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Published stadtwochenende state 1 again (already on the page).
+E         Publishing zweitreise from the trip store, state 1.
+E         Published zweitreise state 1 again (already on the page).
+E         Publishing 38d2511 start1
+E         Done: 38d2511 is online.
+E         
+E       assert not True
+E        +  where True = exists()
+E        +    where exists = (PosixPath('<tmp> / 'stadtwochenende').exists
+
+engine/tests/test_vorgemerkte_durchlauf_529.py:155: AssertionError
+_____________________ test_alt_unlesbare_liste_fail_closed _____________________
+
+kdb = {'lauf': <function kdb.<locals>.lauf at 0x77789fc49ee0>, 'deploys': <function vf.<locals>.deploys at 0x77789fc49260>, ...f.<locals>.anzahl_pings at 0x77789fc49bc0>, 'neuer_commit': <function vf.<locals>.neuer_commit at 0x77789fc48d60>, ...}
+
+    def test_alt_unlesbare_liste_fail_closed(kdb):
+        """AC-6: alte Anordnung, unlesbare Kontendatenbank → Exit 1, Fehlerzeile, kein Deploy, Seiten bleiben."""
+        _ok(kdb["lauf"]())
+        assert _seite_da(kdb["seiten"], VORGEMERKT)
+        kdb["deploys"]()
+        _db_kaputt(kdb["konten_ordner"])
+        r = kdb["lauf"]("--immer")
+>       assert r.returncode == 1, r.stdout + r.stderr
+E       AssertionError: Warning: the list of removed trips cannot be read, nginx blocks stay until the next run.
+E         Publishing beispielreise from the trip store, state 1.
+E         Published beispielreise state 1 again (already on the page).
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Published stadtwochenende state 1 again (already on the page).
+E         Publishing zweitreise from the trip store, state 1.
+E         Published zweitreise state 1 again (already on the page).
+E         Publishing f8a5740 start1
+E         Done: f8a5740 is online.
+E         Traceback (most recent call last):
+E           File "betrieb/../engine/konten.py", line 1758, in <module>
+E             sys.exit(main(sys.argv[1:]))
+E                      ^^^^^^^^^^^^^^^^^^
+E           File "betrieb/../engine/konten.py", line 1725, in main
+E             for r in loeschprotokoll():
+E                      ^^^^^^^^^^^^^^^^^
+E           File "betrieb/../engine/konten.py", line 1257, in loeschprotokoll
+E             with closing(db()) as v:
+E                          ^^^^
+E           File "betrieb/../engine/konten.py", line 208, in db
+E             v.executescript(SCHEMA)
+E         sqlite3.DatabaseError: file is not a database
+E         
+E       assert 0 == 1
+E        +  where 0 = CompletedProcess(args=['betrieb/veroeffentlichen.sh', '--immer'], returncode=0, stdout='Warning: the list of removed trips cannot be read, nginx blocks stay until the next run.\nPublishing beispielreise from the trip store, state 1.\nPublished beispielreise state 1 again (already on the page).\nPublishing stadtwochenende from the trip store, state 1.\nPublished stadtwochenende state 1 again (already on the page).\nPublishing zweitreise from the trip store, state 1.\nPublished zweitreise state 1 again (already on the page).\nPublishing f8a5740 start1\nDone: f8a5740 is online.\n', stderr='Traceback (most recent call last):\n  File "betrieb/../engine/konten.py", line 1758, in <module>\n    sys.exit(main(sys.argv[1:]))\n             ^^^^^^^^^^^^^^^^^^\n  File "betrieb/../engine/konten.py", line 1725, in main\n    for r in loeschprotokoll():\n             ^^^^^^^^^^^^^^^^^\n  File "betrieb/../engine/konten.py", line 1257, in loeschprotokoll\n    with closing(db()) as v:\n                 ^^^^\n  File "betrieb/../engine/konten.py", line 208, in db\n    v.executescript(SCHEMA)\nsqlite3.DatabaseError: file is not a database\n').returncode
+
+engine/tests/test_vorgemerkte_durchlauf_529.py:167: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut
+FAILED engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_immer_baut_vorgemerkte_reise_nicht
+FAILED engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_zurueckgeholte_reise_wird_wieder_gebaut
+FAILED engine/tests/test_vorgemerkte_durchlauf_529.py::test_neu_unlesbare_liste_fail_closed
+FAILED engine/tests/test_vorgemerkte_durchlauf_529.py::test_alt_vorgemerkte_reise_wird_entfernt_und_nicht_gebaut
+FAILED engine/tests/test_vorgemerkte_durchlauf_529.py::test_alt_unlesbare_liste_fail_closed
+========================= 6 failed, 1 passed in 14.19s =========================
