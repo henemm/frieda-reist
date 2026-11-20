@@ -16,9 +16,10 @@ Als Befehl ist neu.py ein Werkzeug des Betreibers für Struktur, nie für Inhalt
   neu.py nachziehen <reise-ordner> [--strecke E-15=kombiniert …]
                                                   Schlüssel einer bestehenden Reise auf den Stand vom 29.10.2026 bringen
                                                   (docs/ontologie.md): typ→art, bereich→art, art→wann an Wahlstellen,
-                                                  rolle kosten, Ebenen in reise.json, Eckdaten aus der früheren Vorlage
-                                                  (#217), Titel und Kennzahlen der Etappen aus dem Dossier an die Strecken
-                                                  (#269), eine Lage je Ort und gleichnamigem Wegpunkt (ADR-0008);
+                                                  rolle kosten (nur ohne jede Rolle, #584), Ebenen in reise.json, Eckdaten
+                                                  aus der früheren Vorlage (#217), Titel und Kennzahlen der Etappen aus dem
+                                                  Dossier an die Strecken (#269), eine Lage je Ort und gleichnamigem Wegpunkt
+                                                  (ADR-0008);
                                                   keine ID, kein Wert ändert sich
   neu.py nachziehen-speicher <reise> <ordner>     dasselbe für eine Reise im Reisespeicher (#348), auf dem Server vom Lauf
                                                   veroeffentlichen.sh: materialisieren, nachziehen, Probebau, ein Vorgang;
@@ -1045,10 +1046,25 @@ def etappen_nachziehen(reise_dir, roh, schreiben, meldungen):
     return fertig
 
 
+def hat_rollen(arten, rollen):
+    """True, wenn ein Merkmal irgendeiner Art (merkmale oder buchung_merkmale) eine Rolle aus rollen (routen.ROLLEN) trägt.
+    Ohne jede Rolle ist arten.yaml der Altstand vor dem Rollen-Konzept (#584)."""
+    for d in (arten or {}).values():
+        if not isinstance(d, dict):
+            continue
+        for gruppe in ("merkmale", "buchung_merkmale"):
+            mk = d.get(gruppe)
+            if isinstance(mk, dict) and any(isinstance(m, dict) and isinstance(m.get("rolle"), str) and m["rolle"] in rollen for m in mk.values()):
+                return True
+    return False
+
+
 def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
     """Nur Schlüssel, keine Inhalte: Unterkunft und Nacht typ: → art:; Wahlstelle bereich: → art:, art: planung|unterwegs →
     wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
-    Merkmal mit Schlüssel preis (Typ geld) einer Aufenthalts-Art bekommt rolle: kosten, wenn die Art noch keine Rolle hat;
+    Merkmal mit Schlüssel preis (Typ geld) einer Aufenthalts-Art bekommt rolle: kosten, aber nur am Altstand vor dem
+    Rollen-Konzept, wenn in arten.yaml noch kein Merkmal einer Art (merkmale oder buchung_merkmale) eine Rolle trägt; eine
+    Reise mit Rollen hat über ihre Rollen selbst entschieden, eine bewusst rollenlose Art bleibt so (#584);
     reise.json bekommt die bisherige Vorgabe der Ebene „Unterwegs nachschlagen“, wenn die Reise ein Etappen-Dossier hat;
     Eckdaten aus der früheren Vorlage stellt eckdaten_nachziehen um (#217); reise.yaml ohne sprache bekommt sprache: de
     (sprache_nachziehen, #267), vor den Schritten, die die Sprache der Reise lesen; Titel und Kennzahlen der Etappen kommen aus
@@ -1060,7 +1076,7 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
     läuft im Bauordner auf dem Server und lässt sie aus (dort würde die Datei sonst eine ungesicherte Änderung).
     Kommentare und Form der Dateien bleiben (ruamel). -> Liste der Meldungen (was geändert oder offen ist)."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from routen import WANN, art_schluessel
+    from routen import ROLLEN as MERKMAL_ROLLEN, WANN, art_schluessel
     import schreiben as sb
     reise_dir = Path(reise_dir)
     strecken_arten = dict(strecken_arten or {})
@@ -1122,11 +1138,11 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
         sb.routen_speichern(reise_dir, roh)
     dossier_fertig()   # Dossier und reise.json erst nach routen.yaml
 
-    # arten.yaml: rolle kosten am Merkmal preis (Typ geld) der Aufenthalts-Arten
+    # arten.yaml: rolle kosten am Merkmal preis (Typ geld) der Aufenthalts-Arten, nur am Altstand ohne jede Rolle (#584)
     if (reise_dir / "plan" / "arten.yaml").exists():
         arten = sb.arten_laden(reise_dir)
         geaendert = False
-        for a, d in arten.items():
+        for a, d in ({} if hat_rollen(arten, MERKMAL_ROLLEN) else arten).items():
             mk = d.get("merkmale") if isinstance(d.get("merkmale"), dict) else {}
             if d.get("grundform") != "aufenthalt" or any(isinstance(m, dict) and m.get("rolle") for m in mk.values()):
                 continue
