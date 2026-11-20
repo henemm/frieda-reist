@@ -203,6 +203,51 @@ Confirmation:
   Status: CONFIRMED
 **Implementierer:** (nicht beteiligt)
 
+### Runde 3
+**Adversary:** Nachprüfung der Nachbesserung zu AC-32 (set -e in altbau_entfernen), mit Blick auf AC-28, AC-30, AC-31.
+
+Zeile für Zeile geprüft, was unter `set -euo pipefail` den Lauf abbrechen könnte:
+- `mkdir -p` (betrieb/veroeffentlichen.sh:873), `mv "$tmp" "$archiv"` (891) und die Merker-Kette (899-900) enden bei Fehler jetzt in altbau_warnen und `return 0`; bei mv und Merker wird die `.neu`-Datei entfernt.
+- Schon gesichert: `aus="$(units pruefen)" || rc=$?`, `liste="$(tar -tzf)" || rc=2`, `du ... || echo 0` (Leerwert ergibt gültige Arithmetik), `df ... || true`, `realpath ... || true`, grep in `||`-Kette, `rm -rf` mit `||`.
+- altbau_warnen (815-820): Lesen mit `|| true`, Schreiben mit `|| true`, letzter Befehl liefert 0; kann den Lauf nicht abbrechen.
+- Der Aufruf (698) ist nackt, daher zählt jede ungesicherte Stelle; einzige verbleibende: `seiten_real="$(cd "$FR_SEITEN" && pwd -P)"` (840), siehe F005.
+- Merker nicht schreibbar nach dem Löschen: Warnung "merker" einmal; der nächste Lauf findet keine Ziele mehr (`ziele` leer) und kehrt stumm mit 0 zurück: keine Endlos-Warnung, nichts Falsches getan.
+- AC-28: bei Archivordner-Fehler vor tar kein Löschen, kein Merker (Test unten). AC-30/AC-31: Warnschlüssel "archiv" entprellt, kein Alarmaufruf in den neuen Zweigen.
+
+Finding:
+  ID: F005
+  Severity: LOW
+  Category: edge_case
+  Code reference: betrieb/veroeffentlichen.sh:840
+  Description: `seiten_real="$(cd "$FR_SEITEN" && pwd -P)"` ist eine ungesicherte Zuweisung; scheitert cd (Ordner existiert, ist aber nicht betretbar), bricht set -e den Lauf ab.
+  Spec requirement: AC-32 — der Schritt ändert Bau und Heartbeat nicht
+  Conflict: nur theoretisch; FR_SEITEN wird im selben Lauf beschrieben (der Bau scheiterte vorher), praktisch nicht erreichbar.
+  Remediation: `|| return 0` ergänzen.
+
+Confirmation:
+  AC: AC-32
+  Code reference: betrieb/veroeffentlichen.sh:873
+  Evidence: Archivordner nicht anlegbar, Ablage (891) und Merker (899) scheitern ohne Abbruch; test_altbau_archivordner_nicht_anlegbar_haelt_den_lauf_nicht_auf (engine/tests/test_rueckbau_557.py:567) prüft Bau, Ping, Warnzeile, _bau erhalten, kein Merker; grün.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: AC-28
+  Code reference: engine/tests/test_rueckbau_557.py:490
+  Evidence: test_altbau_archivfehler_loescht_nichts grün; die neuen Zweige (873, 891) kehren vor dem Löschen zurück.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: AC-30
+  Code reference: engine/tests/test_rueckbau_557.py:529
+  Evidence: Idempotenz-Test grün; Merker (899) wird atomar über .neu geschrieben, Fehler entfernt .neu.
+  Status: CONFIRMED
+
+Confirmation:
+  AC: AC-31
+  Code reference: engine/tests/test_rueckbau_557.py:542
+  Evidence: Kein Alarmaufruf in den neuen Zweigen, nur altbau_warnen (entprellt, 815); Test grün.
+  Status: CONFIRMED
+
 ## Herkunft der Vorbedingungen
 
 kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
@@ -211,8 +256,8 @@ kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
 
 VERDICT: VERIFIED
 
-Alle Software-ACs bewiesen (Tests und Code); AC-1, AC-2, AC-14, AC-22, AC-33, AC-36 sind extern/Auslieferungstor, nachgelagert. Vier LOW-Hinweise (F001 bis F004), keine blockierend.
-Tests: 581 passed, 0 failed, 0 übersprungen (gezielt); volle Suite 3354 passed.
+Runde 3: Nachbesserung zu AC-32 hält; nur LOW-Hinweis F005 (cd-Zuweisung, praktisch nicht erreichbar). Frühere Hinweise F001 bis F004 unverändert, keine blockierend.
+Tests: 42 passed, 0 failed, 0 übersprungen (test_rueckbau_557.py, Runde 3); frühere volle Suite 3354 passed.
 
 ## Geprüfte Dateien
 
@@ -244,5 +289,38 @@ Tests: 581 passed, 0 failed, 0 übersprungen (gezielt); volle Suite 3354 passed.
 - blob:e10c5b02f79af9b5b2972a6cfb25b5f020f6a96d  engine/schreiben.py
 - blob:751ffa18219d54c1a0e212afed943947b711b790  engine/stand.py
 - blob:4a76d6916d9f0f81261ada93a4129bce85ee657f  engine/tests/test_rueckbau_557.py
+- blob:5927ee7c9bb5ddae32a163c4f08addd22c66e70e  engine/texte_de.py
+- blob:da1160222f2db897f318c944e0872dcb88bede73  engine/texte_en.py
+
+## Geprüfte Dateien
+
+- sha256:60cafd6b9387cff52434f0b2fdc0b39a9db91420949a0eeb7711727f09b38411  betrieb/deploy.sh
+- sha256:d81656e0bbc9e4e4592ee33108f4a8b039274ef81dea7d2082d8d20e88e5689b  betrieb/einrichten.sh
+- sha256:b7841e7db828f05dc0348ca5f352014dfba2d79e94b7a62e239d262629d84575  betrieb/gemeinsam.sh
+- sha256:0a915cda7ce12ed384ffc14d54322a1c32670f7c1e3257cf8ad8ba943ffbf7dc  betrieb/veroeffentlichen.sh
+- sha256:9f34696004c60711be0410cb5b1ef2ee8ff96f23f17dab44c7d4acc50f613d70  engine/instanz.py
+- sha256:876c079b5605daba9a3f8a80c58cff211b75474c319bfca9c13d0e7e2a307370  engine/neu.py
+- sha256:3a3f84e7034658c4039c702766bd34382d18b92e5ae9b62fb455b90004e20768  engine/reisespeicher.py
+- sha256:da4fa1c239274e0ed3eaeaa84e359aa496a4a65966a5bbb3aee9766e521fe9b3  engine/rueckmeldungen.py
+- sha256:0cf1a84dd3ccd8f5175755cc09825b0b150bc959576676aacde532cdca8ee43e  engine/schreiben.py
+- sha256:5533970ec038bb07aecd202f13586d45e2023206227873e03dfd3d96daa19c34  engine/stand.py
+- sha256:3e8646755a52d94d3d11035ccd2e4a5b97f712380bb283683a7b42b9c070f635  engine/tests/test_rueckbau_557.py
+- sha256:15a45506dcd3f9bd195ca6167cd842347c2ee5d5d7870a8b6a94bc176a105b93  engine/texte_de.py
+- sha256:3830c03ef2f8c68bc404c6ae6435af4b37d9153ef0843172630382a41a2c69b0  engine/texte_en.py
+
+## Prüfbasis
+
+- base: 2f45a52e29e98c1ac0aff8b1fd90565910f89a40
+- blob:ace32154fca297906df36163e1e400b7605f0789  betrieb/deploy.sh
+- blob:7015dd8822df2afbfebb152b9238a41c75a3804f  betrieb/einrichten.sh
+- blob:4385e382e8bdcdb423dddf21ca4a0a44652e1d23  betrieb/gemeinsam.sh
+- blob:f16b64d6a57c92baebcf2d45de930632dd3935af  betrieb/veroeffentlichen.sh
+- blob:38d1dff54af8abad0c227c560c41ae89dd09d484  engine/instanz.py
+- blob:1e15d408a090c5e0cfa43ac2f2b9f67a68b28201  engine/neu.py
+- blob:aceeb80dbb4219cf049df688688d14347ab65f74  engine/reisespeicher.py
+- blob:45f30bf27edad443e01b6e9d0d9731f552e1ea18  engine/rueckmeldungen.py
+- blob:e10c5b02f79af9b5b2972a6cfb25b5f020f6a96d  engine/schreiben.py
+- blob:751ffa18219d54c1a0e212afed943947b711b790  engine/stand.py
+- blob:0c79335b6f1da1d32cb591f6e2f74ed795d4f6e0  engine/tests/test_rueckbau_557.py
 - blob:5927ee7c9bb5ddae32a163c4f08addd22c66e70e  engine/texte_de.py
 - blob:da1160222f2db897f318c944e0872dcb88bede73  engine/texte_en.py

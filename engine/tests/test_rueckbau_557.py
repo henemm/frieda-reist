@@ -564,6 +564,19 @@ def test_altbau_haelt_den_lauf_nicht_auf(ab):
     assert ab.warnungen(r), r.stdout
 
 
+def test_altbau_archivordner_nicht_anlegbar_haelt_den_lauf_nicht_auf(ab):
+    """AC-32 (Validierung #557): Lässt sich der Archivordner nicht anlegen (hier: eine Datei liegt an seiner Stelle),
+    bricht der Lauf trotz set -e nicht ab: Bau und Heartbeat wie immer, eine Warnzeile, nichts gelöscht, kein Merker."""
+    (ab.sw.dienst / "archiv").write_text("keine Ordner (Beispiel)\n")
+    r = _gruen(ab.lauf())
+    gebaut = sorted({z.split()[0] for z in ab.sw.zeilen("deploy.log") if not z.startswith("--dienste")})
+    assert gebaut == REISEN, r.stdout
+    assert ab.sw.zeilen("pings.log") == ["ping"]
+    assert ab.warnungen(r), r.stdout
+    assert "_bau" in ab.altbau()
+    assert not ab.merker.exists()
+
+
 @pytest.mark.parametrize("reise", REISEN)
 def test_lauf_im_klon_gruen(sw, reise):
     """AC-16 (Schutz): Ohne Altbau läuft der Klon grün, baut die Reise, pingt einmal und warnt nicht über den Altbau."""

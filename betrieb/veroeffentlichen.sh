@@ -870,7 +870,7 @@ altbau_entfernen() {  # #557: alten Bauordner <FR_SEITEN>/_bau und <FR_SEITEN>/_
     if ! [[ "$frei" =~ ^[0-9]+$ ]] || [ "$frei" -lt "$bedarf" ]; then
       altbau_warnen "platz" "not enough free space for the archive (free ${frei:-unknown} bytes, needed $bedarf)"; return 0
     fi
-    mkdir -p "$archiv_ordner"
+    mkdir -p "$archiv_ordner" 2>/dev/null || { altbau_warnen "archiv" "the archive folder $archiv_ordner cannot be created"; return 0; }
     archiv="$archiv_ordner/bau-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
     tmp="$archiv.neu"
     rc=0
@@ -888,7 +888,7 @@ altbau_entfernen() {  # #557: alten Bauordner <FR_SEITEN>/_bau und <FR_SEITEN>/_
       rm -f "$tmp"
       altbau_warnen "archiv" "the archive of $bau could not be built or read (exit $rc)"; return 0
     fi
-    mv "$tmp" "$archiv"
+    mv "$tmp" "$archiv" || { rm -f "$tmp"; altbau_warnen "archiv" "the archive $archiv could not be stored"; return 0; }
     echo "Old build folder archived: $archiv."
   fi
   # Löschen, erst danach der Merker (ein abgebrochenes Löschen versucht der nächste Lauf erneut)
@@ -896,7 +896,8 @@ altbau_entfernen() {  # #557: alten Bauordner <FR_SEITEN>/_bau und <FR_SEITEN>/_
     [ ! -L "$p" ] || { altbau_warnen "pfad $p" "$p became a link"; return 0; }
     rm -rf -- "${p:?}" || { altbau_warnen "loeschen" "$p could not be removed completely"; return 0; }
   done
-  printf 'entfernt=%s\narchiv=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${archiv:-}" > "$merker.neu" && mv "$merker.neu" "$merker"
+  printf 'entfernt=%s\narchiv=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${archiv:-}" > "$merker.neu" && mv "$merker.neu" "$merker" \
+    || { rm -f "$merker.neu"; altbau_warnen "merker" "removed, but the marker $merker could not be written"; return 0; }
   rm -f "$FR_DIENST/altbau-557.warnung"
   echo "Old build folder removed (${#ziele[@]} folders), the archive stays in $archiv_ordner."
   return 0
