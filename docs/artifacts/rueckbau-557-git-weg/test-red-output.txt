@@ -242,7 +242,7 @@ tmp_path = PosixPath('<tmp>/popen-gw0/test_units_ohne_handschritt0')
             "FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
         aus = tmp_path / "aus"
         env = {**SAUBER, "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "FR_DIENST": str(tmp_path / "dienst"),
-               "EI_ZIEL": str(aus), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen"}
+               "EI_ZIEL": str(aus), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "<home>"}
         r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], capture_output=True, text=True, env=env)
         assert r.returncode == 0, r.stdout + r.stderr
         neu = {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
