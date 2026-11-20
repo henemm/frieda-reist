@@ -1,0 +1,896 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFFFFFFFFFFFFF.FF.FFFFFFFFFFF.F.                                 [100%]
+=================================== FAILURES ===================================
+________________ test_spec_454_known_limitations_abgeschlossen _________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_spec_454_known_limitations_abgeschlossen():
+        """AC-39, AC-35: Spec 454 trägt im Kopf den Hinweis auf #557; die Known Limitations zu AC-2.4/2.6, AC-2.17 und den
+        Usage-Texten sind als abgeschlossen (#557) vermerkt."""
+        text = _text("docs/specs/betrieb/software-weg-454.md")
+        kopf = text.split("## Purpose", 1)[0]
+>       assert "#557" in kopf, "Hinweis auf den Rückbau fehlt im Kopf der Spec 454"
+E       AssertionError: Hinweis auf den Rückbau fehlt im Kopf der Spec 454
+E       assert '#557' in '---\nentity_id: software-weg-454\ntype: feature\ncreated: 2026-11-12\nupdated: 2026-11-13\nstatus: draft\nworkflow: s...al\n\n- [ ] Approved\n\n(Keine Produktentscheidung offen: Alle Entscheidungen sind technisch und unten begründet.)\n\n'
+
+engine/tests/test_rueckbau_557.py:123: AssertionError
+____________________ test_git_weg_werkzeuge_sind_geloescht _____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_git_weg_werkzeuge_sind_geloescht():
+        """AC-18: Werkzeuge des Git-Wegs sind gelöscht; deploy.sh, tests.yml und einstellungen.beispiel nennen sie nicht."""
+        weg = ["betrieb/vergleichslauf.sh", "betrieb/software-nachziehen.sh", "betrieb/software-nachziehen.yml",
+               "betrieb/messlauf-schreibweg.py", "engine/tests/test_software_nachziehen.py"]
+>       assert [p for p in weg if (WURZEL / p).exists()] == []
+E       AssertionError: assert ['betrieb/ver...achziehen.py'] == []
+E         
+E         Left contains 5 more items, first extra item: 'betrieb/vergleichslauf.sh'
+E         Use -v to get more diff
+
+engine/tests/test_rueckbau_557.py:105: AssertionError
+________________________ test_git_module_sind_geloescht ________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_git_module_sind_geloescht():
+        """AC-3: schreiben_git.py und stand_git.py sind gelöscht, nichts importiert sie."""
+>       assert not (ENGINE / "schreiben_git.py").exists()
+E       AssertionError: assert not True
+E        +  where True = exists()
+E        +    where exists = (PosixPath('engine') / 'schreiben_git.py').exists
+
+engine/tests/test_rueckbau_557.py:190: AssertionError
+_________________ test_kein_workflow_zeitplan_in_der_software __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_kein_workflow_zeitplan_in_der_software():
+        """AC-1: Kein Workflow und kein Skript „Software nachziehen“ mehr in Software, CI und Betriebsdoku."""
+>       assert not (BETRIEB / "software-nachziehen.sh").exists() and not (BETRIEB / "software-nachziehen.yml").exists()
+E       AssertionError: assert (not True)
+E        +  where True = exists()
+E        +    where exists = (PosixPath('betrieb') / 'software-nachziehen.sh').exists
+
+engine/tests/test_rueckbau_557.py:88: AssertionError
+__________________ test_betrieb_md_nennt_vorbedingung_monitor __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_betrieb_md_nennt_vorbedingung_monitor():
+        """AC-2: Die Doku nennt die Umstellung der Überwachung als Vorbedingung des Aufräumens (altbau_entfernen)."""
+        absaetze = [a for a in _text("docs/betrieb.md").split("\n\n") if "altbau_entfernen" in a]
+>       assert absaetze, "docs/betrieb.md beschreibt altbau_entfernen nicht"
+E       AssertionError: docs/betrieb.md beschreibt altbau_entfernen nicht
+E       assert []
+
+engine/tests/test_rueckbau_557.py:97: AssertionError
+_________________ test_veroeffentlichen_ruft_keine_umschaltung _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_veroeffentlichen_ruft_keine_umschaltung():
+        """AC-10: veroeffentlichen.sh ruft keine entfernten Befehle von reisespeicher.py; stand.py ohne Git-Zweig."""
+>       assert not re.search(r"reisespeicher\.py\"?\s+umschalt", _text("betrieb/veroeffentlichen.sh"))
+E       assert not <re.Match object; span=(7424, 7449), match='reisespeicher.py umschalt'>
+E        +  where <re.Match object; span=(7424, 7449), match='reisespeicher.py umschalt'> = <function search at 0x7b822e800f40>('reisespeicher\\.py\\"?\\s+umschalt', '#!/usr/bin/env bash\n# Veröffentlicht automatisch (docs/betrieb.md, Veröffentlichen). Gestartet alle 5 Minuten vom Ti..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n')
+E        +    where <function search at 0x7b822e800f40> = re.search
+E        +    and   '#!/usr/bin/env bash\n# Veröffentlicht automatisch (docs/betrieb.md, Veröffentlichen). Gestartet alle 5 Minuten vom Ti..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n' = _text('betrieb/veroeffentlichen.sh')
+
+engine/tests/test_rueckbau_557.py:257: AssertionError
+__________________ test_kein_gh_workflow_run_in_der_software ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_kein_gh_workflow_run_in_der_software():
+        """AC-39: Kein Skript der Software ruft gh workflow run auf."""
+        funde = _funde(r"gh workflow run", "betrieb", "engine", "werkzeuge", ohne_tests=True)
+>       assert not funde, funde
+E       AssertionError: ['betrieb/veroeffentlichen.sh:50', 'betrieb/veroeffentlichen.sh:83', 'betrieb/veroeffentlichen.sh:557', 'betrieb/veroeffentlichen.sh:562', 'betrieb/veroeffentlichen.sh:592', 'betrieb/einstellungen.beispiel:71']
+E       assert not ['betrieb/veroeffentlichen.sh:50', 'betrieb/veroeffentlichen.sh:83', 'betrieb/veroeffentlichen.sh:557', 'betrieb/veroeffentlichen.sh:562', 'betrieb/veroeffentlichen.sh:592', 'betrieb/einstellungen.beispiel:71']
+
+engine/tests/test_rueckbau_557.py:115: AssertionError
+____________ test_fr_speicherreisen_in_einstellungen_wird_ignoriert ____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw0/test_fr_speicherreisen_in_eins0')
+
+    def test_fr_speicherreisen_in_einstellungen_wird_ignoriert(tmp_path):
+        """AC-11: Eine liegengebliebene Zeile FR_SPEICHERREISEN in den Einstellungen der Instanz stört nicht, wirkt nicht und
+        bleibt unverändert; die Software kennt den Namen nicht mehr."""
+        wurzel, dienst = tmp_path / "_software", tmp_path / "_dienst"
+        wurzel.mkdir()
+        (dienst / "instanz").mkdir(parents=True)
+        datei = dienst / "instanz" / "einstellungen.env"
+        inhalt = "FR_TITEL=Probe\nFR_SPEICHERREISEN=beispielreise,stadtwochenende\n"
+        datei.write_text(inhalt)
+        r = subprocess.run(["bash", "-c", f'set -e; . "{BETRIEB}/gemeinsam.sh"; echo "TITEL=$FR_TITEL"'],
+                           capture_output=True, text=True,
+                           env={**SAUBER, "FR_WURZEL": str(wurzel), "FR_DIENST": str(dienst)})
+        assert r.returncode == 0 and "TITEL=Probe" in r.stdout, r.stdout + r.stderr
+        assert r.stderr == "", r.stderr
+        assert datei.read_text() == inhalt
+        funde = _funde(r"FR_SPEICHERREISEN", "betrieb", "engine", "werkzeuge", ohne_tests=True)
+>       assert not funde, funde
+E       AssertionError: ['betrieb/software-nachziehen.sh:8', 'betrieb/software-nachziehen.sh:79', 'betrieb/software-nachziehen.sh:83', 'betrieb/software-nachziehen.sh:84', 'betrieb/software-nachziehen.sh:92', 'betrieb/einstellungen.beispiel:36', ...]
+E       assert not ['betrieb/software-nachziehen.sh:8', 'betrieb/software-nachziehen.sh:79', 'betrieb/software-nachziehen.sh:83', 'betrieb/software-nachziehen.sh:84', 'betrieb/software-nachziehen.sh:92', 'betrieb/einstellungen.beispiel:36', ...]
+
+engine/tests/test_rueckbau_557.py:278: AssertionError
+____________ test_deploy_ohne_geloeschte_module_und_ohne_reisen_bau ____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_deploy_ohne_geloeschte_module_und_ohne_reisen_bau():
+        """AC-12: deploy.sh kopiert keine gelöschten Module und baut nichts aus $WURZEL/reisen."""
+        text = _text("betrieb/deploy.sh")
+>       assert "schreiben_git" not in text and "stand_git" not in text
+E       assert ('schreiben_git' not in '#!/usr/bin/...cut -f1))"\n'
+E         
+E         'schreiben_git' is contained here:
+E         ?           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           reiben.py schreiben_git.py kartendienst.py reisespeicher.py bauen.py routen.py packliste.py bilder.py gpx.py karte.py neu.py schnittstelle.py konten.py mailrahmen.py rueckmeldungen.py belege.py reise.py instanz.py kalender.py stand.py stand_git.py texte.py textform.py $SPRACHDATEIEN"
+E         ?           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           # Push-Dienst (engine/push.py dienst, Issue #21): läuft mit FR_PYTHON (pywebpush), lädt seinen Code aus <FR_DIENST>
+E           PS_MODULE="push.py ruec...
+E         
+E         ...Full output truncated (125 lines hidden), use '-vv' to show)
+
+engine/tests/test_rueckbau_557.py:284: AssertionError
+_______________ test_speicherreisen_ohne_filter[stadtwochenende] _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+py = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw2/test_speicherreisen_ohne_filte0'), schreiber=<function py.<locals>.<lambda> at 0x7c377243c720>)
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_speicherreisen_ohne_filter(py, reise):
+        """AC-6: Jede Reise mit Vorgang ist Speicherreise, auch wenn sie im Git-Commit der Wurzel liegt und kein Stempel da ist."""
+        assert not (Path(os.environ["FR_DIENST"]) / "vergleich").exists()
+>       assert reise in py.instanz.speicherreisen()
+E       AssertionError: assert 'stadtwochenende' in []
+E        +  where [] = <function speicherreisen at 0x7c37733619e0>()
+E        +    where <function speicherreisen at 0x7c37733619e0> = <module 'instanz' from 'engine/instanz.py'>.speicherreisen
+E        +      where <module 'instanz' from 'engine/instanz.py'> = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw2/test_speicherreisen_ohne_filte0'), schreiber=<function py.<locals>.<lambda> at 0x7c377243c720>).instanz
+
+engine/tests/test_rueckbau_557.py:216: AssertionError
+_________________ test_entfallene_texte_in_allen_sprachen_weg __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_entfallene_texte_in_allen_sprachen_weg():
+        """AC-13: Entfallene Schlüssel fehlen in jeder Sprachdatei; die Ausnahmelisten sind nicht länger geworden."""
+        import test_texte
+        for datei in sorted(ENGINE.glob("texte_*.py")):
+            text = datei.read_text(encoding="utf-8")
+>           assert "umschaltung_nicht_freigegeben" not in text, datei.name
+E           AssertionError: texte_de.py
+E           assert 'umschaltung..._freigegeben' not in '"""Texte de...scht.",\n}\n'
+E             
+E             'umschaltung_nicht_freigegeben' is contained here:
+E               en.dienst.umschaltung_nicht_freigegeben": "Diese Reise soll über den Speicher geschrieben werden, ist dafür aber noch nicht freigegeben: Der Vergleich mit ihrem bisherigen Stand fehlt oder ist veraltet. Es wurde nichts geschrieben; der Betreiber muss den Vergleich zuerst durchführen.",
+E             ?           +++++++++++++++++++++++++++++
+E                   "schreiben.dienst.reise_im_speicher": "Diese Reise wird über den Speicher geschrieben, nicht mehr über das Repo.",
+E                   "schreiben.dienst.stand_geaendert": "Inzwischen hat jemand anderes in d...
+E             
+E             ...Full output truncated (2960 lines hidden), use '-vv' to show
+
+engine/tests/test_rueckbau_557.py:293: AssertionError
+__________________ test_veroeffentlichen_hat_nur_den_klon_weg __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_veroeffentlichen_hat_nur_den_klon_weg():
+        """AC-15: Nur der Weg über den Klon; die Funktionen des alten Wegs sind entfernt, die des Klons bleiben."""
+        text = _text("betrieb/veroeffentlichen.sh")
+        funktionen = set(re.findall(r"^([a-z_0-9]+)\(\) \{", text, re.M))
+        for weg in ("reisen_des_laufs", "ci_nachweis", "anstoss_weitergeben", "software_anstossen", "git_reisen_uebrig",
+                    "git_reisen_umschalten"):
+>           assert weg not in funktionen, weg
+E           AssertionError: reisen_des_laufs
+E           assert 'reisen_des_laufs' not in {'abhaengigkeiten', 'abhaengigkeiten_playwright', 'alarm_pruefen', 'alarm_senden', 'anstoss_lauf', 'anstoss_weitergeben', ...}
+
+engine/tests/test_rueckbau_557.py:308: AssertionError
+______________ test_gemeinsam_und_einrichten_ohne_alte_anordnung _______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_gemeinsam_und_einrichten_ohne_alte_anordnung():
+        """AC-17: Keine alte Anordnung, keine Vorgabe für FR_SCHREIBKOPIE, kein FR_SPEICHERREISEN, kein FR_NACHZIEHEN_*;
+        die Vorlage schreiben.service ohne ReadWritePaths auf -schreiben."""
+        for datei in ("betrieb/gemeinsam.sh", "betrieb/einrichten.sh"):
+            text = _text(datei)
+            for name in ("fr_alte_anordnung", "nur_bauordner", "FR_SPEICHERREISEN", "FR_NACHZIEHEN_", "Superprojekt",
+                         "superproject", "show-superproject-working-tree", "frieda/"):
+>               assert name not in text, (datei, name)
+E               AssertionError: ('betrieb/gemeinsam.sh', 'fr_alte_anordnung')
+E               assert 'fr_alte_anordnung' not in '# Gemeinsam...b.md)."\n}\n'
+E                 
+E                 'fr_alte_anordnung' is contained here:
+E                   R_WURZEL
+E                   
+E                   fr_alte_anordnung() {  # Bauordner in der alten Anordnung (#454): Reisen-Repo mit der Software als Submodul frieda/
+E                 ? +++++++++++++++++
+E                     [ -e "$FR_WURZEL/.gitmodules" ] || [ -d "$FR_WURZEL/frieda/betrieb" ]...
+E                 
+E                 ...Full output truncated (196 lines hidden), use '-vv' to show
+
+engine/tests/test_rueckbau_557.py:323: AssertionError
+______________________ test_usage_texte_ohne_frieda_pfad _______________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_usage_texte_ohne_frieda_pfad():
+        """AC-20: Usage-Texte nennen keinen Pfad mit frieda/."""
+        for datei in ("werkzeuge/karte-holen.sh", "betrieb/sichern.sh"):
+>           assert "frieda/" not in _text(datei), datei
+E           AssertionError: werkzeuge/karte-holen.sh
+E           assert 'frieda/' not in '#!/usr/bin/...h --immer"\n'
+E             
+E             'frieda/' is contained here:
+E                Aufruf:  frieda/werkzeuge/karte-holen.sh <reise>              (Detail bis Zoomstufe 15, Wege und Pfade)
+E             ?           +++++++
+E               #          MAXZOOM=14 frieda/werkzeuge/karte-holen.sh <reise>   (etwa halb so groß)
+E               #          frieda/werkzeuge/karte-holen.sh <reise> <name>       (regionale Karte der Recherche: Rahmen und Zoom aus
+E               #          grundkarten.<name> der Punkte-Datei in reise.json -> wissen_punkte; Ziel medien/karte/<name>.pmtiles)...
+E             
+E             ...Full output truncated (68 lines hidden), use '-vv' to show
+
+engine/tests/test_rueckbau_557.py:331: AssertionError
+_________________________ test_units_ohne_handschritt __________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw0/test_units_ohne_handschritt0')
+
+    def test_units_ohne_handschritt(tmp_path):
+        """AC-21: Die neue Vorlage hat keine Zeile auf -schreiben; installierte Units mit der alten Zeile sind eine erlaubte
+        Abweichung (Exit 3), die Veröffentlichen über units.py installieren abgleicht, ohne Handschritt."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        (tmp_path / "dienst" / "instanz").mkdir(parents=True)
+        (tmp_path / "dienst" / "instanz" / "einstellungen.env").write_text(
+            "FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
+        aus = tmp_path / "aus"
+        env = {**SAUBER, "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "FR_DIENST": str(tmp_path / "dienst"),
+               "EI_ZIEL": str(aus), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen"}
+        r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], capture_output=True, text=True, env=env)
+        assert r.returncode == 0, r.stdout + r.stderr
+        neu = {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
+        schreiben = neu["probe-schreiben.service"]
+>       assert f"{repo}-schreiben" not in schreiben, schreiben
+E       AssertionError: # Schreibweg der Instanz probe (engine/schreiben.py dienst, ADR-0001 Paket O-3): Was im AI-Client über den Konnektor
+E         # festgelegt wird (Arten und Merkmale der Reise), schreibt dieser Dienst sofort ins Reisen-Repo, prüft es mit einem Probebau,
+E         # sichert es und stößt das Veröffentlichen über einen Merker an (#624). Nur für den Konnektor erreichbar (127.0.0.1, Dienst-Geheimnis).
+E         # Erzeugt von betrieb/einrichten.sh. Code aus <tmp>/popen-gw0/test_units_ohne_handschritt0/dienst (legt deploy.sh an); den Schreibvorgang selbst führt er mit dem
+E         # Code der Arbeitskopie <tmp>/popen-gw0/test_units_ohne_handschritt0/repo-schreiben aus (ein Git-Worktree auf main, legt der Dienst an).
+E         # git pusht mit der Anmeldung von reisen (gh als Credential-Helfer); sie wird nur gelesen (ProtectHome=read-only).
+E         #
+E         # Sandbox (#552): Der Schreibweg darf keine Dateien ändern, die später mit höheren Rechten laufen (Shell-Profile, Skripte im
+E         # Home, die der Timer des Veröffentlichens ohne NoNewPrivileges ausführt). Schreiben darf er nur in diese Ziele, gemessen mit
+E         # betrieb/messlauf-schreibweg.py (SCHREIBZIELE dort ist dieselbe Liste; nach jeder Änderung der Liste neu messen):
+E         #   <tmp>/popen-gw0/test_units_ohne_handschritt0/repo-schreiben  Schreibkopie des Git-Wegs (Git-Worktree auf main), legt der Dienst an; „-“: darf fehlen (im
+E         #                         Software-Klon, #454, gibt es keine Git-Reisen mehr, der Ordner entsteht dann nie)
+E         #   <tmp>/popen-gw0/test_units_ohne_handschritt0/repo            Bauordner mit .git (alte Anordnung: Reisen-Repo; ab #454 der Software-Klon): Commits der Schreibkopie,
+E         #                         Holen von main beim Veröffentlichen.
+E         #                         Restrisiko angenommen (PO, 13.11.2026): darin liegen auch Skripte, die der Timer ohne NoNewPrivileges ausführt
+E         #   <tmp>/popen-gw0/test_units_ohne_handschritt0/dienst            Dienstordner: Bau-Ordner der Speicher-Reisen, Sperren (FR_SPERREN), Protokolle des Veröffentlichens.
+E         #                         Restrisiko angenommen (PO, 13.11.2026): ab #454 liegen hier auch Python-Umgebung (python/), Einstellungen und
+E         #                         Meldeweg (instanz/), die der Timer ohne NoNewPrivileges ausführt
+E         #   <tmp>/popen-gw0/test_units_ohne_handschritt0/srv/probe/_konten            Konten-Datenbank (Einladungen, Personen der Reisen)
+E         #   <tmp>/popen-gw0/test_units_ohne_handschritt0/srv/probe            Seiten und Reisespeicher (FR_SPEICHER, Vorgabe dort): das angestoßene Veröffentlichen kopiert Seiten
+E         #   <tmp>/popen-gw0/test_units_ohne_handschritt0/srv/probe/_rueckmeldungen            Rückmelde-Ablage: das Veröffentlichen legt die Ablage einer neuen Reise an
+E         # Die Anmeldung von gh wird beim Hochladen nur gelesen; braucht ein Messlauf sie schreibend, kommt sie hier dazu.
+E         [Unit]
+E         Description=Probe: Schreibweg (Claude-App schreibt direkt in die Reise)
+E         After=network-online.target
+E         Wants=network-online.target
+E         
+E         [Service]
+E         User=reisen
+E         Group=reisen
+E         Environment=PATH=~/.local/bin:~/.local/share/fnm/aliases/default/bin:/usr/local/bin:/usr/bin:/bin
+E         Environment=FR_WURZEL=<tmp>/popen-gw0/test_units_ohne_handschritt0/repo
+E         Environment=FR_DIENST=<tmp>/popen-gw0/test_units_ohne_handschritt0/dienst
+E         Environment=FR_KONTEN=<tmp>/popen-gw0/test_units_ohne_handschritt0/srv/probe/_konten
+E         Environment=FR_SB_HOST=127.0.0.1
+E         Environment=FR_SB_PORT=8773
+E         EnvironmentFile=-<tmp>/popen-gw0/test_units_ohne_handschritt0/dienst/betrieb.env
+E         EnvironmentFile=-<tmp>/popen-gw0/test_units_ohne_handschritt0/dienst/konten.env
+E         ExecStart=<tmp>/popen-gw0/test_units_ohne_handschritt0/dienst/python/bin/python <tmp>/popen-gw0/test_units_ohne_handschritt0/dienst/schreiben.py dienst
+E         Restart=on-failure
+E         RestartSec=5
+E         # Speichergrenzen (#538): weiche Drossel (MemoryHigh), harte Grenze (MemoryMax), Swap eigens begrenzt (MemorySwapMax).
+E         # Messung vom 17.11.2026: höchste Spitze der letzten 60 Tage 3,4 GiB, verursacht vom Veröffentlichen als Kindprozess in dieser
+E         # cgroup. Seit #624 legt der Schreibweg nur noch den Merker <tmp>/popen-gw0/test_units_ohne_handschritt0/dienst/veroeffentlichen-anstoss, das Veröffentlichen läuft als
+E         # eigener Dienst (probe-veroeffentlichen.path startet probe-veroeffentlichen.service); ohne Kindprozess reichen 512M,
+E         # Swap wie beim Konnektor eng (256M), damit ein Leck begrenzt statt verschleppt wird.
+E         # Nachmessen: Journalzeile „memory peak“ des Dienstes (journalctl -u probe-schreiben), Anleitung in docs/betrieb.md.
+E         MemoryHigh=384M
+E         MemoryMax=512M
+E         MemorySwapMax=256M
+E         NoNewPrivileges=yes
+E         PrivateTmp=yes
+E         ProtectSystem=strict
+E         ProtectHome=read-only
+E         InaccessiblePaths=-/run/docker.sock
+E         ReadWritePaths=-<tmp>/popen-gw0/test_units_ohne_handschritt0/repo-schreiben <tmp>/popen-gw0/test_units_ohne_handschritt0/repo <tmp>/popen-gw0/test_units_ohne_handschritt0/dienst <tmp>/popen-gw0/test_units_ohne_handschritt0/srv/probe/_konten <tmp>/popen-gw0/test_units_ohne_handschritt0/srv/probe <tmp>/popen-gw0/test_units_ohne_handschritt0/srv/probe/_rueckmeldungen
+E         
+E         [Install]
+E         WantedBy=multi-user.target
+E         
+E       assert '/tmp/pytest...po-schreiben' not in '# Schreibwe...ser.target\n'
+E         
+E         '/tmp/pytest-of-hem...itt0/repo-schreiben' is contained here:
+E           eitskopie <tmp>/popen-gw0/test_units_ohne_handschritt0/repo-schreiben aus (ein Git-Worktree auf main, legt der Dienst an).
+E           # git pusht mit der Anmeldung von reisen (gh als Credential-Helfer); sie wird nur gelesen (ProtectHome=read-only).
+E           #
+E           # Sandbox (#552): Der Schreibweg darf keine Dateien ändern, die später mit höheren Rechten laufen (Shell-Profile, Skripte im
+E           # Home, die der Timer des Veröffentlichens ohne NoNewPrivileges ausführt). Schreiben darf er nur in diese Ziele, gemessen mit...
+E         
+E         ...Full output truncated (50 lines hidden), use '-vv' to show
+
+engine/tests/test_rueckbau_557.py:349: AssertionError
+___________________ test_reise_ohne_speichereintrag_ist_503 ____________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+py = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw1/test_reise_ohne_speichereintra0'), schreiber=<function py.<locals>.<lambda> at 0x7d83a4585e40>)
+
+    def test_reise_ohne_speichereintrag_ist_503(py):
+        """AC-8: Eine Reise ohne Eintrag im Speicher liefert reise_nicht_im_speicher (kein Git-Weg mehr)."""
+        code, a = sb.anwenden_extern(py.schreiber(), "dritte-reise", "frage_anlegen",
+                                     {**IDA, "args": {"text": "Markt? (Beispielwert)"}})
+        assert code == 503 and a["ok"] is False, a
+>       assert a["fehler_code"] == "schreiben.dienst.reise_nicht_im_speicher", a
+E       AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+E       assert 'schreiben.di...chbar_spaeter' == 'schreiben.di...t_im_speicher'
+E         
+E         - schreiben.dienst.reise_nicht_im_speicher
+E         + schreiben.dienst.repo_nicht_erreichbar_spaeter
+
+engine/tests/test_rueckbau_557.py:239: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Done frage_anlegen 503 in 0.0 s
+___________________ test_reisespeicher_hat_keine_umschaltung ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_reisespeicher_hat_keine_umschaltung():
+        """AC-9: Keine Umschaltung mehr in reisespeicher.py, auch nicht als Befehl."""
+        text = _text("engine/reisespeicher.py")
+        for name in ("umschaltung_frei", "umschalten_automatisch", "git_stand_nachtragen", "_git_baum", "stand_git",
+                     "vergleich", '"umschalten"', '"umschaltung"'):
+>           assert name not in text, name
+E           AssertionError: umschaltung_frei
+E           assert 'umschaltung_frei' not in '"""Reisespe...argv[1:]))\n'
+E             
+E             'umschaltung_frei' is contained here:
+E               50) prüft umschaltung_frei die erste Umschaltung einer Reise: Liegt eine Reise mit Eintrag im Speicher im
+E             ?           ++++++++++++++++
+E               Git-Bauordner und wurde sie noch nie aus dem Speicher veröffentlicht (kein <FR_DIENST>/reise-stand/<reise>.gebaut),
+E               verweigern Veröffentlichen und Schreibweg sie ohne gültigen Stempel „gleich“ von betrieb/vergleichslauf.sh. Der Befehl
+E               umschaltung ist dieselbe Prüfung für die Shell; er liest nur....
+E             
+E             ...Full output truncated (1338 lines hidden), use '-vv' to show
+
+engine/tests/test_rueckbau_557.py:248: AssertionError
+______________ test_schreiber_hat_nur_speicherweg[beispielreise] _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+py = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw2/test_schreiber_hat_nur_speiche0'), schreiber=<function py.<locals>.<lambda> at 0x7c3772460900>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c3772421f40>
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_schreiber_hat_nur_speicherweg(py, monkeypatch, reise):
+        """AC-8: Schreiben geht über den Speicher, auch wenn die Wurzel ein Git-Repo mit der Reise ist; Git bleibt unberührt."""
+        monkeypatch.setattr(sb.secrets, "token_hex", lambda n=6: "a1b2c3d4e5f6")
+        basis = py.rs.stand_nummer(reise)
+        code, a = sb.anwenden_extern(py.schreiber(), reise, "frage_anlegen",
+                                     {**ORG[reise], "args": {"text": "Gibt es dort einen Markt? (Beispielwert)"}})
+>       assert code == 200 and a["ok"], a
+E       AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+E       assert (503 == 200)
+
+engine/tests/test_rueckbau_557.py:227: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Done frage_anlegen 503 in 0.0 s
+______________________ test_gesund_ohne_git_teil_im_klon _______________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+py = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw3/test_gesund_ohne_git_teil_im_k0'), schreiber=<function py.<locals>.<lambda> at 0x7e8b85b4afc0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7e8b85b06ed0>
+
+    def test_gesund_ohne_git_teil_im_klon(py, monkeypatch):
+        """AC-4: Die Wurzel ist ein Git-Repo (Klon); /gesund macht keinen Git-Aufruf und hängt nur am Speicher."""
+        aufrufe = []
+        attrappe = types.ModuleType("schreiben_git")
+        attrappe.gesund = lambda s: aufrufe.append(str(s.wurzel)) or False
+        monkeypatch.setitem(sys.modules, "schreiben_git", attrappe)
+        log = py.pfad / "git.log"
+        ausfuehrbar(py.pfad / "bin" / "git", f'#!/bin/sh\necho "$*" >> {log}\nexit 1\n')
+        monkeypatch.setenv("PATH", f"{py.pfad / 'bin'}:{os.environ['PATH']}")
+        with Dienst(py.schreiber()) as d:
+>           assert d.get("gesund") == (200, {"gesund": True})
+E           AssertionError: assert (503, {'gesund': False}) == (200, {'gesund': True})
+E             
+E             At index 0 diff: 503 != 200
+E             Use -v to get more diff
+
+engine/tests/test_rueckbau_557.py:207: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET /gesund 503
+_____________ test_schreiber_hat_nur_speicherweg[stadtwochenende] ______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+py = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw2/test_schreiber_hat_nur_speiche1'), schreiber=<function py.<locals>.<lambda> at 0x7c37729977e0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7c3772421490>
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_schreiber_hat_nur_speicherweg(py, monkeypatch, reise):
+        """AC-8: Schreiben geht über den Speicher, auch wenn die Wurzel ein Git-Repo mit der Reise ist; Git bleibt unberührt."""
+        monkeypatch.setattr(sb.secrets, "token_hex", lambda n=6: "a1b2c3d4e5f6")
+        basis = py.rs.stand_nummer(reise)
+        code, a = sb.anwenden_extern(py.schreiber(), reise, "frage_anlegen",
+                                     {**ORG[reise], "args": {"text": "Gibt es dort einen Markt? (Beispielwert)"}})
+>       assert code == 200 and a["ok"], a
+E       AssertionError: {'ok': False, 'fehler': 'Das Repo der Reisen ist gerade nicht erreichbar; bitte später noch einmal.', 'fehler_code': 'schreiben.dienst.repo_nicht_erreichbar_spaeter', 'werte': {}}
+E       assert (503 == 200)
+
+engine/tests/test_rueckbau_557.py:227: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Arbeitskopie: git fetch -q origin main: fatal: 'origin' does not appear to be a git repository
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+Done frage_anlegen 503 in 0.1 s
+________________ test_speicherreisen_ohne_filter[beispielreise] ________________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+py = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw3/test_speicherreisen_ohne_filte0'), schreiber=<function py.<locals>.<lambda> at 0x7e8b85b66520>)
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_speicherreisen_ohne_filter(py, reise):
+        """AC-6: Jede Reise mit Vorgang ist Speicherreise, auch wenn sie im Git-Commit der Wurzel liegt und kein Stempel da ist."""
+        assert not (Path(os.environ["FR_DIENST"]) / "vergleich").exists()
+>       assert reise in py.instanz.speicherreisen()
+E       AssertionError: assert 'beispielreise' in []
+E        +  where [] = <function speicherreisen at 0x7e8b86ca99e0>()
+E        +    where <function speicherreisen at 0x7e8b86ca99e0> = <module 'instanz' from 'engine/instanz.py'>.speicherreisen
+E        +      where <module 'instanz' from 'engine/instanz.py'> = namespace(rs=<module 'reisespeicher' from 'engine/re.../pytest-20203/popen-gw3/test_speicherreisen_ohne_filte0'), schreiber=<function py.<locals>.<lambda> at 0x7e8b85b66520>).instanz
+
+engine/tests/test_rueckbau_557.py:216: AssertionError
+____________________ test_altbau_wird_nach_archiv_entfernt _____________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7b8227eadf80>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw0/test_altbau_wird_nach_archiv_e0/platz.log'))
+
+    def test_altbau_wird_nach_archiv_entfernt(ab):
+        """AC-23: Alle Bedingungen erfüllt: Archiv lesbar unter <FR_DIENST>/archiv/, _bau und _bau-schreiben-* weg, Merker
+        gesetzt, Lauf grün mit Heartbeat."""
+        r = _gruen(ab.lauf())
+>       assert ab.altbau() == [], r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 4611ff7 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 4611ff7 is online.
+E         
+E       assert ['_bau', '_ba...dtwochenende'] == []
+E         
+E         Left contains 3 more items, first extra item: '_bau'
+E         Use -v to get more diff
+
+engine/tests/test_rueckbau_557.py:411: AssertionError
+_________ test_altbau_nur_wenn_jede_reise_speicherreise[beispielreise] _________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7c3772462020>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw2/test_altbau_nur_wenn_jede_reis0/platz.log'))
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_altbau_nur_wenn_jede_reise_speicherreise(ab, reise):
+        """AC-26: Liegt in _bau/reisen eine Reise, die nicht im Speicher steht, bleibt alles liegen; die Warnzeile nennt sie."""
+        fremd = f"{reise}-alt"
+        shutil.copytree(BEISPIEL / reise, ab.bau / "reisen" / fremd, ignore=shutil.ignore_patterns(".git"))
+        r = _gruen(ab.lauf())
+        assert ab.altbau() == ALTBAU
+        assert not ab.merker.exists() and ab.archive() == []
+>       assert any(fremd in z for z in ab.warnungen(r)), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 4611ff7 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 4611ff7 is online.
+E         
+E       assert False
+E        +  where False = any(<generator object test_altbau_nur_wenn_jede_reise_speicherreise.<locals>.<genexpr> at 0x7c3772912c20>)
+
+engine/tests/test_rueckbau_557.py:456: AssertionError
+________ test_altbau_nur_wenn_jede_reise_speicherreise[stadtwochenende] ________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7e8b85b66480>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw3/test_altbau_nur_wenn_jede_reis0/platz.log'))
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", REISEN)
+    def test_altbau_nur_wenn_jede_reise_speicherreise(ab, reise):
+        """AC-26: Liegt in _bau/reisen eine Reise, die nicht im Speicher steht, bleibt alles liegen; die Warnzeile nennt sie."""
+        fremd = f"{reise}-alt"
+        shutil.copytree(BEISPIEL / reise, ab.bau / "reisen" / fremd, ignore=shutil.ignore_patterns(".git"))
+        r = _gruen(ab.lauf())
+        assert ab.altbau() == ALTBAU
+        assert not ab.merker.exists() and ab.archive() == []
+>       assert any(fremd in z for z in ab.warnungen(r)), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 4611ff7 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 4611ff7 is online.
+E         
+E       assert False
+E        +  where False = any(<generator object test_altbau_nur_wenn_jede_reise_speicherreise.<locals>.<genexpr> at 0x7e8b85b171d0>)
+
+engine/tests/test_rueckbau_557.py:456: AssertionError
+__________________ test_altbau_nur_wenn_units_auf_klon_zeigen __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7d83a1d43240>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw1/test_altbau_nur_wenn_units_auf0/platz.log'))
+
+    def test_altbau_nur_wenn_units_auf_klon_zeigen(ab):
+        """AC-25: Zeigt eine Unit noch auf _bau, wird nichts gelöscht; Warnzeile."""
+        units = ausfuehrbar(ab.sw.t / "units-alt.sh",
+                            f'#!/bin/sh\n[ "$1" = pruefen ] && echo "probe-schreiben.service: FR_WURZEL={ab.bau}" && exit 3\nexit 1\n')
+        r = _gruen(ab.lauf(VF_UNITS=str(units)))
+        assert ab.altbau() == ALTBAU
+        assert not ab.merker.exists() and ab.archive() == []
+>       assert ab.warnungen(r), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 89d2c08 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Warning: installed units differ from the templates (exit 3).
+E         Done: software 89d2c08 is online.
+E         
+E       assert []
+E        +  where [] = <function ab.<locals>.warnungen at 0x7d83a1d422a0>(CompletedProcess(args=['<tmp>/popen-gw1/test_altbau_nur_wenn_units_auf0/seiten/_software/bet... finds.\nWarning: installed units differ from the templates (exit 3).\nDone: software 89d2c08 is online.\n', stderr=''))
+E        +    where <function ab.<locals>.warnungen at 0x7d83a1d422a0> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7d83a1d43240>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw1/test_altbau_nur_wenn_units_auf0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:445: AssertionError
+_______________________ test_altbau_archiv_platzpruefung _______________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7c3772462ac0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw2/test_altbau_archiv_platzpruefu0/platz.log'))
+
+    def test_altbau_archiv_platzpruefung(ab):
+        """AC-27: Reicht der Platz nicht, wird nichts gelöscht und kein halbes Archiv zurückgelassen."""
+        (ab.sw.t / "platz").write_text("0\n")
+        r = _gruen(ab.lauf())
+>       assert ab.platz_log.exists(), "Platzprüfung nicht gerufen"
+E       AssertionError: Platzprüfung nicht gerufen
+E       assert False
+E        +  where False = exists()
+E        +    where exists = PosixPath('<tmp>/popen-gw2/test_altbau_archiv_platzpruefu0/platz.log').exists
+E        +      where PosixPath('<tmp>/popen-gw2/test_altbau_archiv_platzpruefu0/platz.log') = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7c3772462ac0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw2/test_altbau_archiv_platzpruefu0/platz.log')).platz_log
+
+engine/tests/test_rueckbau_557.py:463: AssertionError
+______________ test_altbau_archivfehler_loescht_nichts[scheitert] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7e8b85b672e0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw3/test_altbau_archivfehler_loesc0/platz.log'))
+fall = 'scheitert'
+
+    @pytest.mark.parametrize("fall", ["scheitert", "unlesbar"])
+    def test_altbau_archivfehler_loescht_nichts(ab, fall):
+        """AC-28: Scheitert der Archivbau oder ist das Archiv nicht lesbar, bleibt _bau unverändert, der Merker ungesetzt."""
+        if fall == "scheitert":
+            archiv = ausfuehrbar(ab.sw.t / "archiv.sh", '#!/bin/sh\necho halb > "$1"\nexit 1\n')
+        else:
+            archiv = ausfuehrbar(ab.sw.t / "archiv.sh", '#!/bin/sh\necho "kein Archiv (Beispiel)" > "$1"\nexit 0\n')
+        r = _gruen(ab.lauf(VF_ARCHIV=str(archiv)))
+        assert ab.altbau() == ALTBAU
+        assert (ab.bau / "reisen" / "beispielreise" / "reise.yaml").exists()
+        assert not ab.merker.exists()
+>       assert ab.warnungen(r), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 32ebd19 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 32ebd19 is online.
+E         
+E       assert []
+E        +  where [] = <function ab.<locals>.warnungen at 0x7e8b85b67880>(CompletedProcess(args=['<tmp>/popen-gw3/test_altbau_archivfehler_loesc0/seiten/_software/bet...\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nDone: software 32ebd19 is online.\n', stderr=''))
+E        +    where <function ab.<locals>.warnungen at 0x7e8b85b67880> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7e8b85b672e0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw3/test_altbau_archivfehler_loesc0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:480: AssertionError
+________ test_altbau_pfadpruefung_innerhalb_fr_seiten[bau_nach_aussen] _________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7d83a1d43420>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw1/test_altbau_pfadpruefung_inner0/platz.log'))
+fall = 'bau_nach_aussen'
+
+    @pytest.mark.parametrize("fall", ["bau_nach_aussen", "schreiben_auf_dienst", "bau_auf_software"])
+    def test_altbau_pfadpruefung_innerhalb_fr_seiten(ab, fall):
+        """AC-29: Links nach außen, auf _dienst oder _software werden nie gelöscht und nie durchlaufen; nichts wird gelöscht."""
+        sw = ab.sw
+        if fall == "bau_nach_aussen":
+            aussen = sw.t / "aussen"
+            shutil.move(str(ab.bau), str(aussen))
+            ab.bau.symlink_to(aussen)
+            schutz = aussen / "reisen" / "beispielreise" / "reise.yaml"
+        elif fall == "schreiben_auf_dienst":
+            link = sw.seiten / "_bau-schreiben-beispielreise"
+            shutil.rmtree(link)
+            link.symlink_to(sw.dienst)
+            schutz = sw.dienst / "umzug-454"
+        else:
+            shutil.rmtree(ab.bau)
+            ab.bau.symlink_to(sw.klon)
+            schutz = sw.klon / "LIESMICH"
+        r = _gruen(ab.lauf())
+        assert schutz.exists()
+        assert (sw.klon / ".git").exists() and (sw.dienst / "software-gut").exists()
+        assert ab.altbau() == ALTBAU
+        assert not ab.merker.exists()
+>       assert ab.warnungen(r), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 32ebd19 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 32ebd19 is online.
+E         
+E       assert []
+E        +  where [] = <function ab.<locals>.warnungen at 0x7d83a1d437e0>(CompletedProcess(args=['<tmp>/popen-gw1/test_altbau_pfadpruefung_inner0/seiten/_software/bet...\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nDone: software 32ebd19 is online.\n', stderr=''))
+E        +    where <function ab.<locals>.warnungen at 0x7d83a1d437e0> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7d83a1d43420>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw1/test_altbau_pfadpruefung_inner0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:506: AssertionError
+______________ test_altbau_archivfehler_loescht_nichts[unlesbar] _______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7b8227eaea20>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw0/test_altbau_archivfehler_loesc0/platz.log'))
+fall = 'unlesbar'
+
+    @pytest.mark.parametrize("fall", ["scheitert", "unlesbar"])
+    def test_altbau_archivfehler_loescht_nichts(ab, fall):
+        """AC-28: Scheitert der Archivbau oder ist das Archiv nicht lesbar, bleibt _bau unverändert, der Merker ungesetzt."""
+        if fall == "scheitert":
+            archiv = ausfuehrbar(ab.sw.t / "archiv.sh", '#!/bin/sh\necho halb > "$1"\nexit 1\n')
+        else:
+            archiv = ausfuehrbar(ab.sw.t / "archiv.sh", '#!/bin/sh\necho "kein Archiv (Beispiel)" > "$1"\nexit 0\n')
+        r = _gruen(ab.lauf(VF_ARCHIV=str(archiv)))
+        assert ab.altbau() == ALTBAU
+        assert (ab.bau / "reisen" / "beispielreise" / "reise.yaml").exists()
+        assert not ab.merker.exists()
+>       assert ab.warnungen(r), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 32ebd19 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 32ebd19 is online.
+E         
+E       assert []
+E        +  where [] = <function ab.<locals>.warnungen at 0x7b8227eaec00>(CompletedProcess(args=['<tmp>/popen-gw0/test_altbau_archivfehler_loesc0/seiten/_software/bet...\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nDone: software 32ebd19 is online.\n', stderr=''))
+E        +    where <function ab.<locals>.warnungen at 0x7b8227eaec00> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7b8227eaea20>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw0/test_altbau_archivfehler_loesc0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:480: AssertionError
+______ test_altbau_pfadpruefung_innerhalb_fr_seiten[schreiben_auf_dienst] ______
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7c3772463600>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw2/test_altbau_pfadpruefung_inner0/platz.log'))
+fall = 'schreiben_auf_dienst'
+
+    @pytest.mark.parametrize("fall", ["bau_nach_aussen", "schreiben_auf_dienst", "bau_auf_software"])
+    def test_altbau_pfadpruefung_innerhalb_fr_seiten(ab, fall):
+        """AC-29: Links nach außen, auf _dienst oder _software werden nie gelöscht und nie durchlaufen; nichts wird gelöscht."""
+        sw = ab.sw
+        if fall == "bau_nach_aussen":
+            aussen = sw.t / "aussen"
+            shutil.move(str(ab.bau), str(aussen))
+            ab.bau.symlink_to(aussen)
+            schutz = aussen / "reisen" / "beispielreise" / "reise.yaml"
+        elif fall == "schreiben_auf_dienst":
+            link = sw.seiten / "_bau-schreiben-beispielreise"
+            shutil.rmtree(link)
+            link.symlink_to(sw.dienst)
+            schutz = sw.dienst / "umzug-454"
+        else:
+            shutil.rmtree(ab.bau)
+            ab.bau.symlink_to(sw.klon)
+            schutz = sw.klon / "LIESMICH"
+        r = _gruen(ab.lauf())
+        assert schutz.exists()
+        assert (sw.klon / ".git").exists() and (sw.dienst / "software-gut").exists()
+        assert ab.altbau() == ALTBAU
+        assert not ab.merker.exists()
+>       assert ab.warnungen(r), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 899f84a A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 899f84a is online.
+E         
+E       assert []
+E        +  where [] = <function ab.<locals>.warnungen at 0x7c3772463920>(CompletedProcess(args=['<tmp>/popen-gw2/test_altbau_pfadpruefung_inner0/seiten/_software/bet...\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nDone: software 899f84a is online.\n', stderr=''))
+E        +    where <function ab.<locals>.warnungen at 0x7c3772463920> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7c3772463600>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw2/test_altbau_pfadpruefung_inner0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:506: AssertionError
+________ test_altbau_pfadpruefung_innerhalb_fr_seiten[bau_auf_software] ________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7e8b85b67e20>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw3/test_altbau_pfadpruefung_inner0/platz.log'))
+fall = 'bau_auf_software'
+
+    @pytest.mark.parametrize("fall", ["bau_nach_aussen", "schreiben_auf_dienst", "bau_auf_software"])
+    def test_altbau_pfadpruefung_innerhalb_fr_seiten(ab, fall):
+        """AC-29: Links nach außen, auf _dienst oder _software werden nie gelöscht und nie durchlaufen; nichts wird gelöscht."""
+        sw = ab.sw
+        if fall == "bau_nach_aussen":
+            aussen = sw.t / "aussen"
+            shutil.move(str(ab.bau), str(aussen))
+            ab.bau.symlink_to(aussen)
+            schutz = aussen / "reisen" / "beispielreise" / "reise.yaml"
+        elif fall == "schreiben_auf_dienst":
+            link = sw.seiten / "_bau-schreiben-beispielreise"
+            shutil.rmtree(link)
+            link.symlink_to(sw.dienst)
+            schutz = sw.dienst / "umzug-454"
+        else:
+            shutil.rmtree(ab.bau)
+            ab.bau.symlink_to(sw.klon)
+            schutz = sw.klon / "LIESMICH"
+        r = _gruen(ab.lauf())
+        assert schutz.exists()
+        assert (sw.klon / ".git").exists() and (sw.dienst / "software-gut").exists()
+        assert ab.altbau() == ALTBAU
+        assert not ab.merker.exists()
+>       assert ab.warnungen(r), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 899f84a A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 899f84a is online.
+E         
+E       assert []
+E        +  where [] = <function ab.<locals>.warnungen at 0x7e8b85b667a0>(CompletedProcess(args=['<tmp>/popen-gw3/test_altbau_pfadpruefung_inner0/seiten/_software/bet...\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nDone: software 899f84a is online.\n', stderr=''))
+E        +    where <function ab.<locals>.warnungen at 0x7e8b85b667a0> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7e8b85b67e20>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw3/test_altbau_pfadpruefung_inner0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:506: AssertionError
+__________________________ test_altbau_ist_idempotent __________________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7b8227eaf920>, neuer_commit=<function sw.<locals>.neuer_co...t/altbau-557'), platz_log=PosixPath('<tmp>/popen-gw0/test_altbau_ist_idempotent0/platz.log'))
+
+    def test_altbau_ist_idempotent(ab):
+        """AC-30: Zweiter Lauf ändert nichts, kein zweites Archiv, keine Warnzeile; mit Merker bleibt ein neuer _bau liegen."""
+        _gruen(ab.lauf())
+        archive = ab.archive()
+>       assert len(archive) == 1
+E       assert 0 == 1
+E        +  where 0 = len([])
+
+engine/tests/test_rueckbau_557.py:513: AssertionError
+__________________ test_betrieb_md_ohne_git_weg_und_rueckweg ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_betrieb_md_ohne_git_weg_und_rueckweg():
+        """AC-34: betrieb.md beschreibt den Ist-Zustand: kein Zustand alt, kein Rückweg, keine frieda/-Anordnung, kein
+        Software nachziehen; dafür das Aufräumen mit Archiv und den bewusst fehlenden Rückweg samt Rückfall."""
+        text = _text("docs/betrieb.md")
+        for weg in ("Software nachziehen", "software-nachziehen", "frieda/betrieb", "frieda/engine", "Rückweg zum alten",
+                    "umzug-454 = alt", "vergleichslauf"):
+>           assert weg not in text, weg
+E           AssertionError: Software nachziehen
+E           assert 'Software nachziehen' not in '# Betrieb e...m Server |\n'
+E             
+E             'Software nachziehen' is contained here:
+E               Workflow „Software nachziehen“ umgestellt. Vorbedingungen und Schritte vor dem ersten Umschalten einer echten Reise stehen im Abschnitt „Umschaltung einer Reise“ unten; ohne Stempel „gleich“ des Vergleichslaufs verweigern Veröffentlichen und Schreibweg eine Reise, die noch in Git liegt (Stufe 5, #350). Die Datenbank (Modus 600) müssen Dienstbenutzer des Schreibwegs, des Veröffentlichens und des Wächters öffnen können; falsche Rechte zeigen sich als 503 „Speicher nicht erreichbar“ bzw. als Exit 2 von `materialisieren`. Messen: `betrieb/...
+E             
+E             ...Full output truncated (552 lines hidden), use '-vv' to show
+
+engine/tests/test_rueckbau_557.py:567: AssertionError
+_____________________ test_altbau_haelt_den_lauf_nicht_auf _____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7c37724ac2c0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw2/test_altbau_haelt_den_lauf_nic0/platz.log'))
+
+    def test_altbau_haelt_den_lauf_nicht_auf(ab):
+        """AC-32: Ein Fehler im Schritt lässt Speicher-Teil, Bau und Heartbeat unberührt."""
+        archiv = ausfuehrbar(ab.sw.t / "archiv.sh", "#!/bin/sh\nexit 1\n")
+        r = _gruen(ab.lauf(VF_ARCHIV=str(archiv)))
+        gebaut = sorted({z.split()[0] for z in ab.sw.zeilen("deploy.log") if not z.startswith("--dienste")})
+        assert gebaut == REISEN, r.stdout
+        assert ab.sw.zeilen("pings.log") == ["ping"]
+        assert ab.sw.lesen("veroeffentlicht") == ab.sw.a
+>       assert ab.warnungen(r), r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 8e7a6d7 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 8e7a6d7 is online.
+E         
+E       assert []
+E        +  where [] = <function ab.<locals>.warnungen at 0x7c37724ac680>(CompletedProcess(args=['<tmp>/popen-gw2/test_altbau_haelt_den_lauf_nic0/seiten/_software/bet...\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nDone: software 8e7a6d7 is online.\n', stderr=''))
+E        +    where <function ab.<locals>.warnungen at 0x7c37724ac680> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7c37724ac2c0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw2/test_altbau_haelt_den_lauf_nic0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:544: AssertionError
+____________ test_adr_und_regeln_ohne_workflow_software_nachziehen _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_adr_und_regeln_ohne_workflow_software_nachziehen():
+        """AC-35: ADR-0009, CLAUDE.md und openspec.yaml nennen den Workflow nicht mehr."""
+        for datei in ("docs/adr/0009-reisespeicher.md", "CLAUDE.md", "openspec.yaml"):
+            text = _text(datei)
+>           assert "Software nachziehen" not in text and "software-nachziehen" not in text, datei
+E           AssertionError: docs/adr/0009-reisespeicher.md
+E           assert ('Software nachziehen' not in '# ADR-0009:...lge-Issue.\n'
+E             
+E             'Software nachziehen' is contained here:
+E               Workflow „Software nachziehen“ überspringt sie. Vergleichslauf (`reisespeicher.py vergleichen`, `betrieb/vergleichslauf.sh`) mit Stempel als Auskunft, erzwungen erst in Stufe 5; `reisespeicher.py zustand` als prüfbarer Zustand der Sicherung für den Monitor der Instanz.
+E             ?           +++++++++++++++++++
+E               - 8.11.2026: Stufe 4 gebaut (#349): Ablage der Medien nach Prüfsumme (siehe Konsequenzen), Hardlink in den Bauordner mit Kopie als Rückfall, `zustand` mit `ablage_fehlt`, `sichern` verlangt eine vollständige Ablage, Umstellung bestehender ...
+E             
+E             ...Full output truncated (4 lines hidden), use '-vv' to show)
+
+engine/tests/test_rueckbau_557.py:579: AssertionError
+__________________ test_altbau_fehler_sind_keine_high_meldung __________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7d83a1d43ce0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw1/test_altbau_fehler_sind_keine_0/platz.log'))
+
+    def test_altbau_fehler_sind_keine_high_meldung(ab):
+        """AC-31: Fehler sind eine Warnzeile, einmal je Störung; kein high-Alarm; der nächste Lauf versucht es erneut."""
+        (ab.sw.t / "platz").write_text("0\n")
+        r1 = _gruen(ab.lauf())
+        r2 = _gruen(ab.lauf("--immer"))
+>       assert len(ab.warnungen(r1)) == 1, r1.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 8e7a6d7 A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 8e7a6d7 is online.
+E         
+E       assert 0 == 1
+E        +  where 0 = len([])
+E        +    where [] = <function ab.<locals>.warnungen at 0x7d83a1d43060>(CompletedProcess(args=['<tmp>/popen-gw1/test_altbau_fehler_sind_keine_0/seiten/_software/bet...\nNote: npm missing, browser tests use what playwright_pfad.py finds.\nDone: software 8e7a6d7 is online.\n', stderr=''))
+E        +      where <function ab.<locals>.warnungen at 0x7d83a1d43060> = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7d83a1d43ce0>, neuer_commit=<function sw.<locals>.neuer_co...tbau-557'), platz_log=PosixPath('<tmp>/popen-gw1/test_altbau_fehler_sind_keine_0/platz.log')).warnungen
+
+engine/tests/test_rueckbau_557.py:527: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_rueckbau_557.py::test_spec_454_known_limitations_abgeschlossen
+FAILED engine/tests/test_rueckbau_557.py::test_git_weg_werkzeuge_sind_geloescht
+FAILED engine/tests/test_rueckbau_557.py::test_git_module_sind_geloescht - As...
+FAILED engine/tests/test_rueckbau_557.py::test_kein_workflow_zeitplan_in_der_software
+FAILED engine/tests/test_rueckbau_557.py::test_betrieb_md_nennt_vorbedingung_monitor
+FAILED engine/tests/test_rueckbau_557.py::test_veroeffentlichen_ruft_keine_umschaltung
+FAILED engine/tests/test_rueckbau_557.py::test_kein_gh_workflow_run_in_der_software
+FAILED engine/tests/test_rueckbau_557.py::test_fr_speicherreisen_in_einstellungen_wird_ignoriert
+FAILED engine/tests/test_rueckbau_557.py::test_deploy_ohne_geloeschte_module_und_ohne_reisen_bau
+FAILED engine/tests/test_rueckbau_557.py::test_speicherreisen_ohne_filter[stadtwochenende]
+FAILED engine/tests/test_rueckbau_557.py::test_entfallene_texte_in_allen_sprachen_weg
+FAILED engine/tests/test_rueckbau_557.py::test_veroeffentlichen_hat_nur_den_klon_weg
+FAILED engine/tests/test_rueckbau_557.py::test_gemeinsam_und_einrichten_ohne_alte_anordnung
+FAILED engine/tests/test_rueckbau_557.py::test_usage_texte_ohne_frieda_pfad
+FAILED engine/tests/test_rueckbau_557.py::test_units_ohne_handschritt - Asser...
+FAILED engine/tests/test_rueckbau_557.py::test_reise_ohne_speichereintrag_ist_503
+FAILED engine/tests/test_rueckbau_557.py::test_reisespeicher_hat_keine_umschaltung
+FAILED engine/tests/test_rueckbau_557.py::test_schreiber_hat_nur_speicherweg[beispielreise]
+FAILED engine/tests/test_rueckbau_557.py::test_gesund_ohne_git_teil_im_klon
+FAILED engine/tests/test_rueckbau_557.py::test_schreiber_hat_nur_speicherweg[stadtwochenende]
+FAILED engine/tests/test_rueckbau_557.py::test_speicherreisen_ohne_filter[beispielreise]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_wird_nach_archiv_entfernt
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_nur_wenn_jede_reise_speicherreise[beispielreise]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_nur_wenn_jede_reise_speicherreise[stadtwochenende]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_nur_wenn_units_auf_klon_zeigen
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_archiv_platzpruefung - ...
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_archivfehler_loescht_nichts[scheitert]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_pfadpruefung_innerhalb_fr_seiten[bau_nach_aussen]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_archivfehler_loescht_nichts[unlesbar]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_pfadpruefung_innerhalb_fr_seiten[schreiben_auf_dienst]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_pfadpruefung_innerhalb_fr_seiten[bau_auf_software]
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_ist_idempotent - assert...
+FAILED engine/tests/test_rueckbau_557.py::test_betrieb_md_ohne_git_weg_und_rueckweg
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_haelt_den_lauf_nicht_auf
+FAILED engine/tests/test_rueckbau_557.py::test_adr_und_regeln_ohne_workflow_software_nachziehen
+FAILED engine/tests/test_rueckbau_557.py::test_altbau_fehler_sind_keine_high_meldung
+36 failed, 4 passed in 8.19s
