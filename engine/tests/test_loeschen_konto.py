@@ -187,11 +187,11 @@ def test_namen_ersetzen_erzwingt_neubau(speicher):
     rs.vorgang_schreiben("beispielreise", {"wissen/x.md": b"# x\n"}, wer="Karl", werkzeug="knowledge_write", titel="x")
     stempel.write_text("3 abc1234\n")   # „<nummer> <software>“ wie nach einem Bau
     rs.namen_ersetzen("beispielreise", "Karl", GELOESCHT)
-    # Stempel ohne Software-Kennung: veroeffentlichen.sh baut neu ([ -z "$gk" ]); er bleibt aber stehen, damit die Sperre der
-    # ersten Umschaltung (#350) eine Reise im Git-Bauordner nicht anhält
+    # Stempel ohne Software-Kennung: veroeffentlichen.sh baut neu ([ -z "$gk" ]); der Stempel bleibt mit der Nummer stehen
+    # (die Sperre der ersten Umschaltung, #350, ist mit #557 entfallen)
     assert stempel.read_text().split() == ["3"]
     text = (WURZEL / "betrieb" / "veroeffentlichen.sh").read_text(encoding="utf-8")
-    assert '[ -z "$gk" ]' in text and 'if [ ! -e "$FR_DIENST/reise-stand/$r.gebaut" ]' in text
+    assert '[ -z "$gk" ]' in text
 
 
 def _zwei_karl(speicher, monkeypatch, zweiter):

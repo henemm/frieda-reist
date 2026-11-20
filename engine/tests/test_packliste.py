@@ -354,6 +354,8 @@ def test_packliste_uebernehmen_als_vorschlag(tmp_path):
     alt, neu = reisen / "beispielreise", reisen / "stadtwochenende"
     shutil.copytree(WANDERUNG, alt)
     shutil.copytree(STADT, neu)
+    import reisespeicher                      # die andere Reise liest der Schreibweg aus dem Speicher (#557)
+    reisespeicher.importieren(alt, "beispielreise", wer="Ida", grund="Beispiel")
     # Die Stadtreise hat die Kategorie Kleidung schon (nur mit dem Merkmal Anzahl); Apotheke fehlt ihr und kommt mit
     titel, text = sb.packliste_uebernehmen(neu, IDA, {"von_reise": "beispielreise", "arten": ["kleidung", "apotheke"], "grund": "wie damals"})
     d = bau(neu)["packliste"]

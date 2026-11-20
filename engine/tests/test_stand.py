@@ -2,7 +2,6 @@
 publish_status, api/stand und Zeiten mit Zeitzone. Nur mit der Beispielreise und erfundenen Daten."""
 import datetime
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -11,76 +10,29 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
 import stand  # noqa: E402
-from test_schreiben import repo  # noqa: E402,F401  (Fixture: Reisen-Repo mit origin und Arbeitskopie des Schreibwegs)
+from test_schreiben import repo  # noqa: E402,F401  (Fixture: Bauordner und Reisespeicher mit der Beispielreise, #557)
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 BEISPIEL = WURZEL / "beispiel" / "reisen" / "beispielreise"
 
 
-def git(ordner, *args):
-    return subprocess.run(["git", "-C", str(ordner), *args], check=True, capture_output=True, text=True).stdout.strip()
+# ---------- S9: Änderungsliste ----------# ---------- S9: Änderungsliste ----------
 
-
-@pytest.fixture
-def reisen_repo(tmp_path):
-    """Reisen-Repo mit der Beispielreise und einem Ordner frieda/ (steht für die Software) -> (wurzel, commit(text, datei))."""
-    w = tmp_path / "repo"
-    (w / "reisen").mkdir(parents=True)
-    import shutil
-    shutil.copytree(BEISPIEL, w / "reisen" / "beispielreise")
-    (w / "frieda").mkdir()
-    (w / "frieda" / "version").write_text("1\n")
-    git(w, "init", "-q", "-b", "main")
-    git(w, "config", "user.email", "test@example.invalid")
-    git(w, "config", "user.name", "Ida Beispiel")
-    git(w, "add", "-A")
-    git(w, "commit", "-qm", "Beispielreise angelegt")
-
-    def commit(text, datei="reisen/beispielreise/notiz.md", person=None):
-        p = w / datei
-        p.write_text((p.read_text() if p.exists() else "") + text + "\n")
-        git(w, "add", "-A")
-        git(w, "commit", "-qm", text + (f"\n\n{stand.PERSON_TRAILER}: {person}\n" if person else ""))
-    return w, commit
-
-
-# ---------- S1: Nummer ----------
-
-def test_nummer_zaehlt_nur_aenderungen_der_reise(reisen_repo):
-    w, commit = reisen_repo
-    ordner = w / "reisen" / "beispielreise"
-    assert stand.nummer(ordner) == 1
-    commit("Beispielreise: Wert eingetragen")
-    commit("Beispielreise: Frage angelegt")
-    assert stand.nummer(ordner) == 3                         # zwei Schreibvorgänge, zwei aufeinanderfolgende Nummern
-    commit("Software nachgezogen", "frieda/version")         # Software-Update ohne Inhaltsänderung
-    assert stand.nummer(ordner) == 3
-    assert stand.nummer(ordner, "HEAD~3") == 1
-
-
-def test_nummer_fehlt_ohne_git_und_im_flachen_klon(reisen_repo, tmp_path):
-    w, commit = reisen_repo
-    commit("Beispielreise: zweiter Stand")
-    assert stand.nummer(tmp_path / "gibt-es-nicht") is None
-    ohne = tmp_path / "ohne-git"
-    ohne.mkdir()
-    assert stand.nummer(ohne) is None
-    flach = tmp_path / "flach"
-    subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{w}", str(flach)], check=True, capture_output=True)
-    assert stand.nummer(flach / "reisen" / "beispielreise") is None   # die Zahl wäre falsch (1 statt 2)
-
-
-# ---------- S9: Änderungsliste ----------
-
-def test_aenderungen_mit_person_zeit_und_namen_statt_kennungen(reisen_repo):
-    w, commit = reisen_repo
-    commit("Beispielreise: U-01 „Hotel am Elbufer“ geändert: Preis", person="Karl")
-    commit("Beispielreise: Wert an U-01 eingetragen")
-    liste = stand.aenderungen(w / "reisen" / "beispielreise", {"U-01": "Hotel am Elbufer"})
+def test_aenderungen_mit_person_zeit_und_namen_statt_kennungen(tmp_path):
+    """Nummer und Änderungsliste kommen aus dem Reisespeicher (#557): Person, Zeit mit Zone, Namen statt Kennungen."""
+    import reisespeicher as rs
+    rs.importieren(BEISPIEL, "beispielreise", wer="Ida Beispiel", grund="Beispielreise angelegt")
+    rs.vorgang_schreiben("beispielreise", {"notiz.md": b"1\n"}, wer="Karl", werkzeug="item_update",
+                         titel="U-01 „Hotel am Elbufer“ geändert: Preis", wann="2026-11-06T09:00:00Z")
+    rs.vorgang_schreiben("beispielreise", {"notiz.md": b"2\n"}, wer="Ida Beispiel", werkzeug="item_update",
+                         titel="Wert an U-01 eingetragen", wann="2026-11-06T10:00:00Z")
+    ordner = tmp_path / "bau" / "beispielreise"
+    rs.exportieren("beispielreise", ordner)
+    liste = stand.fuer_seite(ordner, {"dinge": {"U-01": {"name": "Hotel am Elbufer"}}})["aenderungen"]
     assert [a["nummer"] for a in liste] == [3, 2, 1]
-    assert liste[0] == {"nummer": 3, "zeit": liste[0]["zeit"], "was": "Wert an „Hotel am Elbufer“ eingetragen", "wer": "Ida Beispiel"}
+    assert liste[0] == {"nummer": 3, "zeit": "2026-11-06T10:00:00Z", "was": "Wert an „Hotel am Elbufer“ eingetragen",
+                        "wer": "Ida Beispiel"}
     assert liste[1]["was"] == "„Hotel am Elbufer“ geändert: Preis" and liste[1]["wer"] == "Karl"
-    assert liste[2]["was"] == "Beispielreise angelegt"
     assert all(a["zeit"].endswith("Z") for a in liste)
     assert stand.ohne_kennungen("X-99 bleibt", {}) == "X-99 bleibt"
 
@@ -92,24 +44,27 @@ def test_namen_der_ids_ohne_grundformen_zu_kennen(tmp_path):
     assert all(stand.ID_MUSTER.fullmatch(i) for i in namen)
 
 
-def test_bau_legt_den_reise_stand_in_die_seite_ohne_bauzeit(reisen_repo, tmp_path):
+def test_bau_legt_den_reise_stand_in_die_seite_ohne_bauzeit(tmp_path):
     """Die Nummer steht in der Seite (daten.reise_stand); gleicher Inhalt ergibt dieselbe Seite (kein Zeitstempel des Baus)."""
-    w, commit = reisen_repo
-    commit("Beispielreise: zweiter Stand", person="Karl")
+    import reisespeicher as rs
+    rs.importieren(BEISPIEL, "beispielreise", wer="Ida", grund="Beispielreise angelegt")
+    rs.vorgang_schreiben("beispielreise", {"notiz.md": b"zwei\n"}, wer="Karl", werkzeug="item_update", titel="zweiter Stand")
+    ordner = tmp_path / "bau" / "beispielreise"
+    rs.exportieren("beispielreise", ordner)
     ziel = tmp_path / "s"
-    bauen.bauen(w / "reisen" / "beispielreise", ziel)
+    bauen.bauen(ordner, ziel)
     d = json.loads((ziel / "daten.json").read_text())
     assert d["reise_stand"]["nummer"] == 2 and d["reise_stand"]["aenderungen"][0]["wer"] == "Karl"
     assert d["reise_stand"]["zeit"] == d["reise_stand"]["aenderungen"][0]["zeit"]
     sw = (ziel / "sw.js").read_text()
-    bauen.bauen(w / "reisen" / "beispielreise", ziel)
+    bauen.bauen(ordner, ziel)
     assert (ziel / "sw.js").read_text() == sw
-    commit("Beispielreise: dritter Stand")
-    bauen.bauen(w / "reisen" / "beispielreise", ziel)
+    rs.vorgang_schreiben("beispielreise", {"notiz.md": b"drei\n"}, wer="Ida", werkzeug="item_update", titel="dritter Stand")
+    bauen.bauen(ordner, ziel)
     assert json.loads((ziel / "daten.json").read_text())["reise_stand"]["nummer"] == 3 and (ziel / "sw.js").read_text() != sw
 
 
-def test_bau_ohne_git_hat_keinen_reise_stand(tmp_path):
+def test_bau_ohne_speichereintrag_hat_keinen_reise_stand(tmp_path):
     import shutil
     shutil.copytree(BEISPIEL, tmp_path / "beispielreise")
     bauen.bauen(tmp_path / "beispielreise", tmp_path / "s")
@@ -118,22 +73,12 @@ def test_bau_ohne_git_hat_keinen_reise_stand(tmp_path):
 
 # ---------- Stufe 2 (#347): Stand je Weg ----------
 
-def test_fuer_seite_je_weg(reisen_repo, tmp_path, monkeypatch):
-    """AC-17: Eine Reise mit Speichereintrag (#454: im Speicher ist, was im Speicher steht) bekommt Nummer, Zeit und Änderungsliste aus dem Speicher
-    (der Bau kennt nur den Ordner; die Reise ist sein Name). Eine Git-Reise liefert dasselbe wie vor der Verschiebung
-    (stand_git). Ohne Eintrag und ohne Git bleibt es bei None."""
+def test_fuer_seite_aus_dem_speicher(tmp_path):
+    """AC-17: Eine Reise mit Speichereintrag bekommt Nummer, Zeit und Änderungsliste aus dem Speicher (der Bau kennt nur den
+    Ordner; die Reise ist sein Name). Ohne Eintrag bleibt es bei None (#557: kein Git-Zweig mehr)."""
     import shutil
     import reisespeicher
-    import stand_git
-    w, commit = reisen_repo
-    commit("Beispielreise: zweiter Stand", person="Karl")
-    git_ordner = w / "reisen" / "beispielreise"
-    s = stand.fuer_seite(git_ordner, {})
-    assert s["nummer"] == 2 == stand_git.nummer(git_ordner)
-    assert s["aenderungen"] == stand_git.aenderungen(git_ordner, {}) and s["aenderungen"][0]["wer"] == "Karl"
-    # Speicher-Reise
     stadt = BEISPIEL.parent / "stadtwochenende"
-    monkeypatch.setenv("FR_SPEICHERREISEN", "stadtwochenende")
     reisespeicher.importieren(stadt, "stadtwochenende", wer="Tom")
     reisespeicher.vorgang_schreiben("stadtwochenende", {"inhalt/notiz.md": b"Beispielwert\n"}, wer="Lea",
                                     werkzeug="item_update", titel="U-01 geändert: Preis", wann="2026-11-06T09:00:00Z")
@@ -147,26 +92,8 @@ def test_fuer_seite_je_weg(reisen_repo, tmp_path, monkeypatch):
     assert [a["nummer"] for a in s["aenderungen"]] == [2, 1] and s["aenderungen"][1]["wer"] == "Tom"
     bauen.bauen(ordner, tmp_path / "seite")
     assert json.loads((tmp_path / "seite" / "daten.json").read_text())["reise_stand"]["nummer"] == 2
-    # Reise der Liste ohne Eintrag und ohne Git: kein Stand. Seit #454 ist im Speicher, was im Speicher steht: eine leere
-    # FR_SPEICHERREISEN ändert am Stand der Speicherreise nichts
-    monkeypatch.setenv("FR_SPEICHERREISEN", "stadtwochenende,beispielreise")
     shutil.copytree(BEISPIEL, tmp_path / "ohne" / "beispielreise")
     assert stand.fuer_seite(tmp_path / "ohne" / "beispielreise", {}) is None
-    monkeypatch.setenv("FR_SPEICHERREISEN", "")
-    assert stand.fuer_seite(ordner, daten)["nummer"] == 2
-
-
-def test_fuer_seite_unlesbare_einstellungen_bricht_ab(reisen_repo, tmp_path, monkeypatch):
-    """#361 (AC-8): Ist die Einstellungsdatei vorhanden, aber nicht lesbar, weiß der Bau nicht, welche Reisen im Speicher
-    liegen: er bricht laut ab und nimmt nie einen Stand aus Git."""
-    import instanz
-    w, _ = reisen_repo
-    unlesbar = tmp_path / "einstellungen-unlesbar.env"
-    unlesbar.mkdir()
-    monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
-    monkeypatch.setenv("FR_EINSTELLUNGEN", str(unlesbar))
-    with pytest.raises(instanz.EinstellungenNichtLesbar):
-        stand.fuer_seite(w / "reisen" / "beispielreise", {})
 
 
 def test_probebau_ohne_stand(monkeypatch, tmp_path):
@@ -259,7 +186,8 @@ def test_schreibweg_zaehlt_und_antwortet_mit_beiden_staenden(repo, tmp_path, mon
     s = ts.schreiber(repo)
     a = s.schreiben("beispielreise", "art_definieren", {**ts.IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
     assert a["stand"] == {"gesichert": 2, "veroeffentlicht": 1}
-    assert f"{stand.PERSON_TRAILER}: Ida" in git(wurzel, "log", "-1", "--format=%B", "origin/main")
+    import reisespeicher
+    assert reisespeicher.verlauf("beispielreise", n=1)[0]["wer"] == "Ida"
     s.vorbereiten()
     a = s.schreiben("beispielreise", "art_definieren", {**ts.IDA, "args": {"bezeichnung": "Ryokan", "grundform": "aufenthalt"}})
     assert a["stand"]["gesichert"] == 3

@@ -17,7 +17,7 @@ import bauen  # noqa: E402
 import schreiben as sb  # noqa: E402
 from conftest import meldet  # noqa: E402
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
-from test_schreiben import IDA, KARL, repo, routen_auf_main, schreiber  # noqa: E402,F401
+from test_schreiben import IDA, KARL, repo, routen_auf_main, schreiber, auf_main  # noqa: E402,F401
 
 WURZEL = Path(__file__).resolve().parent.parent.parent
 
@@ -67,16 +67,15 @@ def test_kartenansicht_nimmt_uebersicht_entgegen(repo):
 
 
 def test_wissen_aendern_setzt_und_entfernt_die_uebersicht(repo):
-    import subprocess as sp
     _, origin, _, _ = repo
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "wissen_aendern", {**IDA, "args": {"ziel": "W-05", "grund": "Übersicht der Unterkünfte", "uebersicht": ["pension", "hotel"]}})
     assert a["ok"] and "pension, hotel" in a["text"]
-    cfg = json.loads(sp.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/reise.json"], check=True, capture_output=True, text=True).stdout)
+    cfg = json.loads(auf_main("beispielreise", "reise.json"))
     assert cfg["uebersichten"] == {"W-05": ["pension", "hotel"]}
     s.vorbereiten()
     s.schreiben("beispielreise", "wissen_aendern", {**IDA, "args": {"ziel": "W-05", "grund": "weg damit", "uebersicht": []}})
-    cfg = json.loads(sp.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/reise.json"], check=True, capture_output=True, text=True).stdout)
+    cfg = json.loads(auf_main("beispielreise", "reise.json"))
     assert "uebersichten" not in cfg
 
 

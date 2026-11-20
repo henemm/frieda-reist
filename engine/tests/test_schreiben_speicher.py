@@ -3,26 +3,20 @@ docs/specs/betrieb/schreibweg-speicher-347.md). Nur mit den beiden erfundenen Be
 stadtwochenende: Tom, Lea) und erfundenen Testdaten, alles unter tmp_path.
 
 Aufbau der Fixture `speicher`: eine Instanz ohne Git (FR_WURZEL ohne .git, keine Arbeitskopie), der Speicher unter
-tmp_path mit beiden Beispielreisen (importieren); seit #454 sind sie damit Speicherreisen (FR_SPEICHERREISEN ist wirkungslos,
-bleibt hier aber gesetzt). Veröffentlichen ist ein Stummel.
+tmp_path mit beiden Beispielreisen (importieren); seit #454 sind sie damit Speicherreisen. Veröffentlichen ist ein Stummel.
 
 Was diese Tests als Schnittstelle festlegen (die Spec lässt es offen):
-  instanz.speicherreisen()      -> list[str]: Reisen mit Eintrag im Speicher, deren Umschaltung nicht offen ist (#454)
-  schreiben.anwenden_extern(s, reise, werkzeug, anfrage)   bleibt der Eingang des Dienstes für beide Wege; s =
-                                schreiben.Schreiber(wurzel). Der Weg richtet sich nach instanz.speicherreisen().
-  schreiben_git.vorgang(s, reise, werkzeug, anfrage, start)   der bisherige Git-Weg (vorher schreiben.vorgang), bis Stufe 5
+  instanz.speicherreisen()      -> list[str]: Reisen mit Eintrag im Speicher (#454, #557: ohne Filter)
+  schreiben.anwenden_extern(s, reise, werkzeug, anfrage)   der Eingang des Dienstes; s = schreiben.Schreiber(wurzel).
+                                Seit #557 gibt es nur noch den Speicherweg.
   Patch-Ziele sind Modulattribute: reisespeicher.exportieren, reisespeicher.vorgang_eingetragen, schreiben.befehl_mit_frist,
                                 schreiben.secrets.token_hex, schreiben.ZEIT_GESAMT / ZEIT_SPERRE / ZEIT_PRUEFUNG.
-                                Die Zeitgrenzen gibt es nur in schreiben.py; schreiben_git liest sie zur Laufzeit von dort.
   Ablauf im Elternprozess:      Sperre, basis = reisespeicher.stand_nummer(reise), reisespeicher.exportieren(reise, <tmp>,
                                 bis=basis), dann der Unterprozess `anwenden` über schreiben.befehl_mit_frist mit FR_VORGANG.
                                 Der Unterprozess läuft mit dem Code des laufenden Dienstes (im Betrieb <FR_DIENST>), nicht
                                 mit dem einer Git-Arbeitskopie; die Tests geben ihm keinen eigenen Code-Ordner.
   Antwort:                      commit = Vorgangs-Nummer als Text, stand.gesichert = neue Stand-Nummer.
-  Temporäre Ordner:             über tempfile (der Test lenkt tempfile.tempdir und TMPDIR in einen eigenen Ordner).
-
-Die neuen Module (schreiben_git, stand_git) und das Messlauf-Skript werden erst in den Tests geladen: Fehlt eines,
-scheitert jeder Test einzeln."""
+  Temporäre Ordner:             über tempfile (der Test lenkt tempfile.tempdir und TMPDIR in einen eigenen Ordner)."""
 import fcntl
 import json
 import os
@@ -50,7 +44,6 @@ BEISPIEL = WURZEL / "beispiel" / "reisen"
 sys.path.insert(0, str(ENGINE))
 import schreiben as sb  # noqa: E402
 from conftest import meldet  # noqa: E402
-from test_schreiben import repo, git  # noqa: E402,F401  (Fixture des Git-Wegs: Reisen-Repo mit origin)
 
 IDA = {"person": "ida", "name": "Ida", "rolle": "organisator"}
 KARL = {"person": "karl", "name": "Karl", "rolle": "mitwirkend"}
@@ -81,7 +74,6 @@ def speicher(tmp_path, monkeypatch):
     monkeypatch.setenv("FR_SPERREN", str(tmp_path / "sperren"))
     monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))
     monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende")
     tmp = tmp_path / "tmp"
     tmp.mkdir()
     monkeypatch.setenv("TMPDIR", str(tmp))
@@ -135,74 +127,28 @@ class Dienst:
         sb.Dienst.schreiber = None
 
 
-# ---------- AC-5: Schalter je Reise ----------
-
-def test_schalter_vorgabe_ist_git(repo, monkeypatch, tmp_path):
-    """Seit #454 ist im Speicher, was im Speicher steht: FR_SPEICHERREISEN (Umgebung oder Datei) ist wirkungslos; eine Reise
-    ohne Eintrag im Speicher schreibt über Git wie vor Stufe 2, der Speicher bleibt unberührt."""
-    import instanz
-    import reisespeicher
-    monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
-    assert instanz.speicherreisen() == []
-    monkeypatch.setenv("FR_SPEICHERREISEN", " beispielreise, ,stadtwochenende ,")
-    assert instanz.speicherreisen() == []
-    monkeypatch.delenv("FR_SPEICHERREISEN")
-    datei = tmp_path / "einstellungen.env"
-    datei.write_text("FR_SPEICHERREISEN=stadtwochenende\n", encoding="utf-8")
-    monkeypatch.setenv("FR_EINSTELLUNGEN", str(datei))
-    assert instanz.speicherreisen() == []
-    monkeypatch.delenv("FR_EINSTELLUNGEN")
-    assert "FR_SPEICHERREISEN" in instanz.__doc__
-    assert re.search(r"^#?FR_SPEICHERREISEN=", (WURZEL / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8"), re.M)
-    # ohne Einstellung: jede Reise schreibt über Git wie vor dieser Stufe, der Speicher bleibt unberührt
-    wurzel, origin, arbeit, _ = repo
-    vorher = git(origin, "rev-parse", "main")
-    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren", {**IDA, "args": ART})
-    assert code == 200 and a["ok"], a
-    assert git(origin, "rev-parse", "main") == a["commit"] != vorher
-    assert not reisespeicher.pfad().exists()
-
-
 # ---------- #361: Einstellungsdatei vorhanden, aber nicht lesbar -> fail closed (AC-5 bis AC-7, AC-9) ----------
 
 def unlesbare_einstellungen(tmp_path, monkeypatch):
-    """Die Einstellungsdatei existiert, ist aber keine lesbare Datei; FR_SPEICHERREISEN fehlt in der Umgebung."""
+    """Die Einstellungsdatei existiert, ist aber keine lesbare Datei."""
     d = tmp_path / "einstellungen-unlesbar.env"
     d.mkdir()
-    monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
     monkeypatch.setenv("FR_EINSTELLUNGEN", str(d))
 
 
-def test_unlesbare_einstellungen_lehnen_ab_ohne_git(repo, monkeypatch, tmp_path, capsys):
-    import schreiben_git
-    wurzel, origin, arbeit, _ = repo
-    vorher = git(origin, "rev-parse", "main")
+def test_unlesbare_einstellungen_lehnen_ab(speicher, monkeypatch, tmp_path, capsys):
+    """#361 (fail closed): Ist die Einstellungsdatei vorhanden, aber nicht lesbar, wird nichts geschrieben (503)."""
+    vorher = {r: zustand(speicher, r) for r in REISEN}
     unlesbare_einstellungen(tmp_path, monkeypatch)
     aufrufe = []
-    monkeypatch.setattr(schreiben_git, "vorgang", lambda *a, **k: aufrufe.append("git") or (200, {}))
     monkeypatch.setattr(sb, "vorgang_speicher", lambda *a, **k: aufrufe.append("speicher") or (200, {}))
-    for reise in ("beispielreise", "stadtwochenende"):
-        code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), reise, "art_definieren", {**IDA, "args": ART})
+    for reise in REISEN:
+        code, a = schreib(speicher, reise, "art_definieren", {**IDA, "args": ART})
         assert code == 503 and a["ok"] is False and a["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", (code, a)
     assert aufrufe == []
     err = capsys.readouterr().err
     assert "Error art_definieren 503: settings not readable" in err and "Done art_definieren 503" in err
-    assert git(origin, "rev-parse", "main") == vorher
-    assert not Path(f"{arbeit}-beispielreise").exists()
-
-
-def test_git_vorgang_direkt_unlesbare_einstellungen(repo, monkeypatch, tmp_path):
-    import schreiben_git
-    wurzel, origin, arbeit, _ = repo
-    vorher = git(origin, "rev-parse", "main")
-    unlesbare_einstellungen(tmp_path, monkeypatch)
-    git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # ein fetch fiele auf (503 Repo)
-    code, a = schreiben_git.vorgang(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
-                                    {**IDA, "args": ART}, time.monotonic())
-    assert code == 503 and a["fehler_code"] == "schreiben.dienst.einstellungen_nicht_lesbar", (code, a)
-    assert not Path(f"{arbeit}-beispielreise").exists()
-    git(wurzel, "remote", "set-url", "origin", str(origin))
-    assert git(origin, "rev-parse", "main") == vorher
+    assert {r: zustand(speicher, r) for r in REISEN} == vorher
 
 
 def test_gesund_und_buchung_unlesbare_einstellungen(speicher, monkeypatch, tmp_path):
@@ -215,14 +161,13 @@ def test_gesund_und_buchung_unlesbare_einstellungen(speicher, monkeypatch, tmp_p
         assert "ok" not in b
 
 
-def test_fehlende_einstellungen_git_weg_unveraendert(repo, monkeypatch, tmp_path):
-    wurzel, origin, arbeit, _ = repo
-    monkeypatch.delenv("FR_SPEICHERREISEN", raising=False)
+def test_fehlende_einstellungen_schreiben_wie_immer(speicher, monkeypatch, tmp_path):
+    """Fehlt die Einstellungsdatei ganz, gelten die Vorgaben: der Speicherweg schreibt wie immer."""
     monkeypatch.setenv("FR_EINSTELLUNGEN", str(tmp_path / "gibt-es-nicht.env"))
-    vorher = git(origin, "rev-parse", "main")
-    code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren", {**IDA, "args": ART})
+    vorher = speicher.rs.stand_nummer("beispielreise")
+    code, a = schreib(speicher, "beispielreise", "art_definieren", {**IDA, "args": ART})
     assert code == 200 and a["ok"], a
-    assert git(origin, "rev-parse", "main") == a["commit"] != vorher
+    assert speicher.rs.stand_nummer("beispielreise") == vorher + 1
 
 
 @pytest.mark.parametrize("reise", sorted(REISEN))
@@ -338,43 +283,6 @@ def test_ablagefehler_gibt_saubere_antwort_ohne_wirkung(speicher, art):
     assert a["werte"]["ziel"] == pfad and a["werte"]["w1"] == "beispielreise" and "{" not in a["fehler"]
     assert rs.stand_nummer("beispielreise") == vorher and not list(speicher.tmp.iterdir())
     assert sb.fremde_datei(speicher.wurzel / "reisen" / "stadtwochenende", "beispielreise", pfad) is None
-
-
-# ---------- AC-9: der Git-Weg lehnt eine Reise der Liste ab ----------
-
-def _als_speicherreise(reise):
-    """Reise im Speicher und schon aus ihm veröffentlicht (Stempel .gebaut): eine Speicherreise (#454)."""
-    import instanz
-    import reisespeicher
-    reisespeicher.importieren(BEISPIEL / reise, reise, wer="Ida", grund="Beispiel")
-    datei = instanz.dienst() / "reise-stand" / f"{reise}.gebaut"
-    datei.parent.mkdir(parents=True, exist_ok=True)
-    datei.write_text(f"{reisespeicher.stand_nummer(reise)} alt-kennung\n")
-
-
-def test_git_weg_lehnt_reise_der_liste_ab(repo, monkeypatch, tmp_path):
-    """Der Git-Weg lehnt eine Speicherreise ab (seit #454: eine Reise im Speicher, nicht eine Reise der Liste)."""
-    import schreiben_git
-    wurzel, origin, arbeit, _ = repo
-    monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))
-    monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))
-    _als_speicherreise("beispielreise")
-    vorher = git(origin, "rev-parse", "main")
-    git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # ein fetch fiele auf (503 Repo)
-    s = sb.Schreiber(wurzel, arbeit)
-    code, a = schreiben_git.vorgang(s, "beispielreise", "art_definieren", {**IDA, "args": ART}, time.monotonic())
-    assert code == 503 and a["fehler_code"] == "schreiben.dienst.reise_im_speicher", (code, a)
-    assert not Path(f"{arbeit}-beispielreise").exists()
-    git(wurzel, "remote", "set-url", "origin", str(origin))
-    assert git(origin, "rev-parse", "main") == vorher
-    # über den Eingang des Dienstes: die Reise liegt im Speicher -> Speicherweg, kein Commit in Git
-    import schreiben_git as sg
-
-    def kein_git(*a, **k):
-        raise AssertionError("Git-Weg für eine Speicherreise")
-    monkeypatch.setattr(sg, "vorgang", kein_git)
-    sb.anwenden_extern(s, "beispielreise", "art_definieren", {**IDA, "args": ART})
-    assert git(origin, "rev-parse", "main") == vorher
 
 
 # ---------- AC-10: zwischenzeitliche Änderung ----------
@@ -516,9 +424,7 @@ def test_buchung_wird_aus_dem_speicher_gelesen(speicher, monkeypatch, tmp_path):
         assert code == 200 and b["gibt_es"] is True and b["fuer"] == ["E-01", "E-02"]
         assert d.get("beispielreise/buchung/B-77") == (200, {"gibt_es": False})
         assert d.get("beispielreise/buchung/U-01") == (200, {"gibt_es": False})
-        monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende,dritte-reise")
-        code, b = d.get("dritte-reise/buchung/B-01")                   # #454: nicht im Speicher -> Git-Weg (hier ohne Repo)
-        assert code == 503 and b["fehler_code"] == "schreiben.dienst.repo_nicht_erreichbar", (code, b)
+        assert d.get("dritte-reise/buchung/B-01") == (200, {"gibt_es": False})   # #557: nicht im Speicher, kein Git-Weg
         kaputter_speicher(tmp_path, monkeypatch)
         code, b = d.get("beispielreise/buchung/B-01")
         assert code == 503 and b["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", b
@@ -609,10 +515,7 @@ def _git_aufrufe_im_quelltext(datei):
             for arg in k.args:
                 if isinstance(arg, (ast.List, ast.Tuple)) and any(isinstance(e, ast.Constant) and e.value == "git" for e in arg.elts):
                     funde.append(f'"git" in Argumenten (Z. {k.lineno})')
-    for k in baum.body:   # Modulebene: kein Import der Git-Module
-        namen = [a.name for a in k.names] if isinstance(k, ast.Import) else [k.module or ""] if isinstance(k, ast.ImportFrom) else []
-        funde += [f"import {n} auf Modulebene" for n in namen if n in ("schreiben_git", "stand_git")]
-    return funde
+    return funde   # Importe der entfernten Git-Module prüft test_rueckbau_557.test_git_module_sind_geloescht
 
 
 def test_schreiben_und_stand_enthalten_kein_git():
@@ -620,10 +523,8 @@ def test_schreiben_und_stand_enthalten_kein_git():
         assert _git_aufrufe_im_quelltext(datei) == [], datei
     quelle = (ENGINE / "stand.py").read_text(encoding="utf-8")
     assert not re.search(r"^\s*(import|from)\s+subprocess\b", quelle, re.M)
-    assert re.search(r"^\s+import stand_git\b|^\s+from stand_git import", quelle, re.M)          # nur in Funktionen
-    assert re.search(r"^\s+import schreiben_git\b|^\s+from schreiben_git import", (ENGINE / "schreiben.py").read_text(encoding="utf-8"), re.M)
-    for datei in ("schreiben_git.py", "stand_git.py"):
-        assert (ENGINE / datei).exists(), datei
+    for datei in ("schreiben_git.py", "stand_git.py"):     # #557: der Git-Weg ist entfernt
+        assert not (ENGINE / datei).exists(), datei
 
 
 def test_speicherweg_ruft_nie_git_auf(speicher, monkeypatch, tmp_path):
@@ -651,8 +552,8 @@ def test_speicherweg_ruft_nie_git_auf(speicher, monkeypatch, tmp_path):
 
 # ---------- AC-21: neue Texte in allen Sprachen ----------
 
-NEUE_SCHLUESSEL = ("speicher_nicht_erreichbar", "reise_nicht_im_speicher", "reise_im_speicher", "stand_geaendert",
-                   "einstellungen_nicht_lesbar")
+NEUE_SCHLUESSEL = ("speicher_nicht_erreichbar", "reise_nicht_im_speicher", "stand_geaendert",
+                   "einstellungen_nicht_lesbar")   # reise_im_speicher gehörte zum Git-Weg (#557)
 
 
 def test_neue_schluessel_in_allen_sprachen(monkeypatch):
@@ -668,32 +569,15 @@ def test_neue_schluessel_in_allen_sprachen(monkeypatch):
     assert len({texte.t("de", f"schreiben.dienst.{k}") for k in NEUE_SCHLUESSEL}) == len(NEUE_SCHLUESSEL)
 
 
-# ---------- AC-24: Messlauf ----------
-
-@pytest.mark.parametrize("weg", ["speicher", "git"])
-def test_messlauf_skript_gibt_kennzahlen_aus(weg, tmp_path):
-    skript = WURZEL / "betrieb" / "messlauf-schreibweg.py"
-    assert skript.exists()
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("FR_", "SB_", "KN_", "RM_"))}
-    env["TMPDIR"] = str(tmp_path)
-    r = subprocess.run([sys.executable, str(skript), "--weg", weg, "--anzahl", "2"], capture_output=True, text=True,
-                       env=env, cwd=tmp_path, timeout=600)
-    assert r.returncode == 0, r.stderr[-2000:]
-    aus = r.stdout
-    for wort in ("nacheinander", "parallel", "Anzahl", "Mittel", "p50", "p90", "p99", "Maximum", "504", "429", "5xx"):
-        assert wort in aus, (wort, aus)
-    assert re.search(r"Anzahl\D*\d+", aus)
-
-
-# ---------- AC-25: Doku ----------
-
-def test_doku_nennt_schalter_und_vorbedingungen():
+def test_doku_nennt_speicherweg_und_vorbedingungen():
     betrieb = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
-    for wort in ("FR_SPEICHERREISEN", "Speicherweg", "Stufe 3", "sicherung/"):
+    for wort in ("Reisespeicher", "Stufe 3", "sicherung/"):
         assert wort in betrieb, wort
     assert re.search(r"Nachprüfung[^\n]*(lokal|im Speicher)|(lokal|im Speicher)[^\n]*Nachprüfung", betrieb)
     adr = (WURZEL / "docs" / "adr" / "0009-reisespeicher.md").read_text(encoding="utf-8")
-    assert "FR_SPEICHERREISEN" in adr and "Stufe 2" in adr and "schreiben_git" in adr and "Stufe 5" in adr
+    assert "Stufe 2" in adr and "Rückbau (#557)" in adr
     zeitgrenzen = (WURZEL / "docs" / "specs" / "betrieb" / "schreibweg-zeitgrenzen.md").read_text(encoding="utf-8")
     assert "Speicherweg" in zeitgrenzen and "#347" in zeitgrenzen
-    assert re.search(r"^#?FR_SPEICHERREISEN=", (WURZEL / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8"), re.M)
+    assert "FR_SPEICHERREISEN" not in (WURZEL / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8")
+
+

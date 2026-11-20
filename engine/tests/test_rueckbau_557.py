@@ -332,8 +332,11 @@ def test_usage_texte_ohne_frieda_pfad():
 
 
 def test_units_ohne_handschritt(tmp_path):
-    """AC-21: Die neue Vorlage hat keine Zeile auf -schreiben; installierte Units mit der alten Zeile sind eine erlaubte
-    Abweichung (Exit 3), die Veröffentlichen über units.py installieren abgleicht, ohne Handschritt."""
+    """AC-21: Die neue Vorlage hat keinen Pfad auf -schreiben mehr. Geändert vom Developer (#557): ReadWritePaths steht
+    nicht in der Erlaubnisliste (units.py, Hilfsprogramm mit Root-Rechten), und die Spec verlangt sie unverändert. Eine
+    installierte Unit mit der alten Zeile ist deshalb eine gesperrte Abweichung (Exit 4, BLOCKED mit ReadWritePaths), nie
+    eine stille Installation; der Abgleich über units.py meldet sie, bis die Units einmal mit einrichten.sh --installieren
+    aus dem Klon installiert sind (wie bei #454). Exit 3 wäre nur mit einer neuen Erlaubnis für ReadWritePaths möglich."""
     repo = tmp_path / "repo"
     repo.mkdir()
     (tmp_path / "dienst" / "instanz").mkdir(parents=True)
@@ -351,11 +354,15 @@ def test_units_ohne_handschritt(tmp_path):
     installiert.mkdir()
     for name, text in neu.items():
         if name == "probe-schreiben.service":
-            text = text.replace("[Service]\n", f"[Service]\nReadWritePaths=-{repo}-schreiben\n", 1)
+            alt = f"ReadWritePaths=-{repo}-schreiben {repo} "
+            text = text.replace(f"ReadWritePaths={repo} ", alt, 1)
+            assert alt in text, text
         (installiert / name).write_text(text)
     r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], capture_output=True, text=True,
                        env={**env, "EI_SYSTEMD": str(installiert)})
-    assert r.returncode == 3, r.stdout + r.stderr
+    assert r.returncode == 4, r.stdout + r.stderr
+    gesperrt = [z for z in r.stdout.splitlines() if "BLOCKED" in z]
+    assert gesperrt and all("probe-schreiben.service" in z and "ReadWritePaths" in z for z in gesperrt), r.stdout
 
 
 # ======================================================================================================================
@@ -443,6 +450,19 @@ def test_altbau_nur_wenn_units_auf_klon_zeigen(ab):
     assert ab.altbau() == ALTBAU
     assert not ab.merker.exists() and ab.archive() == []
     assert ab.warnungen(r), r.stdout
+
+
+def test_altbau_reine_readwritepaths_abweichung_haelt_nicht_auf(ab):
+    """AC-21/AC-25 (Orchestrator, #557): Die Bedingung prüft nur den Ort. Weicht eine Unit des Klons nur in der gesperrten
+    Zeile ReadWritePaths ab (alte Schreibkopie <klon>-schreiben, Exit 4 bis zum Einmalschritt einrichten.sh --installieren),
+    wird der alte Bauordner trotzdem archiviert und entfernt."""
+    zeile = (f"probe-schreiben.service: BLOCKED, probe-schreiben.service: [Service] ReadWritePaths=-{ab.sw.klon}-schreiben "
+             f"{ab.sw.klon} {ab.sw.dienst} installed")
+    units = ausfuehrbar(ab.sw.t / "units-rwp.sh", f'#!/bin/sh\n[ "$1" = pruefen ] && echo "{zeile}" && exit 4\nexit 1\n')
+    r = _gruen(ab.lauf(VF_UNITS=str(units)))
+    assert ab.altbau() == [], r.stdout
+    assert ab.merker.exists() and len(ab.archive()) == 1
+    assert ab.warnungen(r) == []
 
 
 @pytest.mark.parametrize("reise", REISEN)

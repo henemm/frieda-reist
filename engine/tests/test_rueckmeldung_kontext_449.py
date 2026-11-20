@@ -163,12 +163,11 @@ def test_feedback_give_ohne_kontext():   # AC-10: Werkzeug rueckmeldung_geben (e
 # ---------- Seite (AC-1 bis AC-3, AC-8) ----------
 
 def gebaut(tmp_path, reise, rs_null=False):
-    # Der Reise-Stand kommt aus dem Git-Verlauf der Reise: eine eigene kleine Kopie als Git-Repo, unabhängig vom Ort des Repos (CI)
+    # Der Reise-Stand kommt aus dem Reisespeicher (#557): die Reise dort eintragen und aus dem Export bauen
+    import reisespeicher
     repo = tmp_path / "repo"
-    shutil.copytree(BEISPIELE / reise, repo / "reisen" / reise)
-    for z in (["init", "-q", "-b", "main"], ["config", "user.email", "test@example.invalid"], ["config", "user.name", "Ida Beispiel"],
-              ["add", "-A"], ["commit", "-qm", "Reise angelegt"]):
-        subprocess.run(["git", "-C", str(repo), *z], check=True, capture_output=True)
+    reisespeicher.importieren(BEISPIELE / reise, reise, wer="Ida Beispiel", grund="Reise angelegt")
+    reisespeicher.exportieren(reise, repo / "reisen" / reise)
     bauen.bauen(repo / "reisen" / reise, tmp_path / "web" / "r")
     index = tmp_path / "web" / "r" / "index.html"
     if rs_null:

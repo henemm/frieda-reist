@@ -4,14 +4,16 @@ docs/specs/betrieb/software-weg-454.md, ADR-0009 Stufe 5).
 Nur mit den beiden erfundenen Beispielreisen (beispielreise: Wanderung mit Varianten, Ida und Karl; stadtwochenende: Reise
 ohne Pläne, Tom und Lea) und erfundenen Testdaten, alles unter tmp_path.
 
+Seit #557 gibt es den Git-Weg, die Umschaltung und den Umzug aus der alten Anordnung nicht mehr; ihre Tests sind
+entfernt, die Tests des Klons bleiben.
+
 Aufbauten:
-  l1   Lieferung 1, Python-Ebene: kleiner Git-Bauordner (FR_WURZEL) mit beiden Beispielreisen unter reisen/, leerer
-       Speicher, kein FR_SPEICHERREISEN. Im Speicher ist, was im Speicher steht.
-  sp   Lieferung 1, Shell-Lauf (aus test_betrieb.py), hier ohne Wirkung von FR_SPEICHERREISEN.
+  l1   Lieferung 1, Python-Ebene: kleiner Bauordner (FR_WURZEL) mit beiden Beispielreisen unter reisen/, leerer Speicher.
+       Im Speicher ist, was im Speicher steht; Ordner unter reisen/ zählen nicht.
+  sp   Lieferung 1, Shell-Lauf im Software-Klon (aus test_betrieb.py), ohne Wirkung von FR_SPEICHERREISEN.
   sw   Lieferung 2, neuer Zustand: Software-Klon <FR_SEITEN>/_software aus einem lokalen Software-Repo (Kopie von betrieb/,
        engine als Verweis), Umzug fertig (<FR_DIENST>/umzug-454), letzter guter Stand in <FR_DIENST>/software-gut, beide
        Beispielreisen im Speicher. Kein Reisen-Repo, kein gh (Attrappe im PATH, die jeden Aufruf festhält und scheitert).
-  alt  Lieferung 2, alter Zustand (Bauordner mit Submodul frieda/ aus test_betrieb.vf) für den Umzug.
 
 Attrappen der Lieferung 2 (Vertrag für die Umsetzung):
   VF_CINACHWEIS <url> <commit>   Nachweis der Pflichtprüfungen; gibt „true“ aus, wenn grün; Exit ≠ 0: nicht abrufbar
@@ -39,8 +41,7 @@ BEISPIEL = WURZEL / "beispiel" / "reisen"
 sys.path.insert(0, str(ENGINE))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import schreiben as sb  # noqa: E402
-from test_betrieb import (vf, sp, git, ausfuehrbar, freigeben, SAUBER, T0, GIT, GIT_ERLAUBT,  # noqa: E402,F401
-                          ALARMSTELLEN)
+from test_betrieb import (sp, git, ausfuehrbar, SAUBER, T0, GIT, ALARMSTELLEN)  # noqa: E402,F401
 
 IDA = {"person": "ida", "name": "Ida", "rolle": "organisator"}
 TOM = {"person": "tom", "name": "Tom", "rolle": "organisator"}
@@ -79,7 +80,7 @@ def l1(tmp_path, monkeypatch):
     dienst = tmp_path / "_dienst"
     for k, v in {"FR_WURZEL": bau, "FR_INSTANZ": "probe", "FR_DIENST": dienst, "FR_SPEICHER": tmp_path / "_speicher",
                  "FR_SPERREN": tmp_path / "sperren", "FR_KONTEN": tmp_path / "konten",
-                 "FR_SCHREIBKOPIE": tmp_path / "keine-arbeitskopie", "SB_VEROEFFENTLICHEN": stub,
+                 "SB_VEROEFFENTLICHEN": stub,
                  "FR_PYTHON": sys.executable}.items():
         monkeypatch.setenv(k, str(v))
     tmp = tmp_path / "tmp"
@@ -102,11 +103,6 @@ def _nur_im_speicher(l, *reisen):
     for r in reisen:
         shutil.rmtree(l.bau / "reisen" / r)
     _commit(l.bau, "nur noch im Speicher")
-
-
-def _stempel(l, reise):
-    datei = l.dienst / "vergleich" / f"{reise}.json"
-    return json.loads(datei.read_text()) if datei.exists() else None
 
 
 def test_speicherreisen_liest_aus_dem_speicher(l1, monkeypatch):
@@ -165,74 +161,6 @@ def test_reise_anlegen_entsteht_im_speicher(l1, pfad, titel, wer):
     assert pfad in l1.instanz.speicherreisen()
 
 
-@pytest.mark.parametrize("reise", REISEN)
-def test_git_reise_wird_bei_gleich_umgeschaltet(l1, reise):
-    """AC-1.6: Eine Git-Reise, inhaltsgleich darstellbar, wird umgeschaltet: Anfangsvorgang, Stempel gleich, Speicherreise."""
-    assert reise not in l1.instanz.speicherreisen()
-    assert l1.rs.umschalten_automatisch(reise) == "gleich"
-    assert l1.rs.stand_nummer(reise) >= 1
-    s = _stempel(l1, reise)
-    assert s and s["ergebnis"] == "gleich" and s["baum"] == git(l1.bau, "rev-parse", f"HEAD:reisen/{reise}").strip()
-    assert l1.rs.umschaltung_frei(reise) == (True, "")
-    assert reise in l1.instanz.speicherreisen()
-    assert (l1.bau / "reisen" / reise / "reise.yaml").exists()            # nichts gelöscht
-
-
-def test_git_reise_bleibt_bei_unterschied_in_git(l1):
-    """AC-1.7: Vergleich „unterschiedlich“: die Reise bleibt in Git, nichts gelöscht oder geändert, kein zweiter Vorgang.
-    Seit F005 gilt das, wenn im Speicher auch geschrieben wurde (ein Vorgang außer Importen); nur Importe: siehe
-    test_offene_umschaltung_nur_importe_traegt_git_stand_nach."""
-    r = "beispielreise"
-    l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Ida", grund="Beispiel")          # offene Umschaltung
-    l1.rs.vorgang_schreiben(r, {"speicher-notiz.md": b"Im Speicher geschrieben (Beispielwert)\n"}, "Ida", "item_update",
-                            "Notiz im Speicher")
-    (l1.bau / "reisen" / r / "git-nachtrag.md").write_text("Änderung in Git (Beispielwert)\n")
-    _commit(l1.bau, "Nachtrag in Git")
-    kopf, stand = git(l1.bau, "rev-parse", "HEAD"), l1.rs.stand_nummer(r)
-    assert l1.rs.umschalten_automatisch(r) == "unterschied"
-    assert l1.rs.stand_nummer(r) == stand
-    assert git(l1.bau, "rev-parse", "HEAD") == kopf and not git(l1.bau, "status", "--porcelain")
-    assert r not in l1.instanz.speicherreisen()
-    s = _stempel(l1, r)
-    assert s is None or s["ergebnis"] != "gleich"
-
-
-def test_umschaltung_ist_idempotent(l1):
-    """AC-1.8: Eine schon umgeschaltete Reise bleibt, wie sie ist (kein zweiter Anfangsvorgang, gleicher Stempel)."""
-    r = "stadtwochenende"
-    assert l1.rs.umschalten_automatisch(r) == "gleich"
-    stand, stempel = l1.rs.stand_nummer(r), (l1.dienst / "vergleich" / f"{r}.json").read_bytes()
-    assert l1.rs.umschalten_automatisch(r) == "schon_im_speicher"
-    assert l1.rs.stand_nummer(r) == stand
-    assert (l1.dienst / "vergleich" / f"{r}.json").read_bytes() == stempel
-
-
-def test_umschaltung_nach_abbruch_wird_fortgesetzt(l1):
-    """AC-1.9: Abbruch zwischen Anfangsvorgang und Stempel: weiter Git-Reise; der nächste Versuch vergleicht gegen den
-    vorhandenen Anfangsvorgang und stempelt, ohne zweiten Anfangsvorgang."""
-    r = "beispielreise"
-    l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Ida", grund="Beispiel")          # Anfangsvorgang ohne Stempel
-    stand = l1.rs.stand_nummer(r)
-    assert r not in l1.instanz.speicherreisen()
-    assert l1.rs.umschalten_automatisch(r) == "gleich"
-    assert l1.rs.stand_nummer(r) == stand
-    assert _stempel(l1, r)["ergebnis"] == "gleich"
-    assert r in l1.instanz.speicherreisen()
-
-
-def test_bisherige_speicherreisen_bleiben_ohne_handschritt(l1):
-    """AC-1.10: Reisen, die vor Lieferung 1 über FR_SPEICHERREISEN aus dem Speicher veröffentlicht wurden (.gebaut), bleiben
-    Speicherreisen, auch wenn sie noch im Git-Bauordner liegen und FR_SPEICHERREISEN fehlt."""
-    _importieren(l1, *REISEN)
-    for r in REISEN:
-        datei = l1.dienst / "reise-stand" / f"{r}.gebaut"
-        datei.parent.mkdir(parents=True, exist_ok=True)
-        datei.write_text(f"{l1.rs.stand_nummer(r)} alt-kennung\n")
-    assert l1.instanz.speicherreisen() == REISEN
-    for r in REISEN:
-        assert l1.rs.umschaltung_frei(r) == (True, "")
-
-
 def test_schreibwerkzeuge_speicherreise_unveraendert(l1):
     """AC-1.11: Schreibwerkzeuge auf eine Reise im Speicher wirken wie zuvor, ohne FR_SPEICHERREISEN."""
     _nur_im_speicher(l1, "stadtwochenende")
@@ -252,31 +180,6 @@ def test_neue_reise_wird_vom_speicher_teil_gebaut(sp):
     assert "stadtwochenende" in sp["deploys"]()
     assert (sp["seiten"] / "stadtwochenende" / "daten.json").exists()
     assert not (sp["arbeit"] / "reisen" / "stadtwochenende").exists()
-
-
-def test_lauf_schaltet_git_reise_bei_gleich_um(sp):
-    """AC-1.6 im Lauf: Die Git-Reise zweitreise wird umgeschaltet (Stempel gleich, im Speicher), der Lauf bleibt grün."""
-    r = sp["lauf"](FR_SPEICHERREISEN="")
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert "zweitreise" in sp["speicher"].reisen(mit_vorgemerkten=True)
-    stempel = json.loads((sp["tmp"] / "dienst" / "vergleich" / "zweitreise.json").read_text())
-    assert stempel["ergebnis"] == "gleich"
-    assert (sp["arbeit"] / "reisen" / "zweitreise" / "reise.json").exists()
-
-
-def test_lauf_laesst_ungleiche_git_reise_mit_warnung_in_git(sp):
-    """AC-1.7 im Lauf: offene Umschaltung mit Unterschied -> Warnzeile mit Grund, keine high-Meldung, Lauf grün."""
-    ordner = sp["tmp"] / "anders"
-    (ordner).mkdir()
-    (ordner / "reise.json").write_text('{"anders": true}')
-    sp["speicher"].importieren(ordner, "zweitreise", "Test", grund="Anfang")       # Anfangsvorgang weicht von Git ab
-    sp["speicher"].vorgang_schreiben("zweitreise", {"notiz.md": b"1"}, "Test", "item_update", "im Speicher geschrieben")
-    stand = sp["speicher"].stand_nummer("zweitreise")
-    r = sp["lauf"](FR_SPEICHERREISEN="")
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert any("zweitreise" in z and "warning" in z.lower() for z in r.stdout.splitlines()), r.stdout
-    assert sp["speicher"].stand_nummer("zweitreise") == stand
-    assert not [z for z in sp["zeilen"]("melden.log") if z.startswith("high|")]
 
 
 # ======================================================================================================================
@@ -627,201 +530,14 @@ def test_skript_startet_sich_nach_umschalten_neu(sw):
 # ---------- Umzug einer bestehenden Instanz (alter Bauordner mit Submodul) ----------
 
 @pytest.fixture
-def alt(vf):
-    """vf mit Submodul frieda/ (Software: Kopie von betrieb/ und engine) und Einstellungen und Meldeweg im Reisen-Repo.
-    VF_VENV baut die Python-Umgebung (Verweis auf das Test-Python, scheitert über venv-kaputt), VF_UNITS gleicht die Units
-    ab: pruefen ist gleich, wenn units-ziel den FR_WURZEL des Aufrufs nennt; installieren schreibt ihn hinein."""
-    t = vf["tmp"]
-    quelle, software, seiten = t / "quelle", t / "software", t / "seiten"
-    _software_repo(software)
-    (quelle / "betrieb").mkdir()
-    (quelle / "betrieb" / "einstellungen.env").write_text("FR_TITEL=Probe (Beispielwert)\nFR_MELDEN=betrieb/melden.sh\n")
-    ausfuehrbar(quelle / "betrieb" / "melden.sh", f'#!/bin/sh\necho "$1|$2" >> {t}/melden-instanz.log\n')
-    subprocess.run(["git", "-C", str(quelle), "submodule", "add", "-q", str(software), "frieda"], check=True,
-                   capture_output=True, env={**os.environ, **GIT, **GIT_ERLAUBT})
-    _commit(quelle, "Software und Einstellungen")
-    venv = ausfuehrbar(t / "venv.sh", f'#!/bin/sh\necho "$1" >> {t}/venv.log\n[ ! -e {t}/venv-kaputt ] || exit 1\n'
-                                      f'mkdir -p "$1/bin" && ln -sf {sys.executable} "$1/bin/python"\n')
-    units = ausfuehrbar(t / "units-abgleich.sh", f"""#!/bin/sh
-echo "$1 $FR_WURZEL" >> {t}/units.log
-case "$1" in
-  pruefen) [ "$(cat {t}/units-ziel)" = "$FR_WURZEL" ] && exit 0; exit 3 ;;
-  installieren) echo "$FR_WURZEL" > {t}/units-ziel ;;
-esac
-""")
-    (t / "units-ziel").write_text(str(vf["arbeit"]) + "\n")
-    nachweis = ausfuehrbar(t / "nachweis.sh", "#!/bin/sh\necho true\n")
-    extra = {**GIT_ERLAUBT, "FR_SEITEN": str(seiten), "FR_PYTHON": sys.executable, "VF_VENV": str(venv),
-             "VF_UNITS": str(units), "VF_CINACHWEIS": str(nachweis), "FR_ABLAGE": str(t / "ablage"),
-             "FR_GRUNDKARTE_AUTO": "0", "VF_NPM": str(t / "kein-npm")}   # nie ein echtes npm (#628)
-    klon = seiten / "_software"
-
-    def lauf_alt(**mehr):
-        return vf["lauf"](**{**extra, **mehr})
-
-    def lauf_neu(**mehr):
-        env = {**vf["env"], **extra, "FR_WURZEL": str(klon), **mehr}
-        env.pop("FR_PYTHON", None)
-        return subprocess.run([str(klon / "betrieb" / "veroeffentlichen.sh")], env=env, capture_output=True, text=True)
-
-    def umzug():
-        datei = t / "dienst" / "umzug-454"
-        return datei.read_text().strip() if datei.exists() else None
-
-    def installiert():
-        return [z for z in vf["zeilen"]("units.log") if z.startswith("installieren")]
-
-    def bild(ordner):
-        """Dateien des alten Bauordners (ohne .git) mit Inhalt, dazu HEAD und Status."""
-        dateien = {p.relative_to(ordner).as_posix(): p.read_bytes() for p in sorted(ordner.rglob("*"))
-                   if p.is_file() and ".git" not in p.relative_to(ordner).parts and "__pycache__" not in p.parts}
-        return dateien, git(ordner, "rev-parse", "HEAD"), git(ordner, "status", "--porcelain")
-
-    return {**vf, "lauf_alt": lauf_alt, "lauf_neu": lauf_neu, "umzug": umzug, "installiert": installiert, "bild": bild,
-            "klon": klon, "software": software, "seiten": seiten, "quelle": quelle}
-
-
-def _units_umstellen(alt):
-    """Die einmalige Umstellung der Units bei der Auslieferung (Entscheidung 10, Schritt 4; einrichten.sh --installieren
-    aus dem Klon, als Betriebsbenutzer mit sudo): in der Attrappe zeigen die Units danach auf den Klon. Kein Aufruf über den Lauf."""
-    (alt["tmp"] / "units-ziel").write_text(str(alt["klon"]) + "\n")
-
-
-def test_umzug_ohne_handschritt(alt):
-    """AC-2.12: Der Lauf im alten Zustand legt den Klon an, kopiert Einstellungen und Meldeweg, baut die Python-Umgebung,
-    stellt die Units aber nicht selbst um (Warnzeile, alter Weg). Sind die Units bei der Auslieferung umgestellt, läuft
-    der nächste Lauf aus dem Klon, setzt den Umzug auf fertig und endet grün."""
-    r = alt["lauf_alt"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    dienst, klon = alt["tmp"] / "dienst", alt["klon"]
-    assert git(klon, "rev-parse", "HEAD").strip() == git(alt["software"], "rev-parse", "HEAD").strip()
-    assert (dienst / "instanz" / "einstellungen.env").read_text() == \
-        (alt["arbeit"] / "betrieb" / "einstellungen.env").read_text()
-    assert (dienst / "instanz" / "melden.sh").exists()
-    assert (dienst / "python" / "bin" / "python").exists()
-    assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])     # Units unverändert
-    assert not alt["installiert"](), alt["installiert"]()                            # der Lauf installiert nie
-    assert alt["umzug"]() != "fertig"
-    assert sum("units cannot be switched" in z for z in r.stdout.splitlines()) == 1, r.stdout
-    _units_umstellen(alt)
-    r = alt["lauf_neu"]()                                                            # Timer startet jetzt aus dem Klon
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["umzug"]() == "fertig"
-    assert not alt["installiert"]()
-
-
-def test_umzug_mit_umgestellten_units_im_alten_lauf_wird_fertig(alt):
-    """AC-2.12: Zeigen die Units schon auf den Klon (bei der Auslieferung umgestellt) und läuft noch einmal das alte
-    Skript, setzt es den Umzug auf fertig und macht im Klon weiter, ohne die Units anzufassen."""
-    alt["lauf_alt"]()
-    _units_umstellen(alt)
-    r = alt["lauf_alt"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["umzug"]() == "fertig"
-    assert not alt["installiert"]()
-
-
-def test_lauf_aus_dem_klon_setzt_umzug_fertig(alt):
-    """AC-2.12, Entscheidung 10 Schritt 5: Startet der Lauf schon aus dem Klon (Units bei der Auslieferung umgestellt) und
-    ist der Umzug noch nicht fertig, setzt er den Zustand selbst auf fertig und endet grün."""
-    t = alt["tmp"]
-    gesperrt = ausfuehrbar(t / "units-gesperrt.sh", f'#!/bin/sh\necho "$1 $FR_WURZEL" >> {t}/units.log\n'
-                                                    'echo "probe-veroeffentlichen.service: BLOCKED, ExecStart wanted"\nexit 4\n')
-    r = alt["lauf_alt"](VF_UNITS=str(gesperrt))
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert (alt["klon"] / ".git").exists() and alt["umzug"]() != "fertig"
-    _units_umstellen(alt)
-    r = alt["lauf_neu"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["umzug"]() == "fertig"
-
-
-def test_umzug_scheitert_vor_units_alles_beim_alten(alt):
-    """AC-2.13 und AC-2.20: Scheitert die Python-Umgebung, bleiben die Units beim alten Bauordner, das Veröffentlichen läuft
-    über den alten Weg weiter, keine high-Meldung; Klon und Einstellungen (Schritte 1 und 2) liegen schon bereit."""
-    (alt["tmp"] / "venv-kaputt").touch()
-    r = alt["lauf_alt"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert (alt["klon"] / ".git").exists()
-    assert (alt["tmp"] / "dienst" / "instanz" / "einstellungen.env").exists()
-    assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])
-    assert alt["umzug"]() != "fertig"
-    assert "warning" in r.stdout.lower()
-    assert not [z for z in alt["zeilen"]("melden.log") if z.startswith("high|")]
-
-
-def test_umzug_units_abweichend_nur_warnung_keine_umstellung(alt):
-    """AC-2.13: Sind 1 bis 3 grün und weichen die Units ab, schreibt der Lauf nur die Warnzeile und stellt nichts um: kein
-    installieren, Units beim alten Bauordner, Veröffentlichen über den alten Weg, kein high, nächster Lauf wieder so."""
-    for _ in range(2):
-        r = alt["lauf_alt"]()
-        assert r.returncode == 0, r.stdout + r.stderr
-        assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])
-        assert alt["umzug"]() != "fertig"
-    assert not alt["installiert"](), alt["installiert"]()
-    assert [z.split()[0] for z in alt["zeilen"]("units.log") if z.endswith(str(alt["klon"]))] == ["pruefen", "pruefen"]
-    assert not [z for z in alt["zeilen"]("melden.log") if z.startswith("high|")]
-
-
-def test_umzug_ist_wiederholbar(alt):
-    """AC-2.14: Ein halber Umzug wird fortgesetzt, ohne neuere Einstellungen zu überschreiben, den Klon neu anzulegen oder
-    die Units anzufassen; nach der Umstellung bleibt jeder weitere Lauf ohne Änderung."""
-    (alt["tmp"] / "venv-kaputt").touch()
-    alt["lauf_alt"]()
-    einst = alt["tmp"] / "dienst" / "instanz" / "einstellungen.env"
-    einst.write_text("FR_TITEL=Neuer am Zielort (Beispielwert)\n")
-    marke = alt["klon"] / ".git" / "marke"
-    marke.write_text("derselbe Klon\n")
-    (alt["tmp"] / "venv-kaputt").unlink()
-    r = alt["lauf_alt"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert einst.read_text() == "FR_TITEL=Neuer am Zielort (Beispielwert)\n"
-    assert marke.exists()
-    assert not alt["installiert"]()
-    _units_umstellen(alt)
-    for _ in range(2):
-        r = alt["lauf_neu"]()
-        assert r.returncode == 0, r.stdout + r.stderr
-        assert alt["umzug"]() == "fertig"
-    assert einst.read_text() == "FR_TITEL=Neuer am Zielort (Beispielwert)\n"
-    assert not alt["installiert"]()
-
-
-def test_alter_bauordner_bleibt_und_ist_rueckweg(alt):
-    """AC-2.15: Nach dem Umzug bleibt der alte Bauordner unverändert; Läufe im neuen Zustand fassen ihn nicht an."""
-    alt["lauf_alt"]()
-    _units_umstellen(alt)
-    r = alt["lauf_neu"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["umzug"]() == "fertig"
-    vorher = alt["bild"](alt["arbeit"])
-    assert "betrieb/einstellungen.env" in vorher[0] and "betrieb/melden.sh" in vorher[0]
-    alt["neuer_commit"]()                                                # neuer Stand im Reisen-Repo: zählt nicht mehr
-    r = alt["lauf_neu"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["bild"](alt["arbeit"]) == vorher
-
-
-def test_zustand_alt_startet_keinen_umzug(alt):
-    """AC-2.15: Mit Zustand alt (Rückweg gewählt) legt ein Lauf der alten Anordnung keinen Klon an und prüft keine Units
-    für den Klon; er veröffentlicht über den alten Weg."""
-    (alt["tmp"] / "dienst").mkdir(exist_ok=True)
-    (alt["tmp"] / "dienst" / "umzug-454").write_text("alt\n")
-    r = alt["lauf_alt"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert not alt["klon"].exists()
-    assert alt["umzug"]() == "alt"
-    assert not [z for z in alt["zeilen"]("units.log") if z.endswith(str(alt["klon"]))]
-
-
-def test_klon_lauf_laesst_zustand_alt(alt):
-    """AC-2.15: Ein Lauf aus dem Klon mit Zustand alt (Rückweg gewählt) lässt ihn alt, auch wenn die Units auf den Klon zeigen."""
-    alt["lauf_alt"]()
-    (alt["tmp"] / "dienst" / "umzug-454").write_text("alt\n")
-    _units_umstellen(alt)
-    r = alt["lauf_neu"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["umzug"]() == "alt"
+def test_lauf_aus_dem_klon_setzt_umzug_fertig(sw):
+    """AC-2.12, Entscheidung 10 Schritt 5: Startet der Lauf aus dem Klon (Units bei der Auslieferung umgestellt) und ist
+    ein begonnener Umzug noch nicht fertig, setzt er den Zustand selbst auf fertig und endet grün."""
+    (sw.dienst / "umzug-454").unlink()
+    (sw.dienst / "umzug-454.geprueft").write_text(sw.a + "\n")       # Spur eines begonnenen Umzugs
+    r = _ok(sw.lauf())
+    assert sw.lesen("umzug-454") == "fertig"
+    assert "Move (#454) done" in r.stdout, r.stdout
 
 
 def test_frische_instanz_im_klon_schreibt_keinen_umzug(sw):
@@ -832,31 +548,14 @@ def test_frische_instanz_im_klon_schreibt_keinen_umzug(sw):
     assert "Move (#454)" not in r.stdout, r.stdout
 
 
-def test_klon_lauf_vor_der_umstellung_wird_nicht_fertig(alt):
-    """AC-2.13: Startet jemand das Skript im Klon nach einem halben Umzug, während die Units noch auf den alten Bauordner
-    zeigen, bleibt der Umzug offen (sonst fehlte danach die Warnzeile)."""
-    alt["lauf_alt"]()
-    assert (alt["tmp"] / "units-ziel").read_text().strip() == str(alt["arbeit"])
-    r = alt["lauf_neu"]()
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert alt["umzug"]() != "fertig"
-
-
-def test_rueckweg_und_einmalige_umstellung_in_betrieb_md():
-    """AC-2.15 und Entscheidung 10, Schritt 4: docs/betrieb.md nennt für Umstellung und Rückweg einrichten.sh --installieren
-    (bewusst, als Betriebsbenutzer, der sich Root-Rechte mit sudo holt, und mit FR_DIENST, sonst findet das Skript die
-    Einstellungen der Instanz nicht; Befund der Auslieferung) und den Zustand alt; die Erlaubnisliste wird nicht als Weg
-    genannt."""
-    text = _abschnitt((WURZEL / "docs" / "betrieb.md").read_text(), "Umzug auf den Software-Klon")
-    rueckweg = text[text.index("**Rückweg:**"):]
-    assert "einrichten.sh --installieren" in rueckweg, rueckweg
-    assert "`alt`" in rueckweg
-    assert "einmalig" in text and "Auslieferung" in text
+def test_einmalige_umstellung_in_betrieb_md():
+    """AC-2.15 und Entscheidung 10, Schritt 4: docs/betrieb.md nennt einrichten.sh --installieren mit FR_DIENST (sonst
+    findet das Skript die Einstellungen der Instanz nicht; Befund der Auslieferung). Seit #557 gibt es keinen Rückweg und
+    keinen Zustand alt mehr."""
+    text = (WURZEL / "docs" / "betrieb.md").read_text()
+    assert "FR_DIENST=<FR_SEITEN>/_dienst <FR_SEITEN>/_software/betrieb/einrichten.sh`" in text
     assert "bis die Erlaubnisliste das zulässt" not in text
-    assert "FR_DIENST=<FR_SEITEN>/_dienst" in text and "als Root" not in text
-    assert "Betriebsbenutzer" in rueckweg
-    einrichten = (WURZEL / "docs" / "betrieb.md").read_text()
-    assert "FR_DIENST=<FR_SEITEN>/_dienst <FR_SEITEN>/_software/betrieb/einrichten.sh`" in einrichten
+    assert "Kein Rückweg" in text
 
 
 def test_umzugsfehler_und_nachweis_sind_keine_high_meldung(sw):
@@ -1077,96 +776,6 @@ def test_f003_gruene_pruefung_tauscht_die_umgebung_und_rueckfall_setzt_sie_zurue
     r = sw.lauf(**extra)
     assert r.returncode != 0 and sw.kopf() == c, r.stdout
     assert (live / ".requirements.sha256").read_text() == "alte-liste\n" and (live / "marke").exists()
-
-
-def test_f004_umzug_prueft_je_commit_einmal_und_warnt_einmal(alt):
-    """F004: Bleiben die Units gesperrt, wiederholen die folgenden Läufe Python-Umgebung und Prüfung für denselben Commit
-    nicht; die Warnzeile zu den Units steht einmal je Commit und Befund im Protokoll."""
-    t = alt["tmp"]
-    nachweis = ausfuehrbar(t / "nachweis-log.sh", f'#!/bin/sh\necho "$2" >> {t}/nachweis.log\necho true\n')
-    units = ausfuehrbar(t / "units-gesperrt.sh", f'#!/bin/sh\necho "$1" >> {t}/units.log\n'
-                                                 'echo "probe-veroeffentlichen.service: BLOCKED, ExecStart wanted"\nexit 4\n')
-    sub = git(alt["software"], "rev-parse", "HEAD").strip()
-    laeufe = [alt["lauf_alt"](VF_CINACHWEIS=str(nachweis), VF_UNITS=str(units))]
-    nach_dem_ersten = alt["zeilen"]("nachweis.log").count(sub)
-    laeufe += [alt["lauf_alt"](VF_CINACHWEIS=str(nachweis), VF_UNITS=str(units)) for _ in range(2)]
-    for r in laeufe:
-        assert r.returncode == 0, r.stdout + r.stderr
-    assert (t / "dienst" / "umzug-454.geprueft").read_text().strip() == sub
-    assert nach_dem_ersten >= 1 and alt["zeilen"]("nachweis.log").count(sub) == nach_dem_ersten, alt["zeilen"]("nachweis.log")
-    assert len(alt["zeilen"]("venv.log")) == 1
-    warnungen = [sum("units cannot be switched" in z for z in r.stdout.splitlines()) for r in laeufe]
-    assert warnungen == [1, 0, 0], warnungen
-    assert alt["umzug"]() != "fertig"
-
-
-def test_f005_offene_umschaltung_nur_importe_traegt_git_stand_nach(l1):
-    """F005: Offene Umschaltung, Git hat sich seitdem geändert, im Speicher stehen nur Importe: der Git-Stand wird als
-    weiterer Import angehängt (nichts gelöscht), erneut verglichen und gestempelt; die Reise ist Speicherreise."""
-    r = "beispielreise"
-    l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Ida", grund="Beispiel")          # offene Umschaltung
-    (l1.bau / "reisen" / r / "git-nachtrag.md").write_text("Änderung in Git (Beispielwert)\n")
-    _commit(l1.bau, "Nachtrag in Git")
-    stand = l1.rs.stand_nummer(r)
-    assert l1.rs.umschalten_automatisch(r) == "gleich"
-    assert l1.rs.stand_nummer(r) == stand + 1
-    assert l1.rs.datei(r, "git-nachtrag.md") == "Änderung in Git (Beispielwert)\n".encode()
-    assert l1.rs.stand_nummer(r) is not None and stand >= 1                         # der Anfangsvorgang bleibt im Verlauf
-    assert _stempel(l1, r)["ergebnis"] == "gleich" and r in l1.instanz.speicherreisen()
-
-
-def test_f005_offene_umschaltung_mit_schreibvorgang_bleibt_in_git(l1):
-    """F005: Stehen im Speicher auch andere Vorgänge als Importe, wird nichts nachgetragen: die Reise bleibt in Git."""
-    r = "stadtwochenende"
-    l1.rs.importieren(l1.bau / "reisen" / r, r, wer="Tom", grund="Beispiel")
-    l1.rs.vorgang_schreiben(r, {"notiz.md": b"Im Speicher (Beispielwert)\n"}, "Tom", "item_update", "Notiz")
-    (l1.bau / "reisen" / r / "git-nachtrag.md").write_text("Änderung in Git (Beispielwert)\n")
-    _commit(l1.bau, "Nachtrag in Git")
-    stand = l1.rs.stand_nummer(r)
-    assert l1.rs.umschalten_automatisch(r) == "unterschied"
-    assert l1.rs.stand_nummer(r) == stand and r not in l1.instanz.speicherreisen()
-
-
-def _units_erzeugen(tmp_path, alte_anordnung):
-    repo = tmp_path / "repo"
-    (repo / "betrieb").mkdir(parents=True, exist_ok=True)
-    (repo / "betrieb" / "einstellungen.env").write_text("FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
-    (repo / ".gitmodules").unlink(missing_ok=True)
-    if alte_anordnung:
-        (repo / ".gitmodules").write_text("")
-    aus = tmp_path / ("aus-alt" if alte_anordnung else "aus-neu")
-    env = {**SAUBER, "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "EI_ZIEL": str(aus),
-           "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen"}
-    r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], capture_output=True, text=True, env=env)
-    assert r.returncode == 0, r.stdout + r.stderr
-    return repo, env, {p.name: p.read_text() for p in (aus / "systemd").iterdir()}
-
-
-def test_f006_units_der_alten_anordnung_gleichen_den_installierten(tmp_path):
-    """F006: In der alten Anordnung starten die Units die Skripte aus dem Submodul frieda/ und nennen FR_DIENST nicht als
-    Umgebungswert, wie die heute installierten; units.py pruefen meldet nichts (Exit 0). Im Klon: Pfade im Klon."""
-    repo, _, neu = _units_erzeugen(tmp_path, False)
-    assert f"ExecStart={repo}/betrieb/veroeffentlichen.sh" in neu["probe-veroeffentlichen.service"]
-    assert "Environment=FR_DIENST=" in neu["probe-veroeffentlichen.service"]
-    # heute installiert (vor #454): Skripte unter <Bauordner>/frieda/betrieb; FR_DIENST als Umgebungswert nur in den Units,
-    # die ihn schon vorher hatten (Rückmeldedienst, Konnektor, Push), nicht in denen, die #454 ihn im Klon gibt
-    durch_454 = {"probe-veroeffentlichen.service", "probe-waechter.service", "probe-schreiben.service"}
-    installiert = tmp_path / "systemd"
-    installiert.mkdir()
-    for name, text in neu.items():
-        text = text.replace(f"{repo}/betrieb/", f"{repo}/frieda/betrieb/")
-        text = text.replace(f"{tmp_path}/srv/probe/_dienst/python/bin/python", f"{repo}/engine/.venv/bin/python")   # Python vorher
-        if name in durch_454:
-            assert "Environment=FR_DIENST=" in text, name
-            text = "\n".join(z for z in text.split("\n") if not z.startswith("Environment=FR_DIENST="))
-        (installiert / name).write_text(text)
-    _, env, alt_ = _units_erzeugen(tmp_path, True)
-    assert f"ExecStart={repo}/frieda/betrieb/veroeffentlichen.sh" in alt_["probe-veroeffentlichen.service"]
-    assert f"ExecStart={repo}/frieda/betrieb/waechter.sh" in alt_["probe-waechter.service"]
-    assert not any("Environment=FR_DIENST=" in alt_[n] for n in durch_454)
-    r = subprocess.run([sys.executable, str(BETRIEB / "units.py"), "pruefen"], capture_output=True, text=True,
-                       env={**env, "EI_SYSTEMD": str(installiert)})
-    assert r.returncode == 0, r.stdout + r.stderr
 
 
 def test_f007_aufrufhilfen_der_werkzeuge_nennen_den_neuen_weg():

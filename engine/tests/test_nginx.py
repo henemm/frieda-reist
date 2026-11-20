@@ -551,7 +551,7 @@ def test_reise_baustein_ueber_helfer(tmp_path):
     (repo / "reisen/beispielreise").mkdir(parents=True)
     (repo / "reisen/beispielreise/reise.yaml").write_text("titel: x\n")
     (repo / "engine").symlink_to(ENGINE)
-    env = {**SAUBER, "FR_WURZEL": str(repo), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
+    env = {**SAUBER, "FR_WURZEL": str(repo), "FR_REISENORDNER": str(repo / "reisen"), "FR_INSTANZ": "probe", "FR_SEITEN": str(tmp_path / "seiten"),
            "FR_ABLAGE": str(tmp_path / "ablage"), "FR_KONNEKTOR": str(tmp_path / "konnektor"), "FR_RM_PORT": "8871",
            "FR_ADRESSE": "https://example.invalid", "FR_NGINX_SNIPPETS": str(snippets), "FR_SUDO": "",
            "FR_NGINX_REISE_HELFER": str(helfer), "FS_ABRUF": str(abruf), "FS_NGINX_TEST": "false", "FS_NGINX_LADEN": "false", "FS_WARTEN": "0", "FS_429_WARTEN": "0"}

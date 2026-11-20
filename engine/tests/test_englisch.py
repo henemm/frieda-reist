@@ -14,7 +14,7 @@ import schnittstelle  # noqa: E402
 import schreiben as sb  # noqa: E402
 import texte  # noqa: E402
 from englisch_hilfe import BEZEICHNER, datenformat, deutsche_woerter, ohne_schluessel  # noqa: E402
-from test_schreiben import git, repo, schreiber  # noqa: E402,F401  (repo: Fixture)
+from test_schreiben import repo, schreiber, vorgang_text, neue_zeilen, auf_main, _rs  # noqa: E402,F401  (repo: Fixture)
 
 NAMEN = {"ida", "karl"}   # Personen der Tests
 
@@ -42,34 +42,29 @@ def test_neue_englische_reise_enthaelt_kein_deutsches_wort(repo):
     # Antwort an die Person, in ihrer Sprache gesetzt
     assert a.get("text_teile")
     funde["antwort"] = deutsche_woerter(texte.Satz.aus_json(a["text_teile"]).text("en"), erlaubt)
-    funde["commit"] = deutsche_woerter(git(origin, "log", "-1", "--format=%B", "main"), erlaubt)
-    for f in git(origin, "ls-tree", "-r", "--name-only", "main", "reisen/coast-trip-2027").splitlines():
+    funde["commit"] = deutsche_woerter(vorgang_text("%B"), erlaubt)
+    for f in sorted(_rs().aktueller_stand("coast-trip-2027")):
         if f.endswith((".png", ".svg", ".jpg", ".gpx", ".pmtiles")):
             continue
-        funde[f] = deutsche_woerter(ohne_schluessel(git(origin, "show", f"main:{f}")), erlaubt_datei)
+        funde[f] = deutsche_woerter(ohne_schluessel(auf_main("coast-trip-2027", f)), erlaubt_datei)
     funde = {k: v for k, v in funde.items() if v}
     assert not funde, f"deutsche Wörter in einer englischen Reise: {funde}"
 
 
-def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei):
-    """Deutsche Wörter in Antwort, Commit-Nachricht und den hinzugefügten Zeilen des letzten Commits auf main."""
+def _funde_des_letzten_commits(origin, antwort, erlaubt_text, erlaubt_datei, reise="coast-trip-2027"):
+    """Deutsche Wörter in Antwort, Titel und Grund und den hinzugefügten Zeilen des neuesten Vorgangs im Reisespeicher."""
     funde = {}
     if antwort.get("text_teile"):
         funde["antwort"] = deutsche_woerter(am_rand(texte.Satz.aus_json(antwort["text_teile"]).text("en")), erlaubt_text)
     else:
         funde["antwort"] = deutsche_woerter(am_rand(str(antwort.get("text"))), erlaubt_text)
-    funde["commit"] = deutsche_woerter(git(origin, "log", "-1", "--format=%B", "main"), erlaubt_text)
-    diff = git(origin, "show", "-U0", "--format=", "main")
-    neu = "\n".join(z[1:] for z in diff.splitlines() if z.startswith("+") and not z.startswith("+++"))
+    funde["commit"] = deutsche_woerter(vorgang_text("%B"), erlaubt_text)
+    diff = neue_zeilen(reise)
+    neu = "\n".join(z for _, z in diff)
     funde["dateien"] = deutsche_woerter(ohne_schluessel(neu), erlaubt_datei)
     funde = {k: v for k, v in funde.items() if v}
     if funde.get("dateien"):   # die Zeilen dazu, damit ein Fund in der Meldung steht und nicht gesucht werden muss
-        datei, zeilen = "", []
-        for z in diff.splitlines():
-            if z.startswith("+++"):
-                datei = z[6:]
-            elif z.startswith("+") and deutsche_woerter(ohne_schluessel(z[1:]), erlaubt_datei):
-                zeilen.append(f"{datei}: {z[1:].strip()}")
+        zeilen = [f"{datei}: {z.strip()}" for datei, z in diff if deutsche_woerter(ohne_schluessel(z), erlaubt_datei)]
         funde["zeilen"] = zeilen[:6]
     return funde
 

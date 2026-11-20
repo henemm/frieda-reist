@@ -1,8 +1,9 @@
 """Tests für engine/schreiben.py: der Konnektor schreibt direkt in die Ontologie der Reise (ADR-0001, Paket O-3).
 
-Aufbau: ein erfundenes Reisen-Repo mit der Beispielreise und einem „origin“ daneben; die Software liegt als Verweis engine/
-im Repo (wie der Verweis engine -> frieda/engine einer Instanz). Veröffentlichen ist ein Stummel, der nur festhält, dass er
-gerufen wurde."""
+Aufbau (#557: nur noch der Reisespeicher): ein Bauordner ohne Reisen und der Reisespeicher unter tmp_path mit der
+Beispielreise. Die Schreiber der Tests holen vor jedem Schreibvorgang den neuesten Stand aus dem Speicher in ihre
+Arbeitskopie (wie vorgang_speicher im Dienst, nur im Testprozess). Veröffentlichen ist ein Stummel, der nur festhält, dass
+er gerufen wurde. „Auf main“ heißt hier: im neuesten Stand im Reisespeicher."""
 import datetime
 import json
 import re
@@ -35,40 +36,81 @@ def git(ordner, *args):
 
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
-    """-> (wurzel, origin, arbeit, veroeffentlicht-Datei). FR_*-Werte zeigen auf den Testordner."""
-    origin = tmp_path / "origin.git"
-    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
-    wurzel = tmp_path / "reisen"
-    subprocess.run(["git", "clone", "-q", str(origin), str(wurzel)], check=True, capture_output=True)
-    git(wurzel, "config", "user.email", "test@example.invalid")
-    git(wurzel, "config", "user.name", "Test")
-    git(wurzel, "checkout", "-q", "-b", "main")
-    shutil.copytree(BEISPIEL, wurzel / "reisen" / "beispielreise")
+    """-> (wurzel, speicher, arbeit, veroeffentlicht-Datei). FR_*-Werte zeigen auf den Testordner; die Beispielreise liegt im
+    Reisespeicher (tmp_path/_speicher)."""
+    for k in list(os.environ):
+        if k.startswith(("FR_", "SB_", "KN_", "RM_")):
+            monkeypatch.delenv(k)
+    wurzel = tmp_path / "bau"
+    wurzel.mkdir()
     (wurzel / "engine").symlink_to(WURZEL / "engine")
-    (wurzel / ".gitignore").write_text("dist/\n__pycache__/\n")
-    git(wurzel, "add", "-A")
-    git(wurzel, "commit", "-q", "-m", "Beispielreise")
-    git(wurzel, "push", "-q", "-u", "origin", "main")
-    arbeit = tmp_path / "reisen-schreiben"
+    speicher = tmp_path / "_speicher"
+    arbeit = tmp_path / "arbeit"
     stempel = tmp_path / "veroeffentlicht"
     stub = tmp_path / "veroeffentlichen.sh"
     stub.write_text(f"#!/bin/sh\necho \"$FR_WURZEL\" >> {stempel}\n")
     stub.chmod(0o755)
-    for k in list(os.environ):
-        if k.startswith(("FR_", "SB_", "KN_", "RM_")):
-            monkeypatch.delenv(k)
     monkeypatch.setenv("FR_WURZEL", str(wurzel))
-    monkeypatch.setenv("FR_SCHREIBKOPIE", str(arbeit))
+    monkeypatch.setenv("FR_SPEICHER", str(speicher))
     monkeypatch.setenv("SB_VEROEFFENTLICHEN", str(stub))
     monkeypatch.setenv("FR_KONTEN", str(tmp_path / "konten"))
     monkeypatch.setenv("FR_SPERREN", str(tmp_path))
     monkeypatch.setenv("FR_DIENST", str(tmp_path / "_dienst"))   # Reise-Stände (engine/stand.py)
-    return wurzel, origin, arbeit, stempel
+    import reisespeicher
+    reisespeicher.importieren(BEISPIEL, "beispielreise", wer="Test", grund="Beispielreise")
+    return wurzel, speicher, arbeit, stempel
 
 
-def arten_auf_main(origin):
-    text = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/arten.yaml"],
-                          check=True, capture_output=True, text=True).stdout
+def _rs():
+    import reisespeicher
+    return reisespeicher
+
+
+def auf_main(reise, rel):
+    """Datei der Reise im neuesten Stand des Reisespeichers (Text)."""
+    return _rs().datei(reise, rel).decode("utf-8")
+
+
+def letzter_vorgang():
+    """Nummer des neuesten Vorgangs im Reisespeicher als Text (die Antwort nennt sie in commit)."""
+    from contextlib import closing
+    with closing(_rs().db()) as v:
+        n = v.execute("SELECT MAX(nummer) FROM vorgaenge").fetchone()[0]
+    return str(n)
+
+
+def vorgang_text(form="%B"):
+    """Titel (%s), Grund (%b) oder beides (%B) des neuesten Vorgangs (an der Stelle der Commit-Nachricht des Git-Wegs)."""
+    from contextlib import closing
+    with closing(_rs().db()) as v:
+        titel, grund = v.execute("SELECT titel, grund FROM vorgaenge ORDER BY nummer DESC LIMIT 1").fetchone()
+    return {"%s": titel, "%b": grund or "", "%B": f"{titel}\n\n{grund or ''}"}[form]
+
+
+def neue_zeilen(reise):
+    """Hinzugefügte Zeilen des neuesten Vorgangs der Reise -> [(datei, zeile)] (an der Stelle eines Diffs des Git-Wegs)."""
+    v = _rs().verlauf(reise, n=1)[0]
+    zeilen = []
+    for rel in v["dateien"]:
+        try:
+            neu = _rs().datei(reise, rel, bis=v["nummer"]).decode("utf-8")
+        except (KeyError, UnicodeDecodeError):
+            continue
+        try:
+            alt = set(_rs().datei(reise, rel, bis=v["nummer"] - 1).decode("utf-8").splitlines())
+        except (KeyError, UnicodeDecodeError):
+            alt = set()
+        zeilen += [(rel, z) for z in neu.splitlines() if z not in alt]
+    return zeilen
+
+
+def nachtragen(reise, dateien, titel="Nachtrag"):
+    """Ein Vorgang außerhalb des Schreibwegs (wie früher ein Commit von Hand): dateien {rel: text}."""
+    _rs().vorgang_schreiben(reise, {k: v.encode("utf-8") for k, v in dateien.items()}, "Test", "test", titel)
+
+
+def arten_auf_main(origin=None):
+    text = auf_main("beispielreise", "plan/arten.yaml")
     return yaml.safe_load(text)["arten"], text
 
 
@@ -92,9 +134,38 @@ def _bestaetigungen_in_jeder_sprache(monkeypatch):
     monkeypatch.setattr(sb.Schreiber, "schreiben", pruefen)
 
 
+class SpeicherSchreiber(sb.Schreiber):
+    """Schreiber der Tests: holt vor jedem Schreibvorgang den neuesten Stand der Reise aus dem Reisespeicher in die eigene
+    Arbeitskopie und setzt basis, wie vorgang_speicher im Dienst (dort je Vorgang in einem temporären Ordner)."""
+
+    def schreiben(self, reise, werkzeug, anfrage):
+        rs = _rs()
+        if self.arbeit.exists():
+            shutil.rmtree(self.arbeit)
+        if werkzeug in sb.REPO_WERKZEUGE:
+            (self.arbeit / "reisen").mkdir(parents=True)
+            for name in rs.reisen(mit_vorgemerkten=True):
+                (self.arbeit / "reisen" / name).mkdir()
+            self.basis = 0
+        elif sb.REISE_MUSTER.match(reise or "") and reise in rs.reisen(mit_vorgemerkten=True):
+            self.basis = rs.stand_nummer(reise)
+            rs.exportieren(reise, self.arbeit / "reisen" / reise, bis=self.basis)
+        else:
+            (self.arbeit / "reisen").mkdir(parents=True)
+            self.basis = 0
+        return super().schreiben(reise, werkzeug, anfrage)
+
+    def vorbereiten(self, reise="beispielreise"):
+        """Arbeitskopie mit dem neuesten Stand der Reise (für Prüfungen ohne Schreibvorgang, etwa wer_pruefen)."""
+        if self.arbeit.exists():
+            shutil.rmtree(self.arbeit)
+        self.basis = _rs().stand_nummer(reise)
+        _rs().exportieren(reise, self.arbeit / "reisen" / reise, bis=self.basis)
+
+
 def schreiber(repo):
     wurzel, _, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
+    s = SpeicherSchreiber(wurzel, arbeit)
     s.vorbereiten()
     return s
 
@@ -153,11 +224,11 @@ def test_kategorie_anlegen_aendern_und_ablehnen(repo):
 def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
     wurzel, origin, arbeit, stempel = repo
     s = schreiber(repo)
-    vorher = git(origin, "rev-parse", "main")
+    vorher = letzter_vorgang()
     a = s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt",
                                                                          "beschreibung": "bewirtschaftete Berghütte", "grund": "GR-Etappen"}})
     assert a["ok"] and "Refugi" in a["text"] and "refugi" in a["text"] and "Aufenthalt" in a["text"]
-    assert git(origin, "rev-parse", "main") == a["commit"] != vorher
+    assert letzter_vorgang() == a["commit"] != vorher
     import texte
     en = texte.Satz.aus_json(a["text_teile"]).text("en")   # dieselbe Bestätigung für eine englische Person (M9)
     assert en.startswith("Kind “Refugi” created: key refugi, basic form ") and "angelegt" not in en, en
@@ -168,12 +239,10 @@ def test_art_anlegen_geht_nach_main_und_wird_veroeffentlicht(repo):
     assert "merkmale" not in r                       # Merkmale kommen im Gespräch dazu (merkmal_definieren)
     assert text.startswith("# Arten und Merkmale dieser Reise") and meldet(text, "inhalt.schreiben.gepflegt") and "Ida" in text
     assert "hotel" in arten and arten["hotel"]["merkmale"]["preis"]["name"] == "Preis pro Nacht"   # Bestand unverändert
-    nachricht = git(origin, "log", "-1", "--format=%B", "main")
-    assert nachricht.startswith("Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt")
+    nachricht = vorgang_text("%B")
+    assert nachricht.startswith("Art „Refugi“ (refugi) angelegt")
     assert "Ida (organisator)" in nachricht and "art_definieren" in nachricht and "Grund: GR-Etappen" in nachricht
     assert anstoss_merker(repo).is_file() and not stempel.exists()   # #624: Merker statt Skriptlauf
-    assert not git(arbeit, "status", "--porcelain")   # Arbeitskopie sauber, steht auf dem neuen Stand
-    assert git(arbeit, "rev-parse", "HEAD") == a["commit"]
 
 
 def test_art_bewegung_summiert_bekommt_berechnete_merkmale_und_folge_auch(repo):
@@ -209,7 +278,7 @@ def test_art_aendern_und_ablehnungen(repo):
     s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"art": "wandern", "farbe": "gruen"}})
     arten, _ = arten_auf_main(origin)
     assert arten["wandern"]["lesetext"]["charakter"]["name"] == "Charakter"   # Gliederung des Lesetexts bleibt
-    stand = git(origin, "rev-parse", "main")
+    stand = letzter_vorgang()
     s.vorbereiten()
     for args, text in (
         ({"art": "hotel"}, "nichts daran soll sich ändern"),
@@ -224,8 +293,7 @@ def test_art_aendern_und_ablehnungen(repo):
     ):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", "art_definieren", {**IDA, "args": args})
-        assert not git(arbeit, "status", "--porcelain"), args
-    assert git(origin, "rev-parse", "main") == stand
+    assert letzter_vorgang() == stand
 
 
 # ---------- Merkmale ----------
@@ -320,13 +388,13 @@ def test_probebau_lehnt_ab_und_laesst_nichts_zurueck(repo):
     bleibt sauber, main unverändert."""
     _, origin, arbeit, stempel = repo
     s = schreiber(repo)
-    stand = git(origin, "rev-parse", "main")
+    stand = letzter_vorgang()
     with pytest.raises(sb.Ablehnung, match="nicht bauen"):
         s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "pension", "merkmal": "fruehstueck",
                                                                              "werte": ["ja", "nein"]}})
-    assert not git(arbeit, "status", "--porcelain")
-    assert git(origin, "rev-parse", "main") == stand and not stempel.exists() and not anstoss_merker(repo).exists()
+    assert letzter_vorgang() == stand and not stempel.exists() and not anstoss_merker(repo).exists()
     # Issue #142: der Probebau liefert die Warnungen des Baus (bezug, text); die Beispielreise hat keine
+    s.vorbereiten()                                  # die Arbeitskopie ist je Vorgang frisch (#557): neuester Stand
     assert s.probebau(arbeit / "reisen" / "beispielreise") == []
 
 
@@ -384,11 +452,8 @@ def test_rolle_aus_reise_yaml_gilt_vor_dem_konnektor(repo):
 
 
 def test_archivierte_reise_ist_schreibgeschuetzt(repo):
-    wurzel, _, _, _ = repo
-    p = wurzel / "reisen/beispielreise/reise.yaml"
-    p.write_text(p.read_text(encoding="utf-8").replace("wert: planung", "wert: archiv"), encoding="utf-8")
-    git(wurzel, "commit", "-qam", "archiviert")
-    git(wurzel, "push", "-q", "origin", "main")
+    nachtragen("beispielreise", {"reise.yaml": auf_main("beispielreise", "reise.yaml").replace("wert: planung", "wert: archiv")},
+               "archiviert")
     s = schreiber(repo)
     with pytest.raises(sb.Ablehnung, match="archiviert"):
         s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
@@ -396,21 +461,15 @@ def test_archivierte_reise_ist_schreibgeschuetzt(repo):
 
 # ---------- Gleichzeitigkeit und Dienst ----------
 
-def test_setzt_auf_zwischenzeitliche_aenderung_auf(repo, tmp_path):
-    wurzel, origin, arbeit, _ = repo
+def test_setzt_auf_zwischenzeitliche_aenderung_auf(repo):
+    """Hat jemand anderes inzwischen geschrieben, setzt der nächste Vorgang auf dem neuesten Stand auf; nichts geht verloren."""
+    _, origin, _, _ = repo
     s = schreiber(repo)
-    # Jemand anderes schreibt inzwischen nach main (eine Sitzung in Claude Code …)
-    andere = tmp_path / "andere"
-    subprocess.run(["git", "clone", "-q", str(origin), str(andere)], check=True, capture_output=True)
-    git(andere, "config", "user.email", "x@example.invalid")
-    git(andere, "config", "user.name", "X")
-    (andere / "reisen/beispielreise/CLAUDE.md").write_text("Notiz\n", encoding="utf-8")
-    git(andere, "commit", "-qam", "Notiz")
-    git(andere, "push", "-q", "origin", "main")
+    nachtragen("beispielreise", {"CLAUDE.md": "Notiz\n"}, "Notiz")       # jemand anderes schreibt inzwischen
     a = s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
-    assert git(origin, "rev-parse", "main") == a["commit"]
-    assert git(origin, "log", "--format=%s", "main").splitlines()[1] == "Notiz"
-    assert "refugi" in arten_auf_main(origin)[0]
+    assert letzter_vorgang() == a["commit"]
+    assert [v["was"] for v in _rs().verlauf("beispielreise", n=2)][1] == "Notiz"
+    assert "refugi" in arten_auf_main(origin)[0] and auf_main("beispielreise", "CLAUDE.md") == "Notiz\n"
 
 
 def test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie(repo):
@@ -443,7 +502,7 @@ def test_dienst_nur_fuer_den_konnektor_und_mit_dem_code_der_arbeitskopie(repo):
         assert post("Reise_X/art_definieren", anfrage, geheim)[0] == 404
         code, a = post("beispielreise/art_definieren", anfrage, geheim)
         assert code == 200 and a["ok"] and "Refugi" in a["text"], a
-        assert git(origin, "rev-parse", "main") == a["commit"] and "refugi" in arten_auf_main(origin)[0]
+        assert letzter_vorgang() == a["commit"] and "refugi" in arten_auf_main(origin)[0]
         assert anstoss_merker(repo).is_file() and not stempel.exists()   # #624: Merker statt Skriptlauf
         code, a = post("beispielreise/art_definieren", {**KARL, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}}, geheim)
         assert code == 422 and not a["ok"] and "organisers" in a["fehler"]
@@ -478,9 +537,9 @@ def test_sperre_je_reise_und_begrenzte_wartezeit(repo, monkeypatch):
         fcntl.flock(f, fcntl.LOCK_EX)
         code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
         assert code == 429 and not a["ok"] and "gleich noch einmal" in a["fehler"]
-        # eine andere Reise wartet nicht darauf (hier: gibt es im Repo nicht, aber die Sperre hält sie nicht auf)
+        # eine andere Reise wartet nicht darauf (hier: gibt es im Speicher nicht, aber die Sperre hält sie nicht auf)
         code, a = sb.anwenden_extern(s, "andere-reise", "art_definieren", anfrage)
-        assert code == 422 and "does not exist in the repo" in a["fehler"]
+        assert code == 503 and a["fehler_code"] == "schreiben.dienst.reise_nicht_im_speicher", a
     code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
     assert code == 200 and a["ok"]
 
@@ -495,27 +554,6 @@ def test_ablehnungsgrund_steht_im_protokoll(repo, capsys):
     assert zeile.startswith("Rejected art_definieren 422: ") and "organisers" in zeile and len(zeile) < 260
 
 
-def _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=True):
-    """Ein Vorgang, dessen Anwenden die Frist überschreitet (Arbeitskopie steht, Vorbereiten tut nichts). -> (Code, Antwort, Protokoll)"""
-    wurzel, _, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
-    anfrage = {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}}
-    sb.anwenden_extern(s, "beispielreise", "art_definieren", {**anfrage, "args": {"bezeichnung": "Vorlauf", "grundform": "aufenthalt"}})
-    capsys.readouterr()
-    if origin_kaputt:
-        git(wurzel, "remote", "set-url", "origin", str(wurzel / "gibt-es-nicht.git"))   # die Ergebnisprüfung kommt nicht ans Ziel
-    monkeypatch.setattr(sb.Schreiber, "vorbereiten", lambda self: None)
-    monkeypatch.setattr(sb, "ZEIT_GESAMT", 0.05)
-    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", anfrage)
-    return code, a, capsys.readouterr().err
-
-
-def test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit(repo, monkeypatch, capsys):
-    code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys)
-    assert code == 504 and not a["ok"] and meldet(a["fehler"], "schreiben.dienst.zu_lange_ungeprueft")
-    assert "Timeout art_definieren 504: aborted, unchecked" in err
-
-
 def test_arten_text_ist_die_form_der_datei():
     text = sb.arten_text({"hotel": {"grundform": "aufenthalt", "name": "Hotel", "merkmale": {"preis": {"name": "Preis", "typ": "geld"}}}},
                          "Probe.")
@@ -525,18 +563,24 @@ def test_arten_text_ist_die_form_der_datei():
     assert "&id" not in sb.arten_text({"a": {"merkmale": {"x": {"werte": ["j", "n"]}, "y": {"werte": ["j", "n"]}}}}, "")
 
 
-def test_aufruf_anwenden(repo, capsys):
+def test_aufruf_anwenden(repo, monkeypatch, capsys):
+    """Der Unterprozess `schreiben.py anwenden` schreibt aus der Arbeitskopie (FR_SCHREIBKOPIE) mit dem Stand
+    FR_SPEICHER_BASIS genau einen Vorgang; ohne Basis antwortet er 503 (#557: kein anderer Weg). Ohne Befehl: Exit 1."""
     wurzel, origin, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
-    s.vorbereiten()
+    basis = _rs().stand_nummer("beispielreise")
+    _rs().exportieren("beispielreise", arbeit / "reisen" / "beispielreise", bis=basis)
     anfrage = json.dumps({**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
-    r = subprocess.run([sys.executable, str(WURZEL / "engine/schreiben.py"), "anwenden", "beispielreise", "art_definieren"],
-                       input=anfrage, capture_output=True, text=True, env=dict(os.environ))
+    befehl = [sys.executable, str(WURZEL / "engine/schreiben.py"), "anwenden", "beispielreise", "art_definieren"]
+    env = {**os.environ, "FR_SCHREIBKOPIE": str(arbeit)}
+    r = subprocess.run(befehl, input=anfrage, capture_output=True, text=True, env=env)
+    code, a = json.loads(r.stdout)
+    assert code == 503 and a["fehler_code"] == "schreiben.dienst.reise_nicht_im_speicher", r.stderr
+    r = subprocess.run(befehl, input=anfrage, capture_output=True, text=True, env={**env, "FR_SPEICHER_BASIS": str(basis)})
     code, a = json.loads(r.stdout)
     assert code == 200 and a["ok"], r.stderr
-    assert "refugi" in arten_auf_main(origin)[0]
-    assert sb.main(["vorbereiten"]) == 0 and "steht auf" in capsys.readouterr().out
+    assert "refugi" in arten_auf_main(origin)[0] and _rs().stand_nummer("beispielreise") == basis + 1
     assert sb.main([]) == 1
+    assert sb.main(["vorbereiten"]) == 1                      # #557: den Befehl gibt es nicht mehr
 
 
 # ---------- Werte an Dingen (plan/routen.yaml) ----------
@@ -547,9 +591,8 @@ def lese(ding):
     return routen.lage_merkmale_falten(ding, "", lambda *a, **k: None)
 
 
-def routen_auf_main(origin):
-    text = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/routen.yaml"],
-                          check=True, capture_output=True, text=True).stdout
+def routen_auf_main(origin=None):
+    text = auf_main("beispielreise", "plan/routen.yaml")
     return yaml.safe_load(text), text
 
 
@@ -564,8 +607,8 @@ def test_wert_eintragen_an_unterkunft_strecke_und_option(repo):
     assert r["unterkuenfte"]["U-02"]["merkmale"]["preis"] == {"wert": "95 €", "geprueft": datetime.date(2026, 10, 29), "quelle": "Website der Pension"}
     assert r["unterkuenfte"]["U-02"]["merkmale"]["fruehstueck"] == {"wert": "inklusive", "quelle": "erfunden (Beispiel)", "notiz": "Beispielwert, erfunden"}   # Nachbarn unberührt
     assert "# Alle Unterkünfte sind erfunden" in text and "# Buchungsstand: aus der Buchung B-01" in text        # Kommentare bleiben
-    assert git(origin, "log", "-1", "--format=%s", "main") == "Beispielreise – Malerweg in vier Tagen: U-02 Pension Burgblick: Preis pro Nacht „85 €“ → „95 €“"
-    assert "Karl (mitwirkend)" in git(origin, "log", "-1", "--format=%b", "main")
+    assert vorgang_text("%s") == "U-02 Pension Burgblick: Preis pro Nacht „85 €“ → „95 €“"
+    assert "Karl (mitwirkend)" in vorgang_text("%b")
     # Nur die geänderte Stelle: der Rest der Datei ist zeichengleich
     import difflib
     diff = [z for z in difflib.unified_diff(vorher.splitlines(), text.splitlines(), lineterm="", n=0) if z[:1] in "+-" and z[:3] not in ("+++", "---")]
@@ -592,13 +635,12 @@ def test_wert_eintragen_an_unterkunft_strecke_und_option(repo):
     r, _ = routen_auf_main(origin)
     o = next(o for o in r["wahlstellen"]["V-03"]["optionen"] if o["id"] == "V-03.a")
     assert o["merkmale"]["lage"] == {"wert": "oben am Markt", "quelle": "Ida im Gespräch"}
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_wert_eintragen_ablehnungen(repo):
     _, origin, arbeit, _ = repo
     s = schreiber(repo)
-    stand = git(origin, "rev-parse", "main")
+    stand = letzter_vorgang()
     for args, text in (
         ({"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "geprueft": "2026-10-29"}, "„quelle“ fehlt"),
         ({"ziel": "U-02", "merkmal": "preis", "wert": "95 €", "quelle": "x"}, "veränderlich"),
@@ -617,12 +659,11 @@ def test_wert_eintragen_ablehnungen(repo):
     ):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": args})
-        assert not git(arbeit, "status", "--porcelain"), args
     # Gäste schreiben nicht
     with pytest.raises(sb.Ablehnung, match="nur lesen"):
         s.schreiben("beispielreise", "wert_eintragen", {"person": "mo", "name": "Mo", "rolle": "gast",
                                                         "args": {"ziel": "U-02", "merkmal": "lage", "wert": "x", "quelle": "x"}})
-    assert git(origin, "rev-parse", "main") == stand
+    assert letzter_vorgang() == stand
 
 
 def test_wert_eintragen_typ_link(repo):
@@ -635,7 +676,6 @@ def test_wert_eintragen_typ_link(repo):
     for falsch in ("pension-burgblick.example", "bitte anrufen", "ftp://pension.example/"):
         with pytest.raises(sb.Ablehnung, match="keine Adresse"):
             s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "U-02", "merkmal": "buchungsseite", "wert": falsch, "quelle": "x"}})
-        assert not git(arbeit, "status", "--porcelain"), falsch
     a = s.schreiben("beispielreise", "wert_eintragen", {**IDA, "args": {"ziel": "U-02", "merkmal": "buchungsseite",
                                                                         "wert": "https://pension-burgblick.example/buchen", "quelle": "Website der Pension"}})
     assert a["ok"], a
@@ -669,8 +709,7 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     assert u["ort"] == "O-09" and u["art"] == "pension" and "typ" not in u and u["buchungslink"].startswith("https://")
     assert u["merkmale"]["preis"] == {"wert": "90 €", "quelle": "Website pension-elbblick.example", "geprueft": datetime.date(2026, 10, 29)}
     assert r["orte"]["O-09"] == {"name": "Rathen", "hinweis": "Kurort", "quelle": "Karte"}
-    ids = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/ids.yaml"], check=True,
-                                        capture_output=True, text=True).stdout)
+    ids = yaml.safe_load(auf_main("beispielreise", "ids.yaml"))
     assert ids["O"] == 9 and ids["U"] == 5                      # Marken steigen, IDs werden nie neu vergeben
     s.vorbereiten()
     a = s.schreiben("beispielreise", "ding_anlegen", {**KARL, "args": {"was": "strecke", "titel": "Fähre Rathen → Stadt Wehlen", "von": "O-09",
@@ -699,12 +738,11 @@ def test_ding_option_wahlstelle_und_frage_anlegen(repo):
     w = r["wahlstellen"]["V-07"]
     assert w["wann"] == "planung" and w["an"] == ["T-01"] and w["art"] == "bahn" and w["frage"] == "F-04" and "bereich" not in w
     assert [o["id"] for o in w["optionen"]] == ["V-07.a", "V-07.b"] and w["optionen"][1]["minus"] == ["Auto steht vier Tage"]
-    fragen = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/offene-fragen.md"], check=True, capture_output=True, text=True).stdout
+    fragen = auf_main("beispielreise", "offene-fragen.md")
     assert "| F-04 | Anreise nach Stadt Wehlen: welche Option? (V-07) | vor Abreise | offen |" in fragen
     s.vorbereiten()
     a = s.schreiben("beispielreise", "frage_anlegen", {**KARL, "args": {"text": "Hat die Pension im Mai offen?", "bis": "März 2027", "bezug": ["U-05"]}})
     assert a["text"].startswith("Offene Frage F-05 angelegt: Hat die Pension im Mai offen? (U-05), bis März 2027")
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_lage_eintragen(repo):
@@ -814,7 +852,7 @@ def test_ding_aendern_und_ablehnungen(repo):
     assert {k: v for k, v in r["orte"]["O-03"].items() if k != "merkmale"} == {"name": "Hohnstein (Sächs. Schweiz)", "art": "ort_am_weg", "an": "O-07", "quelle": "OpenStreetMap; Hinweis Wikipedia (Artikel zum Ort)"}
     assert r["orte"]["O-03"]["merkmale"]["koordinaten"]["wert"] == [50.979, 14.1125]   # die Lage des Orts bleibt (ADR-0008)
     s.vorbereiten()
-    stand = git(origin, "rev-parse", "main")
+    stand = letzter_vorgang()
     for werkzeug, args, text in (
         ("ding_aendern", {"ziel": "U-02"}, "Nichts zu ändern"),
         ("ding_aendern", {"ziel": "T-01", "hinweis": "x"}, "muss eine Unterkunft"),
@@ -837,15 +875,13 @@ def test_ding_aendern_und_ablehnungen(repo):
     ):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", werkzeug, {**IDA, "args": args})
-        assert not git(arbeit, "status", "--porcelain"), (werkzeug, args)
-    assert git(origin, "rev-parse", "main") == stand
+    assert letzter_vorgang() == stand
 
 
 # ---------- Entscheiden und Plan ----------
 
-def fragen_auf_main(origin):
-    return subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/offene-fragen.md"], check=True,
-                          capture_output=True, text=True).stdout
+def fragen_auf_main(origin=None):
+    return auf_main("beispielreise", "offene-fragen.md")
 
 
 def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
@@ -865,7 +901,7 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     assert a_opt["verlauf"][-1] == {"datum": heute, "status": "ersetzt", "wer": "Ida", "durch": "V-01.b",
                                     "grund": "nicht gewählt, V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück“ ist gewählt"}
     assert f"| vor Abreise | geklärt {heute.strftime('%-d.%-m.%Y')}: Ida, Zum Lichtenhainer Wasserfall" in fragen_auf_main(origin)
-    assert git(origin, "log", "-1", "--format=%s", "main").endswith("V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück“ gewählt")
+    assert vorgang_text("%s").endswith("V-01.b „Zum Lichtenhainer Wasserfall und mit der Kirnitzschtalbahn zurück“ gewählt")
     # gewählt an einer Wahlstelle mit gewählter Option: die alte wird ersetzt (eigener Verlaufseintrag), die Frage bleibt geklärt
     s.vorbereiten()
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "gewaehlt", "grund": "Abendessen im Haus"}})
@@ -880,7 +916,6 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="alle Optionen sind verworfen"):
         s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-03.b", "status": "verworfen", "grund": "doch zu laut"}})
-    assert not git(arbeit, "status", "--porcelain")
     # verworfen ohne verbleibende Wahl (V-01.a bleibt vorgeschlagen): Wahlstelle offen, Frage wieder offen
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "verworfen", "grund": "Fahrplan passt nicht"}})
     assert "V-01 ist danach offen, Frage F-01 wieder offen" in a["text"]
@@ -889,7 +924,7 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     assert next(x for x in r["wahlstellen"]["V-01"]["optionen"] if x["id"] == "V-01.a")["verlauf"][-1]["status"] == "vorgeschlagen"
     assert "| vor Abreise | offen |" in fragen_auf_main(origin)
     s.vorbereiten()
-    stand = git(origin, "rev-parse", "main")
+    stand = letzter_vorgang()
     for args, text in (
         ({"option": "V-01.b", "status": "verworfen", "grund": "x"}, "schon verworfen"),
         ({"option": "V-01.a", "status": "ersetzt", "grund": "x"}, "ersetzt_durch"),
@@ -902,10 +937,9 @@ def test_entscheiden_schreibt_verlauf_und_klaert_die_frage(repo):
     ):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", "entscheiden", {**IDA, "args": args})
-        assert not git(arbeit, "status", "--porcelain"), args
     with pytest.raises(sb.Ablehnung, match="nur Organisator:innen"):
         s.schreiben("beispielreise", "entscheiden", {**KARL, "args": {"option": "V-01.a", "status": "verworfen", "grund": "x"}})
-    assert git(origin, "rev-parse", "main") == stand
+    assert letzter_vorgang() == stand
 
 
 def test_tag_aendern_nur_organisator(repo):
@@ -929,7 +963,6 @@ def test_tag_aendern_nur_organisator(repo):
             s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": args})
     # ein Plan, der nicht aufgeht (Strecke beginnt woanders): der Probebau meldet nur Warnungen, kein Fehler -> geht durch; aber
     # eine Nacht an einem Ort ohne Unterkunft bleibt erlaubt. Hier reicht: die Arbeitskopie ist sauber.
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_tag_aendern_abfolge_mit_wahlstelle_und_optional(repo):
@@ -947,7 +980,6 @@ def test_tag_aendern_abfolge_mit_wahlstelle_und_optional(repo):
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="gibt es nicht"):
         s.schreiben("beispielreise", "tag_aendern", {**IDA, "args": {"ziel": "T-02", "aufenthalte": ["V-99"]}})
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_ding_aendern_titel_benennt_halt_unterkunft_und_ort_um(repo):
@@ -973,7 +1005,7 @@ def test_ding_aendern_titel_benennt_halt_unterkunft_und_ort_um(repo):
 # ---------- Wissen, Fragen schließen, Personen ----------
 
 def datei_auf_main(origin, rel):
-    return subprocess.run(["git", "-C", str(origin), "show", f"main:reisen/beispielreise/{rel}"], check=True, capture_output=True, text=True).stdout
+    return auf_main("beispielreise", rel)
 
 
 def test_dateien_der_reise_folgen_ihrer_sprache(repo):
@@ -1034,7 +1066,6 @@ def test_wissen_schreiben_neu_und_ergaenzen(repo):
                        ({"titel": "Neu", "text": "x", "quelle": "y", "gruppe": "egal"}, "„gruppe“"), ({"titel": "Neu", "text": "x", "quelle": "y", "datei": "../x.md"}, "„datei“")):
         with pytest.raises(sb.Ablehnung, match=text):
             s.schreiben("beispielreise", "wissen_schreiben", {**IDA, "args": args})
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_frage_schliessen_und_person_schreiben(repo):
@@ -1069,7 +1100,6 @@ def test_frage_schliessen_und_person_schreiben(repo):
         s.schreiben("beispielreise", "person_schreiben", {**IDA, "args": {"schluessel": "anna", "rolle": "gast"}})
     with pytest.raises(sb.Ablehnung, match="Name „Ida“ kommt zweimal"):
         s.schreiben("beispielreise", "person_schreiben", {**IDA, "args": {"schluessel": "ida2", "vorname": "Ida"}})
-    assert not git(arbeit, "status", "--porcelain")
 
 
 # ---------- Status, Einstellungen, neue Reise ----------
@@ -1131,7 +1161,6 @@ def test_status_und_einstellungen_der_reise(repo):
         s.schreiben("beispielreise", "person_schreiben", {**KARL, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "organisator"}})
     a = s.schreiben("beispielreise", "person_schreiben", {**KARL, "args": {"schluessel": "anna", "vorname": "Anna", "rolle": "mitwirkend"}})
     assert "Anna steht jetzt in der Reise" in a["text"]
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_neue_reise_aus_der_anfrage(repo):
@@ -1143,17 +1172,16 @@ def test_neue_reise_aus_der_anfrage(repo):
                                         "wer": "Ida", "notiz": "Idee aus dem Gespräch."}}}
     a = s.schreiben("skiwoche-allgaeu-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {"auftrag": anfrage}})
     assert a["ok"] and a["text"].startswith("Die Reise „Skiwoche im Allgäu“ ist angelegt (Ordner skiwoche-allgaeu-2027, Status Idee).")
-    assert git(origin, "log", "-1", "--format=%s", "main") == "Reisen: Neue Reise skiwoche-allgaeu-2027 angelegt"
-    dateien = subprocess.run(["git", "-C", str(origin), "ls-tree", "-r", "--name-only", "main", "reisen/skiwoche-allgaeu-2027"], check=True, capture_output=True, text=True).stdout
-    assert "reisen/skiwoche-allgaeu-2027/reise.yaml" in dateien and "reisen/skiwoche-allgaeu-2027/ids.yaml" in dateien
-    r = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/skiwoche-allgaeu-2027/reise.yaml"], check=True, capture_output=True, text=True).stdout)
+    assert vorgang_text("%s") == "Neue Reise skiwoche-allgaeu-2027 angelegt"
+    dateien = _rs().aktueller_stand("skiwoche-allgaeu-2027")
+    assert "reise.yaml" in dateien and "ids.yaml" in dateien
+    r = yaml.safe_load(auf_main("skiwoche-allgaeu-2027", "reise.yaml"))
     assert r["status"]["wert"] == "idee" and r["personen"]["karl"]["rolle"] == "mitwirkend"
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="gibt es schon"):
         s.schreiben("skiwoche-allgaeu-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {"auftrag": anfrage}})
     with pytest.raises(sb.Ablehnung, match="keine neue Reise"):
         s.schreiben("x-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {}})
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_neue_reise_bekommt_beim_ersten_eintrag_einen_plan(repo):
@@ -1179,21 +1207,20 @@ def test_neue_reise_bekommt_beim_ersten_eintrag_einen_plan(repo):
     s.vorbereiten()
     a = s.schreiben("kurztrip-2027", "tag_anlegen", {**IDA, "args": {"titel": "Anreise (Beispiel)", "strecken": ["E-01"]}})
     assert "T-01" in a["text"], a["text"]
-    text = git(origin, "show", "main:reisen/kurztrip-2027/plan/routen.yaml")
+    text = auf_main("kurztrip-2027", "plan/routen.yaml")
     r = yaml.safe_load(text)
     assert r["start"] == {"datum": datetime.date(2027, 4, 10)} and r["ende"] == {"datum": datetime.date(2027, 4, 12)}
     assert r["orte"]["O-01"]["ausserhalb"] is True and r["route"] == ["T-01"] and r["tage"]["T-01"]["strecken"] == ["E-01"]
-    routen_cfg = json.loads(git(origin, "show", "main:reisen/kurztrip-2027/reise.json"))["routen"]
+    routen_cfg = json.loads(auf_main("kurztrip-2027", "reise.json"))["routen"]
     assert routen_cfg["datei"] == "plan/routen.yaml" and routen_cfg["tagesplan"][1] == "Tagesplan"
     assert routen_cfg["unterkuenfte"][1] == "Unterkünfte" and routen_cfg["tagesplan"][0] != routen_cfg["unterkuenfte"][0]
     # der Generator baut die Reise mit dem Plan: der Tag steht auf der Seite
     import bauen
-    git(wurzel, "pull", "-q")
+    _rs().exportieren("kurztrip-2027", wurzel / "reisen" / "kurztrip-2027")
     d = bauen.Bauer(wurzel / "reisen" / "kurztrip-2027", str(wurzel / "dist")).daten()
     assert [t["id"] for t in d["route"]["tage"]] == ["T-01"]
     # die Seite zeigt die Tage: ein Abschnitt trägt den Tagesplan (sonst steht nur plan.md da)
     assert [a["id"] for a in d["abschnitte"] if a.get("route_ansicht") == "tagesplan"] == [routen_cfg["tagesplan"][0]]
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_aufenthalt_ohne_nacht_anlegen_an_den_tag_haengen_und_buchen(repo):
@@ -1459,8 +1486,7 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
     """Hängen mehrere Wahlstellen an derselben Frage (etwa „Winteröffnung der Hotels prüfen“), klärt eine Wahl die Frage
     erst, wenn an jeder dieser Wahlstellen etwas gewählt ist."""
     wurzel, origin, _, _ = repo
-    r = wurzel / "reisen/beispielreise/plan/routen.yaml"
-    text = r.read_text(encoding="utf-8")
+    text = auf_main("beispielreise", "plan/routen.yaml")
     alt = "  V-03:\n    titel: Unterkunft in Hohnstein\n    wann: planung   # art: (die Art der Dinge) kommt hier aus den Optionen: die Art der ersten Unterkunft\n    frage: F-02\n"
     assert alt in text
     # erfunden: V-01 und V-03 teilen F-01, an V-03 ist noch nichts gewählt
@@ -1469,9 +1495,7 @@ def test_gemeinsame_frage_bleibt_offen_bis_alles_gewaehlt(repo):
                   '{datum: 2026-10-20, status: verworfen, wer: Ida, grund: "Anstieg am Morgen"}'):
         assert zeile in text
         text = text.replace(zeile, zeile.replace("gewaehlt", "vorgeschlagen").replace("verworfen", "vorgeschlagen"))
-    r.write_text(text, encoding="utf-8")
-    git(wurzel, "commit", "-qam", "V-03 hängt an F-01")
-    git(wurzel, "push", "-q")
+    nachtragen("beispielreise", {"plan/routen.yaml": text}, "V-03 hängt an F-01")
     s = schreiber(repo)
     a = s.schreiben("beispielreise", "entscheiden", {**IDA, "args": {"option": "V-01.b", "status": "gewaehlt", "grund": "Bahn"}})
     assert "Frage F-01 bleibt offen, weil dort noch V-03 zu entscheiden ist." in a["text"], a["text"]
@@ -1499,21 +1523,8 @@ def test_zeitgrenzen_liegen_unter_der_des_konnektors():
     assert sb.OSM_FRIST_VORAB == 45 and sb.OSM_ZEIT == 12
 
 
-def test_haengendes_vorbereiten_gibt_504_in_der_zeit(repo, monkeypatch):
-    import time
-    wurzel, _, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
-    git(wurzel, "config", "protocol.ext.allow", "always")
-    git(wurzel, "remote", "set-url", "origin", "ext::sleep 5")      # git fetch hängt
-    monkeypatch.setattr(sb, "ZEIT_GESAMT", 1)
-    start = time.monotonic()
-    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "X", "grundform": "aufenthalt"}})
-    assert time.monotonic() - start < 1 + sb.ZEIT_PRUEFUNG + 0.5
-    assert code == 504 and not a["ok"] and "nicht eingetragen" in a["fehler"]
-
-
-def test_git_weg_legt_anstoss_merker(repo, monkeypatch):
-    """#624 AC-4: Ein gelungenes Speichern über den Git-Weg legt den Merker <FR_DIENST>/veroeffentlichen-anstoss; der
+def test_schreibweg_legt_anstoss_merker(repo, monkeypatch):
+    """#624 AC-4: Ein gelungenes Speichern über den Schreibweg (Reisespeicher, #557) legt den Merker <FR_DIENST>/veroeffentlichen-anstoss; der
     Schreibweg startet keinen Prozess, und das Anstoß-Protokoll veroeffentlichen-anstoss.log entsteht nicht mehr."""
     wurzel, _, arbeit, stempel = repo
     gerufen = []
@@ -1532,28 +1543,6 @@ def test_git_weg_legt_anstoss_merker(repo, monkeypatch):
     assert (dienst / "veroeffentlichen-anstoss").is_file()
     assert not (dienst / "veroeffentlichen-anstoss.log").exists()
     assert gerufen == [] and not stempel.exists()
-
-
-def test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde(repo, monkeypatch, capsys):
-    wurzel, _, arbeit, _ = repo
-    # Die Prüfung selbst: Kennung auf origin/main gefunden / nicht gefunden
-    monkeypatch.setenv("FR_VORGANG", "k4711")
-    monkeypatch.setattr(sb.Schreiber, "veroeffentlichen_anstossen", lambda self: None)   # sys.stderr hat unter capsys keinen Dateideskriptor
-    s = schreiber(repo)
-    s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
-    assert "Frieda-Vorgang: k4711" in git(wurzel, "log", "-1", "--format=%B", "origin/main")
-    assert sb.vorgang_eingetragen(s, "k4711") is True
-    assert sb.vorgang_eingetragen(s, "k0815") is False
-    # Die Antworten nach einem Abbruch im Anwenden
-    for ergebnis, code_soll, ok_soll, text, zeile in [(True, 200, True, "ist aber eingetragen", "saved"),
-                                                      (False, 504, False, "nicht eingetragen", "not saved"),
-                                                      (None, 504, False, "prüfen, ob es angekommen ist", "unchecked")]:
-        monkeypatch.setattr(sb, "vorgang_eingetragen", lambda s_, kennung, e=ergebnis: e)
-        code, a, err = _abbruch_im_anwenden(repo, monkeypatch, capsys, origin_kaputt=False)
-        assert code == code_soll and a["ok"] is ok_soll, (ergebnis, code, a)
-        assert text in (a.get("text") or a.get("fehler") or "")
-        assert f"Done art_definieren {code_soll} in " in err
-        assert f"Timeout art_definieren 504: aborted, {zeile}" in err
 
 
 def test_kommando_mit_frist_beendet_die_ganze_prozessgruppe(tmp_path):
@@ -1604,20 +1593,6 @@ def test_unerwarteter_fehler_gibt_500_und_protokoll(repo, monkeypatch, capsys, t
     assert code == 500 and not a["ok"] and meldet(a["fehler"], "schreiben.dienst.fehlgeschlagen")
     assert "Error art_definieren 500: FileNotFoundError" in err
     assert "Done art_definieren 500 in " in err
-
-
-def test_veraltete_sperre_von_git_blockiert_die_reise_nicht(repo, capsys):
-    # Nach einem Abbruch kann git eine index.lock in der Arbeitskopie hinterlassen
-    wurzel, _, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
-    assert sb.anwenden_extern(s, "beispielreise", "art_definieren",
-                              {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})[0] == 200
-    gitdir = Path(git(Path(f"{arbeit}-beispielreise"), "rev-parse", "--absolute-git-dir"))
-    (gitdir / "index.lock").touch()
-    code, a = sb.anwenden_extern(s, "beispielreise", "art_definieren",
-                                 {**IDA, "args": {"bezeichnung": "Finca", "grundform": "aufenthalt"}})
-    assert code == 200, (code, a, capsys.readouterr().err)
-    assert not (gitdir / "index.lock").exists()
 
 
 # ---------- Abgleich 29.10.2026 (Paket 3): die Tür für alle Grundformen ----------
@@ -1719,7 +1694,6 @@ def test_wahlstelle_und_option_aendern(repo):
         s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-01.b", "erfordert": ["V-01.a"]}})
     with pytest.raises(sb.Ablehnung, match="in dinge nur Unterkünfte"):
         s.schreiben("beispielreise", "option_aendern", {**KARL, "args": {"ziel": "V-03.a", "dinge": ["U-02", "E-01"]}})
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_kennzahlen_an_strecken_schreiben(repo):
@@ -1779,10 +1753,10 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
     a = s.schreiben("beispielreise", "wissen_aendern", {**KARL, "args": {"ziel": "W-01", "text": "Drei Wandertage auf dem Malerweg (Test).",
                                                                          "quelle": "Beispielreise (Test)", "neuer_titel": "Überblick", "grund": "knapper"}})
     assert meldet(a["text"], "schreiben.antwort.abschnitt.inhalt_ersetzt") and "titel „Übersicht“ → „Überblick“" in a["text"]
-    dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
+    dossier = auf_main("beispielreise", "inhalt/etappen.md")
     assert "## Überblick\n\nDrei Wandertage auf dem Malerweg (Test).\n\n*Herkunft: Beispielreise (Test); berichtigt am" in dossier
     assert "\n## Übersicht\n" not in dossier and "## E-01 " in dossier
-    cfg = json.loads(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/reise.json"], check=True, capture_output=True, text=True).stdout)
+    cfg = json.loads(auf_main("beispielreise", "reise.json"))
     assert cfg["abschnitte"]["inhalt/etappen.md"]["Überblick"] == ["W-01", "uebersicht"] and "Übersicht" not in cfg["abschnitte"]["inhalt/etappen.md"]
     # Lesetext: Rubriken der Art (wandern), fremdes Stichwort abgelehnt, Zusammenfassung ersetzt
     s.vorbereiten()
@@ -1791,7 +1765,7 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
     a = s.schreiben("beispielreise", "lesetext_schreiben", {**KARL, "args": {"ziel": "E-01", "quelle": "eigene Begehung (Test)",
         "text": "**Charakter.** Ein Tag mit Fels und Wald (Test).\n\n**Ankommen.** Früh in Hohnstein."}})
     assert "Lesetext der Etappe E-01 ersetzt" in a["text"]
-    dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
+    dossier = auf_main("beispielreise", "inhalt/etappen.md")
     assert "### Zusammenfassung\n**Charakter.** Ein Tag mit Fels und Wald (Test).\n\n**Ankommen.** Früh in Hohnstein.\n\n*Herkunft: eigene Begehung (Test); geschrieben am" in dossier
     assert "Ein abwechslungsreicher erster Tag" not in dossier and "### Eckdaten" in dossier
     s.vorbereiten()
@@ -1801,9 +1775,9 @@ def test_wissen_aendern_und_lesetext_schreiben(repo):
     s.vorbereiten()
     a = s.schreiben("beispielreise", "lesetext_schreiben", {**KARL, "args": {"ziel": "E-01", "text": "", "grund": "steht jetzt am Tag (Test)"}})
     assert meldet(a["text"], "schreiben.antwort.lesetext.entfernt") and "Früh in Hohnstein." in a["text"]
-    verlauf = git(origin, "log", "-1", "--format=%B", "main")
+    verlauf = vorgang_text("%B")
     assert "Früh in Hohnstein." in verlauf and "steht jetzt am Tag (Test)" in verlauf
-    dossier = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/inhalt/etappen.md"], check=True, capture_output=True, text=True).stdout
+    dossier = auf_main("beispielreise", "inhalt/etappen.md")
     abschnitt = dossier[dossier.index("## E-01 "):dossier.index("## E-02 ")]
     assert "### Zusammenfassung" not in abschnitt and "### Eckdaten" in abschnitt
 
@@ -1820,7 +1794,7 @@ def test_reise_aendern_und_plaene(repo):
     assert "bis – → 17.5.2027" in a["text"] and "untertitel" in a["text"]
     # Issue #142: Start und Ende des Plans setzt ein eigenes Werkzeug; der Text verweist darauf statt auf die Datei
     assert "start_ende_setzen" in a["text"] and "plan/routen.yaml" not in a["text"]
-    ry = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/reise.yaml"], check=True, capture_output=True, text=True).stdout)
+    ry = yaml.safe_load(auf_main("beispielreise", "reise.yaml"))
     assert ry["zeitraum"]["bis"] == datetime.date(2027, 5, 17) and ry["verlauf"][-1]["grund"] == "ein Tag länger" and ry["verlauf"][-1]["wer"] == "Ida"
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="„quelle“ fehlt"):
@@ -1838,7 +1812,6 @@ def test_reise_aendern_und_plaene(repo):
     assert "kurz „Plan C“ → „Plan Bus“" in a["text"]
     r, _ = routen_auf_main(origin)
     assert next(x for x in r["plaene"] if x["id"] == "P-C")["minus"] == ["Fahrplan"]
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_merkmal_zusammenfuehren_und_arten_uebernehmen(repo, tmp_path):
@@ -1855,23 +1828,21 @@ def test_merkmal_zusammenfuehren_und_arten_uebernehmen(repo, tmp_path):
     assert "1 Wert(e) umgehängt" in a["text"] and "„lage“ ist jetzt ein weiterer Name von umgebung" in a["text"]
     r, _ = routen_auf_main(origin)
     assert r["unterkuenfte"]["U-02"]["merkmale"]["umgebung"]["wert"] == "am Markt, zwei Minuten vom Malerweg" and "lage" not in r["unterkuenfte"]["U-02"]["merkmale"]
-    arten = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/arten.yaml"], check=True, capture_output=True, text=True).stdout)["arten"]
+    arten = yaml.safe_load(auf_main("beispielreise", "plan/arten.yaml"))["arten"]
     assert "lage" not in arten["pension"]["merkmale"] and arten["pension"]["merkmale"]["umgebung"]["auch"] == ["lage"]
-    # Arten übernehmen: aus einer zweiten Reise im Repo (hier eine Kopie mit einer zusätzlichen Art), nur die fehlenden
+    # Arten übernehmen: aus einer zweiten Reise im Speicher (hier eine Kopie mit einer zusätzlichen Art), nur die fehlenden
     s.vorbereiten()
-    andere = arbeit / "reisen" / "zweite-2027"
+    andere = arbeit / "zweite-2027"
     shutil.copytree(arbeit / "reisen" / "beispielreise", andere)
     p = andere / "plan" / "arten.yaml"
     p.write_text(p.read_text(encoding="utf-8") + "  ryokan:\n    grundform: aufenthalt\n    name: Ryokan\n    farbe: rosa\n    merkmale:\n      onsen: {name: Onsen, typ: auswahl, werte: [ja, nein]}\n", encoding="utf-8")
-    subprocess.run(["git", "-C", str(arbeit), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(arbeit), "commit", "-qm", "zweite Reise (Test)"], check=True)
-    subprocess.run(["git", "-C", str(arbeit), "push", "-q", "origin", "HEAD:main"], check=True)
+    _rs().importieren(andere, "zweite-2027", "Test", grund="zweite Reise (Test)")
     s.vorbereiten()
     with pytest.raises(sb.Ablehnung, match="gibt es hier schon"):
         s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"von_reise": "zweite-2027", "arten": ["hotel"]}})
     a = s.schreiben("beispielreise", "arten_uebernehmen", {**IDA, "args": {"von_reise": "zweite-2027", "grund": "wie beim letzten Mal"}})
     assert "ryokan „Ryokan“ (1 Merkmal)" in a["text"]
-    arten = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/arten.yaml"], check=True, capture_output=True, text=True).stdout)["arten"]
+    arten = yaml.safe_load(auf_main("beispielreise", "plan/arten.yaml"))["arten"]
     assert arten["ryokan"]["merkmale"]["onsen"]["werte"] == ["ja", "nein"] and arten["hotel"]["merkmale"]["preis"]["rolle"] == "kosten"
 
 
@@ -1883,7 +1854,7 @@ def test_wunsch_vorschlagen(repo):
     a = s.schreiben("beispielreise", "wunsch_vorschlagen", {**KARL, "args": {"wunsch": "R-20261029-100000-abcd", "bezug": ["T-01", "O-01"],
                                                                              "notiz": "Passt zum Stadttag (Test, erfunden).", "option": "V-01.b"}})
     assert "passt zu T-01, O-01, Option V-01.b" in a["text"] and "eingetragen" in a["text"]
-    w = yaml.safe_load(subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/plan/wuensche.yaml"], check=True, capture_output=True, text=True).stdout)
+    w = yaml.safe_load(auf_main("beispielreise", "plan/wuensche.yaml"))
     assert w["R-20261029-100000-abcd"] == {"bezug": ["T-01", "O-01"], "notiz": "Passt zum Stadttag (Test, erfunden).", "option": "V-01.b"}
     assert "R-20261021-091500-a1b2" in w   # der vorhandene Vorschlag bleibt
     s.vorbereiten()
@@ -1911,7 +1882,6 @@ def test_anlegen_ohne_herkunft_wird_abgelehnt(repo, werkzeug, args):
     s = schreiber(repo)
     with pytest.raises(sb.Ablehnung, match="quelle"):
         s.schreiben("beispielreise", werkzeug, {**IDA, "args": args})
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_buchung_mit_reisenden_preisen_und_ab_termin(repo):
@@ -2071,7 +2041,7 @@ def test_start_ende_setzen_aendert_plan_und_schreibt_verlauf(repo):
     r, _ = routen_auf_main(origin)
     assert r["start"] == {"datum": datetime.date(2027, 5, 20), "ort": "O-01"}
     assert r["ende"] == {"datum": datetime.date(2027, 5, 23), "ort": "O-01"}
-    ry = yaml.safe_load(git(origin, "show", "main:reisen/beispielreise/reise.yaml"))
+    ry = yaml.safe_load(auf_main("beispielreise", "reise.yaml"))
     v = ry["verlauf"][-1]
     assert v["wer"] == "Ida" and v["grund"] == "Zug eine Woche später (Test)" and v["datum"] == datetime.date.today()
     assert "2027-05-13 → 2027-05-20" in v["was"] and "2027-05-16 → 2027-05-23" in v["was"]
@@ -2081,7 +2051,6 @@ def test_start_ende_setzen_aendert_plan_und_schreibt_verlauf(repo):
     a = s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": {"start_ort": "O-02", "grund": "Start woanders (Test)"}})
     r, _ = routen_auf_main(origin)
     assert r["start"]["ort"] == "O-02" and r["start"]["datum"] == datetime.date(2027, 5, 20)
-    assert not git(arbeit, "status", "--porcelain")
 
 
 def test_start_ende_setzen_verschiebt_die_tagesdaten(repo):
@@ -2115,10 +2084,10 @@ def test_start_ende_setzen_lehnt_ungueltiges_ab(repo, args, grund):
     """AC-29: Ablehnung mit verständlichem Grund, die Arbeitskopie bleibt unverändert."""
     _, origin, arbeit, _ = repo
     s = schreiber(repo)
-    stand = git(origin, "rev-parse", "main")
+    stand = letzter_vorgang()
     with pytest.raises(sb.Ablehnung, match=grund):
         s.schreiben("beispielreise", "start_ende_setzen", {**IDA, "args": args})
-    assert not git(arbeit, "status", "--porcelain") and git(origin, "rev-parse", "main") == stand
+    assert letzter_vorgang() == stand
 
 
 def test_start_ende_setzen_entfernt_ende(repo):
@@ -2160,7 +2129,11 @@ def png_base64(b, h=None, farbe=(31, 122, 87, 255)):
 
 
 def datei_da(origin, rel):
-    return subprocess.run(["git", "-C", str(origin), "cat-file", "-e", f"main:reisen/beispielreise/{rel}"], capture_output=True).returncode == 0
+    try:
+        _rs().datei("beispielreise", rel)
+        return True
+    except KeyError:
+        return False
 
 
 def test_symbol_setzen_ersetzen_entfernen(repo, tmp_path):
@@ -2173,13 +2146,13 @@ def test_symbol_setzen_ersetzen_entfernen(repo, tmp_path):
     a = s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": {"svg": SYMBOL_SVG, "grund": "Entwurf aus der App"}})
     assert meldet(a["text"], "schreiben.antwort.symbol.ersetzt") and "Grund: Entwurf aus der App" in a["text"]
     assert datei_auf_main(origin, "medien/icon.svg").strip() == SYMBOL_SVG
-    assert "symbol_setzen" in git(origin, "log", "-1", "--format=%B", "main") or "icon_set" in git(origin, "log", "-1", "--format=%B", "main")
+    assert "symbol_setzen" in vorgang_text("%B") or "icon_set" in vorgang_text("%B")
     # PNG statt SVG: es gibt danach nur das PNG; der Bau nimmt es als App-Symbol
     s.vorbereiten()
     a = s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": {"png_base64": "data:image/png;base64," + png_base64(512)}})
     assert meldet(a["text"], "schreiben.antwort.symbol.ersetzt")
     assert datei_da(origin, "medien/icon.png") and not datei_da(origin, "medien/icon.svg")
-    git(arbeit, "checkout", "-q", "--detach", "origin/main")
+    s.vorbereiten()                                  # neuester Stand aus dem Speicher
     ziel = tmp_path / "seite"
     bauen.bauen(arbeit / "reisen" / "beispielreise", ziel)
     from PIL import Image
@@ -2202,7 +2175,6 @@ def test_symbol_setzen_ersetzen_entfernen(repo, tmp_path):
     # Ohne eigenes Symbol baut die Seite das Symbol aus dem Kurznamen, ohne Quelle für den Konnektor
     bauen.bauen(arbeit / "reisen" / "beispielreise", ziel)
     assert (ziel / "icon-192.png").exists() and not (ziel / "symbol.png").exists() and not (ziel / "symbol.svg").exists()
-    assert not git(arbeit, "status", "--porcelain")
 
 
 @pytest.mark.parametrize("args, schluessel", [
@@ -2230,11 +2202,11 @@ def test_symbol_setzen_ersetzen_entfernen(repo, tmp_path):
 def test_symbol_pruefung_lehnt_ab(repo, args, schluessel):
     _, origin, arbeit, _ = repo
     s = schreiber(repo)
-    vorher = git(origin, "rev-parse", "main")
+    vorher = letzter_vorgang()
     with pytest.raises(sb.Ablehnung) as e:
         s.schreiben("beispielreise", "symbol_setzen", {**IDA, "args": args})
     assert e.value.schluessel == schluessel, str(e.value)
-    assert git(origin, "rev-parse", "main") == vorher and not git(arbeit, "status", "--porcelain")
+    assert letzter_vorgang() == vorher
 
 
 def test_unsicheres_svg_von_hand_wird_nicht_als_quelle_veroeffentlicht(tmp_path):
@@ -2289,7 +2261,7 @@ def test_track_anhaengen_legt_datei_ab_und_ersetzt_die_linie(repo):
     r, _ = routen_auf_main(origin)
     g = lese(r["strecken"]["E-20"])["gpx"]
     assert g["datei"] == "medien/gpx/e-20.gpx" and g["quelle"] == "eigene Aufzeichnung (Test)"
-    datei = subprocess.run(["git", "-C", str(origin), "show", "main:reisen/beispielreise/medien/gpx/e-20.gpx"], check=True, capture_output=True, text=True).stdout
+    datei = auf_main("beispielreise", "medien/gpx/e-20.gpx")
     assert "Pillnitz" in datei
     s.vorbereiten()
     for gpx_text, text in (("<gpx>kaputt", "keine lesbare GPX"), ('<!DOCTYPE x [<!ENTITY a "b">]><gpx>&a;</gpx>', "keine lesbare GPX"),
@@ -2392,10 +2364,9 @@ def test_einstellung_sprache_ohne_feld_meldet_nicht_gesetzt(repo):
     und auch de ist eine Änderung (keine Ablehnung „nichts zu ändern“)."""
     from conftest import text
     wurzel, origin, _, _ = repo
-    y = wurzel / "reisen" / "beispielreise" / "reise.yaml"
-    y.write_text("".join(z for z in y.read_text(encoding="utf-8").splitlines(True) if not z.startswith("sprache:")), encoding="utf-8")
-    git(wurzel, "commit", "-q", "-am", "ohne Feld sprache (Test)")
-    git(wurzel, "push", "-q")
+    y = auf_main("beispielreise", "reise.yaml")
+    nachtragen("beispielreise", {"reise.yaml": "".join(z for z in y.splitlines(True) if not z.startswith("sprache:"))},
+               "ohne Feld sprache (Test)")
     a = schreiber(repo).schreiben("beispielreise", "einstellung_setzen", {**IDA, "args": {"sprache": "de"}})
     assert f"sprache „{text('schreiben.antwort.einstellung.sprache_ungesetzt')}“ → „de“" in a["text"], a["text"]
     assert yaml.safe_load(datei_auf_main(origin, "reise.yaml"))["sprache"] == "de"
@@ -2556,24 +2527,10 @@ def env_mitschneiden(monkeypatch):
 
 
 @pytest.fixture
-def speicherweg(repo, tmp_path, monkeypatch):
-    """Zusätzlich zum Git-Repo: beide Beispielreisen im Reisespeicher, FR_SPEICHERREISEN mit beiden Namen -> reisespeicher."""
+def speicherweg(repo):
+    """Zusätzlich zur Beispielreise das Stadtwochenende im Reisespeicher -> reisespeicher."""
     import reisespeicher as rs
-    monkeypatch.setenv("FR_SPEICHER", str(tmp_path / "_speicher"))
-    monkeypatch.setenv("FR_SPEICHERREISEN", "beispielreise,stadtwochenende")
-    rs.importieren(BEISPIEL, "beispielreise", wer="Ida", grund="Beispiel")
     rs.importieren(BEISPIEL.parent / "stadtwochenende", "stadtwochenende", wer="Tom", grund="Beispiel")
-    # Stufe 5 (#350): Reisen, die im Test-Repo auch in Git liegen, sind zur Umschaltung freigegeben (Stempel „gleich“ des
-    # Vergleichslaufs im dokumentierten Format, wie test_betrieb.freigeben)
-    wurzel = repo[0]
-    for r in ("beispielreise", "stadtwochenende"):
-        b = subprocess.run(["git", "-C", str(wurzel), "rev-parse", "-q", "--verify", f"HEAD:reisen/{r}"],
-                           capture_output=True, text=True).stdout.strip()
-        if b:
-            datei = tmp_path / "_dienst" / "vergleich" / f"{r}.json"
-            datei.parent.mkdir(parents=True, exist_ok=True)
-            datei.write_text(json.dumps({"zeit": "2026-11-09T10:00:00Z", "ergebnis": "gleich", "stand": rs.stand_nummer(r),
-                                         "unterschiede": 0, "baum": b}))
     return rs
 
 
@@ -2737,7 +2694,7 @@ def test_kartenpunkte_fehlschlag_vorab_ohne_sperre(repo, monkeypatch, capsys):
     """AC-6: Scheitert der Vorab-Abruf endgültig, antwortet der Dienst sofort mit der Ablehnung: keine Sperre, kein Unterprozess,
     der Stand der Reise bleibt."""
     wurzel, origin, arbeit, _ = repo
-    vorher = git(origin, "rev-parse", "main")
+    vorher = letzter_vorgang()
     osm_ersatz(monkeypatch, fehler=sb.Ablehnung("schreiben.kartenpunkte.limit", w1=429))
     gesperrt, gestartet = [], []
     monkeypatch.setattr(sb, "sperre_nehmen", lambda f, frist=None: gesperrt.append(1) or True)
@@ -2746,7 +2703,7 @@ def test_kartenpunkte_fehlschlag_vorab_ohne_sperre(repo, monkeypatch, capsys):
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
     assert code == 422 and not a["ok"] and "ausgelastet" in a["fehler"], a
     assert gesperrt == [] and [x for x in gestartet if "anwenden" in x] == []
-    assert git(origin, "rev-parse", "main") == vorher
+    assert letzter_vorgang() == vorher
     assert re.search(r"^Rejected kartenpunkte_holen 422: ", capsys.readouterr().err, re.M)
 
 
@@ -2806,17 +2763,17 @@ def test_kartenpunkte_vorab_ordner_auch_nach_zu_langer_vorbereitung_weg(repo, mo
     monkeypatch.setattr(tempfile, "tempdir", str(tmp))
     monkeypatch.setattr(sb, "ZEIT_VORAB_VORB", 0.2)
     aufrufe = osm_ersatz(monkeypatch)
-    weiter, fertig, original = threading.Event(), threading.Event(), shutil.copytree
+    weiter, fertig, original = threading.Event(), threading.Event(), _rs().exportieren
 
-    def langsam(quelle, ziel, *a, **k):
+    def langsam(reise, ziel, *a, **k):
         if "frieda-osm-" not in str(ziel):
-            return original(quelle, ziel, *a, **k)
+            return original(reise, ziel, *a, **k)
         weiter.wait(30)                       # erst nach dem Ende des Vorgangs (Ordner schon gelöscht) weiterkopieren
         try:
-            return original(quelle, ziel, *a, **k)
+            return original(reise, ziel, *a, **k)
         finally:
             fertig.set()
-    monkeypatch.setattr(sb.shutil, "copytree", langsam)
+    monkeypatch.setattr(_rs(), "exportieren", langsam)
     code, _ = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
     assert code == 422 and aufrufe == []       # kein Vorab-Abruf; der Vorgang ruft selbst ab (FR_OVERPASS unerreichbar)
     assert re.search(r"^Prefetch kartenpunkte_holen: preparation exceeded .* skipped$", capsys.readouterr().err, re.M)
@@ -2849,27 +2806,20 @@ def test_kartenpunkte_abruf_haelt_die_sperre_nicht(repo, monkeypatch):
     assert ergebnis["punkte"][0] == 200, ergebnis
 
 
-@pytest.mark.parametrize("weg", ["git", "speicher"])
-def test_kartenpunkte_vorab_in_beiden_schreibwegen(request, repo, monkeypatch, weg):
-    """AC-10: In beiden Wegen bekommt der Unterprozess FR_OSM_VORAB; die Lesekopie des Vorab-Abrufs verändert den Stand nicht."""
+def test_kartenpunkte_vorab_im_schreibweg(repo, monkeypatch):
+    """AC-10: Der Unterprozess bekommt FR_OSM_VORAB; die Lesekopie des Vorab-Abrufs verändert den Stand nicht (#557: nur
+    noch der Weg über den Reisespeicher)."""
     wurzel, origin, arbeit, _ = repo
-    rs = request.getfixturevalue("speicherweg") if weg == "speicher" else None
-    if rs:
-        stand = lambda: (rs.stand_nummer("beispielreise"), rs.aktueller_stand("beispielreise"))
-    else:
-        stand = lambda: git(origin, "rev-parse", "main")
-    kopie = Path(f"{arbeit}-beispielreise")
-    kopie_stand = lambda: (git(kopie, "rev-parse", "HEAD"), git(kopie, "status", "--porcelain")) if (kopie / ".git").exists() else None
-    # Ein Eintrag vorweg legt im Git-Weg die Arbeitskopie an, damit ihr Stand während des Abrufs wirklich verglichen wird
+    rs = _rs()
+    stand = lambda: (rs.stand_nummer("beispielreise"), rs.aktueller_stand("beispielreise"))
     assert sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "art_definieren",
                               {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})[0] == 200
-    vorher, kopie_vorher, waehrend = stand(), kopie_stand(), []
-    assert (kopie_vorher is not None) == (weg == "git"), kopie_vorher
-    osm_ersatz(monkeypatch, beim_abruf=lambda: waehrend.append((stand(), kopie_stand())))
+    vorher, waehrend = stand(), []
+    osm_ersatz(monkeypatch, beim_abruf=lambda: waehrend.append(stand()))
     umgebungen = env_mitschneiden(monkeypatch)
     code, a = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
     assert code == 200 and "2 Treffer" in deutsch(a), a
-    assert waehrend == [(vorher, kopie_vorher)]
+    assert waehrend == [vorher]
     assert len(umgebungen) == 1 and umgebungen[0].get("FR_OSM_VORAB"), umgebungen
     assert stand() != vorher       # erst der Vorgang selbst trägt ein
 
@@ -3047,31 +2997,19 @@ def _herabstufen(text):
     return text.replace("rolle: organisator", "rolle: gast", 1)
 
 
-@pytest.mark.parametrize("weg", ["git", "speicher"])
-def test_rolle_lesen(repo, request, weg):
+def test_rolle_lesen(repo, speicherweg):
     """AC-14: Die Rollenabfrage des Schreibwegs liest reise.yaml des aktuellen Stands: Wer dort Gast ist, ist Gast, auch wenn der
     veröffentlichte Stand (und der jeweils andere Weg) sie noch als Organisator:in führt. Unbekannte Person: rolle None. Die
-    Abfrage ändert keinen Stand und nimmt keine Sperre. Beide Wege, beide Beispielreisen; ohne Kopf X-Frieda-Dienst 403."""
+    Abfrage ändert keinen Stand und nimmt keine Sperre. Beide Beispielreisen; ohne Kopf X-Frieda-Dienst 403."""
     import konten
     wurzel, origin, arbeit, _ = repo
-    shutil.copytree(BEISPIEL.parent / "stadtwochenende", wurzel / "reisen" / "stadtwochenende")
-    git(wurzel, "add", "-A")
-    git(wurzel, "commit", "-q", "-m", "Stadtwochenende")
-    git(wurzel, "push", "-q", "origin", "main")
-    if weg == "speicher":
-        rs = request.getfixturevalue("speicherweg")
-        for r in ROLLEN_REISEN:     # nur im Speicher herabgestuft; Git führt die Person weiter als Organisator:in
-            yaml_text = rs.aktueller_stand(r)["reise.yaml"].decode("utf-8")
-            rs.vorgang_schreiben(r, {"reise.yaml": _herabstufen(yaml_text).encode("utf-8")}, wer="Test", werkzeug="person_schreiben",
-                                 titel="Herabgestuft (Test)")
-        vorher = {r: rs.stand_nummer(r) for r in ROLLEN_REISEN}
-    else:
-        for r in ROLLEN_REISEN:
-            p = wurzel / "reisen" / r / "reise.yaml"
-            p.write_text(_herabstufen(p.read_text(encoding="utf-8")), encoding="utf-8")
-        git(wurzel, "commit", "-qam", "Herabgestuft (Test)")
-        git(wurzel, "push", "-q", "origin", "main")
-    main_vorher = git(origin, "rev-parse", "main")
+    rs, weg = speicherweg, "speicher"
+    for r in ROLLEN_REISEN:     # im Speicher herabgestuft; der veröffentlichte Stand führt die Person noch als Organisator:in
+        yaml_text = rs.aktueller_stand(r)["reise.yaml"].decode("utf-8")
+        rs.vorgang_schreiben(r, {"reise.yaml": _herabstufen(yaml_text).encode("utf-8")}, wer="Test", werkzeug="person_schreiben",
+                             titel="Herabgestuft (Test)")
+    vorher = {r: rs.stand_nummer(r) for r in ROLLEN_REISEN}
+    main_vorher = letzter_vorgang()
     s = sb.Schreiber(wurzel, arbeit)
     for r, ((org, org_name), (mit, mit_name, mit_rolle), status) in ROLLEN_REISEN.items():
         a = s.rolle_lesen(r, org, org_name)
@@ -3082,10 +3020,8 @@ def test_rolle_lesen(repo, request, weg):
         assert s.rolle_lesen(r, "niemand", "Niemand")["rolle"] is None
         assert not sb.sperrdatei(r).exists()                            # ohne Sperre
     # nichts geändert
-    assert git(origin, "rev-parse", "main") == main_vorher
-    assert git(wurzel, "status", "--porcelain") == ""
-    if weg == "speicher":
-        assert {r: rs.stand_nummer(r) for r in ROLLEN_REISEN} == vorher
+    assert letzter_vorgang() == main_vorher
+    assert {r: rs.stand_nummer(r) for r in ROLLEN_REISEN} == vorher
     # HTTP am Dienst: nur mit dem Kopf des Konnektors
     sb.Dienst.schreiber = s
     server = ThreadingHTTPServer(("127.0.0.1", 0), sb.Dienst)
@@ -3114,27 +3050,8 @@ def test_rolle_lesen(repo, request, weg):
     finally:
         server.shutdown()
         sb.Dienst.schreiber = None
-    assert git(origin, "rev-parse", "main") == main_vorher
-    if weg == "speicher":
-        assert {r: rs.stand_nummer(r) for r in ROLLEN_REISEN} == vorher
-
-
-def test_rolle_lesen_git_aus_der_schreibkopie(repo):
-    """Gegenprüfung F004: Bei einer Git-Reise liest die Rollenabfrage dieselbe Quelle wie wer_pruefen, die Schreibkopie. Eine
-    über den Schreibweg vorgenommene Herabstufung (Schreibkopie und origin, die Wurzel noch nicht nachgezogen) gilt sofort."""
-    wurzel, origin, arbeit, _ = repo
-    s = sb.Schreiber(wurzel, arbeit)
-    s.vorbereiten()
-    p = arbeit / "reisen" / "beispielreise" / "reise.yaml"
-    p.write_text(_herabstufen(p.read_text(encoding="utf-8")), encoding="utf-8")
-    git(arbeit, "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qam", "Herabgestuft (Test)")
-    git(arbeit, "push", "-q", "origin", "HEAD:main")
-    assert "rolle: organisator" in (wurzel / "reisen" / "beispielreise" / "reise.yaml").read_text(encoding="utf-8")
-    assert s.rolle_lesen("beispielreise", "ida", "Ida")["rolle"] == "gast"
-    assert s.rolle_lesen("beispielreise", "karl", "Karl")["rolle"] == "mitwirkend"
-    # ohne Schreibkopie (Schreibweg noch nie gelaufen): die Wurzel
-    s2 = sb.Schreiber(wurzel, arbeit.parent / "gibt-es-nicht")
-    assert s2.rolle_lesen("beispielreise", "ida", "Ida")["rolle"] == "organisator"
+    assert letzter_vorgang() == main_vorher
+    assert {r: rs.stand_nummer(r) for r in ROLLEN_REISEN} == vorher
 
 
 def test_sperrdatei_in_dienstordner(tmp_path, monkeypatch):

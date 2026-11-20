@@ -629,7 +629,8 @@ def test_schreibweg_lehnt_fremdes_bild_im_text_ab(request, ziel):
                                                     "quelle": "eigene Beobachtung"}})
     assert code == 422 and not a["ok"], a
     assert meldet(deutsch(a), "pruefung.bauen.bild_fremd"), a
-    assert "example.org" not in (wurzel / "reisen" / "beispielreise" / "inhalt" / "wissen.md").read_text(encoding="utf-8")
+    from test_schreiben import auf_main
+    assert "example.org" not in auf_main("beispielreise", "inhalt/wissen.md")
 
 
 # ---------- BI- im Text (V10a, V16, AC-8) ----------

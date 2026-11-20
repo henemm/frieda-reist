@@ -5,10 +5,8 @@ Nur erfundene Daten: beispielreise (Ida Organisatorin, Karl mitwirkend), stadtwo
 mitwirkend), ein fremdes Konto ohne Mitgliedschaft; alles unter tmp_path.
 
 Schnittstelle, die diese Tests festlegen (aus der Spec):
-  schreiben.ZEIT_EXPORT = 50                      Gesamtfrist des Git-Wegs (fetch höchstens 20 s)
-  schreiben.Dienst: GET /<reise>/export           ZIP der Reise (Speicher oder origin/main:reisen/<reise>)
+  schreiben.Dienst: GET /<reise>/export           ZIP der Reise aus dem Reisespeicher (#557: kein Git-Weg mehr)
   schreiben.Dienst._datei_senden(code, datei, typ)
-  schreiben_git.reise_archiv(s, reise, datei)     -> None, wenn die Reise auf origin/main fehlt
   konnektor.reise_export(reise, datei)            -> (True, None) | ("fehlt", None) | (False, fehler)
   anmeldung.reise_exportieren                     Modulvariable, vom Konnektor gesetzt; Vorgabe None
   anmeldung.EXPORT_BUDGET = 55                    Gesamtbudget des Exports in Sekunden
@@ -56,7 +54,7 @@ import texte  # noqa: E402
 from conftest import meldet  # noqa: E402
 from test_anmeldung import BASIS, abruf, anmelden, welt  # noqa: E402,F401  (welt: Fixture)
 from test_trennung import zwei, IDA, KARL, TOM, abdruck  # noqa: E402,F401  (zwei: Fixture)
-from test_schreiben_speicher import speicher, Dienst, repo, git  # noqa: E402,F401  (Fixtures)
+from test_schreiben_speicher import speicher, Dienst  # noqa: E402,F401  (Fixtures)
 
 REISEN = ["beispielreise", "stadtwochenende"]
 FREMD = "fremd@beispiel.invalid"
@@ -186,22 +184,6 @@ def test_dienst_export_speicherreise(speicher, reise, tmp_path):
     assert inhalt_zip(als_zip(daten)) == inhalt_ordner(vergleich)
 
 
-def test_dienst_export_reporeise(repo, monkeypatch):
-    wurzel = repo[0]
-    monkeypatch.setenv("FR_SPEICHERREISEN", "")
-    with Dienst(sb.Schreiber(wurzel)) as d:
-        code, kopf, daten = zip_holen(d, "beispielreise/export")
-        assert code == 200 and kopf["content-type"].startswith("application/zip"), daten[:300]
-        namen = git(wurzel, "ls-tree", "-r", "--name-only", "origin/main", "reisen/beispielreise").splitlines()
-        erwartet = {n.removeprefix("reisen/beispielreise/"): git(wurzel, "show", f"origin/main:{n}").encode()
-                    for n in namen if not n.endswith((".png", ".jpg", ".webp", ".gpx"))}
-        z = als_zip(daten)
-        assert set(z.namelist()) >= set(erwartet) and all(not n.startswith("reisen/") for n in z.namelist())
-        for n, inhalt in erwartet.items():
-            assert z.read(n).rstrip(b"\n") == inhalt.rstrip(b"\n"), n
-        assert zip_holen(d, "gibtesnicht/export")[0] == 404
-
-
 def test_dienst_export_ohne_geheimnis(speicher):
     with Dienst(speicher.schreiber()) as d:
         a = zip_holen(d, "beispielreise/export", geheim=False)
@@ -222,18 +204,18 @@ def test_dienst_export_404(speicher, monkeypatch):
     monkeypatch.setattr(speicher.rs, "exportieren", lambda *a, **k: (aufgerufen.append(a), echt(*a, **k))[1])
     konten.loeschung_vormerken("stadtwochenende", None)
     with Dienst(speicher.schreiber()) as d:
-        for pfad in ("Ungueltig_Name/export", "stadtwochenende/export"):   # unbekannt bei vorhandenem Repo: reporeise
+        for pfad in ("Ungueltig_Name/export", "stadtwochenende/export"):
             code, _, daten = zip_holen(d, pfad)
             assert code == 404, (pfad, code)
             assert json.loads(daten)["fehler_code"] == "schreiben.dienst.unbekannt"
     assert not any("stadtwochenende" in map(str, a) for a in aufgerufen), "vorgemerkte Reise: kein Zugriff auf den Speicher"
 
 
-def test_dienst_export_ohne_repo_503(speicher):
-    """Speicherliste nicht leer, .git fehlt: eine unbekannte Reise ist 503, nicht 404 (kein stiller Teilexport)."""
+def test_dienst_export_reise_nicht_im_speicher_404(speicher):
+    """#557: Eine Reise ohne Eintrag im Speicher gibt es nicht; kein Rückgriff auf ein Repo."""
     with Dienst(speicher.schreiber()) as d:
         code, _, daten = zip_holen(d, "gibtesnicht/export")
-    assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.repo_nicht_erreichbar"
+    assert code == 404 and json.loads(daten)["fehler_code"] == "schreiben.dienst.unbekannt"
 
 
 def test_dienst_export_alte_zeitstempel_und_modus(speicher):
@@ -281,44 +263,9 @@ def test_dienst_export_speicherfehler(speicher, monkeypatch, fehler):
     assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar"
 
 
-@pytest.mark.parametrize("fehler", [RuntimeError("git kaputt"), None])
-def test_dienst_export_gitfehler(repo, monkeypatch, fehler):
-    import subprocess
-    import schreiben_git
-    monkeypatch.setenv("FR_SPEICHERREISEN", "")
-
-    def kaputt(*a, **k):
-        raise fehler or subprocess.TimeoutExpired("git", 50)
-    monkeypatch.setattr(schreiben_git, "reise_archiv", kaputt)
-    with Dienst(sb.Schreiber(repo[0])) as d:
-        code, _, daten = zip_holen(d, "beispielreise/export")
-    assert code == 503 and json.loads(daten)["fehler_code"] == "schreiben.dienst.repo_nicht_erreichbar"
-
-
-def test_dienst_export_fristen_im_gitweg(repo, monkeypatch):
-    import schreiben_git
-    monkeypatch.setenv("FR_SPEICHERREISEN", "")
-    fristen = []
-    echt = schreiben_git.git
-
-    def spion(ordner, *args, **kw):
-        fristen.append((args[0] if args else "", kw.get("frist")))
-        return echt(ordner, *args, **kw)
-    monkeypatch.setattr(schreiben_git, "git", spion)
-    with closing(tempfile.TemporaryFile()) as f:
-        assert schreiben_git.reise_archiv(sb.Schreiber(repo[0]), "beispielreise", f) is not None
-    fetch = [fr for befehl, fr in fristen if befehl == "fetch"]
-    archive = [fr for befehl, fr in fristen if befehl == "archive"]
-    assert fetch and all(fr is not None and fr <= 20 for fr in fetch)
-    assert archive and all(fr is not None and fr <= sb.ZEIT_EXPORT for fr in archive)
-    with closing(tempfile.TemporaryFile()) as f:
-        assert schreiben_git.reise_archiv(sb.Schreiber(repo[0]), "gibtesnicht", f) is None
-
-
 def test_fristen_unter_der_proxy_grenze():
-    assert sb.ZEIT_EXPORT == 50 and anmeldung.EXPORT_BUDGET == 55
-    assert sb.ZEIT_EXPORT < anmeldung.EXPORT_BUDGET < 60
-    assert sb.ZEIT_EXPORT != sb.ZEIT_PRUEFUNG
+    assert anmeldung.EXPORT_BUDGET == 55 < 60
+    assert not hasattr(sb, "ZEIT_EXPORT")          # #557: die Frist des Git-Wegs ist mit ihm entfallen
 
 
 def test_dienst_export_raeumt_auf(speicher):

@@ -56,7 +56,7 @@ def nb(vf, kdb, tmp_path):
     snippets = tmp_path / "snippets"
     snippets.mkdir()
     seiten = tmp_path / "seiten"
-    seiten.mkdir()
+    seiten.mkdir(exist_ok=True)
     log = tmp_path / "helfer.log"
     helfer = ausfuehrbar(tmp_path / "helfer", (
         "#!/bin/sh\n"
@@ -215,12 +215,14 @@ def test_liste_nicht_lesbar_warnt_ohne_abbruch(nb):
 
 # ---------- AC-8: Aufrufstellen ----------
 
-def test_schritt_steht_an_beiden_stellen_nach_vorgemerkte_entfernen():
+def test_schritt_steht_an_jeder_stelle_nach_vorgemerkte_entfernen():
+    """Der Schritt folgt jedem Aufruf von vorgemerkte_entfernen; seit #557 (nur noch der Lauf aus dem Software-Klon) ist
+    das genau eine Stelle."""
     text = (WURZEL / "betrieb" / "veroeffentlichen.sh").read_text(encoding="utf-8")
     assert re.search(r"^entfernte_bausteine\(\) \{", text, re.M)
     stellen = re.findall(r"vorgemerkte_entfernen \|\| return 1\n\s*entfernte_bausteine\b", text)
-    assert len(stellen) == 2, stellen
-    assert len(re.findall(r"vorgemerkte_entfernen \|\| return 1", text)) == 2
+    assert len(stellen) == 1, stellen
+    assert len(re.findall(r"vorgemerkte_entfernen \|\| return 1", text)) == 1
 
 
 # ---------- AC-9: Doku und Docstring ----------

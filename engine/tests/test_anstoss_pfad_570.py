@@ -40,20 +40,13 @@ def kein_start(monkeypatch):
     return gerufen
 
 
-def test_vorgabe_alte_anordnung_mit_gitmodules(tmp_path):
-    """AC-1: Wurzel mit .gitmodules -> <wurzel>/frieda/betrieb/veroeffentlichen.sh."""
+def test_alte_anordnung_gibt_es_nicht_mehr(tmp_path):
+    """AC-1/AC-2 nach #557: Auch mit .gitmodules oder einem Ordner frieda/betrieb gilt nur noch der Software-Klon,
+    <wurzel>/betrieb/veroeffentlichen.sh; die alte Anordnung (Reisen-Repo mit Submodul) ist entfernt."""
     w = wurzel_anlegen(tmp_path, "reisen")
     (w / ".gitmodules").write_text("[submodule \"frieda\"]\n\tpath = frieda\n")
-    erwartet = w / "frieda" / "betrieb" / "veroeffentlichen.sh"
-    assert Path(sb.veroeffentlichen_skript(w)) == erwartet
-    assert Path(sb.Schreiber(w, tmp_path / "arbeit").veroeffentlichen) == erwartet
-
-
-def test_vorgabe_alte_anordnung_mit_ordner(tmp_path):
-    """AC-2: Wurzel mit Ordner frieda/betrieb, ohne .gitmodules -> ebenfalls der alte Pfad."""
-    w = wurzel_anlegen(tmp_path, "reisen")
     (w / "frieda" / "betrieb").mkdir(parents=True)
-    erwartet = w / "frieda" / "betrieb" / "veroeffentlichen.sh"
+    erwartet = w / "betrieb" / "veroeffentlichen.sh"
     assert Path(sb.veroeffentlichen_skript(w)) == erwartet
     assert Path(sb.Schreiber(w, tmp_path / "arbeit").veroeffentlichen) == erwartet
 

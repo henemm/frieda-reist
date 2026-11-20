@@ -18,7 +18,7 @@ import schnittstelle  # noqa: E402
 import schreiben as sb  # noqa: E402
 import texte  # noqa: E402
 from test_englisch import am_rand  # noqa: E402
-from test_schreiben import BEISPIEL, IDA, KARL, git, repo, schreiber  # noqa: E402,F401
+from test_schreiben import BEISPIEL, IDA, KARL, repo, schreiber, auf_main, nachtragen, vorgang_text  # noqa: E402,F401
 
 AUFRUFE = json.loads((Path(__file__).resolve().parent / "aufrufe_schreiben.json").read_text(encoding="utf-8"))
 
@@ -72,12 +72,8 @@ BEKANNT = {}
 
 def test_englische_reise_zeigt_keinen_deutschen_datenwert(repo, tmp_path, monkeypatch):
     wurzel, origin, arbeit, _ = repo
-    yaml = wurzel / "reisen" / "beispielreise" / "reise.yaml"
-    text = yaml.read_text(encoding="utf-8")
-    yaml.write_text(re.sub(r"(?m)^sprache:.*\n", "", text) + "sprache: en\n", encoding="utf-8")
-    git(wurzel, "add", "-A")
-    git(wurzel, "commit", "-q", "-m", "Beispielreise englisch")
-    git(wurzel, "push", "-q", "origin", "main")
+    text = auf_main("beispielreise", "reise.yaml")
+    nachtragen("beispielreise", {"reise.yaml": re.sub(r"(?m)^sprache:.*\n", "", text) + "sprache: en\n"}, "Beispielreise englisch")
     s = schreiber(repo)
     muster = schnittstellenwoerter()
     gefunden = {}
@@ -89,7 +85,7 @@ def test_englische_reise_zeigt_keinen_deutschen_datenwert(repo, tmp_path, monkey
         try:
             a = s.schreiben("beispielreise", werkzeug, {**antwort, "args": args})
             text_an = am_rand(texte.Satz.aus_json(a["text_teile"]).text("en")) if a.get("text_teile") else am_rand(str(a.get("text")))
-            commit = git(origin, "log", "-1", "--format=%B", "main")
+            commit = vorgang_text("%B")
             f = funde(text_an, args, muster) + [x for x in funde(commit, args, muster) if x not in funde(text_an, args, muster)]
         except sb.Ablehnung as e:
             f = funde(am_rand(e.text("en")), args, muster)
@@ -157,6 +153,7 @@ def _lesen(s, tmp_path, monkeypatch, muster):
     import konnektor as kn
     seiten = tmp_path / "seiten"
     seiten.mkdir()
+    s.vorbereiten()                                   # neuester Stand aus dem Speicher
     bauen.bauen(s.arbeit / "reisen" / "beispielreise", seiten / "beispielreise")
     monkeypatch.setenv("KN_SEITEN", str(seiten))
     monkeypatch.setenv("KN_SCHREIBDIENST", "http://127.0.0.1:9")

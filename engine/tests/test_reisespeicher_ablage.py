@@ -373,7 +373,7 @@ def test_ablage_pfad_nur_aus_summe_und_symlink_abgewiesen(rs, tmp_path):
 
 # ---------- AC-14, AC-15 ----------
 
-def test_vergleichen_braucht_keine_ablagedatei(rs, tmp_path, monkeypatch):
+def test_unterschiede_braucht_keine_ablagedatei(rs, tmp_path, monkeypatch):
     q = _importiert(rs, tmp_path, "beispielreise")
     assert any(r[3] == 1 for r in _zeilen(rs, "beispielreise"))
 
@@ -381,7 +381,7 @@ def test_vergleichen_braucht_keine_ablagedatei(rs, tmp_path, monkeypatch):
         raise AssertionError("Ablagezugriff")
     monkeypatch.setattr(rs, "ablage_lesen", falle)
     monkeypatch.setattr(os, "link", falle)
-    assert not rs.vergleichen("beispielreise", q)   # leere Liste: gleich
+    assert not rs.unterschiede("beispielreise", q)   # leere Liste: gleich
     rs.stand_nummer("beispielreise")
 
 
@@ -455,7 +455,7 @@ def test_wiederherstellung_aus_schnappschuss_und_ablage(rs, tmp_path, monkeypatc
     shutil.copytree(_ablage(tmp_path), neu / "ablage")
     monkeypatch.setenv("FR_SPEICHER", str(neu))
     assert rs.pruefen() == []
-    assert not rs.vergleichen("beispielreise", q)
+    assert not rs.unterschiede("beispielreise", q)
     rs.materialisieren("beispielreise", tmp_path / "mat")
     assert _baum(tmp_path / "mat") == _baum(q)
     for d in (neu / "ablage").iterdir():

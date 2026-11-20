@@ -207,18 +207,17 @@ def test_reise_stand_im_browser(tmp_path, browser):
     """Epic #223 (#228, #229): Der Fuß nennt Reise-Stand, Zeit der Veröffentlichung in Ortszeit und das Release; ein Tipp auf die
     Nummer zeigt die Änderungen mit Person. Hält der Service Worker noch Stand 1, liefert api/stand trotzdem Stand 2 vom Server,
     der Hinweis „Neu: Reise-Stand 2“ erscheint, und „Aktualisieren“ lädt ihn."""
+    import reisespeicher as rs
     reise = mini_reise(tmp_path)
-
-    def git(*args):
-        subprocess.run(["git", "-C", str(reise), *args], check=True, capture_output=True)
-    git("init", "-q", "-b", "main")
-    git("-c", "user.name=Ida", "-c", "user.email=ida@example.invalid", "add", "-A")
-    git("-c", "user.name=Ida", "-c", "user.email=ida@example.invalid", "commit", "-qm", "Testreise angelegt\n\nFrieda-Person: Ida")
+    # Der Reise-Stand kommt aus dem Reisespeicher (#557); die Reise heißt wie ihr Ordner
+    rs.vorgang_schreiben(reise.name, {p.relative_to(reise).as_posix(): p.read_bytes() for p in reise.rglob("*") if p.is_file()},
+                         wer="Ida", werkzeug="trip_create", titel="Testreise angelegt")
     web = tmp_path / "web"
     ziel = web / "test-abc"
     bauen.bauen(reise, ziel)
     (reise / "plan.md").write_text((reise / "plan.md").read_text(encoding="utf-8") + "\nNoch ein Satz.\n", encoding="utf-8")
-    git("-c", "user.name=Bot", "-c", "user.email=bot@example.invalid", "commit", "-qam", "Testreise: Plan ergänzt\n\nFrieda-Person: Karl")
+    rs.vorgang_schreiben(reise.name, {"plan.md": (reise / "plan.md").read_bytes()}, wer="Karl", werkzeug="item_update",
+                         titel="Plan ergänzt")
     stand2 = tmp_path / "stand2"
     bauen.bauen(reise, stand2)
     server = {"nummer": 1}

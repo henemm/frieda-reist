@@ -78,14 +78,15 @@ def test_materialisieren_haelt_nummer_und_inhalt_zusammen(rs, tmp_path):
     assert not (ziel / "neu.txt").exists()
 
 
+# unterschiede (früher der Befehl vergleichen für den Vergleichslauf, #557: nur noch die Funktion für nachziehen-speicher)
+
 @pytest.mark.parametrize("reise", REISEN)
-def test_vergleichen_beispielreisen_ohne_unterschied(rs, reise):
+def test_unterschiede_beispielreisen_ohne_unterschied(rs, reise):
     _importiert(rs, reise)
-    code, aus = _cli(rs, "vergleichen", reise, str(BEISPIEL / reise))
-    assert code == 0 and aus.strip().splitlines()[-1] == "gleich"
+    assert rs.unterschiede(reise, BEISPIEL / reise) == []
 
 
-def test_vergleichen_nennt_jeden_unterschied_exit_1(rs, tmp_path):
+def test_unterschiede_nennt_jeden_unterschied(rs, tmp_path):
     reise = _importiert(rs, "beispielreise")
     kopie = tmp_path / "k"
     shutil.copytree(BEISPIEL / reise, kopie)
@@ -94,46 +95,34 @@ def test_vergleichen_nennt_jeden_unterschied_exit_1(rs, tmp_path):
     geaendert.write_bytes(geaendert.read_bytes() + b"\nmehr")
     geloescht.unlink()
     (kopie / "neu.txt").write_text("neu")
-    code, aus = _cli(rs, "vergleichen", reise, str(kopie))
-    zeilen = aus.strip().splitlines()
-    assert code == 1
+    zeilen = [f"{art}: {p}" for art, p in rs.unterschiede(reise, kopie)]
     assert f"verschieden: {geaendert.relative_to(kopie).as_posix()}" in zeilen
     assert f"nur im Speicher: {geloescht.relative_to(kopie).as_posix()}" in zeilen
     assert "nur im Ordner: neu.txt" in zeilen
-    assert zeilen[-1] == "3 Unterschiede"
+    assert len(zeilen) == 3
 
 
-def test_vergleichen_fehler_geben_exit_2(rs, tmp_path):
+def test_unterschiede_fehler_werfen(rs, tmp_path):
     reise = _importiert(rs, "stadtwochenende")
     kopie = tmp_path / "k"
     shutil.copytree(BEISPIEL / reise, kopie)
-    fehlerfaelle = [("unbekannt", str(kopie)), (reise, str(tmp_path / "gibtesnicht"))]
+    fehlerfaelle = [("unbekannt", kopie), (reise, tmp_path / "gibtesnicht")]
     mit_link = tmp_path / "l"
     shutil.copytree(BEISPIEL / reise, mit_link)
     (mit_link / "link").symlink_to(mit_link / "reise.yaml")
-    fehlerfaelle.append((reise, str(mit_link)))
+    fehlerfaelle.append((reise, mit_link))
     for r, o in fehlerfaelle:
-        code, aus = _cli(rs, "vergleichen", r, o)
-        assert code == 2 and aus.startswith("ERROR:"), (r, o, aus)
-    assert _cli(rs, "vergleichen", reise)[0] == 2     # falsche Angaben: auch 2, nicht 1
-    # gesperrte Datenbank: Schreibsperre einer zweiten Verbindung
-    sperre = sqlite3.connect(rs.pfad(), timeout=0.1, isolation_level=None)
-    sperre.execute("PRAGMA locking_mode = EXCLUSIVE")
-    sperre.execute("BEGIN EXCLUSIVE")
-    try:
-        code, aus = _cli(rs, "vergleichen", reise, str(kopie))
-    finally:
-        sperre.close()
-    assert code == 2 and aus.startswith("ERROR:")
+        with pytest.raises(Exception):
+            rs.unterschiede(r, o)
 
 
-def test_vergleichen_liest_keine_inhalte(rs, tmp_path, monkeypatch):
+def test_unterschiede_liest_keine_inhalte(rs, tmp_path, monkeypatch):
     reise = _importiert(rs, "beispielreise")
 
     def falle(*a, **k):
         raise AssertionError("Inhalte gelesen")
     monkeypatch.setattr(rs, "aktueller_stand", falle)
-    assert rs.main(["vergleichen", reise, str(BEISPIEL / reise)]) == 0
+    assert rs.unterschiede(reise, BEISPIEL / reise) == []
 
 
 # ---------- Teil 3 ----------
@@ -345,6 +334,6 @@ def test_reise_ohne_plaene_materialisieren_vergleichen_nachziehen(rs, tmp_path):
     rs.importieren(d, d.name, "Test", grund="Anfang")
     ziel = tmp_path / "m" / d.name
     assert _cli(rs, "materialisieren", d.name, str(ziel))[0] == 0
-    assert _cli(rs, "vergleichen", d.name, str(d))[0] == 0
+    assert rs.unterschiede(d.name, d) == []
     p = _neu("nachziehen-speicher", d.name, str(ziel))
     assert p.returncode == 0, p.stdout + p.stderr
