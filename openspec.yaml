@@ -1,6 +1,6 @@
 # Einstellungen für den Arbeitsablauf (agent-os-openspec). Deploy-Ablauf: Product Owner, 4.11.2026.
 # Ausgeliefert wird bis `main`; der Server einer Instanz wird dabei nicht berührt
-# („Software nachziehen“ im Reisen-Repo ist ein eigener Schritt).
+# (der Timer des Veröffentlichens holt und prüft den neuen Stand selbst, #454, #557).
 deploy:
   command:
     - gh pr create --fill --base main

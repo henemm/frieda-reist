@@ -13,6 +13,8 @@ tags: [software-weg, veroeffentlichen, reisespeicher, umzug, betrieb, epic-345]
 
 Folge von #350 (Variante B). Grundlage: `docs/context/software-weg-454.md` (Kontext, Inventar, Analyse, Technical Approach), `docs/specs/betrieb/speicher-350-stufe5.md`, `docs/specs/betrieb/software-wechsel-ohne-handarbeit-250.md`, `docs/specs/betrieb/meldeweg-nur-ausfaelle-446.md`, ADR-0009, ADR-0001.
 
+> **Hinweis (20.11.2026):** Der Rückbau des Git-Wegs ist mit #557 erledigt (`docs/specs/betrieb/rueckbau-git-weg-557.md`). Was diese Spec über die alte Anordnung, den Zustand „alt“ und den Rückweg sagt, ist Geschichte.
+
 ## Approval
 
 - [ ] Approved
@@ -290,12 +292,13 @@ Weitere Prüfungen:
 ## Known Limitations
 
 - Zu AC-1.7 und AC-1.9 (Adversary F005/F008): Ist die Umschaltung offen und liegen im Speicher nur Import-Vorgänge, hängt der Lauf den aktuellen Git-Stand als weiteren Import-Vorgang an (nur anhängen, ADR-0009; nichts wird gelöscht) und vergleicht erneut; bei „gleich“ wird gestempelt. Sonst bliebe die Reise nach einer Änderung in Git dauerhaft offen (Handschritt, #250). Gibt es andere Vorgänge, gilt AC-1.7 unverändert.
-- Zu AC-2.4 und AC-2.6 (Validierung 13.11.2026): Ein bekannter roter Stand wird im nächsten Lauf nicht erneut geprüft; die bestehende Regel aus #203 (`rot_erneut_pruefen`) prüft ihn aber erneut, wenn sich die Umgebung geändert hat oder die letzte Prüfung länger als `FR_ROT_NEU_PRUEFEN_MINUTEN` (Vorgabe 60) zurückliegt, damit ein in der Umgebung behobener Fehler nicht stundenlang rot bleibt. Der Nachweis wird damit höchstens einmal je Stunde und Stand abgefragt, weit unter der Grenze von 60 Abfragen je Stunde.
-- Zu AC-2.17 (Validierung 13.11.2026): Bis zum Umzug läuft das alte Skript im alten Bauordner; dort stößt der Anstoß von der Seite weiter den Workflow „Software nachziehen“ mit `gh workflow run` an. Ohne `gh` kommt erst der Lauf aus dem Klon aus (Entscheidung 10, Schritt 4).
-- Zu Affected Files, „Usage-Texte“ (Validierung 13.11.2026): Die Usage-Texte von `werkzeuge/karte-holen.sh` und die Fehlermeldung von `nur_bauordner` in `betrieb/gemeinsam.sh` nennen noch Pfade mit `frieda/`; sie gelten in der alten Anordnung, die bis zum Rückbau besteht, und werden mit dem Folge-Issue zum Rückbau des Git-Wegs umgestellt.
+- Zu AC-2.4 und AC-2.6 (Validierung 13.11.2026): Ein bekannter roter Stand wird im nächsten Lauf nicht erneut geprüft; die bestehende Regel aus #203 (`rot_erneut_pruefen`) prüft ihn aber erneut, wenn sich die Umgebung geändert hat oder die letzte Prüfung länger als `FR_ROT_NEU_PRUEFEN_MINUTEN` (Vorgabe 60) zurückliegt, damit ein in der Umgebung behobener Fehler nicht stundenlang rot bleibt. Der Nachweis wird damit höchstens einmal je Stunde und Stand abgefragt, weit unter der Grenze von 60 Abfragen je Stunde. Status: abgeschlossen (#557), die Regel gilt im Klon unverändert.
+- Zu AC-2.17 (Validierung 13.11.2026): Bis zum Umzug läuft das alte Skript im alten Bauordner; dort stößt der Anstoß von der Seite weiter den Workflow „Software nachziehen“ mit `gh workflow run` an. Ohne `gh` kommt erst der Lauf aus dem Klon aus (Entscheidung 10, Schritt 4). Status: abgeschlossen (#557), der alte Weg ist entfernt.
+- Zu Affected Files, „Usage-Texte“ (Validierung 13.11.2026): Die Usage-Texte von `werkzeuge/karte-holen.sh` und die Fehlermeldung von `nur_bauordner` in `betrieb/gemeinsam.sh` nennen noch Pfade mit `frieda/`; sie gelten in der alten Anordnung, die bis zum Rückbau besteht, und werden mit dem Folge-Issue zum Rückbau des Git-Wegs umgestellt. Status: abgeschlossen (#557).
 
 ## Changelog
 
+- 2026-11-20 (#557): Hinweis im Kopf; Known Limitations zu AC-2.4/2.6, AC-2.17 und den Usage-Texten als abgeschlossen (#557) vermerkt.
 - 2026-11-13 (Validierung): Known Limitations zu AC-2.4/2.6, AC-2.17 und den Usage-Texten mit `frieda/` ergänzt; `docs/betrieb.md` „Neue Instanz einrichten“ beschreibt den Software-Klon, die alte Anordnung als Unterabschnitt.
 - 2026-11-13 (RED zur Entscheidung PO): Tests zu AC-2.12, AC-2.13, AC-2.15 an die einmalige Umstellung der Units angepasst und ergänzt (Testplan).
 - 2026-11-13 (Entscheidung PO nach Validierung): Units-Schritt des Umzugs nach Entscheidung des Product Owners einmalig bei der Auslieferung durch den Tech Lead, Erlaubnisliste unverändert (Entscheidung 10, AC-2.12, AC-2.13, AC-2.15). Infrastruktur-Issue für AC-2.21: henemm-infra#436.
