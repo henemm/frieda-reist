@@ -1,0 +1,89 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: ~/frieda-reist/.claude/worktrees/inherited-purring-breeze
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 240 items / 231 deselected / 9 selected
+
+engine/tests/test_neu.py .FF..                                           [ 55%]
+engine/tests/test_bilder.py .F                                           [ 77%]
+engine/tests/test_umstellung_267.py F.                                   [100%]
+
+=================================== FAILURES ===================================
+_________________ test_rolle_kosten_nicht_bei_reise_mit_rollen _________________
+
+tmp_path = PosixPath('<tmp>/test_rolle_kosten_nicht_bei_re0')
+
+    def test_rolle_kosten_nicht_bei_reise_mit_rollen(tmp_path):
+        """#584, AC-1, AC-4: Die Beispielreise trägt Rollen; ihre Herberge hat bewusst keine (Preis pro Person). nachziehen meldet
+        zu arten.yaml nichts, die Datei bleibt byte-gleich, und der Preis der Herberge bleibt ohne Rolle."""
+        r = beispiel_kopie(tmp_path)
+        a = r / "plan/arten.yaml"
+        vorher = a.read_bytes()
+        assert "rolle" not in schreiben.arten_laden(r)["herberge"]["merkmale"]["preis"]
+        m = neu.nachziehen(r)
+>       assert not [t for t in m if t.startswith("arten.yaml")]
+E       AssertionError: assert not ['arten.yaml herberge: attribute preis gets rolle kosten']
+
+engine/tests/test_neu.py:329: AssertionError
+____________________ test_rolle_in_buchung_merkmalen_zaehlt ____________________
+
+tmp_path = PosixPath('<tmp>/test_rolle_in_buchung_merkmale0')
+
+    def test_rolle_in_buchung_merkmalen_zaehlt(tmp_path):
+        """#584, AC-1: Auch eine Rolle an einem Merkmal der Buchungen (buchung_merkmale) zeigt, dass die Reise das Rollen-Konzept
+        schon kennt; dann setzt nachziehen keine Rolle kosten."""
+        r = beispiel_kopie(tmp_path)
+        a = r / "plan/arten.yaml"
+        text = ohne_rollen(a.read_text(encoding="utf-8"))
+        alt = 'wagen:        {name: Wagen und Platz, typ: text,'
+        assert text.count(alt) == 1
+        a.write_text(text.replace(alt, alt + " rolle: alias,"), encoding="utf-8")
+        vorher = a.read_bytes()
+        m = neu.nachziehen(r)
+>       assert not [t for t in m if t.startswith("arten.yaml")]
+E       AssertionError: assert not ['arten.yaml hotel: attribute preis gets rolle kosten', 'arten.yaml pension: attribute preis gets rolle kosten', 'arten.yaml gasthof: attribute preis gets rolle kosten', 'arten.yaml herberge: attribute preis gets rolle kosten']
+
+engine/tests/test_neu.py:345: AssertionError
+_____________ test_nachziehen_aendert_die_beispielreise_nicht_mehr _____________
+
+wanderung = PosixPath('<tmp>/test_nachziehen_aendert_die_be0/beispielreise')
+
+    def test_nachziehen_aendert_die_beispielreise_nicht_mehr(wanderung):
+        """Die Beispielreise im Repo ist schon umgestellt (V24): Altbestand steht als BI-, ein Bild mit Commons-Herkunft und ein Titelbild.
+        nachziehen ändert an ihr keine einzige Datei (volle Idempotenz, #584)."""
+        def dateien():
+            return {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()}
+        stand = dateien()
+        neu.nachziehen(wanderung)
+>       assert dateien() == stand
+E       assert {PosixPath('/...llen}\n', ...} == {PosixPath('/...llen}\n', ...}
+E         
+E         Omitting 41 identical items, use -vv to show
+E         Differing items:
+E         {PosixPath('<tmp>/test_nachziehen_aendert_die_be0/beispielreise/plan/arten.yaml'): b"# Arten un...\n    merkmale:\n      gewicht:\n        name: Gewicht\n        typ: zahl\n        einheit: g\n        rolle: summe\n"} != {PosixPath('<tmp>/test_nachziehen_aendert_die_be0/beispielreise/plan/arten.yaml'): b'# Arten un...e: grau\n    ausgeblendet: true\n    merkmale:\n      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}\n'}
+E         Use -v to get more diff
+
+engine/tests/test_bilder.py:732: AssertionError
+_________ test_beispielreisen_melden_nichts_zur_sprache[beispielreise] _________
+
+name = 'beispielreise'
+
+    @pytest.mark.parametrize("name", BEISPIELE)
+    def test_beispielreisen_melden_nichts_zur_sprache(name):
+        """Beide Beispielreisen tragen sprache: de; die Umstellung meldet dazu nichts, und auch sonst ist nichts nachzuziehen (#584)."""
+        m = neu.nachziehen(WURZEL / "beispiel" / "reisen" / name, schreiben=False)
+        assert texte.t("de", SCHLUESSEL) not in m and texte.t("en", SCHLUESSEL) not in m
+>       assert m == []
+E       AssertionError: assert ['arten.yaml ...rolle kosten'] == []
+E         
+E         Left contains one more item: 'arten.yaml herberge: attribute preis gets rolle kosten'
+E         Use -v to get more diff
+
+engine/tests/test_umstellung_267.py:154: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_neu.py::test_rolle_kosten_nicht_bei_reise_mit_rollen
+FAILED engine/tests/test_neu.py::test_rolle_in_buchung_merkmalen_zaehlt - Ass...
+FAILED engine/tests/test_bilder.py::test_nachziehen_aendert_die_beispielreise_nicht_mehr
+FAILED engine/tests/test_umstellung_267.py::test_beispielreisen_melden_nichts_zur_sprache[beispielreise]
+================= 4 failed, 5 passed, 231 deselected in 4.34s ==================

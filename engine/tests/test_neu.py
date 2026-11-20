@@ -303,10 +303,66 @@ def test_reise_aus_der_vorlage_im_gespraech_fuellen(tmp_path):
     assert {k: marken[k] for k in "OUET"} == {"O": 2, "U": 1, "E": 1, "T": 1}
 
 
+def ohne_rollen(text, ausser=()):
+    """arten.yaml ohne jede Rolle (außer den genannten), in Fluss- und Blockform: der Stand vor dem Rollen-Konzept (29.10.2026, #584)."""
+    import re
+    weg = lambda t: "" if t.group(1) not in ausser else t.group(0)   # noqa: E731
+    text = re.sub(r", rolle: (\w+)", weg, text)
+    return re.sub(r"^[ ]+rolle: (\w+)\n", weg, text, flags=re.M)
+
+
+def beispiel_kopie(tmp_path):
+    import shutil
+    r = tmp_path / "bsp"
+    shutil.copytree(Path(__file__).resolve().parents[2] / "beispiel/reisen/beispielreise", r)
+    return r
+
+
+def test_rolle_kosten_nicht_bei_reise_mit_rollen(tmp_path):
+    """#584, AC-1, AC-4: Die Beispielreise trägt Rollen; ihre Herberge hat bewusst keine (Preis pro Person). nachziehen meldet
+    zu arten.yaml nichts, die Datei bleibt byte-gleich, und der Preis der Herberge bleibt ohne Rolle."""
+    r = beispiel_kopie(tmp_path)
+    a = r / "plan/arten.yaml"
+    vorher = a.read_bytes()
+    assert "rolle" not in schreiben.arten_laden(r)["herberge"]["merkmale"]["preis"]
+    m = neu.nachziehen(r)
+    assert not [t for t in m if t.startswith("arten.yaml")]
+    assert a.read_bytes() == vorher
+    assert "rolle" not in schreiben.arten_laden(r)["herberge"]["merkmale"]["preis"]
+
+
+def test_rolle_in_buchung_merkmalen_zaehlt(tmp_path):
+    """#584, AC-1: Auch eine Rolle an einem Merkmal der Buchungen (buchung_merkmale) zeigt, dass die Reise das Rollen-Konzept
+    schon kennt; dann setzt nachziehen keine Rolle kosten."""
+    r = beispiel_kopie(tmp_path)
+    a = r / "plan/arten.yaml"
+    text = ohne_rollen(a.read_text(encoding="utf-8"))
+    alt = 'wagen:        {name: Wagen und Platz, typ: text,'
+    assert text.count(alt) == 1
+    a.write_text(text.replace(alt, alt + " rolle: alias,"), encoding="utf-8")
+    vorher = a.read_bytes()
+    m = neu.nachziehen(r)
+    assert not [t for t in m if t.startswith("arten.yaml")]
+    assert a.read_bytes() == vorher
+
+
+def test_rolle_kosten_am_altstand_probelauf_schreibt_nicht(tmp_path):
+    """#584, Test 5: Altstand ohne jede Rolle, Probelauf: die Meldung kommt (hotel und herberge), arten.yaml bleibt unverändert."""
+    r = beispiel_kopie(tmp_path)
+    a = r / "plan/arten.yaml"
+    a.write_text(ohne_rollen(a.read_text(encoding="utf-8")), encoding="utf-8")
+    vorher = a.read_bytes()
+    m = neu.nachziehen(r, schreiben=False)
+    assert "arten.yaml hotel: attribute preis gets rolle kosten" in m
+    assert "arten.yaml herberge: attribute preis gets rolle kosten" in m
+    assert a.read_bytes() == vorher
+
+
 def test_nachziehen_nur_schluessel(tmp_path):
     """Abgleich 29.10.2026 (docs/abgleich-2026-10-29.md): neu.py nachziehen bringt eine Reise mit den alten Schlüsseln
     (typ an Unterkunft und Nacht, bereich und art: planung an Wahlstellen) auf den Stand, ohne eine ID oder einen Wert zu
-    ändern; eine Strecke ohne Art wird gemeldet oder bekommt die angegebene; das Merkmal preis bekommt rolle kosten."""
+    ändern; eine Strecke ohne Art wird gemeldet oder bekommt die angegebene; trägt noch keine Art eine Rolle (Altstand vor dem
+    Rollen-Konzept, #584), bekommt das Merkmal preis rolle kosten."""
     import shutil
     beispiel = Path(__file__).resolve().parents[2] / "beispiel/reisen/beispielreise"
     r = tmp_path / "bsp"
@@ -321,7 +377,7 @@ def test_nachziehen_nur_schluessel(tmp_path):
                       "  E-23: {titel: \"Bus Bad Schandau → Dresden\", von: O-05, nach: O-01, quelle")
     p.write_text(alt, encoding="utf-8")
     a = r / "plan/arten.yaml"
-    a.write_text(a.read_text(encoding="utf-8").replace(", rolle: kosten", ""), encoding="utf-8")
+    a.write_text(ohne_rollen(a.read_text(encoding="utf-8")), encoding="utf-8")   # Altstand vor dem Rollen-Konzept (#584)
     cfg = json.loads((r / "reise.json").read_text(encoding="utf-8"))
     cfg.pop("etappen_ebenen")
     (r / "reise.json").write_text(json.dumps(cfg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -331,8 +387,10 @@ def test_nachziehen_nur_schluessel(tmp_path):
     assert any(t.startswith("OPEN E-23") for t in m) and "U-01: typ “Hotel” → art hotel" in m and "V-03: art planung → wann planung" in m
     assert "V-03: bereich pension → art pension" in m and "V-02: art unterwegs → wann unterwegs" in m
     assert "arten.yaml hotel: attribute preis gets rolle kosten" in m and any(t.startswith("reise.json") for t in m)
-    unveraendert = tmp_path / "bsp-unveraendert"   # Vergleichsstand: die Beispielreise selbst (der Bau liest typ nicht mehr, #267 d)
-    shutil.copytree(beispiel, unveraendert)
+    unveraendert = tmp_path / "bsp-unveraendert"   # Vergleichsstand: die Beispielreise selbst (der Bau liest typ nicht mehr, #267 d),
+    shutil.copytree(beispiel, unveraendert)         # mit denselben Arten: ohne Rollen außer kosten (hero ändert die Unterkünfte)
+    ua = unveraendert / "plan/arten.yaml"
+    ua.write_text(ohne_rollen(ua.read_text(encoding="utf-8"), ausser=("kosten",)), encoding="utf-8")
     vorher = bauen.Bauer(unveraendert, tmp_path / "v").daten()
     m = neu.nachziehen(r, {"E-23": "bus"})
     assert "E-23: art bus (given)" in m and not [t for t in m if t.startswith("OPEN")]

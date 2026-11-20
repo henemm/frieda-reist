@@ -723,11 +723,10 @@ def test_nachziehen_aendert_stadtwochenende_nicht(stadt):
 
 
 def test_nachziehen_aendert_die_beispielreise_nicht_mehr(wanderung):
-    """Die Beispielreise im Repo ist schon umgestellt (V24): Altbestand steht als BI-, ein Bild mit Commons-Herkunft und ein Titelbild."""
-    # nur die Dateien, die bilder_nachziehen berührt; volle Idempotenz der Beispielreise: #584
+    """Die Beispielreise im Repo ist schon umgestellt (V24): Altbestand steht als BI-, ein Bild mit Commons-Herkunft und ein Titelbild.
+    nachziehen ändert an ihr keine einzige Datei (volle Idempotenz, #584)."""
     def dateien():
-        muster = ("plan/bilder.yaml", "ids.yaml", "inhalt/*.md", "medien/bilder/*")
-        return {f: f.read_bytes() for m in muster for f in wanderung.glob(m) if f.is_file()}
+        return {f: f.read_bytes() for f in wanderung.rglob("*") if f.is_file()}
     stand = dateien()
     neu.nachziehen(wanderung)
     assert dateien() == stand

@@ -148,14 +148,10 @@ def test_probelauf_meldet_und_schreibt_nichts(tmp_path):
 
 @pytest.mark.parametrize("name", BEISPIELE)
 def test_beispielreisen_melden_nichts_zur_sprache(name):
-    """Beide Beispielreisen tragen sprache: de; die Umstellung meldet dazu nichts. (Die Spec nennt „keine Meldung“ für beide;
-    die Beispielreise hat aber schon vor #267 eine offene Umstellung, arten.yaml herberge: rolle kosten. Das ist ein
-    eigener Befund und gehört nicht zu diesem PR; hier zählt nur die Sprache.)"""
+    """Beide Beispielreisen tragen sprache: de; die Umstellung meldet dazu nichts, und auch sonst ist nichts nachzuziehen (#584)."""
     m = neu.nachziehen(WURZEL / "beispiel" / "reisen" / name, schreiben=False)
     assert texte.t("de", SCHLUESSEL) not in m and texte.t("en", SCHLUESSEL) not in m
-    assert all("sprache" not in x for x in m)
-    if name == "stadtwochenende":
-        assert m == []
+    assert m == []
 
 
 def test_reise_ohne_reise_yaml_wird_uebergangen(tmp_path):
