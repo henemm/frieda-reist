@@ -16,6 +16,7 @@ const imFenster = (sel, ctxSel = "document") => p.evaluate(([s]) => [...document
 }), [sel]);
 // Etappenkarte
 await p.goto(basis + "#E-01");
+await p.waitForSelector("html[data-geladen]", {state: "attached"});   // erst nach dem Neuzeichnen mit den Live-Daten zugreifen (#568)
 await p.waitForSelector(".ekarte", {state: "attached"});
 await p.locator(".ekarte").first().scrollIntoViewIfNeeded();   // gezeichnet wird erst, wenn die Karte im Bild ist
 await p.waitForSelector(".ekarte .leaflet-marker-icon", {state: "attached"});

@@ -1,0 +1,17 @@
+=== Zieltests (#568) ===
+engine/.venv/bin/python -m pytest -q -n auto engine/tests/test_wartepunkt_geladen.py engine/tests/test_karte_legende.py engine/tests/test_bilder.py engine/tests/test_texte.py engine/tests/test_protokolle_ohne_pfade.py
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 28%]
+........................................................................ [ 57%]
+........................................................................ [ 86%]
+...................................                                      [100%]
+251 passed in 73.97s (0:01:13)
+
+=== Gesamtsuite: engine/.venv/bin/python -m pytest -q -n auto engine/tests (Zusammenfassung) ===
+FAILED engine/tests/test_wackel_599.py::test_alter_ablauf_ist_unter_verzoegerung_rot[webkit]
+1 failed, 3367 passed in 1958.38s (0:32:38)
+Hinweis: test_wackel_599.py::test_alter_ablauf_ist_unter_verzoegerung_rot[webkit] prüft, dass ein ALTER Skriptstand unter künstlicher
+Verzögerung rot ist; er berührt die geänderten Dateien nicht und lief einzeln wiederholt grün:
+engine/.venv/bin/python -m pytest -q engine/tests/test_wackel_599.py -> 9 passed in 876.42s

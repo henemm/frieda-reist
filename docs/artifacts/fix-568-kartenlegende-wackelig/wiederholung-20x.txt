@@ -1,0 +1,22 @@
+Wiederholung (AC-6, #568): 20 Läufe von engine/tests/test_karte_legende.py und engine/tests/test_bilder.py::test_seite_unter_der_csp_ohne_meldung unter -n auto
+Befehl je Lauf: engine/.venv/bin/python -m pytest -q -n auto engine/tests/test_karte_legende.py engine/tests/test_bilder.py::test_seite_unter_der_csp_ohne_meldung
+Lauf 1: 7 passed in 10.74s
+Lauf 2: 7 passed in 9.83s
+Lauf 3: 7 passed in 11.85s
+Lauf 4: 7 passed in 12.62s
+Lauf 5: 7 passed in 15.72s
+Lauf 6: 7 passed in 14.16s
+Lauf 7: 7 passed in 10.52s
+Lauf 8: 7 passed in 11.17s
+Lauf 9: 7 passed in 10.60s
+Lauf 10: 7 passed in 11.19s
+Lauf 11: 7 passed in 12.94s
+Lauf 12: 7 passed in 17.86s
+Lauf 13: 7 passed in 16.63s
+Lauf 14: 7 passed in 15.60s
+Lauf 15: 7 passed in 14.10s
+Lauf 16: 7 passed in 14.44s
+Lauf 17: 7 passed in 13.80s
+Lauf 18: 7 passed in 21.13s
+Lauf 19: 7 passed in 18.30s
+Lauf 20: 7 passed in 19.11s

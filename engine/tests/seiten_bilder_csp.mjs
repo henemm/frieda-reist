@@ -17,6 +17,7 @@ p.on("console", m => { if (/Content.Security.Policy|Refused to load/i.test(m.tex
 
 // Etappenkarte: Kacheln und Ebenen-Symbol
 await p.goto(basis + "#E-01");
+await p.waitForSelector("html[data-geladen]", {state: "attached"});   // erst nach dem Neuzeichnen mit den Live-Daten zugreifen (#568)
 await p.waitForSelector(".ekarte", {state: "attached"});
 await p.locator(".ekarte").first().scrollIntoViewIfNeeded();
 await p.waitForSelector(".ekarte .leaflet-marker-icon", {state: "attached"});

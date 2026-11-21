@@ -6573,7 +6573,12 @@ window.addEventListener("hashchange", () => { if (document.body.classList.contai
 route();
 rmKnopf();
 agKnopf();
-Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden(), psLaden()]).then(() => route(true));
+// Live-Daten geladen, Ansicht neu gezeichnet: html[data-geladen] ist der Wartepunkt für Browsertests (#568). Die Lader fangen
+// Netzfehler selbst ab, das Signal kommt also immer; vorher kann route(true) #main noch ersetzen.
+Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden(), psLaden()]).then(() => {
+  route(true);
+  document.documentElement.dataset.geladen = "1";
+});
 
 /* ---------- Höhe als App vom Home-Bildschirm (iOS) ----------
    Nach dem Schließen der Tastatur bleibt die Höhe des Fensters manchmal auf dem Stand mit Tastatur stehen, bis die App

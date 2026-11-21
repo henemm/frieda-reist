@@ -15,6 +15,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
+from test_karte_legende import gebaut  # noqa: E402
 from test_tagesseite import PLAYWRIGHT, WURZEL  # noqa: E402
 
 ohne_browser = pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
@@ -22,10 +23,16 @@ TESTS = Path(__file__).parent
 
 
 def sonde(tmp_path, reise, anker, browser="chromium"):
-    """Baut eine Beispielreise, öffnet sie mit abgebrochenem api/** und liefert die Messung von seiten_geladen.mjs."""
-    quelle = tmp_path / "quelle"
-    shutil.copytree(WURZEL / "beispiel/reisen" / reise, quelle)
-    bauen.bauen(quelle, tmp_path / "web" / "r")
+    """Baut eine Beispielreise, öffnet sie mit abgebrochenem api/** und liefert die Messung von seiten_geladen.mjs. Die Wanderung bekommt
+    wie in test_karte_legende.py Attrappen der Grundkarte, sonst gibt es keine Etappenkarte (.ekarte)."""
+    if reise == "beispielreise":
+        gebaut(tmp_path)
+        pfad = "beispiel"
+    else:
+        quelle = tmp_path / "quelle"
+        shutil.copytree(WURZEL / "beispiel/reisen" / reise, quelle)
+        bauen.bauen(quelle, tmp_path / "web" / "r")
+        pfad = "r"
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *a):
@@ -35,7 +42,7 @@ def sonde(tmp_path, reise, anker, browser="chromium"):
     threading.Thread(target=s.serve_forever, daemon=True).start()
     try:
         aus = subprocess.run(["node", str(TESTS / "seiten_geladen.mjs"), str(PLAYWRIGHT),
-                              f"http://127.0.0.1:{s.server_address[1]}/r/", anker],
+                              f"http://127.0.0.1:{s.server_address[1]}/{pfad}/", anker],
                              capture_output=True, text=True, timeout=300, env={**os.environ, "RH_BROWSER": browser})
     finally:
         s.shutdown()
