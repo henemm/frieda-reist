@@ -54,6 +54,12 @@ HTTP (hinter nginx, Präfix /<reise>-<token>/api/ -> /<reise>/):
   POST   /<reise>/belege/<B-id>           Datei hochladen (Body = Datei, X-Frieda-Datei = Name, ?name= bei eingetipptem Namen)
                                          (X-Frieda-Buchung: im-repo vom Konnektor, wenn die Buchung noch nicht veröffentlicht ist)
   PATCH  /<reise>/belege/<D-id>           {sichtbar: beteiligte | alle} (Organisator:in), {zurueckziehen: true} (wer hochlud, Organisator:in)
+  POST   /<reise>/bilder?zu=<ID>          eigenes Foto hochladen (#582; Body = Foto, bis 12 MB; nur angemeldet, ab mitwirkend,
+                                          Rolle über rolle_aktuell); geht roh an den Schreibweg (POST /<reise>/bild_hochladen)
+  DELETE /<reise>/bilder/<BI-id>          eigenes Foto endgültig entfernen (#582; nur angemeldet; der Schreibweg prüft Besitz
+                                          oder Organisator:in, Werkzeug bild_entfernen)
+  GET    /hochladen/<token>               Seite hinter dem Hochlade-Link aus dem Chat (#582; eigene CSP, no-referrer, ohne Seitenlink)
+  POST   /hochladen/<token>               ein Foto über den Link (ohne Anmeldung, nur Hochladen; Rolle bei jedem Foto neu geprüft)
   GET    /<reise>/gesund                  200, wenn die Ablage beschreibbar ist (für die Überwachung)
   GET    /<reise>/push                    öffentlicher Schlüssel für Push-Nachrichten (null: Push-Dienst nicht eingerichtet)
   POST   /<reise>/push                    {abo, geraet, zeitzone, seite} Gerät anmelden | {abmelden: endpoint}; nur angemeldet
@@ -71,6 +77,7 @@ Origin muss Friedas Adresse sein) und der Mitgliedschaft; ohne Sitzung 401, ohne
 zählt nicht (die Regel anmeldung: uebergang ist seit #421 entfallen).
 """
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -1011,6 +1018,7 @@ def name_fuer(ident, z, getippt):
 def gedrosselt(o):
     """True, wenn diese Reise in der letzten Minute schon MAX_JE_MINUTE Schreibzugriffe hatte. Aufrufer hält _sperre."""
     jetzt = time.monotonic()
+    zeiten_aufraeumen(jetzt)
     zeiten = _zeiten.setdefault(o.name, [])
     zeiten[:] = [z for z in zeiten if jetzt - z < 60]
     if len(zeiten) >= MAX_JE_MINUTE:
@@ -1101,6 +1109,169 @@ def reise_status_setzen(reise, person, status, sprache):
         return 503, {"fehler": texte.satz("dienst.status.nicht_erreichbar")}
 
 
+# ---------- Eigene Fotos (#582, Spec docs/specs/oberflaeche/bilder-582-eigene-fotos.md) ----------
+# Der Dienst prüft Anmeldung (oder Hochlade-Link), Rolle, Drosselung, Größe und Format an den Magic Bytes und reicht das Foto
+# roh an den Schreibweg weiter; dort wird es vor der Sperre umgewandelt und eingetragen. Gespeichert wird hier nichts.
+BILD_ZIEL = re.compile(r"^(?:reise|[A-Z]{1,2}-[\w.-]{1,40})\Z")
+BILD_ID = re.compile(r"^BI-\d{1,6}\Z")
+
+
+_aufgeraeumt = [0.0]   # Zeitpunkt (monotonic) des letzten Aufräumens von _zeiten
+
+
+def zeiten_aufraeumen(jetzt):
+    """Schlüssel ohne Zugriff in der letzten Minute aus dem Drosselspeicher _zeiten entfernen (höchstens einmal je Minute;
+    Schlüssel je Adresse und je Link würden sonst ohne Ende mehr). Aufrufer hält _sperre."""
+    if jetzt - _aufgeraeumt[0] < 60:
+        return
+    _aufgeraeumt[0] = jetzt
+    for k in [k for k, z in _zeiten.items() if not z or jetzt - z[-1] >= 60]:
+        del _zeiten[k]
+
+
+def gedrosselt_je(schluessel):
+    """Wie gedrosselt, aber je beliebigem Schlüssel (Person, Adresse, Link). Aufrufer hält _sperre."""
+    jetzt = time.monotonic()
+    zeiten_aufraeumen(jetzt)
+    zeiten = _zeiten.setdefault(schluessel, [])
+    zeiten[:] = [z for z in zeiten if jetzt - z < 60]
+    if len(zeiten) >= MAX_JE_MINUTE:
+        return True
+    zeiten.append(jetzt)
+    return False
+
+
+def bild_rolle(reise, person, z):
+    """Darf die Person jetzt Fotos hinzufügen (Aktion bild)? Rolle aus dem aktuellen Stand (rolle_aktuell, #552), ohne
+    Schreibweg aus der veröffentlichten Seite -> None oder (Code, Fehler)."""
+    try:
+        rolle = rolle_aktuell(reise, person.get("schluessel"), person.get("name"))
+    except RolleNichtPruefbar:
+        return 503, texte.satz("dienst.rolle_nicht_pruefbar")
+    rolle = rolle or person.get("rolle")
+    ok, grund = rg.erlaubt("bild", rg.rolle_neu(rolle), (z or {}).get("status") or "planung", (z or {}).get("bausteine"),
+                           regeln=(z or {}).get("regeln"))
+    return None if ok else (403, grund or texte.satz("bild.abgelehnt.rolle_hochladen"))
+
+
+def _schreibweg_antwort(e):
+    """Fehlerantwort des Schreibwegs (HTTPError) -> (Code, Antwort für die Seite)."""
+    try:
+        a = json.loads(e.read())
+    except ValueError:
+        a = None
+    if isinstance(a, dict) and a.get("fehler_code") and e.code < 500:
+        werte = a.get("werte") if isinstance(a.get("werte"), dict) else {}
+        einfach = all(isinstance(v, (str, int, float)) for v in werte.values())
+        return e.code, {"fehler": str(a.get("fehler") or ""), "fehler_code": a["fehler_code"] if einfach else None,
+                        "werte": werte if einfach else {}}
+    return 502, {"fehler": texte.satz("dienst.status.fehlgeschlagen")}
+
+
+def an_schreibweg(pfad, daten, kopf):
+    """POST an den Schreibweg mit dem Dienst-Geheimnis -> (Code, Antwort)."""
+    import urllib.error
+    import urllib.request
+    req = urllib.request.Request(f"{schreibdienst()}/{pfad}", method="POST", data=daten,
+                                 headers={**kopf, "X-Frieda-Dienst": konten.dienst_geheimnis()})
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r:
+            a = json.loads(r.read())
+        if isinstance(a, dict) and a.get("ok"):
+            return 200, a
+        return 502, {"fehler": texte.satz("dienst.status.fehlgeschlagen")}
+    except urllib.error.HTTPError as e:
+        return _schreibweg_antwort(e)
+    except (urllib.error.URLError, OSError, ValueError):
+        return 503, {"fehler": texte.satz("dienst.status.nicht_erreichbar")}
+
+
+def bild_weiterleiten(reise, person, zu, inhalt):
+    """Foto roh an den Schreibweg (POST /<reise>/bild_hochladen) -> (Code, Antwort für die Seite)."""
+    meta = json.dumps({"zu": zu, "person": person.get("schluessel"), "name": person.get("name")}, ensure_ascii=True)
+    code, a = an_schreibweg(f"{reise}/bild_hochladen", inhalt, {"Content-Type": "application/octet-stream", "X-Frieda-Bild": meta})
+    return (201, {"ok": True, "id": a.get("id")}) if code == 200 else (code, a)
+
+
+def veroeffentlichte_daten(reise):
+    try:
+        return json.loads((seiten() / reise / "daten.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def ding_name(daten, zu):
+    """Name eines Dings der veröffentlichten Seite (Orte, Strecken, Unterkünfte, Aufenthalte, Tage) oder die Kennung."""
+    for menge in ((daten.get("route") or {}).values() if isinstance(daten.get("route"), dict) else ()):
+        x = menge.get(zu) if isinstance(menge, dict) else None
+        if isinstance(x, dict) and (x.get("name") or x.get("titel")):
+            return str(x.get("name") or x.get("titel"))
+    return zu
+
+
+HOCHLADEN_SKRIPT = """const T = JSON.parse(document.getElementById("texte").textContent);
+const liste = document.getElementById("liste"), rest = document.getElementById("rest"), wahl = document.getElementById("wahl");
+let k = T.rest_fotos;
+const restZeigen = () => { const m = Math.max(0, Math.ceil((T.ablauf * 1000 - Date.now()) / 60000));
+  rest.textContent = T.rest.replace("{m}", m).replace("{k}", k).replace("{max}", T.max); };
+restZeigen(); setInterval(restZeigen, 30000);
+wahl.addEventListener("change", async () => {
+  for (const f of [...wahl.files]) {
+    const z = document.createElement("li"); z.textContent = f.name + " · " + T.laeuft; liste.append(z);
+    try {
+      const r = await fetch(location.pathname, {method: "POST", body: f, headers: {"Content-Type": "application/octet-stream"}});
+      const a = await r.json().catch(() => ({}));
+      if (r.ok) { k = Math.max(0, k - 1); z.textContent = f.name + " · " + T.fertig; }
+      else { z.textContent = f.name + " · " + (a.fehler || r.status); }
+    } catch (e) { z.textContent = f.name + " · " + String(e); }
+    restZeigen();
+  }
+  wahl.value = "";
+});
+"""
+HOCHLADEN_STIL = ("body{font-family:system-ui,sans-serif;max-width:36rem;margin:2rem auto;padding:0 1rem;line-height:1.45}"
+                  "label.knopf{display:inline-block;padding:.6rem 1rem;border-radius:.5rem;background:#2f5d50;color:#fff;cursor:pointer}"
+                  "input[type=file]{position:absolute;left:-9999px}.klein{font-size:.9rem;color:#555}ul{padding-left:1.2rem}")
+
+
+def hochladen_seite(sprache, z=None, abgelaufen=False):
+    """HTML der Seite hinter dem Hochlade-Link -> (bytes, nonce). Ohne Adresse der Reiseseite, ohne fremde Ressourcen."""
+    import html as h
+    nonce = secrets.token_urlsafe(16)
+
+    def tx(k, **w):
+        return h.escape(texte.t(sprache, k, **w))
+    if abgelaufen:
+        rumpf = f"<h1>{tx('hochladen.abgelaufen_titel')}</h1><p>{tx('hochladen.abgelaufen')}</p>"
+        titel = texte.t(sprache, "hochladen.abgelaufen_titel")
+        skript = ""
+    else:
+        d = veroeffentlichte_daten(z["reise"])
+        reise_titel = str((d.get("reise") or {}).get("titel") or z["reise"])
+        zu = z.get("zu") or "reise"
+        ding = texte.t(sprache, "inhalt.bild.ganze_reise") if zu == "reise" else ding_name(d, zu)
+        name = next((p.get("name") for p in ((d.get("reise") or {}).get("personen") or [])
+                     if isinstance(p, dict) and p.get("schluessel") == z["person"]), None) or (konten.konto(z["konto"]) or {}).get("name") or ""
+        werte = {"laeuft": texte.t(sprache, "hochladen.laeuft"), "fertig": texte.t(sprache, "hochladen.fertig"),
+                 "rest": texte.t(sprache, "hochladen.rest"), "max": konten.HOCHLADELINK_FOTOS, "rest_fotos": z["rest"],
+                 "ablauf": z["ablauf"]}
+        daten_json = json.dumps(werte, ensure_ascii=False).replace("<", "\\u003c")
+        rumpf = (f"<h1>{tx('hochladen.titel', reise=reise_titel)}</h1><p>{tx('hochladen.zu', ding=ding, name=name)}</p>"
+                 f"<p>{tx('hochladen.erklaerung', minuten=konten.HOCHLADELINK_MINUTEN, max=konten.HOCHLADELINK_FOTOS)}</p>"
+                 f"<p>{tx('seite.bild.hinweis_personen')}</p><p class=\"klein\">{tx('seite.bild.hinweis_metadaten')}</p>"
+                 f"<p><label class=\"knopf\" for=\"wahl\">{tx('hochladen.auswaehlen')}</label>"
+                 f"<input id=\"wahl\" type=\"file\" accept=\"image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif\" multiple></p>"
+                 f"<ul id=\"liste\"></ul><p class=\"klein\" id=\"rest\"></p>"
+                 f"<script type=\"application/json\" id=\"texte\">{daten_json}</script>")
+        titel = texte.t(sprache, "hochladen.seitentitel")
+        skript = f"<script nonce=\"{nonce}\">{HOCHLADEN_SKRIPT}</script>"
+    seite = (f"<!doctype html><html lang=\"{h.escape(sprache)}\"><head><meta charset=\"utf-8\">"
+             f"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"robots\" content=\"noindex\">"
+             f"<title>{h.escape(titel)}</title><style nonce=\"{nonce}\">{HOCHLADEN_STIL}</style></head>"
+             f"<body>{rumpf}{skript}</body></html>")
+    return seite.encode("utf-8"), nonce
+
+
 class Dienst(BaseHTTPRequestHandler):
     server_version = "Rueckmeldungen"
     sys_version = ""
@@ -1172,7 +1343,12 @@ class Dienst(BaseHTTPRequestHandler):
     def _query(self):
         return urllib.parse.parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
 
+    def _ist_link(self):
+        return self.path.split("?", 1)[0].startswith("/hochladen/")
+
     def do_GET(self):
+        if self._ist_link():   # Hochlade-Link aus dem Chat (#582)
+            return self._link("GET")
         t = self._teile()
         if t and t[1] == "belege":
             # Belege (#76): Liste oder Datei, nur was die Person sehen darf
@@ -1381,6 +1557,141 @@ class Dienst(BaseHTTPRequestHandler):
             b, nein = bl.ablegen(o, bid, name, dateiname, daten)
         return self._antwort(nein[0], {"fehler": nein[1]}) if nein else self._antwort(201, b)
 
+    def _foto_lesen(self):
+        """Body eines Fotos (#582) -> Bytes, oder None nach gesendeter Ablehnung (leer 400, zu groß 413: etwas zu große Bodies
+        werden gelesen und verworfen, damit die Antwort ankommt; ganz große ungelesen beendet; falsches Format 415)."""
+        import bilder
+        try:
+            laenge = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            laenge = 0
+        if laenge <= 0:
+            self._antwort(400, {"fehler": texte.satz("bild.abgelehnt.format")})
+            return None
+        if laenge > bilder.MAX_EIGEN:
+            if laenge <= 2 * bilder.MAX_EIGEN:
+                self.rfile.read(laenge)
+            else:
+                self.close_connection = True
+            self._antwort(413, {"fehler": texte.satz("bild.abgelehnt.foto_zu_gross", mb=bilder.MAX_EIGEN // 1024 // 1024)})
+            return None
+        daten = self.rfile.read(laenge)
+        if bl.typ_erkennen(daten) not in bilder.EIGEN_TYPEN:
+            self._antwort(415, {"fehler": texte.satz("bild.abgelehnt.format")})
+            return None
+        return daten
+
+    def _angemeldete_person(self, o, z):
+        """Angemeldetes Mitglied der Reise (Cookie und Origin) -> Person, oder None nach gesendeter Ablehnung (ohne
+        Anmeldung 401, fremde Herkunft oder kein Mitglied 403). Ein Hochlade-Link oder das Dienst-Geheimnis zählen hier nicht."""
+        ident = wer_ist(self.headers, o.name, z)
+        if ident["art"] == "dienst":
+            ident = {"art": "seite"}
+        if ident["art"] in ("seite", "fremd") or not (ident["art"] == "konto" and ident.get("person")):
+            self.close_connection = True
+            code = 401 if ident["art"] == "seite" else 403
+            self._antwort(code, {"fehler": texte.satz("bild.abgelehnt.anmelden" if code == 401 else "dienst.anfrage.1"
+                                                      if ident["art"] == "fremd" else "dienst.anfrage.2")})
+            return None
+        return ident["person"]
+
+    def _bild_hochladen(self, o):
+        """POST /<reise>/bilder?zu=<ID>: eigenes Foto von der Reiseseite (#582)."""
+        zu = (self._query().get("zu") or ["reise"])[0]
+        if not BILD_ZIEL.match(zu or ""):
+            return self._antwort(400, {"fehler": texte.satz("dienst.pruefen.4")})
+        z = zustand(o.name)
+        p = self._angemeldete_person(o, z)
+        if p is None:
+            return None
+        if (nein := bild_rolle(o.name, p, z)):
+            self.close_connection = True
+            return self._antwort(nein[0], {"fehler": nein[1]})
+        daten = self._foto_lesen()
+        if daten is None:
+            return None
+        with _sperre:
+            if gedrosselt_je(f"{o.name}/bilder/{p.get('schluessel')}"):
+                return self._antwort(429, {"fehler": texte.satz("bild.abgelehnt.zu_viele")})
+        code, a = bild_weiterleiten(o.name, p, zu, daten)
+        return self._antwort(code, a)
+
+    def _bild_entfernen(self, o, bid):
+        """DELETE /<reise>/bilder/<BI-id>: eigenes Foto endgültig entfernen (#582), nur angemeldet; Besitz oder Organisator:in
+        prüft der Schreibweg (Werkzeug bild_entfernen) mit reise.yaml des aktuellen Stands."""
+        if not BILD_ID.match(bid or ""):
+            return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
+        z = zustand(o.name)
+        p = self._angemeldete_person(o, z)
+        if p is None:
+            return None
+        if (nein := bild_rolle(o.name, p, z)):
+            return self._antwort(nein[0], {"fehler": nein[1]})
+        with _sperre:
+            if gedrosselt_je(f"{o.name}/bilder/{p.get('schluessel')}"):
+                return self._antwort(429, {"fehler": texte.satz("bild.abgelehnt.zu_viele")})
+        anfrage = {"person": p.get("schluessel"), "name": p.get("name"), "args": {"ziel": bid}}
+        code, a = an_schreibweg(f"{o.name}/bild_entfernen", json.dumps(anfrage, ensure_ascii=False).encode("utf-8"),
+                                {"Content-Type": "application/json"})
+        return self._antwort(code, {"ok": True, "entfernt": bid} if code == 200 else a)
+
+    def _seite_senden(self, code, body, nonce):
+        """HTML der Link-Seite mit eigener CSP (nur eigene Adresse, Skript und Stil mit Nonce) und ohne Referrer."""
+        self.send_response(code)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Security-Policy", f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'nonce-{nonce}'; "
+                         "connect-src 'self'; img-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Robots-Tag", "noindex, nofollow")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+    def _link(self, methode):
+        """/hochladen/<token> (#582): GET die Seite, POST ein Foto. Abgelaufen, aufgebraucht, unbekannt, Person nicht mehr
+        Mitglied: immer dieselbe Antwort (410, hochladen.abgelaufen). Der Token ist keine Sitzung: nichts sonst geht damit."""
+        teile = self.path.split("?", 1)[0].strip("/").split("/")
+        if len(teile) != 2 or methode not in ("GET", "POST"):
+            return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
+        token = teile[1]
+        sprache = texte.aus_header(self.headers.get("Accept-Language"))
+        if methode == "GET":
+            z = konten.hochladelink_pruefen(token)
+            z = z if z and konten.mitglied(z["konto"], z["reise"]) == z["person"] else None
+            return self._seite_senden(200 if z else 410, *hochladen_seite(sprache, z, abgelaufen=not z))
+        # Erst Drosselung (je Adresse und je Link) und Link prüfen, dann den Body lesen: ein ungültiger Link kostet kein Einlesen.
+        # Wer ungelesen abgelehnt wird, bekommt die Antwort und eine geschlossene Verbindung.
+        abgelaufen = 410, {"fehler": texte.satz("hochladen.abgelaufen")}
+        with _sperre:
+            ip = self.headers.get("X-Real-IP") or self.client_address[0]
+            link = hashlib.sha256(token.encode("utf-8", "replace")).hexdigest()[:32]
+            if gedrosselt_je(f"hochladen/{ip}") or gedrosselt_je(f"hochladen/link/{link}"):
+                self.close_connection = True
+                return self._antwort(429, {"fehler": texte.satz("bild.abgelehnt.zu_viele")})
+        z = konten.hochladelink_pruefen(token)
+        if not z or konten.mitglied(z["konto"], z["reise"]) != z["person"]:
+            self.close_connection = True
+            return self._antwort(*abgelaufen)
+        daten = self._foto_lesen()
+        if daten is None:
+            return None
+        z = konten.hochladelink_nehmen(token)
+        if not z or konten.mitglied(z["konto"], z["reise"]) != z["person"] or ordner(z["reise"]) is None:
+            return self._antwort(*abgelaufen)
+        zr = zustand(z["reise"])
+        p = next((x for x in (zr or {}).get("personen") or [] if x.get("schluessel") == z["person"]), None)
+        nein = (403, texte.satz("bild.abgelehnt.rolle_hochladen")) if p is None else bild_rolle(z["reise"], p, zr)
+        if nein:
+            konten.hochladelink_zurueckgeben(token)
+            return self._antwort(nein[0], {"fehler": nein[1]})
+        code, a = bild_weiterleiten(z["reise"], p, z.get("zu") or "reise", daten)
+        if code != 201:
+            konten.hochladelink_zurueckgeben(token)
+        return self._antwort(code, {**a, "rest": z["rest"] - 1} if code == 201 else a)
+
     def _konto_anfrage(self, o, was):
         """POST push (Gerät für Push-Nachrichten an- oder abmelden), aktualisieren (Anstoß) und gelesen (Meldungen des
         Hinweises „Für dich“, #407): nur angemeldet."""
@@ -1436,7 +1747,11 @@ class Dienst(BaseHTTPRequestHandler):
         return self._antwort(code, antwort)
 
     def do_POST(self):
+        if self._ist_link():   # Hochlade-Link aus dem Chat (#582)
+            return self._link("POST")
         t = self._teile()
+        if t and t[1] == "bilder" and t[2] is None:   # eigenes Foto von der Reiseseite (#582)
+            return self._bild_hochladen(t[0])
         if t and t[1] == "status" and t[2] is None:
             return self._status(t[0])
         if t and t[1] == "belege" and t[2]:
@@ -1487,7 +1802,11 @@ class Dienst(BaseHTTPRequestHandler):
         self._antwort(201, {**e, "status": "neu", "kommentar": ""})
 
     def do_DELETE(self):
+        if self._ist_link():   # der Hochlade-Link erlaubt nur GET und POST (#582)
+            return self._link("DELETE")
         t = self._teile()
+        if t and t[1] == "bilder" and t[2]:   # eigenes Foto entfernen (#582)
+            return self._bild_entfernen(t[0], t[2])
         if not t or t[1] != "rueckmeldungen" or not RID_MUSTER.match(t[2] or ""):
             return self._antwort(404, {"fehler": texte.satz("dienst.do_get.2")})
         o, _, rid = t

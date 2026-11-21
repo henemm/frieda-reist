@@ -5,6 +5,7 @@
 markdown
 nh3
 Pillow
+pillow-heif
 pytest
 pytest-xdist
 PyYAML

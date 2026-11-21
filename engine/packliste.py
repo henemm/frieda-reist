@@ -135,7 +135,9 @@ def _bauen(r, roh, arten, personen, melde, id_anlegen, quelle):
         melde("pruefung.packliste.liste")
         liste = []
     namen = {str(p).casefold(): str(p) for p in personen}
-    dinge = {"strecke": r.strecken, "aufenthalt": r.aufenthalte, "unterkunft": r.unterkuenfte, "ort": r.orte}
+    # Nach dem Löschen eines Kontos steht in wer der Ersatzname (#381, reisespeicher.namen_ersetzen, #647): gültig, in jeder Sprache
+    namen_mit_ersatz = {**namen, **{(g := texte.t(k, "konto.geloeschte_person")).casefold(): g for k in texte.SPRACHEN}}
+    dinge ={"strecke": r.strecken, "aufenthalt": r.aufenthalte, "unterkunft": r.unterkuenfte, "ort": r.orte}
     gesehen, aus = set(), []
     for i, g in enumerate(liste, 1):
         gid = g.get("id") if isinstance(g, dict) else None
@@ -178,11 +180,11 @@ def _bauen(r, roh, arten, personen, melde, id_anlegen, quelle):
                     r.warne(gid, texte.satz("pruefung.packliste.an_verworfen", gid=gid, x=an))
         wer = g.get("wer")
         if wer is not None:
-            if not isinstance(wer, str) or wer.casefold() not in namen:
+            if not isinstance(wer, str) or wer.casefold() not in namen_mit_ersatz:
                 melde("pruefung.packliste.wer", wo=wo, x=wer, w1=", ".join(namen.values()) or "–")
                 wer = None
             else:
-                wer = namen[wer.casefold()]
+                wer = namen_mit_ersatz[wer.casefold()]
         if g.get("status") is not None and g["status"] not in GEGENSTAND_STATUS:
             melde("pruefung.packliste.status", wo=wo, w1=", ".join(GEGENSTAND_STATUS))
         notiz = g.get("notiz")

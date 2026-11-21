@@ -867,6 +867,19 @@ a.standzeile .standwert::after{content:" ›";color:var(--mut);font-weight:400}
 dialog#rm{border:0;border-radius:16px 16px 0 0;padding:0;margin:auto 0 0;bottom:calc(0px - var(--hoehe-fehlt,0px));width:100%;max-width:100%;max-height:88vh;background:var(--card);color:var(--fg);box-shadow:var(--schatten)}
 @media (min-width:700px){dialog#rm{margin:auto;max-width:600px;border-radius:16px}}
 dialog#rm::backdrop{background:rgba(0,0,0,.35)}
+/* Organismus Blatt (#582): Hochladen und Zusage beim Entfernen; in der Mitte, am Handy fast so breit wie der Bildschirm */
+dialog.blatt{border:0;border-radius:var(--r-gross);padding:0;margin:auto;width:min(520px,calc(100% - 24px));max-width:none;max-height:88vh;box-sizing:border-box;background:var(--card);color:var(--fg);box-shadow:var(--schatten)}
+dialog.blatt::backdrop{background:rgba(0,0,0,.45)}
+.blatt .blatt-inhalt{padding:16px 16px calc(16px + env(safe-area-inset-bottom));overflow-wrap:anywhere}
+.blatt h2{font-size:var(--t-titel);margin:0 0 .6rem}
+.blatt p{margin:0 0 .6rem}
+.blatt .blatt-knoepfe{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.blatt button{width:auto;margin:0}
+.bild-hinzu{margin:0 0 12px;position:relative}
+.pico .bild-hinzu input.unsichtbar{width:1px;height:1px;padding:0;margin:0;border:0;left:0;top:0}   /* sonst macht Pico das Feld 100 % breit */
+.bild-hinzu .meldung:empty{display:none}
+.bild-entfernt{margin:0 0 8px;color:var(--mut)}
+#gross button.entfernen{margin-top:6px}
 #rm .rmkopf{position:sticky;top:0;background:var(--card);padding:14px 16px 8px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
 #rm .rmkopf>div{flex:1}
 #rm .rminhalt{padding:10px 16px calc(16px + env(safe-area-inset-bottom))}
@@ -1487,9 +1500,9 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: T, zahlText, symbol, chip, etikett (CSS), langtext, merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip, bildEl, miniEl, bildNennung
-   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, quelleZeilen, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, Rechtszeile (HTML im Fuß)
-   Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe, grossAnsicht
+   Atome: T, zahlText, symbol, chip, etikett (CSS), langtext, merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip, bildEl, miniEl, bildNennung, bildEntferntZeilen
+   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, quelleZeilen, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, bildHinzu, Rechtszeile (HTML im Fuß)
+   Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe, grossAnsicht, blatt, hochladenBlatt, bildEntfernenFragen
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
@@ -1513,10 +1526,11 @@ function chip(zustand, text, attrs) {
 const BILDER = D.bilder || [];
 const bilderZu = id => BILDER.filter(b => b.zu === id);
 const bildDing = zu => zu === "reise" ? D.reise.titel : titelZu(zu) || zu;
-// Atom Nennung: Urheber · Lizenz (Link) · Commons-Seite; gemeinfrei nur der Urheber, aus der Reise selbst keine
+// Atom Nennung: Urheber · Lizenz (Link) · Commons-Seite; gemeinfrei nur der Urheber, aus der Reise selbst keine; eigene Fotos „Foto: <Name>“
 function bildNennung(b) {
   const n = b.nennung;
   if (!n) return null;
+  if (b.eigen) return n.urheber ? el("span", {class: "nennung"}, T("seite.bild.foto_von", {name: n.urheber})) : null;   // #582
   const link = (url, text) => url ? el("a", {href: url, target: "_blank", rel: "noopener"}, text) : text;
   const teile = [n.urheber, n.lizenz ? link(n.lizenz_url, n.lizenz) : null, n.seite ? link(n.seite, T("seite.bild.commons")) : null].filter(Boolean);
   return teile.length ? el("span", {class: "nennung"}, teile.flatMap((t, i) => i ? [" · ", t] : [t])) : null;
@@ -1538,13 +1552,112 @@ function galerieEl(gruppe) {
   return gruppe.length > 1 ? el("div", {class: "galerie"}, gruppe.slice(1).map(b => bildEl(b, "")),
     el("span", {class: "mehr"}, T("seite.bild.anzahl", {n: gruppe.length}))) : null;
 }
-// Molekül Kopfbild: erstes Bild eines Dings mit Nennung, darunter die Bildreihe; art titel für das Titelbild der Reise
+// Molekül Kopfbild: erstes Bild eines Dings mit Nennung, darunter die Bildreihe; art titel für das Titelbild der Reise.
+// An der Heimat eines Dings darunter „+ Foto hinzufügen“ (auch ohne Bilder) und die Zeilen entfernter eigener Fotos (#582)
 function kopfBild(id, art = "kopf") {
   const gruppe = art === "titel" ? BILDER.filter(b => b.titel) : bilderZu(id);
-  if (!gruppe.length) return null;
-  const nennung = bildNennung(gruppe[0]);
-  return el("div", {class: "kopfbild " + art}, el("figure", {}, bildEl(gruppe[0], art), nennung ? el("figcaption", {}, nennung) : null),
-    art === "titel" ? null : galerieEl(gruppe));
+  const hinzu = art === "titel" ? null : bildHinzu(id), weg = art === "titel" ? [] : bildEntferntZeilen(id);
+  if (!gruppe.length && !hinzu && !weg.length) return null;
+  const nennung = gruppe.length ? bildNennung(gruppe[0]) : null;
+  return el("div", {class: "kopfbild " + art}, gruppe.length ? el("figure", {}, bildEl(gruppe[0], art), nennung ? el("figcaption", {}, nennung) : null) : null,
+    art === "titel" ? null : galerieEl(gruppe), hinzu, weg);
+}
+/* ---------- Eigene Fotos (#582, Spec docs/specs/oberflaeche/bilder-582-eigene-fotos.md) ----------
+   Hochladen nur angemeldet und mit Rolle über Gast; das Foto geht roh an api/bilder?zu=<ID>, der Dienst prüft Rolle, Größe und
+   Format und nimmt Standort und Kameradaten heraus. Entfernen dürfen die hochladende Person und Organisator:innen, erst nach
+   der Zusage im Dialog (DELETE api/bilder/<BI-…>). Auf der Seite erscheint beides mit dem nächsten Veröffentlichen. */
+const BILD_API = "api/bilder";
+const BILDER_ENTFERNT = D.bilder_entfernt || [];
+const darfFotoEntfernen = b => !!(b && b.eigen && V.schreiben === "alles" && MIT_KONTO()
+  && (ICH.person.rolle === "organisator" || ICH.person.schluessel === b.besitzer));
+// Molekül Foto hinzufügen: Knopf mit Dateiwahl; nicht angemeldet der Hinweis zum Anmelden, für Gäste nichts
+function bildHinzu(id) {
+  if (!id || V.schreiben !== "alles" || !ICH) return null;
+  if (!MIT_KONTO()) return el("p", {class: "bild-hinzu z klein"},
+    KONTO_HIER() ? el("a", {href: ANMELDEN()}, T("seite.bild.hochladen_anmelden")) : T("seite.bild.hochladen_anmelden"));
+  if (ICH.person.rolle === "gast") return null;
+  return el("div", {class: "bild-hinzu"}, el("label", {class: "beleg-plus"}, T("seite.bild.hochladen"),
+    el("input", {type: "file", class: "unsichtbar", multiple: true, "data-bild-hinzu": id, "aria-label": T("seite.bild.hochladen"),
+      accept: "image/jpeg,image/png,image/webp,image/heic,image/heif"})), el("p", {class: "meldung", "aria-live": "polite"}));
+}
+// Atom Zeile eines entfernten Fotos: „Foto entfernt am <Datum> von <Name>“, leise an der Heimat des Dings
+function bildEntferntZeilen(id) {
+  return BILDER_ENTFERNT.filter(x => x.zu === id)
+    .map(x => el("p", {class: "bild-entfernt z klein"}, T("seite.bild.entfernt", {datum: datumKurz(x.datum), name: x.wer})));
+}
+// Organismus Blatt: Dialog unten (am Rechner in der Mitte) mit Titel, Text, Meldung und Knöpfen; wird beim Schließen entfernt
+let BLATT_NR = 0;
+function blatt(titel, inhalt, knoepfe) {
+  const id = "blatt-" + ++BLATT_NR, meldung = el("p", {class: "meldung", "aria-live": "polite"});
+  const d = el("dialog", {class: "blatt", "aria-labelledby": id},
+    el("div", {class: "blatt-inhalt"}, el("h2", {id}, titel), inhalt, meldung, el("div", {class: "blatt-knoepfe"}, knoepfe)));
+  d.addEventListener("close", () => d.remove());
+  document.body.append(d);
+  d.showModal();
+  return {d, meldung};
+}
+// Organismus Hochladen: nach der Wahl erst der Hinweis zu den Menschen auf den Fotos (ohne Haken), dann der Knopf; nach dem
+// Hochladen schließt das Blatt, die Bestätigung steht unter dem Knopf „+ Foto hinzufügen“ (fertig)
+function hochladenBlatt(id, dateien, fertig, muster = false) {   // muster: Bausteinseite, sendet nichts
+  const n = dateien.length;
+  const ab = el("button", {type: "button", class: "secondary"}, T("seite.bild.hochladen_abbrechen"));
+  const los = el("button", {type: "button"}, T("seite.bild.hochladen_knopf", {n}));
+  const b = blatt(T("seite.bild.hochladen_blatt", {n, ding: bildDing(id)}),
+    [el("p", {}, T("seite.bild.hinweis_personen")), el("p", {class: "z klein"}, T("seite.bild.hinweis_metadaten"))], [ab, los]);
+  ab.addEventListener("click", () => b.d.close());
+  los.addEventListener("click", async () => {
+    if (muster) return b.d.close();
+    los.disabled = ab.disabled = true;
+    b.meldung.textContent = T("seite.bild.hochladen_laeuft");
+    try {
+      for (const f of dateien) {
+        const r = await fetch(BILD_API + "?zu=" + encodeURIComponent(id),
+          // die Bytes statt des File-Objekts: WebKit reicht einen File-Rumpf nicht verlässlich weiter (höchstens 12 MB im Speicher)
+          {method: "POST", body: await f.arrayBuffer(), headers: {"Content-Type": f.type || "application/octet-stream"}});
+        const a = await r.json().catch(() => ({}));
+        if (!r.ok) throw dienstFehler(a) || T("seite.fehler.abgelehnt");
+      }
+      if (fertig) fertig.textContent = T("seite.bild.hochladen_fertig");
+      b.d.close();
+      return;
+    } catch (x) {
+      b.meldung.textContent = typeof x === "string" ? x : T("seite.fehler.keine_verbindung");
+      los.disabled = ab.disabled = false;
+    }
+  });
+  return b.d;
+}
+document.addEventListener("change", e => {
+  const i = e.target.closest("input[data-bild-hinzu]");
+  if (!i || !i.files.length) return;
+  const dateien = [...i.files];
+  i.value = "";
+  hochladenBlatt(i.dataset.bildHinzu, dateien, i.closest(".bild-hinzu").querySelector(".meldung"));
+});
+// Organismus Entfernen: Zusage vor dem Bestätigen; „Behalten“ schließt ohne Anfrage, erst „Entfernen“ löscht
+function bildEntfernenFragen(bild, muster = false) {   // muster: Bausteinseite, sendet nichts
+  const nein = el("button", {type: "button", class: "secondary"}, T("seite.bild.entfernen_behalten"));
+  const ja = el("button", {type: "button"}, T("seite.bild.entfernen_ja"));
+  const b = blatt(T("seite.bild.entfernen_titel"),
+    el("p", {}, T("seite.bild.entfernen_zusage", {datum: datumKurz(heute()), name: MIT_KONTO() ? ICH.person.name : NAME})), [nein, ja]);
+  nein.addEventListener("click", () => b.d.close());
+  ja.addEventListener("click", async () => {
+    if (muster) return b.d.close();
+    ja.disabled = nein.disabled = true;
+    try {
+      const r = await fetch(BILD_API + "/" + encodeURIComponent(bild.id), {method: "DELETE"});
+      const a = await r.json().catch(() => ({}));
+      if (!r.ok) throw dienstFehler(a) || T("seite.fehler.abgelehnt");
+      b.meldung.textContent = T("seite.bild.entfernen_fertig");
+      ja.remove();
+      nein.textContent = T("seite.bild.schliessen");
+    } catch (x) {
+      b.meldung.textContent = typeof x === "string" ? x : T("seite.fehler.keine_verbindung");
+      ja.disabled = false;
+    }
+    nein.disabled = false;
+  });
+  return b.d;
 }
 // Organismus Großansicht (V17): modaler Dialog, erst beim ersten Öffnen erzeugt (Reisen ohne Bilder tragen ihn nie, AC-12).
 // Gruppe = Bilder desselben Dings; Pfeiltasten und Wischen wechseln, Escape und Wischen nach unten schließen, der Fokus geht
@@ -1556,9 +1669,11 @@ function grossAnsicht(gruppe, i, ausloeser) {
     const knopf = (klasse, text, label) => el("button", {type: "button", class: klasse, "aria-label": label}, text);
     const zu = knopf("schliessen", T("seite.bild.schliessen") + " ✕", null);
     const zurueck = knopf("pfeil", "‹", T("seite.bild.vorheriges")), vor = knopf("pfeil", "›", T("seite.bild.naechstes"));
-    const text = el("div", {class: "bildtext"}), nennung = el("div", {});
+    const text = el("div", {class: "bildtext"}), nennung = el("div", {}), entfernen = el("div", {});
+    const weg = knopf("entfernen", T("seite.bild.entfernen"), null);   // nur eigene Fotos, für Besitzer und Organisator:innen (#582)
+    weg.addEventListener("click", () => bildEntfernenFragen(g.gruppe[g.i]));
     const d = el("dialog", {id: "gross", "aria-labelledby": "gross-zaehler"},
-      el("div", {class: "gross-oben"}, zaehler, " ", zu), el("div", {class: "gross-mitte"}, zurueck, img, vor), el("div", {class: "gross-unten"}, text, nennung));
+      el("div", {class: "gross-oben"}, zaehler, " ", zu), el("div", {class: "gross-mitte"}, zurueck, img, vor), el("div", {class: "gross-unten"}, text, nennung, entfernen));
     const g = {d};
     g.zeigen = () => {
       const b = g.gruppe[g.i];
@@ -1567,6 +1682,7 @@ function grossAnsicht(gruppe, i, ausloeser) {
       img.alt = b.alt || "";
       text.textContent = b.bildunterschrift || "";
       nennung.replaceChildren(...[bildNennung(b)].filter(Boolean));
+      entfernen.replaceChildren(...(darfFotoEntfernen(b) ? [weg] : []));
       for (const p of [zurueck, vor]) p.classList.toggle("allein", g.gruppe.length < 2);
     };
     const wechseln = s => { g.i = (g.i + s + g.gruppe.length) % g.gruppe.length; g.zeigen(); };
@@ -4839,6 +4955,21 @@ function ansichtBausteine(m) {
     teil("Molekül", "Kopfbild", "Erstes Bild eines Dings an seiner Heimat (Ort, Etappe, Tag, Unterkunft an der ersten Nacht) mit Nennung und Bildreihe.", kopfBild(b0.zu));
     teil("Organismus", "Großansicht", "Dunkler Dialog mit „Ding · i / n“, Pfeilen (bis 560 px ausgeblendet), Wischen, Escape; der Fokus kehrt zum Auslöser zurück.", auf);
   } else teil("Atom", "Bild", "Diese Reise hat keine Bilder; Bild, Nennung, Mini, Bildreihe, Kopfbild und Großansicht erscheinen nur mit Bildern.");
+  // Eigene Fotos (#582): Blatt und Zusage als Muster; ihre Knöpfe schließen hier nur, gesendet wird nichts
+  const bsHoch = el("button", {type: "button", class: "klein"}, "Blatt „Hochladen“ öffnen"), bsWeg = el("button", {type: "button", class: "klein"}, "Zusage „Foto entfernen?“ öffnen");
+  bsHoch.addEventListener("click", () => hochladenBlatt("reise", [new File([], "muster.jpg")], null, true));
+  bsWeg.addEventListener("click", () => bildEntfernenFragen({id: "BI-0"}, true));
+  teil("Molekül", "Foto hinzufügen", "Unter den Bildern eines Dings an seiner Heimat, auch ohne Bilder; nur angemeldet ab Rolle mitwirkend, sonst der Hinweis zum Anmelden.", bildHinzu("reise"));
+  teil("Atom", "Foto entfernt", "Zeile an der Heimat des Dings, wenn ein eigenes Foto endgültig entfernt ist.",
+    bildEntferntZeilen("reise"), el("p", {class: "bild-entfernt z klein"}, T("seite.bild.entfernt", {datum: datumKurz(heute()), name: "Karl"})));
+  const bsBlatt = el("button", {type: "button", class: "klein"}, "Blatt öffnen");
+  bsBlatt.addEventListener("click", () => {
+    const zu = el("button", {type: "button", class: "secondary"}, T("seite.bild.schliessen")), b = blatt("Blatt (Muster)", el("p", {}, "Text des Blatts."), [zu]);
+    zu.addEventListener("click", () => b.d.close());
+  });
+  teil("Organismus", "Blatt", "Dialog mit Titel, Text, Meldung und Knöpfen (Hochladen, Zusage beim Entfernen); wird beim Schließen entfernt.", bsBlatt);
+  teil("Organismus", "Hochladen", "Nach der Fotoauswahl: erst der Hinweis zu den Menschen auf den Fotos (ohne Haken), dann „n Fotos hochladen“.", bsHoch);
+  teil("Organismus", "Foto entfernen", "In der Großansicht eines eigenen Fotos nur für die hochladende Person und Organisator:innen; erst nach der Zusage.", bsWeg);
   teil("Atom", "Zahlmarke", "Die Zahl der Einträge einer Gruppe oder eines Kapitels; im Gruppentitel (Molekül).",
     el("div", {class: "chips"}, zahlMarke(3)), gruppenTitel("Gruppe (Muster)", 2));
   teil("Atom", "Zustand Buchung", "Der Buchungsstand eines Dings als Chip (Molekül Buchungsstand: gebucht, nicht gebucht, angefragt; mit Buchung führt er zu ihr).",

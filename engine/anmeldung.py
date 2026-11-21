@@ -1237,7 +1237,7 @@ RECHT = ("/datenschutz", "/impressum", "/alpha")
 BETREIBER = (("FR_BETREIBER_NAME", "name"), ("FR_BETREIBER_ANSCHRIFT", "anschrift"), ("FR_BETREIBER_KONTAKT", "kontakt"))
 # Profil (#12) direkt nach dem Konto; sein Absatz heißt recht.datenschutz.profil (Art. 9 DSGVO, ausdrückliche Einwilligung)
 DATENSCHUTZ_TEXT = {"profil": "recht.datenschutz.profil"}
-DATENSCHUTZ_ABSCHNITTE = ("konto", "profil", "warteliste", "reise", "verlauf", "belege", "betreiber_meldungen", "sicherungen", "weitergabe", "cookie")
+DATENSCHUTZ_ABSCHNITTE = ("konto", "profil", "warteliste", "reise", "verlauf", "fotos", "belege", "betreiber_meldungen", "sicherungen", "weitergabe", "cookie")
 ALPHA_PUNKTE = ("fehler", "datenverlust", "aenderungen", "claude_konto")
 
 

@@ -136,6 +136,8 @@ done
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor-orte.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-konnektor.inc" "$ZIEL/nginx/$FR_INSTANZ-konnektor.inc"
 ersetze "$FR_BETRIEB/vorlagen/nginx-zone.conf" "$ZIEL/nginx/$FR_INSTANZ-zone.conf"
+# Hochlade-Link eigener Fotos (#582): eigener Baustein im server-Block des Konnektors, nicht in der Orte-Datei
+ersetze "$FR_BETRIEB/vorlagen/nginx-hochladen.inc" "$ZIEL/nginx/$FR_INSTANZ-hochladen.inc"
 # Eigener Kartendienst (#444): eigener Unterordner, damit der Abgleich der Einheiten (#260) ihn nicht sieht
 if [ -n "$KD_REGIONEN" ]; then
   mkdir -p "$ZIEL/kartendienst"
@@ -209,7 +211,7 @@ sudo install -d -o $FR_BENUTZER -g $FR_GRUPPE -m 700 $FR_KONNEKTOR $FR_KONTEN
 sudo install -m 644 $ZIEL/systemd/* $SYSTEMD/
 sudo find $SNIPPETS -maxdepth 1 -type f -name '$FR_INSTANZ-*.conf' -exec grep -qF 'zone=$ZONE ' {} \; -exec chown root:$FR_GRUPPE {} + -exec chmod 640 {} +
 sudo install -m 640 -o root -g $FR_GRUPPE $ZIEL/nginx/$FR_INSTANZ-zone.conf /etc/nginx/conf.d/
-sudo install -m 640 -o root -g $FR_GRUPPE $ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc $ZIEL/nginx/$FR_INSTANZ-konnektor.inc $SNIPPETS/
+sudo install -m 640 -o root -g $FR_GRUPPE $ZIEL/nginx/$FR_INSTANZ-konnektor-orte.inc $ZIEL/nginx/$FR_INSTANZ-konnektor.inc $ZIEL/nginx/$FR_INSTANZ-hochladen.inc $SNIPPETS/
 sudo install -m 755 -o root -g root $ZIEL/sbin/$FR_INSTANZ-nginx-reise-installieren $SBIN/
 sudo visudo -cq -f $ZIEL/sudoers/$FR_INSTANZ
 sudo install -m 440 -o root -g root $ZIEL/sudoers/$FR_INSTANZ /etc/sudoers.d/$FR_INSTANZ
@@ -227,7 +229,8 @@ TEXT
 }
 echo
 echo "Activate (once the server block of $FR_ADRESSE contains  include $SNIPPETS/$FR_INSTANZ-*.conf;"
-echo "the connector stands at the root of $FR_KN_ADRESSE, whose server block includes $FR_INSTANZ-konnektor-orte.inc):"
+echo "the connector stands at the root of $FR_KN_ADRESSE, whose server block includes $FR_INSTANZ-konnektor-orte.inc"
+echo "and, for the photo upload link (#582), include $SNIPPETS/$FR_INSTANZ-hochladen.inc;):"
 befehle | sed 's/^/  /'
 cat <<TEXT
   cd $FR_WURZEL && FR_WURZEL=$FR_WURZEL betrieb/deploy.sh --dienste   (installs the code of the services; the check fails before the start)

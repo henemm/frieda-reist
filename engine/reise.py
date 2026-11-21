@@ -53,8 +53,9 @@ VORGABEN = {
     "meldekanal": ["app", "nachricht", "push", "mail"],
 }
 KANAELE = ("app", "nachricht", "push", "mail")
-# Grenzen der Bilder je Reise (#455): reise.yaml bilder: {max_anzahl, offline_mb}; Organisator:innen ändern sie dort
-VORGABEN_BILDER = {"max_anzahl": 60, "offline_mb": 25}
+# Grenzen der Bilder je Reise (#455): reise.yaml bilder: {max_anzahl, offline_mb, max_mb}; Organisator:innen ändern sie dort.
+# max_mb (#582): Summe der gespeicherten Fassungen aller Bilder in MB
+VORGABEN_BILDER = {"max_anzahl": 60, "offline_mb": 25, "max_mb": 150}
 
 
 def bilder_grenzen(roh):
@@ -579,7 +580,7 @@ class Reise:
                 "start": quelle.get("start")}
 
     def bilder_pruefen(self):
-        """bilder: {max_anzahl, offline_mb} (#455): nur diese Schlüssel, je eine ganze Zahl ab 1; sonst ein Fehler."""
+        """bilder: {max_anzahl, offline_mb, max_mb} (#455, #582): nur diese Schlüssel, je eine ganze Zahl ab 1; sonst ein Fehler."""
         b = self.r.get("bilder")
         if b is None:
             return

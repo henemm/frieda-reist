@@ -85,7 +85,9 @@ def test_test_kennt_jede_tabelle_des_schemas():
     import inspect
     quelle = inspect.getsource(konten.loeschen) + inspect.getsource(konten)
     tabellen = {z for z in __import__("re").findall(r"CREATE TABLE IF NOT EXISTS (\w+)", konten.SCHEMA)}
-    nur_server = {"push_schluessel", "loeschprotokoll"}   # push_stand hält auch Zeilen je Konto (sammel:, mail:)
+    # push_stand hält auch Zeilen je Konto (sammel:, mail:); bild_loeschungen (#582) hält wie loeschprotokoll nur Reise,
+    # Bildkennung und Datum, keine Spalte mit Konto oder Adresse
+    nur_server = {"push_schluessel", "loeschprotokoll", "bild_loeschungen"}
     rumpf = inspect.getsource(konten.loeschen)
     fehlen = [t for t in sorted(tabellen - nur_server - {"konten"}) if t not in rumpf]
     assert not fehlen, f"loeschen() nennt diese Tabellen nicht: {fehlen}"

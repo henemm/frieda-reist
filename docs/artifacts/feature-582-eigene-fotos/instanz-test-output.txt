@@ -1,0 +1,32 @@
+bringing up nodes...
+bringing up nodes...
+
+.F................                                                       [100%]
+=================================== FAILURES ===================================
+____________________ test_einstellungen_wie_auf_dem_server _____________________
+[gw0] linux -- Python 3.12.3 <frieda-reist>/engine/.venv/bin/python
+
+    def test_einstellungen_wie_auf_dem_server():
+        """Die Werte ergeben dieselben Namen, Ordner und Ports wie die installierten Units und nginx-Bausteine."""
+>       w = werte("FR_WURZEL", "FR_INSTANZ", "FR_SEITEN", "FR_ABLAGE", "RM_ABLAGE", "FR_KONNEKTOR", "KN_BASIS", "FR_RM_PORT",
+                  "FR_KN_PORT", "FR_SB_PORT", "FR_SCHREIBKOPIE", "FR_MELDEN", "FR_BETREIBER")
+
+tests/test_betrieb_instanz.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+namen = ('FR_WURZEL', 'FR_INSTANZ', 'FR_SEITEN', 'FR_ABLAGE', 'RM_ABLAGE', 'FR_KONNEKTOR', ...)
+
+    def werte(*namen):
+        skript = f'. "{BETRIEB}/gemeinsam.sh"; ' + "; ".join(f'echo "{n}=${{{n}:-}}"' for n in namen)
+        r = subprocess.run(["bash", "-c", skript], capture_output=True, text=True,
+                           env={**SAUBER, "FR_DIENST": "/nirgends"})   # ohne die geheimen Werte des Servers
+>       assert r.returncode == 0 and r.stderr == "", r.stderr
+E       AssertionError: ERROR: root of the instance unknown: FR_WURZEL is missing (FR_WURZEL=<FR_SEITEN>/_software betrieb/bash …).
+E         
+E       assert (1 == 0)
+E        +  where 1 = CompletedProcess(args=['bash', '-c', '. "<Instanz-Repo>...stderr='ERROR: root of the instance unknown: FR_WURZEL is missing (FR_WURZEL=<FR_SEITEN>/_software betrieb/bash …).\n').returncode
+
+tests/test_betrieb_instanz.py:23: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_betrieb_instanz.py::test_einstellungen_wie_auf_dem_server
+1 failed, 17 passed in 23.37s

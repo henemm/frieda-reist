@@ -838,18 +838,19 @@ def pruefen(reise=None):
     return funde
 
 
-# ---------- Ausnahme vom Nur-Anhängen (#381, ADR-0009 Punkt 4) ----------
-# Genau zwei Funktionen dürfen Zeilen entfernen oder umschreiben: reise_entfernen (eine gelöschte Reise nach ihrer
-# Schonfrist) und namen_ersetzen (Name einer gelöschten Person). Beide nehmen die private Verbindung ohne Authorizer und
-# arbeiten in einer einzigen BEGIN IMMEDIATE-Transaktion: Trigger entfernen, ändern, Trigger aus SCHEMA neu anlegen, COMMIT.
+# ---------- Ausnahme vom Nur-Anhängen (#381, #582, ADR-0009 Punkt 4) ----------
+# Genau drei Funktionen dürfen Zeilen entfernen oder umschreiben: reise_entfernen (eine gelöschte Reise nach ihrer
+# Schonfrist), namen_ersetzen (Name einer gelöschten Person) und bild_entfernen (die zwei Fassungen eines endgültig
+# entfernten eigenen Fotos, #582). Alle nehmen die private Verbindung ohne Authorizer und arbeiten in einer einzigen
+# BEGIN IMMEDIATE-Transaktion: Trigger entfernen, ändern, Trigger aus SCHEMA neu anlegen, COMMIT.
 # DDL ist in SQLite transaktional: andere Verbindungen sehen die Trigger nie fehlen; bei einem Fehler wird zurückgerollt.
-# Ein Quelltext-Test (engine/tests/test_loeschen_reise.py) hält fest, dass nur diese beiden sie nutzen.
+# Ein Quelltext-Test (engine/tests/test_loeschen_reise.py) hält fest, dass nur diese drei sie nutzen.
 _TRIGGER = re.findall(r"CREATE TRIGGER IF NOT EXISTS .*? END;", SCHEMA, re.S)
 _TRIGGER_NAMEN = re.findall(r"CREATE TRIGGER IF NOT EXISTS (\w+)", SCHEMA)
 
 
 def _db_ausnahme(timeout=30):
-    """Verbindung ohne Authorizer und ohne automatische Transaktion. Nur für die beiden Ausnahmen oben."""
+    """Verbindung ohne Authorizer und ohne automatische Transaktion. Nur für die drei Ausnahmen oben."""
     with closing(db(timeout)):   # Schema und Spalten wie bei jedem Zugriff (ohne Datenbank: legt sie an)
         pass
     v = sqlite3.connect(pfad(), timeout=timeout, isolation_level=None)
@@ -901,6 +902,61 @@ def reise_entfernen(reise):
     return n
 
 
+BILD_KENNUNG = re.compile(r"BI-\d{1,6}")
+BILD_FASSUNGEN = (480, 1600)   # wie bilder.FASSUNGEN: die zwei festen Pfade je Bild
+
+
+def bild_entfernen(reise, bid):
+    """Leert die zwei festen Pfade medien/bilder/<bid>-480.webp und -1600.webp einer Reise in allen Versionen (#582, dritte
+    Ausnahme vom Nur-Anhängen): Die Zeilen bleiben, inhalt und pruefsumme werden NULL und ausgelagert 0 (in jedem Stand ein
+    Tombstone: die Datei fehlt). Kein anderer Pfad, kein Muster, keine andere Reise, keine andere Tabelle. Eine Transaktion
+    (BEGIN IMMEDIATE); danach die Ablagedateien, auf die keine Version irgendeiner Reise mehr verweist (zwei Uploads gleichen
+    Inhalts teilen einen Blob), VACUUM (verdichten) und der erzwungene Neubau der Seite. Das Löschprotokoll führt der
+    Aufrufer (konten.bild_loeschung_protokollieren). -> Zahl der geleerten Zeilen."""
+    if not REISE_MUSTER.match(reise or "") or not BILD_KENNUNG.fullmatch(bid or ""):
+        raise ValueError(f"invalid trip or image: {reise!r} {bid!r}")
+    if not pfad().exists():
+        return 0
+    pfade = tuple(f"medien/bilder/{bid}-{breite}.webp" for breite in BILD_FASSUNGEN)
+    with closing(_db_ausnahme()) as v:
+        v.execute("BEGIN IMMEDIATE")
+        try:
+            summen = {z[0] for z in v.execute("SELECT DISTINCT pruefsumme FROM versionen WHERE reise = ? AND pfad IN (?, ?) "
+                                             "AND ausgelagert = 1 AND pruefsumme IS NOT NULL", (reise, *pfade))}
+            _trigger_weg(v)
+            n = v.execute("UPDATE versionen SET inhalt = NULL, pruefsumme = NULL, ausgelagert = 0 WHERE reise = ? AND pfad IN (?, ?) "
+                          "AND (inhalt IS NOT NULL OR pruefsumme IS NOT NULL)", (reise, *pfade)).rowcount
+            _trigger_neu(v)
+            v.execute("COMMIT")
+        except BaseException:
+            _zuruecknehmen(v)
+            raise
+    _ablage_aufraeumen(summen)
+    if n:
+        try:
+            verdichten()
+        except sqlite3.Error as e:   # das Bild ist schon unlesbar; der nächste Lauf des Wächters verdichtet erneut
+            sys.stderr.write(f"vacuum after removing {reise}/{bid} failed: {e}\n")
+        _neubau_erzwingen(reise)
+    return n
+
+
+def bild_pruefsummen(reise, bid, nur_neuester=False):
+    """Prüfsummen (sha256) der zwei Fassungen eines Bilds in allen Versionen der Reise, mit nur_neuester nur im neuesten
+    Stand -> Menge (#582: bindet das Löschprotokoll an genau dieses Foto). Liest nur."""
+    if not REISE_MUSTER.match(reise or "") or not BILD_KENNUNG.fullmatch(bid or "") or not pfad().exists():
+        return set()
+    pfade = tuple(f"medien/bilder/{bid}-{breite}.webp" for breite in BILD_FASSUNGEN)
+    if nur_neuester:
+        with closing(db()) as v:
+            neu = [v.execute("SELECT pruefsumme FROM versionen WHERE reise = ? AND pfad = ? ORDER BY vorgang DESC LIMIT 1",
+                             (reise, p)).fetchone() for p in pfade]
+        return {z[0] for z in neu if z and z[0]}
+    with closing(db()) as v:
+        return {z[0] for z in v.execute("SELECT DISTINCT pruefsumme FROM versionen WHERE reise = ? AND pfad IN (?, ?) "
+                                        "AND pruefsumme IS NOT NULL", (reise, *pfade))}
+
+
 def _ablage_aufraeumen(summen):
     """Löscht Ablagedateien ohne Verweis einer Version. Unter der Schreibsperre der Datenbank (wie ablage_ablegen, das in
     der Transaktion eines Vorgangs schreibt): Zwischen Prüfen und Löschen kann kein Vorgang einen neuen Verweis eintragen.
@@ -948,6 +1004,19 @@ def _namensmuster(name):
     return ersetzen
 
 
+BILDER_LISTE = "plan/bilder.yaml"
+
+
+def _urheber_eigener_fotos(text, name, ersatz):
+    """In plan/bilder.yaml: urheber eines eigenen Fotos (Eintrag mit quelle: eigen, #582) ist der Name der hochladenden Person
+    und wird wie ein Feld wer ersetzt; besitzer bleibt. Urheber von Bildern anderer Quellen bleiben unberührt."""
+    n = re.escape(name)
+    feld = re.compile(rf"""(?m)^([ \t]*-?[ \t]*urheber:[ \t]*)(["']?){n}\2[ \t]*$""")
+    eintraege = re.split(r"(?m)^(?=- )", text)
+    return "".join(feld.sub(lambda m: m.group(1) + m.group(2) + ersatz + m.group(2), e)
+                   if re.search(r"(?m)^[ \t]*-?[ \t]*quelle:[ \t]*eigen[ \t]*$", e) else e for e in eintraege)
+
+
 def namen_ersetzen(reise, name, ersatz):
     """Setzt den Namen einer gelöschten Person (#381) in allen Versionen der Reise auf ersatz: Verlauf (vorgaenge.wer, wenn
     er genau der Name ist), Herkunftsmuster in titel, grund und herkunft und in den Textdateien aller Versionen; die
@@ -979,6 +1048,8 @@ def namen_ersetzen(reise, name, ersatz):
                 except UnicodeDecodeError:
                     continue
                 neu = ersetzen(alt, ersatz)
+                if z["pfad"] == BILDER_LISTE:
+                    neu = _urheber_eigener_fotos(neu, str(name).strip(), ersatz)
                 if neu != alt:
                     b = neu.encode("utf-8")
                     v.execute("UPDATE versionen SET inhalt = ?, pruefsumme = ? WHERE vorgang = ? AND pfad = ?",

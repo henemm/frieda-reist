@@ -14,11 +14,18 @@ Packliste). Die Liste steht in plan/bilder.yaml der Reise:
       bildunterschrift: …          # freiwillig
       alt: …                       # freiwillig
       titelbild: true              # höchstens eines je Reise
-      status: aktiv                # oder zurueckgezogen (bleibt in Liste und Ablage, lässt sich wiederherstellen)
+      status: aktiv                # oder zurueckgezogen (bleibt in Liste und Ablage, lässt sich wiederherstellen);
+                                   # entfernt nur bei eigenen Fotos (#582): Dateien und Texte weg, dazu entfernt: {datum, wer}
       dateien: {klein: medien/bilder/BI-01-480.webp, gross: medien/bilder/BI-01-1600.webp}
       breite: 1600
       hoehe: 1000
       hinzugefuegt: {datum: 2026-11-15, wer: Ida}
+
+Eigene Fotos (Stufe 2, #582, Spec docs/specs/oberflaeche/bilder-582-eigene-fotos.md) tragen quelle: eigen, als urheber den
+Namen der hochladenden Person, als besitzer ihren Personenschlüssel der Reise und keine Lizenz. eigen_umwandeln macht aus
+JPEG, PNG, WebP oder HEIC (an den Magic Bytes erkannt) in einem begrenzten Unterprozess zwei WebP-Fassungen mit angewendeter
+Drehung und ohne Metadaten; das Original wird nie gespeichert. Ein entferntes eigenes Foto bleibt mit status: entfernt und
+entfernt: {datum, wer} in der Liste, ohne Dateien und Texte (Ausnahme zu ADR-0001 Frage 7).
 
 Claude nennt über den Konnektor nur eine Commons-Datei oder eine Wikidata-Kennung; Frieda holt das Bild selbst (nie das
 Original, höchstens 1600 px), liest Urheber und Lizenz, prüft den Inhalt mit Pillow und legt zwei WebP-Fassungen ab. Die
@@ -64,6 +71,22 @@ OHNE_EINSCHRAENKUNG = re.compile(r"CC BY(?:-SA)?(?: \d\.\d)?(?: [a-z]{2})?", re.
 EINSCHRAENKUNGEN = (("nc", re.compile(r"\bNC\b", re.I)), ("nd", re.compile(r"\bND\b", re.I)),
                     ("gfdl", re.compile(r"\bGFDL\b", re.I)))
 VORAB_UMGEBUNG = "FR_BILD_VORAB"
+# Eigene Fotos (Stufe 2, #582): Grenze je Foto vor der Verkleinerung, Pixelgrenze gegen Dekompressionsbomben (gilt für jedes Bild,
+# das dieses Modul öffnet; schon die Warnung von Pillow über der Grenze ist eine Ablehnung), Zeitgrenze des Unterprozesses, der
+# das Foto dekodiert, und dessen Grenze für den Adressraum
+MAX_EIGEN = 12 * 1024 * 1024
+MAX_PIXEL = 60_000_000
+ZEIT_UMWANDELN = 30
+SPEICHER_UMWANDELN = 3 * 1024 * 1024 * 1024
+EIGEN_TYPEN = ("image/jpeg", "image/png", "image/webp", "image/heic")
+QUALITAET = 80
+EIGEN_VORAB = "eigen.json"
+
+try:   # Pillow fehlt nur in Umgebungen, die dieses Modul nie zum Umwandeln brauchen
+    from PIL import Image as _Image
+    _Image.MAX_IMAGE_PIXELS = MAX_PIXEL
+except ImportError:   # pragma: no cover
+    pass
 
 
 class Abgelehnt(Exception):
@@ -322,3 +345,171 @@ def speichern(reise_dir, liste, kopf=""):
 
 def aktiv(b):
     return isinstance(b, dict) and (b.get("status") or "aktiv") == "aktiv"
+
+
+# ---------- Eigene Fotos (Stufe 2, #582) ----------
+
+def _grenzen_setzen():
+    """Im Unterprozess: Adressraum begrenzen (Schutz vor Fehlern im Dekoder), soweit das System es erlaubt."""
+    try:
+        import resource
+        resource.setrlimit(resource.RLIMIT_AS, (SPEICHER_UMWANDELN, SPEICHER_UMWANDELN))
+    except (ImportError, ValueError, OSError):
+        pass
+
+
+def _webp(im):
+    puffer = io.BytesIO()
+    im.save(puffer, "WEBP", quality=QUALITAET, exif=b"", xmp=b"")
+    return puffer.getvalue()
+
+
+def umwandeln_hier(inhalt):
+    """Foto -> (klein, gross, breite, hoehe): öffnen nur als JPEG, PNG, WebP oder HEIF, Pixelgrenze (die Warnung von Pillow
+    gilt als Fehler), Drehung aus den Metadaten anwenden, alle Metadaten verwerfen, zwei WebP-Fassungen (nie vergrößert).
+    Läuft im Unterprozess von eigen_umwandeln; Fehler werfen."""
+    import warnings
+    from PIL import Image, ImageOps
+    import belege
+    if belege.typ_erkennen(inhalt) == "image/heic":
+        import pillow_heif
+        pillow_heif.register_heif_opener()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", Image.DecompressionBombWarning)
+        with Image.open(io.BytesIO(inhalt), formats=["JPEG", "PNG", "WEBP", "HEIF"]) as roh:
+            roh.load()
+            im = ImageOps.exif_transpose(roh)
+    im = im.convert("RGBA" if "A" in im.getbands() or "transparency" in im.info else "RGB")
+    im.info = {}
+    fassungen = {}
+    for fassung, breite in FASSUNGEN.items():
+        b = min(breite, im.width)
+        h = max(1, round(im.height * b / im.width))
+        fassungen[fassung] = im if b == im.width else im.resize((b, h), Image.LANCZOS)
+    gross = fassungen["gross"]
+    return _webp(fassungen["klein"]), _webp(gross), gross.width, gross.height
+
+
+def eigen_umwandeln(inhalt):
+    """Eigenes Foto (Bytes) -> {"klein", "gross", "breite", "hoehe"} (zwei WebP-Fassungen ohne Metadaten, Maße der großen).
+    Größer als MAX_EIGEN: Abgelehnt("bild.abgelehnt.foto_zu_gross"); kein JPEG, PNG, WebP oder HEIC an den Magic Bytes:
+    Abgelehnt("bild.abgelehnt.format"). Dekodiert wird in einem Unterprozess mit Zeit- und Speichergrenze; beschädigte Dateien,
+    zu viele Pixel, ein Absturz oder eine Zeitüberschreitung des Dekoders sind ebenfalls Abgelehnt("bild.abgelehnt.format").
+    Das Original geht nur über die Pipe, nie auf die Platte."""
+    import subprocess
+    import sys
+    import belege
+    inhalt = bytes(inhalt or b"")
+    if len(inhalt) > MAX_EIGEN:
+        raise Abgelehnt("bild.abgelehnt.foto_zu_gross", mb=MAX_EIGEN // 1024 // 1024)
+    if belege.typ_erkennen(inhalt) not in EIGEN_TYPEN:
+        raise Abgelehnt("bild.abgelehnt.format")
+    try:
+        r = subprocess.run([sys.executable, str(Path(__file__).resolve()), "umwandeln"], input=inhalt, capture_output=True,
+                           timeout=ZEIT_UMWANDELN)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        sys.stderr.write(f"Image conversion failed: {type(e).__name__}\n")
+        raise Abgelehnt("bild.abgelehnt.format")
+    kopf, _, rest = r.stdout.partition(b"\n")
+    try:
+        k = json.loads(kopf.decode("utf-8")) if r.returncode == 0 else None
+    except (UnicodeDecodeError, ValueError):
+        k = None
+    if not isinstance(k, dict) or not k.get("ok") or len(rest) != k.get("klein", -1) + k.get("gross", -1):
+        grund = " ".join(r.stderr.decode("utf-8", "replace").split())[-200:]
+        sys.stderr.write(f"Image rejected (code {r.returncode}): {grund}\n")
+        raise Abgelehnt("bild.abgelehnt.format")
+    return {"klein": rest[:k["klein"]], "gross": rest[k["klein"]:], "breite": k["breite"], "hoehe": k["hoehe"]}
+
+
+def eigen_vorab_schreiben(ordner, ergebnis):
+    """Umgewandeltes Foto (eigen_umwandeln) vor der Sperre in den Ordner -> Pfad der Datei für FR_BILD_VORAB."""
+    ordner = Path(ordner)
+    (ordner / "klein.webp").write_bytes(ergebnis["klein"])
+    (ordner / "gross.webp").write_bytes(ergebnis["gross"])
+    datei = ordner / EIGEN_VORAB
+    datei.write_text(json.dumps({"eigen": True, "breite": ergebnis["breite"], "hoehe": ergebnis["hoehe"]}), encoding="utf-8")
+    return str(datei)
+
+
+def eigen_vorab_lesen():
+    """Das vor der Sperre umgewandelte Foto aus FR_BILD_VORAB -> wie eigen_umwandeln, oder None."""
+    pfad = os.environ.get(VORAB_UMGEBUNG)
+    if not pfad or Path(pfad).name != EIGEN_VORAB:
+        return None
+    try:
+        v = json.loads(Path(pfad).read_text(encoding="utf-8"))
+        if v.get("eigen") is True:
+            return {"klein": Path(pfad).with_name("klein.webp").read_bytes(), "gross": Path(pfad).with_name("gross.webp").read_bytes(),
+                    "breite": int(v["breite"]), "hoehe": int(v["hoehe"])}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+    return None
+
+
+def eigen_ablegen(reise_dir, bid, ergebnis):
+    """Die beiden Fassungen eines eigenen Fotos nach medien/bilder/ -> {"dateien", "breite", "hoehe"}."""
+    (Path(reise_dir) / ORDNER).mkdir(parents=True, exist_ok=True)
+    dateien = {}
+    for fassung, breite in FASSUNGEN.items():
+        rel = f"{ORDNER}/{bid}-{breite}.webp"
+        (Path(reise_dir) / rel).write_bytes(ergebnis[fassung])
+        dateien[fassung] = rel
+    return {"dateien": dateien, "breite": ergebnis["breite"], "hoehe": ergebnis["hoehe"]}
+
+
+def _dateien_der_liste(liste):
+    return {str(f) for b in liste if isinstance(b, dict) and isinstance(b.get("dateien"), dict) for f in b["dateien"].values()}
+
+
+def gespeicherte_bytes(reise_dir, liste):
+    """Summe der Größen aller Fassungen, auf die ein Eintrag der Liste verweist (auch zurückgezogene)."""
+    summe = 0
+    for rel in _dateien_der_liste(liste):
+        p = Path(reise_dir) / rel
+        if rel.startswith(ORDNER + "/") and p.is_file():
+            summe += p.stat().st_size
+    return summe
+
+
+def waisen_aufraeumen(reise_dir, liste):
+    """Dateien unter medien/bilder/ ohne Eintrag in der Liste (Reste eines gescheiterten Vorgangs) löschen -> entfernte Pfade
+    relativ zur Reise, sortiert. Dateien, auf die ein Eintrag verweist, bleiben."""
+    reise_dir = Path(reise_dir)
+    ordner = reise_dir / ORDNER
+    if not ordner.is_dir():
+        return []
+    gebraucht = _dateien_der_liste(liste)
+    weg = []
+    for f in sorted(ordner.rglob("*")):
+        rel = f.relative_to(reise_dir).as_posix()
+        if (f.is_file() or f.is_symlink()) and rel not in gebraucht:
+            f.unlink()
+            weg.append(rel)
+    return sorted(weg)
+
+
+def entfernt(b):
+    """Ist das Bild ein entferntes eigenes Foto (nur noch der Eintrag im Verlauf)?"""
+    return isinstance(b, dict) and b.get("status") == "entfernt"
+
+
+def _umwandeln_main():
+    """Unterprozess von eigen_umwandeln: Foto auf stdin, Kopfzeile (JSON) und die Bytes der beiden Fassungen auf stdout."""
+    import sys
+    _grenzen_setzen()
+    inhalt = sys.stdin.buffer.read(MAX_EIGEN + 1)
+    try:
+        klein, gross, breite, hoehe = umwandeln_hier(inhalt)
+    except Exception as e:   # noqa: BLE001  jeder Fehler des Dekoders ist eine Ablehnung, nie ein Absturz des Dienstes
+        sys.stderr.write(f"{type(e).__name__}: {' '.join(str(e).split())[:150]}\n")
+        sys.stdout.buffer.write(b'{"ok": false}\n')
+        return 0
+    kopf = {"ok": True, "breite": breite, "hoehe": hoehe, "klein": len(klein), "gross": len(gross)}
+    sys.stdout.buffer.write(json.dumps(kopf).encode("utf-8") + b"\n" + klein + gross)
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(_umwandeln_main() if sys.argv[1:] == ["umwandeln"] else 2)

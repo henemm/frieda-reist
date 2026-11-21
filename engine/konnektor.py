@@ -109,7 +109,9 @@ SCHREIB_AKTION = {"rueckmeldung_geben": "rueckmeldung", "aufgabe_anlegen": "aufg
                   # Wunsch-Brett: sichtbar für alle, die abhaken dürfen; Punkte und Einplanen prüft der Dienst genauer
                   "wunsch_aendern": "wunsch_erlebt",
                   # Packstand (ADR-0010): abhaken dürfen alle Mitwirkenden; wer packt, prüft der Dienst
-                  "gegenstand_packen": "packen"}
+                  "gegenstand_packen": "packen",
+                  # Hochlade-Link für eigene Fotos (#582): ab mitwirkend, Rolle im aktuellen Stand
+                  "bild_hochladelink": "bild"}
 # Werkzeuge, die zusätzlich eine zweite Aktion brauchen: eine Antwort landet als Rückmeldung (Art Antwort) im Eingang
 ZUSATZ_AKTION = {"frage_beantworten": "rueckmeldung"}
 WORT = texte.gruppe("de", "konnektor.wort")   # Wörter der Entscheidungen; Katalog in texte_de.py (ADR-0006)
@@ -3244,6 +3246,10 @@ BILD_AENDERN = {"name": "bild_aendern", "description": "@konnektor.werkzeug.bild
                     "zurueckziehen": {"type": "boolean", "description": "@konnektor.werkzeug.bild_aendern.zurueckziehen"},
                     "wiederherstellen": {"type": "boolean", "description": "@konnektor.werkzeug.bild_aendern.wiederherstellen"}},
                     "required": ["ziel"]}}
+# Bilder Stufe 2 (#582): Frieda lädt selbst nichts hoch, sie gibt nur einen kurzlebigen Link aus (konten.hochladelink_anlegen)
+BILD_HOCHLADELINK = {"name": "bild_hochladelink", "description": "@konnektor.werkzeug.bild_hochladelink",
+                     "inputSchema": {"type": "object", "properties": {
+                         "zu": {"type": "string", "description": "@konnektor.werkzeug.bild.zu"}}}}
 START_ENDE_SETZEN = {"name": "start_ende_setzen", "description": "@konnektor.werkzeug.start_ende_setzen",
                      "inputSchema": {"type": "object", "properties": {
                          "start_datum": {"type": "string"}, "start_ort": {"type": "string", "description": "O-…"},
@@ -3455,6 +3461,8 @@ def werkzeug(zugang, name, args):
         if fehler:
             return tk("konnektor.ausgabe.werkzeug.2", fehler=fehler), True
         return (tk("konnektor.werkzeug.3", rid=rid, w2=a['status'], kommentar=kommentar)), False
+    if name == "bild_hochladelink":
+        return bild_hochladelink(reise, d, wer, zugang, args)
     if name == "beleg_anlegen":
         bid = str(args.get("buchung") or "").strip().upper()
         if not re.fullmatch(r"B-\d+", bid):
@@ -3617,6 +3625,23 @@ def antwort_auf(zugang, nachricht):
     return {"jsonrpc": "2.0", "id": nid, "error": {"code": -32601, "message": f"unbekannt: {methode}"}}
 
 
+def bild_hochladelink(reise, d, wer, zugang, args):
+    """Werkzeug bild_hochladelink (#582) -> (text, ist_fehler): Link <KN_BASIS>/hochladen/<token>, 30 Minuten, 10 Fotos, an
+    Reise und Person gebunden (Token nur als Hash in konten.db). Die Rolle gilt im aktuellen Stand; beim Hochladen prüft der
+    Rückmeldedienst sie bei jedem Foto noch einmal."""
+    zu = " ".join(str(args.get("zu") or "reise").split())
+    if not rm.BILD_ZIEL.match(zu):
+        return tk("konnektor.bild_hochladelink.ziel", zu=zu[:80]), True
+    if not os.environ.get("KN_BASIS"):
+        return tk("konnektor.bild_hochladelink.ohne_basis"), True
+    if (nein := rolle_aktuell_pruefen(reise, d, zugang.get("person"), wer["name"], "bild")):
+        return nein, True
+    token = konten.hochladelink_anlegen(reise, zugang.get("person"), zugang.get("konto_id") or "", zu)
+    ding = tk("inhalt.bild.ganze_reise") if zu == "reise" else rm.ding_name(d or {}, zu)
+    return tk("konnektor.bild_hochladelink.antwort", ding=ding, link=f"{basis()}/hochladen/{token}",
+              minuten=konten.HOCHLADELINK_MINUTEN, max=konten.HOCHLADELINK_FOTOS), False
+
+
 def werkzeuge_fuer(zugang):
     """Werkzeuge, die dieser Zugang sieht: was die Rolle bei diesem Status und diesen Bausteinen darf (aufgerufen wird
     trotzdem noch einmal geprüft)."""
@@ -3630,7 +3655,8 @@ def werkzeuge_fuer(zugang):
                  LESETEXT_SCHREIBEN, REISE_AENDERN, START_ENDE_SETZEN, PLAN_ANLEGEN, PLAN_AENDERN, MERKMAL_ZUSAMMENFUEHREN, ARTEN_UEBERNEHMEN,
                  WUNSCH_VORSCHLAGEN, SYMBOL_SETZEN, KARTENANSICHT_SETZEN, KARTENPUNKTE_HOLEN,
                  GEGENSTAND_ANLEGEN, GEGENSTAND_AENDERN, PACKLISTE_UEBERNEHMEN, BILD_HINZUFUEGEN, BILD_AENDERN] if schreibdienst() else []
-    for w in WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN] + ontologie:
+    for w in (WERKZEUGE + [ENTSCHEIDEN, FRAGE_BEANTWORTEN, PERSON_EINLADEN, PERSON_ENTFERNEN, RUECKMELDUNG_ERLEDIGEN, BELEG_ANLEGEN]
+              + ([BILD_HOCHLADELINK] if schreibdienst() else []) + ontologie):
         n = w["name"]
         if n in LESE_BAUSTEIN and bausteine is not None and LESE_BAUSTEIN[n] not in bausteine:
             continue

@@ -15,6 +15,7 @@
  *  - Mehrere Reisen teilen sich eine Domain; jede räumt nur ihre eigenen Speicher auf.
  *  - Die Offline-Grundkarte (grundkarte.pmtiles, einige 10 MB) wird ganz gespeichert; Bereichsanfragen
  *    der Karte beantwortet der Worker aus dieser Kopie (bereich()).
+ *  - Ein entferntes Bild (#582) nimmt schon die Installation des nächsten Stands aus allen Speichern der Reise (bilderVergessen).
  *  - Push-Nachrichten (Issue #21, engine/push.py): Jede Nachricht wird angezeigt (iOS entzieht einem Worker, der eine
  *    Nachricht empfängt und nichts zeigt, die Erlaubnis). Tippen öffnet die Stelle in einem offenen Fenster der Seite
  *    oder in einem neuen; eine Nachricht zu einem neuen Release öffnet die Seite mit ?aktualisieren=1 (vorlage.html).
@@ -23,6 +24,7 @@ const VERSION = "__VERSION__";
 const RELEASE = __RELEASE__;  // Release der Software dieses Stands ({nummer, kennung} oder {}), für „Neuer Stand bereit“
 const DATEIEN = __DATEIEN__;
 const STAND = __STAND__;  // Datei -> Inhalts-Hash; gespeichert wird unter „Datei?v=Hash“
+const BILDER_JETZT = __BILDER__;  // alle Bilddateien der Reise in diesem Stand (medien/bilder/…), auch die erst beim Ansehen geladenen
 const UMZUG_NACH = __UMZUG__;  // null oder neue Adresse (Ursprung), wenn die Seiten umgezogen sind
 const UMZUG = UMZUG_NACH && UMZUG_NACH !== self.location.origin ? UMZUG_NACH : null;  // auf der neuen Adresse selbst gilt der Umzug nicht
 
@@ -41,6 +43,7 @@ self.addEventListener("install", event => {
     // sonst lädt jede Aktualisierung des Texts auch alle Grundkarten (rund 100 MB) erneut (Issue #64).
     const alt = [];
     for (const name of await caches.keys()) if (name.startsWith(PREFIX) && name !== SPEICHER) alt.push(await caches.open(name));
+    await bilderVergessen(alt);
     const offen = DATEIEN.map(f => [scope + f, `${scope}${f}?v=${STAND[f]}`]);
     async function arbeiter() {
       while (offen.length) {
@@ -62,6 +65,19 @@ self.addEventListener("install", event => {
     }
   })());
 });
+
+/* Entfernte Bilder (#582, AC-15): Ein endgültig entferntes eigenes Foto darf auf dem Gerät nicht bleiben. Schon bei der
+   Installation eines neuen Stands (auch wenn er noch auf „Aktualisieren“ wartet) nimmt der Worker jedes Bild der Reise aus
+   den bisherigen Speichern, das dieser Stand nicht mehr kennt; der laufende Stand lädt es dann vergeblich aus dem Netz. */
+async function bilderVergessen(speicher) {
+  const jetzt = new Set(BILDER_JETZT.map(f => scope + f));
+  for (const c of speicher) {
+    for (const r of await c.keys()) {
+      const pfad = new URL(r.url).pathname;
+      if (pfad.startsWith(scope + "medien/bilder/") && !jetzt.has(pfad)) await c.delete(r);
+    }
+  }
+}
 
 self.addEventListener("message", event => {
   if (event.data && event.data.typ === "version") event.ports[0] && event.ports[0].postMessage(VERSION);

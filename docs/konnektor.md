@@ -70,6 +70,7 @@ Mit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen (A
 | `packliste_uebernehmen` | Organisator:innen | Kategorien und Gegenstände einer früheren Reise (derselben Person) als Vorschlag kopieren: neue IDs, ohne Packstand, ohne `an` und `wer`, weggelassene bleiben weg; danach im Gespräch streichen und ergänzen |
 | `bild_hinzufuegen` | Mitwirkende, Organisator:innen | ein Bild aus Wikimedia Commons zur Reise (#455): genau eine Quelle `commons` (Dateiname) oder `wikidata` (Q…, Bild aus P18), `zu` (Kennung oder `reise`), freiwillig `bildunterschrift`, `alt`, `titelbild` (nur Organisator:innen). Frieda holt das Bild selbst (vor der Schreibsperre); jedes Commons-Bild wird angenommen, Frieda prüft die Nutzungsrechte nicht, dafür ist die Person verantwortlich, die das Bild hinzufügt (#613). Die Antwort nennt Urheber, Lizenz und mögliche Einschränkungen (NC, ND, GFDL, unbekannte oder fehlende Lizenz) als Hinweis, den Claude an die Person weitergibt; er sperrt nie. Wegen der Lizenz wird nie abgelehnt; die übrigen Ablehnungen (`bild.abgelehnt.*`: Netz, nicht gefunden, Format, Größe, Quelle, Ziel, Grenze, Rolle, zurückgezogenes Titelbild) bleiben. Frieda legt zwei WebP-Fassungen (480 und 1600 px) und den Eintrag in `plan/bilder.yaml` an (neue ID `BI-…`); die Antwort zeigt eine kleine Vorschau. Im Text erscheint es mit `![…](BI-…)` samt Namensnennung |
 | `bild_aendern` | Mitwirkende, Organisator:innen | Bildunterschrift, `alt`, `zu`, Titelbild (nur Organisator:innen, löst das bisherige ab), zurückziehen (erscheint nirgends mehr, bleibt erhalten) oder wiederherstellen; gelöscht wird nie |
+| `bild_hochladelink` | Mitwirkende, Organisator:innen | gibt einen Link zum Hochladen eigener Fotos aus (#582): `<FR_BASIS>/hochladen/<token>`, 30 Minuten, höchstens 10 Fotos, an Reise und Person gebunden, Token nur als Hash in `konten.db`; `zu` ist die Kennung, zu der die Fotos gehören (ohne: die ganze Reise). Die Seite hinter dem Link (Rückmeldedienst, eigene CSP, `Referrer-Policy: no-referrer`, ohne Link zur Reiseseite) kann nur hochladen; die Rolle wird bei jedem Foto neu geprüft, abgelaufene oder verbrauchte Links bekommen „Link abgelaufen“. Das Foto geht roh an den Schreibweg (`POST /<reise>/bild_hochladen`), der es ohne Metadaten als zwei WebP-Fassungen ablegt (Quelle `eigen`, „Foto: <Name>“). Entfernen geht nur angemeldet auf der Seite (Werkzeug des Schreibwegs `bild_entfernen`, hochladende Person oder Organisator:in) |
 | `personen` | alle | die Personen der Reise lesen (#406): Name, Rolle, ob sie mitreist, von/bis; Organisator:innen sehen zusätzlich den Zugang (angemeldet, eingeladen, noch keiner). E-Mail-Adressen und Notizen zeigt das Werkzeug nie; es schreibt nichts |
 | `person_einladen` | je nach `regeln.einladen` (Vorgabe Organisator:innen) | legt eine Person mit Rolle an und lädt sie per E-Mail-Adresse ein (Paket C, J; Links gibt es nicht mehr, #421); seit O-3 steht sie sofort in `reise.yaml` (`person_schreiben`), `person_entfernen` macht sie zum Gast, der nicht mitreist (niemand wird gestrichen) |
 
@@ -304,6 +305,7 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 | `packing_list_adopt` | `packliste_uebernehmen` |
 | `image_add` | `bild_hinzufuegen` |
 | `image_update` | `bild_aendern` |
+| `image_upload_link` | `bild_hochladelink` |
 | `value_set` | `wert_eintragen` |
 | `location_set` | `lage_eintragen` |
 | `item_create` | `ding_anlegen` |
@@ -358,7 +360,7 @@ Parameternamen (ein Wort hat überall dieselbe Übersetzung, außer wo unten ein
 | `anreise_ab`, `abreise_bis` | `checkin_from`, `checkout_until` |
 | `vor_ort_zahlen` | `pay_on_site` |
 | `bereich`, `herkunft`, `bestaetigt` (nur `profil_eintrag_setzen`) | `area`, `origin`, `confirmed` |
-| `zu`, `bildunterschrift`, `alt`, `titelbild`, `zurueckziehen`, `wiederherstellen` (nur `bild_hinzufuegen`, `bild_aendern`) | `belongs_to`, `caption`, `alt_text`, `title_image`, `withdraw`, `restore` |
+| `zu`, `bildunterschrift`, `alt`, `titelbild`, `zurueckziehen`, `wiederherstellen` (nur `bild_hinzufuegen`, `bild_aendern`; `zu` auch bei `bild_hochladelink`) | `belongs_to`, `caption`, `alt_text`, `title_image`, `withdraw`, `restore` |
 | `abschnitt` | `section` |
 | `adresse` | `address` |
 | `alle` | `all` |

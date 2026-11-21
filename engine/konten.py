@@ -175,6 +175,12 @@ CREATE TABLE IF NOT EXISTS push_warteschlange (
 CREATE TABLE IF NOT EXISTS reise_loeschung (
   reise TEXT PRIMARY KEY, konto TEXT, wann REAL NOT NULL, frist REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS loeschprotokoll (reise TEXT PRIMARY KEY, datum TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS bild_loeschungen (
+  reise TEXT NOT NULL, bild TEXT NOT NULL, datum TEXT NOT NULL, pruefsummen TEXT NOT NULL DEFAULT '',
+  bestaetigt INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (reise, bild));
+CREATE TABLE IF NOT EXISTS hochladelinks (
+  hash TEXT PRIMARY KEY, reise TEXT NOT NULL, person TEXT NOT NULL, konto TEXT NOT NULL, ziel TEXT NOT NULL DEFAULT '',
+  rest INTEGER NOT NULL, ablauf REAL NOT NULL, erstellt REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS betreiber_meldungen (
   id INTEGER PRIMARY KEY AUTOINCREMENT, konto TEXT NOT NULL, reise TEXT NOT NULL DEFAULT '', art TEXT NOT NULL,
   text TEXT NOT NULL, zusammenhang TEXT NOT NULL DEFAULT '', zeit REAL NOT NULL, issue TEXT);
@@ -182,6 +188,7 @@ CREATE TABLE IF NOT EXISTS profil (
   id INTEGER PRIMARY KEY AUTOINCREMENT, konto TEXT NOT NULL, bereich TEXT NOT NULL, text TEXT NOT NULL,
   herkunft TEXT NOT NULL, datum TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS profil_konto ON profil (konto);
+CREATE INDEX IF NOT EXISTS hochladelinks_konto ON hochladelinks (konto);
 CREATE INDEX IF NOT EXISTS push_abos_konto ON push_abos (konto);
 CREATE INDEX IF NOT EXISTS push_warteschlange_offen ON push_warteschlange (gesendet, konto);
 CREATE INDEX IF NOT EXISTS oauth_tokens_konto ON oauth_tokens (konto);
@@ -211,6 +218,12 @@ def db():
         v.commit()
     except sqlite3.OperationalError:
         pass   # Spalte ist schon da
+    for spalte in BILD_LOESCHUNG_SPALTEN:   # Löschprotokoll der Fotos von vor der Bindung an das Foto (#582): Zeilen ohne
+        try:                                 # Prüfsummen gelten weiter, bestätigt wie bisher
+            v.execute(f"ALTER TABLE bild_loeschungen ADD COLUMN {spalte}")
+            v.commit()
+        except sqlite3.OperationalError:
+            pass   # Spalte ist schon da
     if v.execute("PRAGMA user_version").fetchone()[0] < 1:
         # Einmal je Datenbank: Konten von vor ADR-0006 sprachen Deutsch und behalten es (Product Owner, 1.11.2026);
         # Englisch ist nur die Vorgabe neuer Konten ohne erkennbare Sprache. Eine neue Datenbank hat hier keine Konten.
@@ -670,7 +683,7 @@ def loeschen(kid):
         # oauth_clients: Registrierungen der Claude-App ohne Konto, Name oder Adresse; sie bleiben
         for t in ("sitzungen", "oauth_tokens", "oauth_codes", "mitgliedschaften", "anfragen", "kalender_abo", "push_abos",
                   "push_einstellungen", "push_warteschlange", "meldung_gelesen", "angelegte_reisen", "schreibvorgaenge",
-                  "betreiber_meldungen", "profil"):
+                  "betreiber_meldungen", "profil", "hochladelinks"):
             v.execute(f"DELETE FROM {t} WHERE konto = ?", (kid,))
         v.execute("DELETE FROM konten WHERE id = ?", (kid,))
 
@@ -1155,6 +1168,7 @@ def entfernen(reise, schluessel):
         n = v.execute("DELETE FROM mitgliedschaften WHERE reise = ? AND schluessel = ?", (reise, schluessel)).rowcount
         n += v.execute("DELETE FROM einladungen WHERE reise = ? AND schluessel = ? AND eingeloest IS NULL",
                        (reise, schluessel)).rowcount
+        v.execute("DELETE FROM hochladelinks WHERE reise = ? AND person = ?", (reise, schluessel))   # #582
         return n > 0
 
 
@@ -1245,7 +1259,7 @@ def loeschung_abschliessen(reise):
     Push-Nachrichten und Zählzeilen der Einladungen. angelegte_reisen bleibt (Grenze je Konto, #380)."""
     with closing(db()) as v, v:
         v.execute("DELETE FROM reise_loeschung WHERE reise = ?", (reise,))
-        for t in ("mitgliedschaften", "einladungen", "push_abos", "push_warteschlange"):
+        for t in ("mitgliedschaften", "einladungen", "push_abos", "push_warteschlange", "hochladelinks", "bild_loeschungen"):
             v.execute(f"DELETE FROM {t} WHERE reise = ?", (reise,))
         v.execute("DELETE FROM versand WHERE schluessel = ?", ("einladung:" + reise,))
         v.execute("INSERT OR IGNORE INTO loeschprotokoll (reise, datum) VALUES (?, ?)", (reise, _datum()[:10]))
@@ -1257,6 +1271,144 @@ def loeschprotokoll():
         return []
     with closing(db()) as v:
         return [z[0] for z in v.execute("SELECT reise FROM loeschprotokoll ORDER BY reise")]
+
+
+# ---------------------------------------------------------------- Eigene Fotos (#582)
+# Löschprotokoll der endgültig entfernten eigenen Fotos (nur Reise, Bild-ID und Datum): Nach dem Rückspielen einer alten
+# Sicherung des Reisespeichers entfernt der tägliche Lauf des Wächters sie erneut (waechter.bildloeschungen_nachholen).
+# Hochlade-Links aus dem Chat: der Token steht nur als sha256 in der Datenbank (wie Anmeldecode und Einladung), gilt
+# HOCHLADELINK_MINUTEN Minuten und für HOCHLADELINK_FOTOS Fotos, ist an Reise und Person gebunden und erlaubt nur das Hochladen;
+# die Rolle prüft der Rückmeldedienst bei jedem Foto neu.
+HOCHLADELINK_MINUTEN = 30
+HOCHLADELINK_FOTOS = 10
+TOKEN_MUSTER = re.compile(r"^[A-Za-z0-9_-]{20,100}\Z")
+
+
+# Spalten, die ältere Datenbanken nachträglich bekommen (db()): pruefsummen bindet einen Eintrag an das Foto (sha256 der
+# Fassungen in allen Versionen beim Entfernen, durch Komma getrennt; leer bei Zeilen von vorher), bestaetigt ist 0, solange
+# der Vorgang von bild_entfernen noch nicht festgeschrieben ist (Vormerkung vor dem Vorgang, #582).
+BILD_LOESCHUNG_SPALTEN = ("pruefsummen TEXT NOT NULL DEFAULT ''", "bestaetigt INTEGER NOT NULL DEFAULT 1")
+
+
+def _bild_kennung_pruefen(reise, bid):
+    if not REISE_MUSTER.match(reise or "") or not re.fullmatch(r"BI-\d+", bid or ""):
+        raise ValueError(f"invalid image: {reise!r} {bid!r}")
+
+
+def bild_loeschung_vormerken(reise, bid, pruefsummen=()):
+    """Vor dem Vorgang von bild_entfernen (#582): Eintrag ins Löschprotokoll, noch unbestätigt, mit den Prüfsummen der
+    Fassungen (Bindung an genau dieses Foto). Steht das Bild schon bestätigt im Protokoll, bleibt es bestätigt; die
+    Prüfsummen kommen dazu. -> True, wenn die Zeile neu ist (nur dann nimmt bild_loeschung_verwerfen sie wieder weg)."""
+    _bild_kennung_pruefen(reise, bid)
+    with closing(db()) as v, v:
+        v.execute("BEGIN IMMEDIATE")
+        alt = v.execute("SELECT pruefsummen FROM bild_loeschungen WHERE reise = ? AND bild = ?", (reise, bid)).fetchone()
+        summen = ",".join(sorted(set(filter(None, (alt[0] if alt else "").split(","))) | set(pruefsummen)))
+        if alt:
+            v.execute("UPDATE bild_loeschungen SET pruefsummen = ? WHERE reise = ? AND bild = ?", (summen, reise, bid))
+            return False
+        v.execute("INSERT INTO bild_loeschungen (reise, bild, datum, pruefsummen, bestaetigt) VALUES (?, ?, ?, ?, 0)",
+                  (reise, bid, _datum()[:10], summen))
+        return True
+
+
+def bild_loeschung_bestaetigen(reise, bid, pruefsummen=()):
+    """Nach dem festgeschriebenen Vorgang (oder wenn der Wächter ihn im neuesten Stand findet): Eintrag bestätigt. Fehlt die
+    Zeile (der Wächter hat eine Vormerkung dazwischen verworfen), wird sie neu angelegt."""
+    _bild_kennung_pruefen(reise, bid)
+    with closing(db()) as v, v:
+        v.execute("BEGIN IMMEDIATE")
+        alt = v.execute("SELECT pruefsummen FROM bild_loeschungen WHERE reise = ? AND bild = ?", (reise, bid)).fetchone()
+        summen = ",".join(sorted(set(filter(None, (alt[0] if alt else "").split(","))) | set(pruefsummen)))
+        v.execute("INSERT INTO bild_loeschungen (reise, bild, datum, pruefsummen, bestaetigt) VALUES (?, ?, ?, ?, 1) "
+                  "ON CONFLICT (reise, bild) DO UPDATE SET bestaetigt = 1, pruefsummen = excluded.pruefsummen",
+                  (reise, bid, _datum()[:10], summen))
+
+
+def bild_loeschung_verwerfen(reise, bid):
+    """Der Vorgang von bild_entfernen ist gescheitert: die eigene Vormerkung wieder weg (nur unbestätigte Zeilen)."""
+    _bild_kennung_pruefen(reise, bid)
+    with closing(db()) as v, v:
+        v.execute("DELETE FROM bild_loeschungen WHERE reise = ? AND bild = ? AND bestaetigt = 0", (reise, bid))
+
+
+def bild_loeschung_protokollieren(reise, bid, wer=None, pruefsummen=()):
+    """Ein endgültig entferntes eigenes Foto ins Löschprotokoll, gleich bestätigt (wer bleibt draußen: nur Kennung, Datum
+    und Prüfsummen der Fassungen)."""
+    bild_loeschung_bestaetigen(reise, bid, pruefsummen)
+
+
+def bild_loeschungen():
+    """Alle Zeilen des Löschprotokolls -> [{"reise", "bild", "datum", "pruefsummen" (Menge, leer bei alten Zeilen),
+    "bestaetigt" (bool)}], sortiert (ohne Datenbank: leer, legt keine an)."""
+    if not pfad().exists():
+        return []
+    with closing(db()) as v:
+        return [{"reise": z[0], "bild": z[1], "datum": z[2], "pruefsummen": set(filter(None, (z[3] or "").split(","))),
+                 "bestaetigt": bool(z[4])}
+                for z in v.execute("SELECT reise, bild, datum, pruefsummen, bestaetigt FROM bild_loeschungen ORDER BY reise, bild")]
+
+
+def bild_loeschprotokoll(mit_datum=False):
+    """Alle endgültig entfernten eigenen Fotos (bestätigte Zeilen) -> [(reise, bid)], mit mit_datum [(reise, bid, datum)], sortiert (ohne
+    Datenbank: leer, legt keine an)."""
+    if not pfad().exists():
+        return []
+    with closing(db()) as v:
+        return [tuple(z) if mit_datum else (z[0], z[1])
+                for z in v.execute("SELECT reise, bild, datum FROM bild_loeschungen WHERE bestaetigt = 1 ORDER BY reise, bild")]
+
+
+def hochladelink_anlegen(reise, person, konto_id, zu=None):
+    """Neuer Hochlade-Link für eine Person einer Reise -> Token (nur hier im Klartext; gespeichert wird sein sha256).
+    Abgelaufene oder aufgebrauchte Links aller Reisen werden dabei aufgeräumt."""
+    if not REISE_MUSTER.match(reise or "") or not PERSON_MUSTER.match(person or ""):
+        raise KontoFehler("konto.fehler.reise_person_ungueltig")
+    token = secrets.token_urlsafe(32)
+    jetzt = _jetzt()
+    with closing(db()) as v, v:
+        v.execute("DELETE FROM hochladelinks WHERE ablauf <= ? OR rest <= 0", (jetzt,))
+        v.execute("INSERT INTO hochladelinks (hash, reise, person, konto, ziel, rest, ablauf, erstellt) VALUES (?,?,?,?,?,?,?,?)",
+                  (_hash(token), reise, person, konto_id, str(zu or ""), HOCHLADELINK_FOTOS, jetzt + HOCHLADELINK_MINUTEN * 60, jetzt))
+    return token
+
+
+def _hochladelink(v, token):
+    if not isinstance(token, str) or not TOKEN_MUSTER.match(token):
+        return None
+    z = v.execute("SELECT * FROM hochladelinks WHERE hash = ?", (_hash(token),)).fetchone()
+    if not z or z["ablauf"] <= _jetzt() or z["rest"] <= 0:
+        return None
+    return {"reise": z["reise"], "person": z["person"], "konto": z["konto"], "zu": z["ziel"] or None, "rest": z["rest"],
+            "ablauf": z["ablauf"]}
+
+
+def hochladelink_pruefen(token, reise=None):
+    """Gültiger Hochlade-Link -> {"reise", "person", "konto", "zu", "rest", "ablauf"}; abgelaufen, aufgebraucht, unbekannt oder
+    (mit reise) für eine andere Reise: None. Ändert nichts."""
+    if not pfad().exists():
+        return None
+    with closing(db()) as v:
+        z = _hochladelink(v, token)
+    return z if z and (reise is None or z["reise"] == reise) else None
+
+
+def hochladelink_nehmen(token):
+    """Ein Foto vom Link abziehen (vor dem Hochladen, in einer Transaktion) -> wie hochladelink_pruefen vor dem Abzug, oder None."""
+    with closing(db()) as v, v:
+        v.execute("BEGIN IMMEDIATE")
+        z = _hochladelink(v, token)
+        if z:
+            v.execute("UPDATE hochladelinks SET rest = rest - 1 WHERE hash = ?", (_hash(token),))
+        return z
+
+
+def hochladelink_zurueckgeben(token):
+    """Ist das Hochladen gescheitert, zählt das Foto nicht: den Abzug von hochladelink_nehmen zurücknehmen."""
+    if isinstance(token, str) and TOKEN_MUSTER.match(token):
+        with closing(db()) as v, v:
+            v.execute("UPDATE hochladelinks SET rest = MIN(rest + 1, ?) WHERE hash = ?", (HOCHLADELINK_FOTOS, _hash(token)))
+
 
 # ---------- Push-Nachrichten (Issue #21): Abos je Gerät, Einstellungen je Konto (engine/push.py) ----------
 # Ein Abo ist die Adresse eines Geräts beim Push-Dienst seines Browsers (Apple, Google, Mozilla) mit zwei Schlüsseln. Es

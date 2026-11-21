@@ -146,6 +146,18 @@ def test_bau_lehnt_unstimmiges_ab(wanderung, aenderung, schluessel):
     assert meldet(meldungen_beim_bau(wanderung), schluessel)
 
 
+def test_gelöschte_person_in_wer_bleibt_gültig(wanderung):
+    """#647: Nach dem Löschen eines Kontos ersetzt namen_ersetzen den Namen in wer durch den Ersatznamen des Katalogs
+    (konto.geloeschte_person); die Reise baut weiter, in jeder Sprache."""
+    import texte
+    for kuerzel in texte.SPRACHEN:
+        packdatei(wanderung, **{"G-01": {"wer": texte.t(kuerzel, "konto.geloeschte_person")}})
+        with tempfile.TemporaryDirectory() as t:
+            b = bauen.Bauer(wanderung, t)
+            b.daten()
+            assert not b.fehler, (kuerzel, b.fehler)
+
+
 def test_bau_doppelte_id_und_form(wanderung):
     liste = yaml.safe_load((wanderung / "plan" / "packliste.yaml").read_text(encoding="utf-8"))["gegenstaende"]
     packdatei(wanderung, gegenstaende=liste + [dict(liste[0])])

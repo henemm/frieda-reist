@@ -82,7 +82,8 @@ AKTIONEN = {"art_definieren": "ontologie", "merkmal_definieren": "ontologie", "k
             "plan_aendern": "plan", "merkmal_zusammenfuehren": "ontologie", "arten_uebernehmen": "ontologie", "wunsch_vorschlagen": "wunsch",
             "start_ende_setzen": "einstellung", "symbol_setzen": "einstellung", "kartenansicht_setzen": "karte", "track_anhaengen": "ding", "kartenpunkte_holen": "karte",
             "gegenstand_anlegen": "gegenstand", "gegenstand_aendern": "gegenstand", "packliste_uebernehmen": "packliste_uebernehmen",
-            "bild_hinzufuegen": "bild", "bild_aendern": "bild"}   # reise.AKTIONEN
+            "bild_hinzufuegen": "bild", "bild_aendern": "bild",
+            "bild_hochladen": "bild", "bild_entfernen": "bild"}   # reise.AKTIONEN; Entfernen prüft dazu Besitz oder Organisator:in
 HINWEISE_HOECHSTENS = 10   # neue Warnungen des Probebaus in der Antwort (Issue #142)
 S = texte.satz   # Satz des Katalogs, in jeder Sprache lesbar (Bestätigungen, ADR-0006)
 verbinden = texte.Satz.verbinden
@@ -5277,14 +5278,17 @@ def bild_titelbild_recht(wer):
         raise Ablehnung("bild.abgelehnt.rolle")
 
 
-def bild_grenze(reise_dir, liste):
-    """Höchstzahl aktiver Bilder (reise.yaml bilder: max_anzahl, Vorgabe 60): ist sie erreicht, Ablehnung bild.abgelehnt.grenze."""
+def bild_grenze(reise_dir, liste, neu_bytes=0):
+    """Grenzen der Bilder (reise.yaml bilder: max_anzahl, Vorgabe 60 aktive Bilder; max_mb, Vorgabe 150 MB für alle gespeicherten
+    Fassungen zusammen, #582): ist die Zahl erreicht oder überschritten die Fassungen mit neu_bytes die Größe, Ablehnung
+    bild.abgelehnt.grenze. Abgeschnitten wird nie etwas."""
     import bilder
     import reise
     roh = reise_yaml_laden(reise_dir)[1] if (Path(reise_dir) / "reise.yaml").exists() else {}
-    hoechstens = reise.bilder_grenzen(roh)["max_anzahl"]
-    if sum(1 for b in liste if bilder.aktiv(b)) >= hoechstens:
-        raise Ablehnung("bild.abgelehnt.grenze", anzahl=hoechstens)
+    g = reise.bilder_grenzen(roh)
+    if (sum(1 for b in liste if bilder.aktiv(b)) >= g["max_anzahl"]
+            or bilder.gespeicherte_bytes(reise_dir, liste) + neu_bytes > g["max_mb"] * 1024 * 1024):
+        raise Ablehnung("bild.abgelehnt.grenze", anzahl=g["max_anzahl"], mb=g["max_mb"])
 
 
 def bild_anfrage(reise_dir, wer, args):
@@ -5383,12 +5387,16 @@ def bild_titelbild_setzen(wer, liste, b, titelbild):
 
 def bild_aendern(reise_dir, wer, args, heute=None):
     """Ein Bild der Reise ändern (#455): bildunterschrift, alt, zu, titelbild (nur Organisator:innen; löst das bisherige ab),
-    zurueckziehen oder wiederherstellen. Gelöscht wird nie. -> (Titel, Text)."""
+    zurueckziehen oder wiederherstellen. Zurückgezogene Bilder bleiben erhalten; ein endgültig entferntes eigenes Foto
+    (bild_entfernen, #582) ist ein fester Endzustand im Verlauf und lässt sich hier nicht mehr ändern. -> (Titel, Text)."""
+    import bilder
     bid = " ".join(str(args.get("ziel") or "").split())
     liste = bild_liste(reise_dir)
     b = next((x for x in liste if x.get("id") == bid), None)
     if b is None:
         raise Ablehnung("schreiben.bild.unbekannt", bid=bid[:40])
+    if bilder.entfernt(b):
+        raise Ablehnung("bild.abgelehnt.entfernt")
     geaendert = False
     for feld in ("bildunterschrift", "alt"):
         if feld in args:
@@ -5404,6 +5412,64 @@ def bild_aendern(reise_dir, wer, args, heute=None):
         raise Ablehnung("schreiben.bild.nichts")
     bild_liste_speichern(reise_dir, liste)
     return S("schreiben.titel.bild_geaendert", bid=bid), S(antwort or "schreiben.antwort.bild.geaendert", bid=bid)
+
+
+def bild_hochladen(reise_dir, wer, args, heute=None):
+    """Ein eigenes Foto zur Reise (#582): Der Dienst hat es vor der Sperre umgewandelt (FR_BILD_VORAB, zwei WebP-Fassungen ohne
+    Metadaten; das Original ist nie gespeichert). Ziel und Grenzen prüfen, verwaiste Fassungen früherer Vorgänge im selben Zug
+    aufräumen, Fassungen ablegen, Eintrag mit quelle eigen, urheber (Name der Person) und besitzer (ihr Personenschlüssel).
+    Scheitert das Speichern der Liste, werden die neuen Fassungen wieder entfernt. -> (Titel, Text)."""
+    import bilder
+    r = bilder.eigen_vorab_lesen()
+    if r is None:
+        raise Ablehnung("bild.abgelehnt.format")
+    zu = bild_ziel(reise_dir, args.get("zu"))
+    liste = bild_liste(reise_dir)
+    bild_grenze(reise_dir, liste, len(r["klein"]) + len(r["gross"]))
+    bilder.waisen_aufraeumen(reise_dir, liste)
+    bid = neue_id(reise_dir, "BI")
+    f = bilder.eigen_ablegen(reise_dir, bid, r)
+    try:
+        liste.append({"id": bid, "zu": zu, "quelle": "eigen", "urheber": wer["name"], "besitzer": wer.get("person") or "",
+                      "status": "aktiv", **f, "hinzugefuegt": {"datum": heute or datetime.date.today(), "wer": wer["name"]}})
+        bild_liste_speichern(reise_dir, liste)
+    except BaseException:
+        for rel in f["dateien"].values():
+            (Path(reise_dir) / rel).unlink(missing_ok=True)
+        raise
+    return S("schreiben.titel.bild_eigen", bid=bid, zu=zu), S("schreiben.antwort.bild.eigen_neu", bid=bid, zu=zu)
+
+
+def bild_kennung(args):
+    bid = " ".join(str(args.get("ziel") or "").split())
+    return bid if re.fullmatch(r"BI-\d+", bid) else None
+
+
+def bild_entfernen(reise_dir, wer, args, heute=None):
+    """Ein eigenes Foto endgültig entfernen (#582, P3): nur die hochladende Person (besitzer) oder eine Organisator:in; Bilder aus
+    Commons und Altbestand werden weiter nur zurückgezogen. Der Eintrag bleibt mit status entfernt und entfernt {datum, wer}
+    (Verlauf, die ID wird nie neu vergeben); Dateien, Texte und Titelbild fallen weg, die beiden Fassungen werden gelöscht.
+    Die älteren Versionen leert danach Schreiber.schreiben (reisespeicher.bild_entfernen, Löschprotokoll). -> (Titel, Text)."""
+    import bilder
+    import reise
+    bid = bild_kennung(args)
+    liste = bild_liste(reise_dir)
+    b = next((x for x in liste if x.get("id") == bid), None) if bid else None
+    if b is None:
+        raise Ablehnung("schreiben.bild.unbekannt", bid=str(args.get("ziel") or "")[:40])
+    if b.get("quelle") != "eigen":
+        raise Ablehnung("bild.abgelehnt.nicht_eigen")
+    if bilder.entfernt(b):
+        raise Ablehnung("schreiben.schreiben.4")
+    if not (b.get("besitzer") and b.get("besitzer") == wer.get("person")) and not reise.darf(wer.get("rolle"), "organisator"):
+        raise Ablehnung("bild.abgelehnt.entfernen_recht")
+    for feld in ("dateien", "bildunterschrift", "alt", "titelbild", "breite", "hoehe"):
+        b.pop(feld, None)
+    b.update(status="entfernt", entfernt={"datum": heute or datetime.date.today(), "wer": wer["name"]})
+    for breite in bilder.FASSUNGEN.values():
+        (Path(reise_dir) / bilder.ORDNER / f"{bid}-{breite}.webp").unlink(missing_ok=True)
+    bild_liste_speichern(reise_dir, liste)
+    return S("schreiben.titel.bild_entfernt", bid=bid), S("schreiben.antwort.bild.entfernt", bid=bid)
 
 
 def bild_vorschau(reise_dir, bid):
@@ -5435,7 +5501,9 @@ WERKZEUGE = {"art_definieren": art_definieren, "merkmal_definieren": merkmal_def
              # Packliste (ADR-0010, #370)
              "gegenstand_anlegen": gegenstand_anlegen, "gegenstand_aendern": gegenstand_aendern, "packliste_uebernehmen": packliste_uebernehmen,
              # Bilder Stufe 1 (#455)
-             "bild_hinzufuegen": bild_hinzufuegen, "bild_aendern": bild_aendern}
+             "bild_hinzufuegen": bild_hinzufuegen, "bild_aendern": bild_aendern,
+             # Bilder Stufe 2 (#582): eigene Fotos hochladen (nur über die Route bild_hochladen) und endgültig entfernen
+             "bild_hochladen": bild_hochladen, "bild_entfernen": bild_entfernen}
 REPO_WERKZEUGE = {"reise_anlegen": reise_anlegen}   # arbeiten auf reisen/, nicht in einer Reise
 
 
@@ -5597,13 +5665,24 @@ class Schreiber:
         reise, reise_dir, wer, titel, text, hinweise = self.anwenden_im_ordner(reise, werkzeug, anfrage)
         _, titel_, text_, fuss = self.nachricht(reise_dir, werkzeug, wer, titel, text)
         rest = self.rest()
+        # Eigenes Foto entfernen (#582): erst vormerken (Löschprotokoll, an die Prüfsummen der Fassungen gebunden), dann der
+        # Vorgang. Scheitert die Vormerkung, ist nichts geschehen; scheitert der Vorgang, fällt die eigene Vormerkung weg.
+        bild = bild_kennung(anfrage.get("args") or {}) if werkzeug == "bild_entfernen" else None
+        summen = reisespeicher.bild_pruefsummen(reise, bild) if bild else set()
+        vorgemerkt = konten.bild_loeschung_vormerken(reise, bild, summen) if bild else False
         try:
             v = reisespeicher.ordner_als_vorgang(
                 reise, reise_dir, self.basis, wer=" ".join(wer["name"].split()), werkzeug=werkzeug,
                 titel=(str(titel_).splitlines() or [""])[0], grund=f"{text_}\n\n{fuss}", kennung=os.environ.get("FR_VORGANG") or None,
                 rolle=str(wer["rolle"]), timeout=10 if rest is None else max(0.1, rest))
-        except reisespeicher.NichtsGeaendert:
-            raise Ablehnung("schreiben.schreiben.4")
+        except BaseException as e:
+            if vorgemerkt:
+                bild_vormerkung_verwerfen(reise, bild)
+            if isinstance(e, reisespeicher.NichtsGeaendert):
+                raise Ablehnung("schreiben.schreiben.4")
+            raise
+        if bild:
+            bild_endgueltig_entfernen(reise, bild, summen)
         reisestand.gesichert_schreiben(reise, v.stand, str(v.nummer))
         self.veroeffentlichen_anstossen()
         return self.antwort(reise, titel, text, hinweise, str(v.nummer), v.stand)
@@ -5639,6 +5718,31 @@ class Schreiber:
             merker.touch(exist_ok=True)
         except Exception as e:   # noqa: BLE001 – der Anstoß darf das Speichern nie scheitern lassen
             sys.stderr.write(f"Publishing not triggered (veroeffentlichen-anstoss): {e}\n")
+
+
+def bild_vormerkung_verwerfen(reise, bid):
+    """Der Vorgang von bild_entfernen ist gescheitert: die eigene Vormerkung aus dem Löschprotokoll nehmen. Gelingt das nicht,
+    schadet die Zeile nicht: der Wächter bestätigt eine Vormerkung nur, wenn der Eintrag im neuesten Stand entfernt ist,
+    sonst verwirft er sie."""
+    try:
+        konten.bild_loeschung_verwerfen(reise, bid)
+    except Exception as e:   # noqa: BLE001  der Fehler des Vorgangs zählt, nicht dieser
+        sys.stderr.write(f"Image {reise}/{bid}: pending removal not withdrawn ({type(e).__name__}: {_kurz(e)}), the watcher does it\n")
+
+
+def bild_endgueltig_entfernen(reise, bid, summen=()):
+    """Nach dem festgeschriebenen Vorgang von bild_entfernen (#582): die Vormerkung im Löschprotokoll bestätigen (damit eine
+    zurückgespielte Sicherung das Bild nicht zurückbringt, waechter.bildloeschungen_nachholen), dann die beiden Fassungen in
+    allen Versionen leeren (reisespeicher.bild_entfernen, dritte Ausnahme vom Nur-Anhängen). Wirft nie: Der Vorgang ist
+    festgeschrieben und gilt; scheitert ein Schritt, steht er im Journal, und der tägliche Lauf holt ihn über die schon vor
+    dem Vorgang geschriebene Vormerkung nach."""
+    import reisespeicher
+    for schritt in (lambda: konten.bild_loeschung_bestaetigen(reise, bid, summen), lambda: reisespeicher.bild_entfernen(reise, bid)):
+        try:
+            schritt()
+        except Exception as e:   # noqa: BLE001  der Wächter holt es über das Löschprotokoll nach
+            sys.stderr.write(f"Image {reise}/{bid} not yet removed for good (the watcher retries): {type(e).__name__}: {_kurz(e)}\n")
+            return
 
 
 def buchung_anfrage_gueltig(reise, bid):
@@ -5917,13 +6021,23 @@ def bild_vorab(s, reise, anfrage, vorab):
         raise bild_ablehnung(e)
 
 
-def anwenden_extern(s, reise, werkzeug, anfrage):
+def bild_eigen_vorab(inhalt, vorab):
+    """Eigenes Foto vor der Sperre umwandeln (#582, Mechanik FR_BILD_VORAB): Dekodieren und WebP-Erzeugen halten die Reise nie
+    auf -> Pfad der Datei für FR_BILD_VORAB; eine Ablehnung (Größe, Format, Bombe) geht ohne Vorgang an den Aufrufer."""
+    import bilder
+    try:
+        return bilder.eigen_vorab_schreiben(vorab, bilder.eigen_umwandeln(inhalt))
+    except bilder.Abgelehnt as e:
+        raise bild_ablehnung(e)
+
+
+def anwenden_extern(s, reise, werkzeug, anfrage, inhalt=None):
     """Ein Schreibvorgang des Dienstes -> (Code, Antwort), immer über den Reisespeicher (vorgang_speicher; #557: kein Git-Weg
     mehr). Eine neue Reise (reise_anlegen) entsteht dort; eine Reise ohne Eintrag gibt 503 reise_nicht_im_speicher.
     Sperre und Arbeitskopie gibt es je Reise: Was bei einer Reise hängt, hält die anderen nicht auf (flock gilt auch zwischen
     Threads, jeder öffnet die Datei selbst). Alles zusammen dauert höchstens ZEIT_GESAMT + ZEIT_PRUEFUNG Sekunden, bei
     kartenpunkte_holen davor noch das Vorab-Fenster ZEIT_VORAB ohne Sperre (#240); die Dauer jedes Vorgangs steht im
-    Protokoll, auch nach einem unerwarteten Fehler (500)."""
+    Protokoll, auch nach einem unerwarteten Fehler (500). inhalt: die Bytes eines eigenen Fotos (bild_hochladen, #582)."""
     start = time.monotonic()
     code, antwort = 500, fehler_antwort("schreiben.dienst.fehlgeschlagen")
     vorab = None
@@ -5935,6 +6049,11 @@ def anwenden_extern(s, reise, werkzeug, anfrage):
         elif werkzeug == "bild_hinzufuegen":   # #455: das Bild kommt vor der Sperre, der Vorgang liest es aus FR_BILD_VORAB
             vorab = tempfile.mkdtemp(prefix="frieda-bild-")
             weiter = {"bild_vorab": bild} if (bild := bild_vorab(s, reise, anfrage, vorab)) else {}
+        elif werkzeug == "bild_hochladen":   # #582: nur mit den Bytes der Upload-Route, umgewandelt vor der Sperre
+            if inhalt is None:
+                raise Ablehnung("bild.abgelehnt.format")
+            vorab = tempfile.mkdtemp(prefix="frieda-bild-")
+            weiter = {"bild_vorab": bild_eigen_vorab(inhalt, vorab)}
         if konten.reise_vorgemerkt(reise):   # #381: zur Löschung vorgemerkt oder entfernt, nichts wird mehr geschrieben
             code, antwort = 410, fehler_antwort("schreiben.dienst.reise_geloescht")
         else:
@@ -6206,10 +6325,41 @@ class Dienst(BaseHTTPRequestHandler):
                 return self._senden(503, fehler_antwort("schreiben.dienst.speicher_nicht_erreichbar", mit_ok=False))
         self._senden(404, fehler_antwort("schreiben.dienst.unbekannt", mit_ok=False))
 
+    def _bild_hochladen(self, reise):
+        """POST /<reise>/bild_hochladen (#582): roher Body (das Foto, bis bilder.MAX_EIGEN, nicht durch MAX_BODY begrenzt), Kopf
+        X-Frieda-Bild mit JSON {"zu", "person", "name"}; nur mit X-Frieda-Dienst (der Rückmeldedienst hat Anmeldung, Rolle,
+        Größe und Format schon geprüft, hier gilt alles noch einmal). Etwas zu große Bodies werden gelesen und verworfen, damit
+        die Antwort 413 ankommt; ganz große werden ungelesen beendet."""
+        import bilder
+        try:
+            laenge = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            laenge = 0
+        if laenge > bilder.MAX_EIGEN:
+            if laenge <= 2 * bilder.MAX_EIGEN:
+                self.rfile.read(laenge)
+            else:
+                self.close_connection = True
+            return self._senden(413, fehler_antwort("schreiben.dienst.zu_gross", mit_ok=False))
+        if laenge <= 0:
+            return self._senden(400, fehler_antwort("schreiben.dienst.kein_objekt", mit_ok=False))
+        inhalt = self.rfile.read(laenge)
+        try:
+            meta = json.loads(self.headers.get("X-Frieda-Bild") or "")
+        except ValueError:
+            meta = None
+        if not isinstance(meta, dict):
+            return self._senden(400, fehler_antwort("schreiben.dienst.kein_objekt", mit_ok=False))
+        anfrage = {"person": meta.get("person"), "name": meta.get("name"), "args": {"zu": meta.get("zu")}}
+        code, antwort = anwenden_extern(self.schreiber or Schreiber(wurzel()), reise, "bild_hochladen", anfrage, inhalt=inhalt)
+        self._senden(code, antwort)
+
     def do_POST(self):
         if not hmac.compare_digest(self.headers.get("X-Frieda-Dienst", ""), konten.dienst_geheimnis()):
             return self._senden(403, fehler_antwort("schreiben.dienst.nur_konnektor", mit_ok=False))
         teile = self.path.split("?", 1)[0].strip("/").split("/")
+        if len(teile) == 2 and REISE_MUSTER.match(teile[0]) and teile[1] == "bild_hochladen":
+            return self._bild_hochladen(teile[0])
         if len(teile) != 2 or not REISE_MUSTER.match(teile[0]) or (teile[1] not in WERKZEUGE and teile[1] not in REPO_WERKZEUGE):
             return self._senden(404, fehler_antwort("schreiben.dienst.unbekannt", mit_ok=False))
         try:

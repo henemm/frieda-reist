@@ -500,6 +500,8 @@ class Bauer:
         oder ohne Angaben None. Links nur mit https."""
         if b.get("quelle") == "reise":
             return None
+        if b.get("quelle") == "eigen":   # eigenes Foto (#582): nur der Name der hochladenden Person, keine Lizenz
+            return {"urheber": str(b.get("urheber") or "")} if b.get("urheber") else None
         def https(url):
             return str(url) if str(url or "").startswith("https://") else None
         n = {"urheber": str(b.get("urheber") or "")}
@@ -510,6 +512,8 @@ class Bauer:
     def nennung_html(self, b):
         """Namensnennung im Text (V16): Urheber · Lizenz als Link · Commons-Seite; alle Werte maskiert."""
         n = self.nennung_daten(b) or {}
+        if b.get("quelle") == "eigen":   # „Foto: <Name>“ (#582)
+            return htmlmod.escape(texte.t(self.eck["sprache"], "seite.bild.foto_von", name=n["urheber"])) if n else ""
         def verweis(url, text):
             text = htmlmod.escape(str(text or ""))
             return f'<a target="_blank" rel="noopener" href="{htmlmod.escape(url)}">{text}</a>' if url and text else text
@@ -865,6 +869,7 @@ class Bauer:
         if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
             self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
         bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
         if self.fehler:
             raise BauFehler(list(dict.fromkeys(self.fehler)))
         # Bilder der Reise (#455, V12): nur mit aktiven Bildern, sonst fehlt der Schlüssel ganz (keine Bilddaten, AC-12)
@@ -881,6 +886,7 @@ class Bauer:
             "kategorien": kategorien,
             "wunsch_vorschlaege": wunsch_vorschlaege,
             **({"bilder": bilder} if bilder else {}),
+            **({"bilder_entfernt": bilder_entfernt} if bilder_entfernt else {}),
         }
 
     def bilder_daten(self):
@@ -907,7 +913,18 @@ class Bauer:
             mit_kopf.add(zu)
             aus.append({"id": b["id"], "zu": zu, "klein": klein, "gross": gross, "alt": str(b.get("alt") or ""),
                         "bildunterschrift": str(b.get("bildunterschrift") or ""), "titel": titel,
-                        "breite": b.get("breite"), "hoehe": b.get("hoehe"), "nennung": self.nennung_daten(b)})
+                        "breite": b.get("breite"), "hoehe": b.get("hoehe"), "nennung": self.nennung_daten(b),
+                        # eigenes Foto (#582): die Seite zeigt „Foto entfernen“ der hochladenden Person und Organisator:innen
+                        **({"eigen": True, "besitzer": str(b.get("besitzer") or "")} if b.get("quelle") == "eigen" else {})})
+        return aus
+
+    def bilder_entfernt_daten(self):
+        """Entfernte eigene Fotos (#582) für den Verlauf der Seite: nur Kennung, Ding, Datum und wer, ohne Dateien und Texte."""
+        aus = []
+        for b in self.bild_eintraege().values():
+            if bildliste.entfernt(b):
+                e = b.get("entfernt") if isinstance(b.get("entfernt"), dict) else {}
+                aus.append({"id": b["id"], "zu": str(b.get("zu") or ""), "datum": str(e.get("datum") or ""), "wer": str(e.get("wer") or "")})
         return aus
 
     def bilder_offline_pruefen(self, dateien):
@@ -1622,6 +1639,7 @@ class Bauer:
         sw = (Path(__file__).parent / "sw.vorlage.js").read_text(encoding="utf-8")
         sw = sw.replace("__VERSION__", h.hexdigest()[:12]).replace("__DATEIEN__", json.dumps(dateien, ensure_ascii=False)) \
                .replace("__STAND__", json.dumps(stand, ensure_ascii=False)) \
+               .replace("__BILDER__", json.dumps(sorted(f for f in self.bilder.values() if f.startswith("medien/bilder/")), ensure_ascii=False)) \
                .replace("__UMZUG__", json.dumps(self.umzug)) \
                .replace("__RELEASE__", json.dumps({k: r[k] for k in ("nummer", "kennung")} if (r := software_release())["kennung"] else {}))
         (ziel / "sw.js").write_text(sw, encoding="utf-8")

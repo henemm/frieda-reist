@@ -641,8 +641,11 @@ def test_bild_entfernen_leert_nur_die_zwei_pfade(speicher):
     eigen_im_speicher(speicher, bid="BI-901", inhalt=(webp("navy"), webp("teal", 1600)))
     eigen_im_speicher(speicher, reise="stadtwochenende", bid="BI-90", besitzer="lea", urheber="Lea", zu="O-02",
                       inhalt=(webp("olive"), webp("maroon", 1600)))
-    rs.vorgang_schreiben("beispielreise", {"medien/bilder/BI-90-480.webp": klein}, wer="Karl", werkzeug="test",
-                         titel="dieselbe Fassung noch einmal (zweite Version)")
+    # zweite Version desselben Pfads; mit anderem Inhalt, denn dieselben Bytes noch einmal sind kein Vorgang
+    # (reisespeicher.NichtsGeaendert; Korrektur der GREEN-Phase, die RED-Fassung scheiterte schon im Aufbau)
+    zweite = webp((201, 121, 41))
+    rs.vorgang_schreiben("beispielreise", {"medien/bilder/BI-90-480.webp": zweite}, wer="Karl", werkzeug="test",
+                         titel="neue Fassung desselben Pfads (zweite Version)")
     pfade = ("medien/bilder/BI-90-480.webp", "medien/bilder/BI-90-1600.webp")
     rest_vorher, stadt_vorher = zeilen(speicher, "beispielreise", ohne=pfade), zeilen(speicher, "stadtwochenende")
     assert rs.bild_entfernen("beispielreise", "BI-90") >= 3
@@ -650,7 +653,7 @@ def test_bild_entfernen_leert_nur_die_zwei_pfade(speicher):
     assert len(betroffen) == 3 and all(z[3] is None and z[4] is None for z in betroffen), betroffen
     assert zeilen(speicher, "beispielreise", ohne=pfade) == rest_vorher
     assert zeilen(speicher, "stadtwochenende") == stadt_vorher
-    assert not ablage_da(summe(klein)) and not ablage_da(summe(gross))
+    assert not ablage_da(summe(klein)) and not ablage_da(summe(gross)) and not ablage_da(summe(zweite))
     assert rs.pruefen() == []
     for p in pfade:
         with pytest.raises(KeyError):
@@ -736,6 +739,194 @@ def test_alte_sicherung_bringt_das_bild_nicht_zurueck(speicher):
     with pytest.raises(KeyError):
         speicher.rs.datei("beispielreise", "medien/bilder/BI-90-480.webp")
     assert speicher.rs.pruefen() == [] and wa.bildloeschungen_nachholen() == []
+
+
+def test_alte_sicherung_eintrag_wird_wieder_entfernt_und_reise_baut(speicher):
+    """Nach dem Rückspielen einer Sicherung von vor dem Löschen stünde der Eintrag wieder aktiv in plan/bilder.yaml (ein Bild
+    ohne Dateien). Der tägliche Lauf setzt ihn über einen gewöhnlichen Vorgang auf entfernt (Datum aus dem Protokoll, wer:
+    der tägliche Lauf), leert Datei- und Textfelder und die Fassungen; die Reise baut ohne Fehler; ein zweiter Lauf ändert
+    nichts mehr."""
+    import waechter as wa
+    eigen_im_speicher(speicher)
+    sicherung = speicher.tmp / "sicherung"
+    shutil.copytree(os.environ["FR_SPEICHER"], sicherung)
+    code, a = entfernen(speicher, tss.KARL)
+    assert code == 200, a
+    shutil.rmtree(os.environ["FR_SPEICHER"])
+    shutil.copytree(sicherung, os.environ["FR_SPEICHER"])
+    assert next(x for x in liste_im_speicher(speicher) if x["id"] == "BI-90")["status"] == "aktiv"   # die alte Sicherung
+    stand = speicher.rs.stand_nummer("beispielreise")
+    assert wa.bildloeschungen_nachholen() == [("beispielreise", "BI-90")]
+    assert speicher.rs.stand_nummer("beispielreise") == stand + 1, "ein gewöhnlicher Vorgang, nur angehängt"
+    b = next(x for x in liste_im_speicher(speicher) if x["id"] == "BI-90")
+    lauf = texte.t("de", "waechter.bild_entfernt_wer")
+    assert b["status"] == "entfernt" and b["entfernt"]["wer"] == lauf and b["entfernt"].get("datum"), b
+    assert not any(b.get(f) for f in ("dateien", "bildunterschrift", "alt", "titelbild", "breite", "hoehe")), b
+    for p in ("medien/bilder/BI-90-480.webp", "medien/bilder/BI-90-1600.webp"):
+        with pytest.raises(KeyError):
+            speicher.rs.datei("beispielreise", p)
+    assert speicher.rs.pruefen() == []
+    ordner = speicher.tmp / "bau-quelle"
+    speicher.rs.materialisieren("beispielreise", ordner)
+    with tempfile.TemporaryDirectory() as t:
+        bau = bauen.Bauer(ordner, t)
+        d = bau.daten()
+        assert not bau.fehler, bau.fehler
+    assert "BI-90" not in [x["id"] for x in d["bilder"]]
+    assert [x["id"] for x in d.get("bilder_entfernt") or []] == ["BI-90"] and d["bilder_entfernt"][0]["wer"] == lauf
+    assert wa.bildloeschungen_nachholen() == [] and speicher.rs.stand_nummer("beispielreise") == stand + 1
+
+
+# ---------- Nacharbeit der Prüfung (Adversary F001–F003) ----------
+
+@pytest.mark.parametrize("aenderung", [{"wiederherstellen": True}, {"bildunterschrift": "neuer Text"},
+                                       {"alt": "neuer Alt-Text"}, {"zurueckziehen": True}, {"zu": "O-01"}],
+                         ids=["wiederherstellen", "bildunterschrift", "alt", "zurueckziehen", "zu"])
+def test_entferntes_foto_laesst_sich_nicht_mehr_aendern(speicher, aenderung):
+    """F001, AC-13: Ein entferntes eigenes Foto ist ein fester Endzustand. bild_aendern lehnt jede Änderung ab (auch für
+    Organisator:innen); der Eintrag mit „Foto entfernt“ bleibt unverändert, es entsteht kein Vorgang."""
+    eigen_im_speicher(speicher)
+    assert entfernen(speicher, tss.KARL)[0] == 200
+    vorher = next(x for x in liste_im_speicher(speicher) if x["id"] == "BI-90")
+    stand = speicher.rs.stand_nummer("beispielreise")
+    code, a = tss.schreib(speicher, "beispielreise", "bild_aendern", {**tss.IDA, "args": {"ziel": "BI-90", **aenderung}})
+    assert code == 422 and not a["ok"] and meldet(deutsch(a), "bild.abgelehnt.entfernt"), a
+    assert speicher.rs.stand_nummer("beispielreise") == stand
+    nachher = next(x for x in liste_im_speicher(speicher) if x["id"] == "BI-90")
+    assert nachher == vorher and nachher["status"] == "entfernt" and nachher["entfernt"]["wer"] == "Karl", nachher
+
+
+def entfernen_hier(sp, wer, bid="BI-90"):
+    """Werkzeug bild_entfernen im Testprozess (sb.anwenden wie der Unterprozess des Dienstes), damit Ersetzungen mit
+    monkeypatch greifen."""
+    arbeit = Path(tempfile.mkdtemp(dir=sp.tmp))
+    basis = sp.rs.stand_nummer("beispielreise")
+    sp.rs.exportieren("beispielreise", arbeit / "reisen" / "beispielreise", bis=basis)
+    return sb.anwenden(sp.wurzel, arbeit, "beispielreise", "bild_entfernen", {**wer, "args": {"ziel": bid}}, basis=basis)
+
+
+def _protokoll(bid="BI-90"):
+    return next((z for z in konten.bild_loeschungen() if z["bild"] == bid), None)
+
+
+def test_loeschprotokoll_steht_vor_dem_vorgang_und_ist_an_das_foto_gebunden(speicher, monkeypatch):
+    """F002, F003: Die Zeile im Löschprotokoll steht schon, wenn der Vorgang geschrieben wird (vorgemerkt), und ist danach
+    bestätigt; sie trägt die Prüfsummen der Fassungen aller Versionen."""
+    import reisespeicher as rs
+    klein, gross = eigen_im_speicher(speicher)
+    echt, gesehen = rs.ordner_als_vorgang, []
+
+    def beobachtet(*a, **kw):
+        gesehen.append(_protokoll())
+        return echt(*a, **kw)
+    with monkeypatch.context() as m:
+        m.setattr(rs, "ordner_als_vorgang", beobachtet)
+        assert entfernen_hier(speicher, tss.KARL)[0] == 200
+    assert gesehen and gesehen[0] and gesehen[0]["bestaetigt"] is False, gesehen
+    z = _protokoll()
+    assert z["bestaetigt"] is True and z["pruefsummen"] == {summe(klein), summe(gross)}, z
+    assert ("beispielreise", "BI-90") in konten.bild_loeschprotokoll()
+
+
+def test_gescheiterter_vorgang_hinterlaesst_kein_loeschprotokoll(speicher, monkeypatch):
+    """F002: Scheitert der Vorgang selbst, fällt die Vormerkung wieder weg; das Foto bleibt, der Wächter lässt es in Ruhe."""
+    import reisespeicher as rs
+    import waechter as wa
+    eigen_im_speicher(speicher)
+
+    def gesperrt(*a, **kw):
+        raise sqlite3.OperationalError("database is locked (Test)")
+    with monkeypatch.context() as m:
+        m.setattr(rs, "ordner_als_vorgang", gesperrt)
+        code, a = entfernen_hier(speicher, tss.KARL)
+    assert code == 503 and not a.get("ok"), a
+    assert _protokoll() is None
+    assert wa.bildloeschungen_nachholen() == []
+    assert next(x for x in liste_im_speicher(speicher) if x["id"] == "BI-90")["status"] == "aktiv"
+    assert speicher.rs.datei("beispielreise", "medien/bilder/BI-90-480.webp")
+
+
+def test_liegengebliebene_vormerkung_ohne_vorgang_schadet_nicht(speicher):
+    """F002: Stirbt der Dienst zwischen Vormerkung und Vorgang, bleibt eine unbestätigte Zeile. Der Wächter bestätigt sie nur,
+    wenn der Eintrag im neuesten Stand entfernt ist; sonst verwirft er sie, ohne das Foto anzufassen."""
+    import waechter as wa
+    klein, gross = eigen_im_speicher(speicher)
+    assert konten.bild_loeschung_vormerken("beispielreise", "BI-90", {summe(klein), summe(gross)}) is True
+    assert ("beispielreise", "BI-90") not in konten.bild_loeschprotokoll()
+    stand = speicher.rs.stand_nummer("beispielreise")
+    assert wa.bildloeschungen_nachholen() == []
+    assert _protokoll() is None and speicher.rs.stand_nummer("beispielreise") == stand
+    assert speicher.rs.datei("beispielreise", "medien/bilder/BI-90-480.webp") == klein
+
+
+def test_fehler_nach_dem_vorgang_ist_kein_abbruch_der_waechter_holt_nach(speicher, monkeypatch):
+    """F002: Scheitern Bestätigen und Leeren nach dem festgeschriebenen Vorgang, gilt der Vorgang (200, kein 500). Die
+    Vormerkung von vor dem Vorgang bleibt; der Wächter findet den Eintrag entfernt, bestätigt und leert alle Versionen."""
+    import reisespeicher as rs
+    import waechter as wa
+    klein, _ = eigen_im_speicher(speicher)
+
+    def gesperrt(*a, **kw):
+        raise sqlite3.OperationalError("database is locked (Test)")
+    with monkeypatch.context() as m:
+        m.setattr(konten, "bild_loeschung_bestaetigen", gesperrt)
+        m.setattr(rs, "bild_entfernen", gesperrt)
+        code, a = entfernen_hier(speicher, tss.KARL)
+    assert code == 200 and a["ok"], a
+    assert _protokoll()["bestaetigt"] is False
+    assert any(x == klein for x in alle_inhalte(speicher)), "ältere Versionen noch nicht geleert"
+    assert wa.bildloeschungen_nachholen() == [("beispielreise", "BI-90")]
+    assert _protokoll()["bestaetigt"] is True
+    assert not any(x == klein for x in alle_inhalte(speicher)) and speicher.rs.pruefen() == []
+
+
+@pytest.mark.parametrize("neues, alte_zeile", [("commons", False), ("commons", True), ("eigen", False)],
+                         ids=["commons-mit-pruefsummen", "commons-zeile-von-vorher", "eigen-mit-pruefsummen"])
+def test_sicherung_von_vor_dem_hochladen_neues_bild_gleicher_id_bleibt(speicher, neues, alte_zeile):
+    """F003: Wird eine Sicherung von vor dem Hochladen zurückgespielt und bekommt danach ein anderes Bild dieselbe ID (aus
+    Commons oder ein anderes eigenes Foto), lässt der Wächter es in Ruhe: Eintrag und Fassungen bleiben. Zeilen von vorher
+    (ohne Prüfsummen) binden nur über die Quelle eigen."""
+    import waechter as wa
+    sicherung = speicher.tmp / "sicherung"
+    shutil.copytree(os.environ["FR_SPEICHER"], sicherung)
+    eigen_im_speicher(speicher)
+    assert entfernen(speicher, tss.KARL)[0] == 200
+    if alte_zeile:
+        with closing(konten.db()) as v, v:
+            v.execute("UPDATE bild_loeschungen SET pruefsummen = ''")
+    shutil.rmtree(os.environ["FR_SPEICHER"])
+    shutil.copytree(sicherung, os.environ["FR_SPEICHER"])
+    inhalt = (webp("navy"), webp("teal", 1600))
+    eigen_im_speicher(speicher, besitzer="ida", urheber="Ida", inhalt=inhalt)
+    if neues == "commons":
+        liste = liste_im_speicher(speicher)
+        b = next(x for x in liste if x["id"] == "BI-90")
+        b.pop("besitzer")
+        b.update(quelle={"commons": "Beispiel.jpg"}, urheber="Beispiel", lizenz="CC0", seite="https://beispiel.invalid/")
+        speicher.rs.vorgang_schreiben("beispielreise", {"plan/bilder.yaml": yaml.safe_dump(
+            {"bilder": liste}, allow_unicode=True, sort_keys=False).encode()},
+            wer="Ida", werkzeug="bild_hinzufuegen", titel="BI-90 aus Commons (Test)")
+    vorher = next(x for x in liste_im_speicher(speicher) if x["id"] == "BI-90")
+    stand = speicher.rs.stand_nummer("beispielreise")
+    assert wa.bildloeschungen_nachholen() == []
+    assert speicher.rs.stand_nummer("beispielreise") == stand
+    assert next(x for x in liste_im_speicher(speicher) if x["id"] == "BI-90") == vorher
+    assert speicher.rs.datei("beispielreise", "medien/bilder/BI-90-480.webp") == inhalt[0]
+    assert speicher.rs.datei("beispielreise", "medien/bilder/BI-90-1600.webp") == inhalt[1]
+
+
+def test_alte_protokollzeilen_ohne_neue_spalten_gelten_weiter(speicher):
+    """F003, Formatwechsel ohne Handschritt: Eine Kontendatenbank mit der Tabelle von vorher (ohne pruefsummen und
+    bestaetigt) bekommt die Spalten beim Öffnen; ihre Zeilen gelten als bestätigt ohne Prüfsummen."""
+    konten.db().close()
+    with closing(sqlite3.connect(konten.pfad())) as v, v:
+        v.execute("DROP TABLE bild_loeschungen")
+        v.execute("CREATE TABLE bild_loeschungen (reise TEXT NOT NULL, bild TEXT NOT NULL, datum TEXT NOT NULL, "
+                  "PRIMARY KEY (reise, bild))")
+        v.execute("INSERT INTO bild_loeschungen VALUES ('beispielreise', 'BI-90', '2026-11-20')")
+    assert konten.bild_loeschungen() == [{"reise": "beispielreise", "bild": "BI-90", "datum": "2026-11-20",
+                                         "pruefsummen": set(), "bestaetigt": True}]
+    assert konten.bild_loeschprotokoll() == [("beispielreise", "BI-90")]
 
 
 def test_konto_geloescht_nennung_gelöschte_person_organisatorin_loescht(speicher):
@@ -862,6 +1053,58 @@ def test_token_erlaubt_nur_hochladen(mit_fotos):
     assert abruf(f"{u.rurl}/beispielreise/bilder/BI-90", "DELETE", cookie=token)[0] == 401
     assert hoch(u, "beispielreise", klein_foto(), token)[0] == 401
     assert not [p for p, _ in u.schreibweg if p.endswith("/bild_entfernen")]
+
+
+def _link_post(u, token, adresse, inhalt=b"\xff\xd8\xff" + b"0" * 100):
+    """POST /hochladen/<token> mit X-Real-IP (wie hinter nginx) -> Status."""
+    t = urllib.parse.urlsplit(u.rurl)
+    c = http.client.HTTPConnection(t.hostname, t.port, timeout=60)
+    try:
+        c.request("POST", f"/hochladen/{token}", body=inhalt,
+                  headers={"Content-Type": "application/octet-stream", "X-Real-IP": adresse, "Accept-Language": "de"})
+        return c.getresponse().status
+    except ConnectionError:
+        return 0
+    finally:
+        c.close()
+
+
+def test_link_prueft_token_vor_dem_lesen_und_drosselt_je_link_und_adresse(mit_fotos, monkeypatch):
+    """F005: Ein ungültiger Link wird abgelehnt, ohne dass der Body gelesen wird; gedrosselt wird je Link (über wechselnde
+    Adressen hinweg) und je Adresse (über wechselnde Links hinweg)."""
+    import rueckmeldungen as rm
+    u = mit_fotos()
+    rm._zeiten.clear()
+    gelesen = []
+    echt = rm.Dienst._foto_lesen
+
+    def zaehlt(self):
+        gelesen.append(1)
+        return echt(self)
+    monkeypatch.setattr(rm.Dienst, "_foto_lesen", zaehlt)
+    assert _link_post(u, "y" * 43, "192.0.2.1") == 410 and gelesen == []
+    codes = [_link_post(u, "z" * 43, f"192.0.2.{10 + i}") for i in range(rm.MAX_JE_MINUTE + 1)]
+    assert codes[:-1] == [410] * rm.MAX_JE_MINUTE and codes[-1] == 429, codes
+    codes = [_link_post(u, f"{i:02d}" + "w" * 41, "198.51.100.7") for i in range(rm.MAX_JE_MINUTE + 1)]
+    assert codes[:-1] == [410] * rm.MAX_JE_MINUTE and codes[-1] == 429, codes
+    assert gelesen == []
+    token = link_holen(u, u.karl)
+    assert _link_post(u, token, "203.0.113.5", klein_foto()) in (200, 201) and gelesen == [1]
+
+
+def test_drosselspeicher_raeumt_alte_schluessel_auf(monkeypatch):
+    """F005: Schlüssel ohne Zugriff in der letzten Minute verschwinden aus dem Drosselspeicher."""
+    import rueckmeldungen as rm
+    jetzt = [1000.0]
+    monkeypatch.setattr(rm.time, "monotonic", lambda: jetzt[0])
+    monkeypatch.setattr(rm, "_zeiten", {})
+    monkeypatch.setattr(rm, "_aufgeraeumt", [0.0])
+    for i in range(50):
+        assert rm.gedrosselt_je(f"hochladen/198.51.100.{i}") is False
+    assert len(rm._zeiten) == 50
+    jetzt[0] += 61
+    assert rm.gedrosselt_je("hochladen/203.0.113.9") is False
+    assert list(rm._zeiten) == ["hochladen/203.0.113.9"]
 
 
 def test_link_seite_mit_eigener_csp_ohne_seitenlink(mit_fotos):

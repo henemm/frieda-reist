@@ -188,7 +188,10 @@ def test_konnektor_md_nennt_jedes_werkzeug():
     assert fehlt == [], fehlt
     # Werkzeuge des Schreibwegs, die der Konnektor anbietet, sind vollständig registriert
     import schreiben as sb
-    assert set(sb.WERKZEUGE) - {"person_schreiben"} == set(kn.ONTOLOGIE_WERKZEUGE) - {"entscheiden", "tag_aendern"} | (set(sb.WERKZEUGE) & {"entscheiden", "tag_aendern"}) - {"person_schreiben"}
+    # intern, nicht im Konnektor: person_schreiben; bild_hochladen und bild_entfernen ruft nur der Rückmeldedienst (Seite und
+    # Hochlade-Link, #582), der Konnektor gibt dafür nur den Link aus (bild_hochladelink)
+    intern = {"person_schreiben", "bild_hochladen", "bild_entfernen"}
+    assert set(sb.WERKZEUGE) - intern == set(kn.ONTOLOGIE_WERKZEUGE) - {"entscheiden", "tag_aendern"} | (set(sb.WERKZEUGE) & {"entscheiden", "tag_aendern"}) - intern
     assert set(kn.ONTOLOGIE_WERKZEUGE) <= set(sb.WERKZEUGE) and set(kn.ONTOLOGIE_WERKZEUGE) == set(kn.ONTOLOGIE_AKTION)
 
 

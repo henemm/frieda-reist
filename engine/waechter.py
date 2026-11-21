@@ -487,6 +487,123 @@ def loeschungen_ausfuehren():
     return erledigt
 
 
+BILD_FELDER_WEG = ("dateien", "bildunterschrift", "alt", "titelbild", "breite", "hoehe")   # wie schreiben.bild_entfernen
+
+
+def _bild_eintrag(reise, bid):
+    """Eintrag bid aus plan/bilder.yaml des neuesten Stands -> (roh, liste, eintrag); ohne Liste (None, None, None)."""
+    import yaml
+    import bilder
+    import reisespeicher as rs
+    try:
+        roh = rs.datei(reise, bilder.LISTE).decode("utf-8")
+    except KeyError:
+        return None, None, None
+    daten = yaml.safe_load(roh) or {}
+    liste = daten.get("bilder") if isinstance(daten, dict) else None
+    return roh, liste, next((x for x in liste or [] if isinstance(x, dict) and x.get("id") == bid), None)
+
+
+def _dasselbe_foto(reise, bid, b, summen):
+    """Ist der Eintrag b (nicht entfernt) das Foto des Löschprotokolls? Nur ein eigenes Foto (quelle eigen); trägt die Zeile
+    Prüfsummen (#582), muss eine Fassung im neuesten Stand eine davon haben oder es keine Fassung mehr geben. Ein Bild aus
+    Commons oder ein anderes Foto, das nach dem Rückspielen einer Sicherung von vor dem Hochladen dieselbe ID bekam, ist es
+    nicht. Zeilen von vorher (ohne Prüfsummen) binden nur über die Quelle."""
+    import reisespeicher as rs
+    if b.get("quelle") != "eigen":
+        return False
+    if not summen:
+        return True
+    jetzt = rs.bild_pruefsummen(reise, bid, nur_neuester=True)
+    return not jetzt or bool(jetzt & summen)
+
+
+def _bild_eintrag_entfernen(reise, bid, datum, roh, liste, b):
+    """Steht ein Foto des Löschprotokolls in plan/bilder.yaml des neuesten Stands wieder als nicht entfernt (zurückgespielte
+    Sicherung), schreibt der Lauf einen gewöhnlichen Vorgang (nur anhängen, ADR-0009): Status entfernt, entfernt {datum aus
+    dem Protokoll, wer: der tägliche Lauf}, ohne Dateien, Texte und Titelbild, wie das Werkzeug bild_entfernen. Die
+    hochladende Person kennt das Protokoll mit Absicht nicht. Der Aufrufer hat geprüft, dass b dasselbe Foto ist
+    (_dasselbe_foto). -> True, wenn ein Vorgang geschrieben ist."""
+    import yaml
+    import bilder
+    import reisespeicher as rs
+    try:
+        sprache = (yaml.safe_load(rs.datei(reise, "reise.yaml").decode("utf-8")) or {}).get("sprache")
+    except (KeyError, yaml.YAMLError, AttributeError):
+        sprache = None
+    sprache = sprache if sprache in texte.SPRACHEN else texte.VORGABE_REISE
+    wer = texte.t(sprache, "waechter.bild_entfernt_wer")
+    for feld in BILD_FELDER_WEG:
+        b.pop(feld, None)
+    b.update(status="entfernt", entfernt={"datum": datetime.date.fromisoformat(str(datum)[:10]), "wer": wer})
+    kopf = "".join(z + "\n" for z in roh.splitlines() if z.startswith("#"))   # Kopfkommentar der Liste bleibt
+    neu = kopf + yaml.safe_dump({"bilder": liste}, allow_unicode=True, sort_keys=False, width=10**6)
+    rs.vorgang_schreiben(reise, {bilder.LISTE: neu.encode("utf-8")}, wer=wer, werkzeug="bild_entfernen",
+                         titel=texte.t(sprache, "schreiben.titel.bild_entfernt", bid=bid), erwartet=rs.stand_nummer(reise))
+    return True
+
+
+def _bildloeschung_nachholen(z):
+    """Eine Zeile des Löschprotokolls (konten.bild_loeschungen) -> (Eintrag zurückgesetzt, Fassungen geleert).
+
+    Eine Vormerkung (bestaetigt 0: vor dem Vorgang von bild_entfernen geschrieben, danach nicht bestätigt) gilt nur, wenn der
+    Eintrag im neuesten Stand entfernt ist; dann wird sie bestätigt. Sonst ist der Vorgang nie festgeschrieben worden, und die
+    Vormerkung fällt weg, ohne dass etwas geändert wird. Gehandelt wird nur am selben Foto (_dasselbe_foto); geleert werden
+    die Fassungen nur, wenn jede ihrer Prüfsummen zum Foto gehört (Zeilen mit Prüfsummen) oder, bei Zeilen von vorher, kein
+    anderes Bild die ID trägt."""
+    import bilder
+    import reisespeicher as rs
+    from contextlib import closing
+    reise, bid, summen = z["reise"], z["bild"], z["pruefsummen"]
+    roh, liste, b = _bild_eintrag(reise, bid)
+    if not z["bestaetigt"]:
+        if not bilder.entfernt(b):
+            konten.bild_loeschung_verwerfen(reise, bid)
+            return False, False
+        konten.bild_loeschung_bestaetigen(reise, bid)
+    fremd = b is not None and not bilder.entfernt(b) and not _dasselbe_foto(reise, bid, b, summen)
+    if fremd:
+        print(f"{reise}: image {bid} in the removal log, but the current {bid} is another image; left alone.")
+        return False, False
+    eintrag = b is not None and not bilder.entfernt(b) and _bild_eintrag_entfernen(reise, bid, z["datum"], roh, liste, b)
+    pfade = tuple(f"medien/bilder/{bid}-{breite}.webp" for breite in rs.BILD_FASSUNGEN)
+    with closing(rs.db()) as v:
+        noch = v.execute("SELECT 1 FROM versionen WHERE reise = ? AND pfad IN (?, ?) AND "
+                         "(inhalt IS NOT NULL OR pruefsumme IS NOT NULL) LIMIT 1", (reise, *pfade)).fetchone()
+    if noch and summen and not rs.bild_pruefsummen(reise, bid) <= summen:
+        print(f"{reise}: image {bid}: other content under its paths; versions left alone.")
+        noch = None
+    if noch:
+        rs.bild_entfernen(reise, bid)
+    return bool(eintrag), bool(noch)
+
+
+def bildloeschungen_nachholen():
+    """Täglicher Lauf (#582): Für jedes eigene Foto im Löschprotokoll (konten.bild_loeschungen), das nach dem Rückspielen
+    einer alten Sicherung (oder wenn das Leeren nach dem Entfernen scheiterte) zurück ist, holt der Lauf das Entfernen nach:
+    steht sein Eintrag wieder als nicht entfernt in der Liste, ein Vorgang wie das Werkzeug bild_entfernen
+    (_bild_eintrag_entfernen); haben seine Fassungen in einer Version noch Inhalt, reisespeicher.bild_entfernen. Nur am selben
+    Foto (_bildloeschung_nachholen). Ein Fehler bei einem Bild (etwa ein Schreibvorgang dazwischen) bleibt im Protokoll, der
+    nächste Lauf versucht es erneut. -> [(reise, bid)] der nachgeholten Bilder."""
+    import reisespeicher as rs
+    if not rs.pfad().exists():
+        return []
+    erledigt = []
+    for z in konten.bild_loeschungen():
+        reise, bid = z["reise"], z["bild"]
+        if not rm.REISE_MUSTER.match(reise) or not rs.BILD_KENNUNG.fullmatch(bid):
+            continue
+        try:
+            eintrag, noch = _bildloeschung_nachholen(z)
+        except Exception as e:   # ein Bild hält die übrigen nicht auf
+            print(f"WARNING {reise}: image {bid} not removed again ({type(e).__name__}: {e}), next run retries.")
+            continue
+        if eintrag or noch:
+            erledigt.append((reise, bid))
+            print(f"{reise}: image {bid} removed again.")
+    return erledigt
+
+
 def alle_reisen():
     """Reisen der Ablage ohne die zur Löschung vorgemerkten (#381): keine Erinnerungen, keine Meldungen aus ihnen."""
     if not rm.ablage().is_dir():
@@ -560,6 +677,7 @@ def main(a):
     if a == ["loeschen"]:
         try:
             loeschungen_ausfuehren()
+            bildloeschungen_nachholen()
         except Exception as f:   # noqa: BLE001  der Lauf meldet über betrieb/waechter.sh, keine weitere Reise
             print(f"ERROR: {type(f).__name__}: {f}", file=sys.stderr)
             return 1
@@ -583,7 +701,8 @@ AUFRUF = """Usage:
         message to the organisers of every trip that cannot be published since that time
         (betrieb/veroeffentlichen.sh, issue #142); once per trip and time
   python3 engine/waechter.py loeschen
-        remove trips whose grace period has ended, and deleted trips that came back with an old backup (issue #381)
+        remove trips whose grace period has ended, and deleted trips that came back with an old backup (issue #381);
+        remove own photos of the deletion log again that came back with an old backup (issue #582)
 Environment: RM_ABLAGE, RM_SEITEN or KN_SEITEN (default from engine/instanz.py)"""
 
 

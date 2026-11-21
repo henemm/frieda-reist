@@ -85,6 +85,7 @@ NAMEN = {
     "packing_list_adopt": "packliste_uebernehmen",
     "image_add": "bild_hinzufuegen",
     "image_update": "bild_aendern",
+    "image_upload_link": "bild_hochladelink",
     "my_profile": "mein_profil",
     "profile_entry_set": "profil_eintrag_setzen",
     "profile_entry_remove": "profil_eintrag_entfernen",
@@ -137,7 +138,7 @@ PARAMETER_JE_WERKZEUG = {
     "seite_ansehen": {"geraet": "device"},
     # Bilder (#455): nur hier; „zu“ und „alt“ meinen bei anderen Werkzeugen nichts
     **{w: {"zu": "belongs_to", "bildunterschrift": "caption", "alt": "alt_text", "titelbild": "title_image", "zurueckziehen": "withdraw",
-           "wiederherstellen": "restore"} for w in ("bild_hinzufuegen", "bild_aendern")},
+           "wiederherstellen": "restore"} for w in ("bild_hinzufuegen", "bild_aendern", "bild_hochladelink")},
 }
 def _werte_aus_dem_katalog():
     """Englischer Wert -> Datenwert aus den Einträgen wert.* und symbol.* des englischen Katalogs (dieselben Wörter, die Antworten zeigen)."""

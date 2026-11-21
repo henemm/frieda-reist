@@ -54,7 +54,7 @@
 # Für Tests überschreibbar: VF_PRUEFEN, VF_STAND, VF_DEPLOY, VF_FREISCHALTEN, VF_AUSSTEHEND, VF_SPERRE, VF_STEMPEL, VF_HEARTBEAT,
 # VF_ROT (Rot-Datei), VF_JETZT (Uhr, Sekunden seit 1970), VF_ROTMELDEN (statt engine/waechter.py rot-melden), VF_CINACHWEIS
 # (Nachweis der Pflichtprüfungen: <url> <commit>, gibt „true“ aus), VF_VENV (<ordner> <requirements>: baut die
-# Python-Umgebung), VF_UNITS (Abgleich der Units), VF_PLATZ (<ordner>: freier Platz in Bytes) und VF_ARCHIV (<archivdatei>
+# Python-Umgebung), VF_GLIBC (erkannte Glibc-Version, #582), VF_UNITS (Abgleich der Units), VF_PLATZ (<ordner>: freier Platz in Bytes) und VF_ARCHIV (<archivdatei>
 # <ordner>: baut das Archiv des alten Bauordners) für das Aufräumen.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
@@ -562,6 +562,7 @@ python_kandidat() {  # <commit>: Python-Umgebung für die Abhängigkeiten dieses
   if [ "$summe" = "$(cat "$merk" 2>/dev/null || true)" ] && { [ -n "${VF_VENV:-}" ] || [ -x "$ziel/bin/python" ]; }; then
     rm -f "$liste"; return 0
   fi
+  glibc_pruefen || { rm -f "$liste"; return 1; }
   if [ ! -e "$merk" ] && [ ! -x "$ziel/bin/python" ]; then
     echo "Building the Python environment $ziel (engine/requirements.txt of ${1:0:7})."
     mkdir -p "$ziel"
@@ -578,6 +579,17 @@ python_kandidat() {  # <commit>: Python-Umgebung für die Abhängigkeiten dieses
   rm -f "$liste"
   echo "$summe" > "$kand/.requirements.sha256"
   python_neu="$kand"
+}
+
+GLIBC_MINDESTENS="2.28"   # Räder wie pillow-heif (#582, manylinux_2_28) brauchen sie
+glibc_pruefen() {  # vor dem Bau einer neuen Python-Umgebung: Glibc des Servers mindestens GLIBC_MINDESTENS (VF_GLIBC in Tests);
+  # sonst Abbruch mit klarer Meldung, bevor etwas gebaut oder getauscht wird; die laufende Umgebung bleibt
+  local v
+  v="${VF_GLIBC:-$(python3 -c 'import platform; print(platform.libc_ver()[1])' 2>/dev/null || true)}"
+  if [ -z "$v" ] || [ "$(printf '%s\n%s\n' "$GLIBC_MINDESTENS" "$v" | sort -V | head -1)" != "$GLIBC_MINDESTENS" ]; then
+    echo "ERROR: glibc ${v:-unknown} is older than $GLIBC_MINDESTENS (needed by engine/requirements.txt, e.g. pillow-heif); the Python environment is not rebuilt, the running one stays."
+    return 1
+  fi
 }
 
 python_bauen() {  # <ziel> <liste>: venv anlegen und die Bibliotheken der Liste installieren (VF_VENV in Tests)
