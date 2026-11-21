@@ -2,7 +2,7 @@
 entity_id: profile-12
 type: feature
 created: 2026-11-15
-updated: 2026-11-15
+updated: 2026-11-21
 status: draft
 workflow: feature-12-profile
 version: "1.0"
@@ -116,7 +116,7 @@ Grundlage sind die Entscheidungen des Product Owners vom 1.11.2026 (Kommentar in
 ### Konnektor-Werkzeuge (ohne `reise`)
 
 6. `my_profile` (Alias `mein_profil`, nur Lesen): liefert die Einträge des Kontos des Aufrufers mit `PR-<n>`, `bereich`, `text`, `herkunft`, `datum`. Das Lesewerkzeug ist immer erreichbar, auch wenn ein Baustein `profile` einer Reise aus ist (technisch nicht je Reise sperrbar, der AI-Client hat das Konto); die Wirkung je Reise steuert die Anleitung.
-7. `profile_entry_set` (Alias `profil_eintrag_setzen`): Parameter `bereich`, `text`, `herkunft`, `confirmed` und optional `id` (`PR-<n>`, dann wird dieser Eintrag geändert, sonst entsteht ein neuer). Pflicht: `confirmed=true` und `herkunft`; ohne eines von beiden wird abgelehnt, nichts geschrieben. Setzen zählt zur Schreibgrenze je Konto (#380, `konten.schreibgrenze`/`schreiben_vormerken`, explizit aufgerufen nach dem Muster der anderen schreibenden Konto-Werkzeuge). `datum` setzt Frieda. Eine fremde oder unbekannte `PR-<n>` führt zu „nicht gefunden“, ohne zu verraten, ob sie einem anderen Konto gehört.
+7. `profile_entry_set` (Alias `profil_eintrag_setzen`): Parameter `bereich`, `text`, `herkunft`, `confirmed` und optional `id` (`PR-<n>`, dann wird dieser Eintrag geändert, sonst entsteht ein neuer). Pflicht: `confirmed=true` und `herkunft`; ohne eines von beiden wird abgelehnt, nichts geschrieben. Nur ein angenommener Eintrag zählt zur Schreibgrenze je Konto (#380, `konten.schreibgrenze`/`schreiben_vormerken`, explizit aufgerufen nach dem Muster der anderen schreibenden Konto-Werkzeuge); abgelehnte Einträge (leer, zu lang, unbekannte oder fremde `PR-<n>`, Profil voll) zählen nicht, die Grenze selbst lehnt weiterhin vor dem Schreiben ab (#578). `datum` setzt Frieda. Eine fremde oder unbekannte `PR-<n>` führt zu „nicht gefunden“, ohne zu verraten, ob sie einem anderen Konto gehört.
 8. `profile_entry_remove` (Alias `profil_eintrag_entfernen`): Parameter `id` (`PR-<n>`), echtes Löschen der Zeile. Wird nie von der Schreibgrenze blockiert (Löschen darf nie durch eine Grenze verhindert werden) und zählt nicht zu ihr. Eigentum wie bei Punkt 7.
 9. Deutsche Aliase für Werkzeug- und Parameternamen stehen in `engine/schnittstelle.py` (`my_profile`/`mein_profil`, `profile_entry_set`/`profil_eintrag_setzen`, `profile_entry_remove`/`profil_eintrag_entfernen`, Parameter `confirmed`/`bestaetigt`, `herkunft`, `bereich`, `text`, `id`). Der Werkzeugname `my_profile` vermeidet bewusst die Verwechslung mit dem Baustein `profile`.
 10. Beschreibungen der Werkzeuge stehen als `konnektor.werkzeug.*` in `texte_de.py` und `texte_en.py`. Fehler laufen über `konten.KontoFehler(...).text(sprache)`.
@@ -124,7 +124,7 @@ Grundlage sind die Entscheidungen des Product Owners vom 1.11.2026 (Kommentar in
 ### Anleitung
 
 11. `anleitung_frieda` (kontoweit) bekommt einen Satz: Ins Profil nur eintragen, was die Person im Gespräch ausdrücklich bestätigt hat; vorher den genauen Wortlaut und den Bereich zeigen lassen; nie raten oder aus Reisedaten ableiten. Bereiche wie Tempo oder Essen stehen höchstens als Beispiele („etwa“), nie als vollständige oder verbindliche Liste.
-12. `anleitung()` je Reise bekommt einen Satz abhängig vom Baustein `profile`: Ist er an oder ist `bausteine` `None` (gilt als an), soll der AI-Client das Profil der Person nutzen und bei Vorschlägen an Wahlstellen das Profil als Grund nennen; ist er aus, soll es nicht genutzt werden. Beide Sätze stehen im Katalog beider Sprachen.
+12. `anleitung()` je Reise bekommt einen Satz abhängig vom Baustein `profile`: Ist er an oder ist `bausteine` `None` (gilt als an), soll der AI-Client das Profil der Person nutzen und bei Vorschlägen an Wahlstellen das Profil als Grund nennen; ist er aus, soll es nicht genutzt werden. Beide Sätze stehen im Katalog beider Sprachen. Der Satz erscheint nur im Konto-Zugang, nicht im reisebezogenen Zugang ohne Konto, weil es dort `my_profile` nicht gibt (#578).
 13. `engine/reise.py`: `NOCH_NICHT_GEBAUT` wird leer; die Struktur und der Hinweiscode bleiben, die Reiseprüfung warnt bei `profile` nicht mehr.
 
 ### Mein Konto
@@ -167,13 +167,13 @@ Konten-Funktionen:
 Konnektor-Werkzeuge (de und en, Aliase):
 - [ ] Test 8: GIVEN `my_profile` und `mein_profil` WHEN aufgerufen THEN dieselben Einträge des Aufrufers, nie die eines anderen Kontos.
 - [ ] Test 9: GIVEN `profile_entry_set` ohne `confirmed=true` oder ohne `herkunft` THEN abgelehnt und nichts geschrieben; mit beiden gespeichert, `datum` von Frieda.
-- [ ] Test 10: GIVEN die Schreibgrenze je Konto ist erreicht WHEN `profile_entry_set` THEN abgelehnt; WHEN `profile_entry_remove` THEN trotzdem gelöscht und die Grenze nicht berührt.
+- [ ] Test 10: GIVEN die Schreibgrenze je Konto ist erreicht WHEN `profile_entry_set` THEN abgelehnt; WHEN `profile_entry_remove` THEN trotzdem gelöscht und die Grenze nicht berührt; ein abgelehnter `profile_entry_set` zählt nicht zur Grenze (#578).
 - [ ] Test 11: GIVEN die Werkzeugliste (`frieda_werkzeuge`) THEN enthält sie die drei Werkzeuge ohne `reise`-Parameter, mit englischem Namen und deutschem Alias, Beschreibung in beiden Sprachen.
 - [ ] Test 12: GIVEN ein Aufruf mit unbekanntem `PR-<n>` THEN Fehlertext ohne Hinweis auf fremde Konten.
 
 Anleitung:
 - [ ] Test 13: GIVEN `anleitung_frieda` THEN enthält sie den Satz „nur Bestätigtes eintragen“; Bereichswörter erscheinen nur als Beispiele.
-- [ ] Test 14: GIVEN eine Reise mit Baustein `profile` an oder `bausteine` `None` THEN enthält `anleitung()` den Nutzungssatz mit „als Grund nennen“; GIVEN `profile` aus THEN den Satz „nicht nutzen“.
+- [ ] Test 14: GIVEN eine Reise mit Baustein `profile` an oder `bausteine` `None` THEN enthält `anleitung()` den Nutzungssatz mit „als Grund nennen“; GIVEN `profile` aus THEN den Satz „nicht nutzen“; das gilt im Konto-Zugang, im reisebezogenen Zugang ohne Konto fehlen beide Sätze (#578).
 - [ ] Test 15: GIVEN `reise.yaml` mit Baustein `profile` THEN keine Hinweiszeile „noch nicht gebaut“ mehr (`NOCH_NICHT_GEBAUT` leer).
 
 Mein Konto:
@@ -207,7 +207,7 @@ Gesamt:
 - **AC-3:** Given die Schreibgrenze je Konto ist erreicht / When gesetzt oder entfernt wird / Then wird Setzen abgelehnt, Entfernen funktioniert trotzdem und zählt nicht (Test 10).
 - **AC-4:** Given der Konnektor eines Kontos / When die Werkzeugliste abgefragt wird / Then gibt es `my_profile` (Alias `mein_profil`), `profile_entry_set` und `profile_entry_remove` als Konto-Werkzeuge ohne `reise`, mit deutschen Aliasen für Werkzeug- und Parameternamen und Beschreibungen in beiden Sprachen (Test 8, 11).
 - **AC-5:** Given ein Konto / When `anleitung_frieda` erzeugt wird / Then verlangt sie, nur Bestätigtes einzutragen, und nennt Bereiche höchstens als Beispiele (Test 13).
-- **AC-6:** Given eine Reise mit Baustein `profile` an, aus oder ohne `bausteine` / When ihre Anleitung erzeugt wird / Then heißt es bei an oder ohne `bausteine`: Profil nutzen und bei Wahlstellen als Grund nennen, bei aus: nicht nutzen; `NOCH_NICHT_GEBAUT` ist leer (Test 14, 15).
+- **AC-6:** Given eine Reise mit Baustein `profile` an, aus oder ohne `bausteine` / When ihre Anleitung erzeugt wird / Then heißt es bei an oder ohne `bausteine`: Profil nutzen und bei Wahlstellen als Grund nennen, bei aus: nicht nutzen; der Satz erscheint nur im Konto-Zugang, nicht im reisebezogenen Zugang ohne Konto; `NOCH_NICHT_GEBAUT` ist leer (Test 14, 15).
 - **AC-7:** Given Ida mit Profileinträgen / When sie Mein Konto öffnet, einen Text ändert oder einen Eintrag löscht / Then zeigt die Karte „Mein Profil“ nur ihre eigenen Einträge, Ändern und Löschen wirken nur mit `WHERE konto=?`, fremde Kennungen ändern nichts, Neuanlegen ist dort nicht möglich (Test 16, 17, 18, 19).
 - **AC-8:** Given ein Konto mit Profil / When es gelöscht oder mit einem anderen zusammengeführt wird / Then ist das Profil beim Löschen mit weg und hängt beim Zusammenführen ohne Kollision am bleibenden Konto (Test 5, 6).
 - **AC-9:** Given Ida und Karl mit Profilen / When Ida ihre Daten exportiert / Then enthält `person.json` Idas Profil und nie das von Karl (Test 22).
@@ -234,3 +234,4 @@ Gesamt:
 ## Changelog
 
 - 2026-11-15: Initial spec created
+- 2026-11-21: Nachzug aus der Prüfung (#578): Punkt 7 präzisiert (nur ein angenommener Eintrag zählt zur Schreibgrenze), Punkt 12 und AC-6 (Anleitungssatz zum Profil nur im Konto-Zugang), Test 10 und Test 14 ergänzt.

@@ -81,6 +81,9 @@ def rueckfall_deutsch(request, monkeypatch):
     monkeypatch.setattr(texte, "VORGABE_REISE", "de")
     # Sprache des Aufrufs aus einem früheren Test im selben Thread (antwort_fuer setzt sie je Anfrage) gilt hier nicht
     monkeypatch.delattr(texte._aufruf, "sprache", raising=False)
+    # ebenso die Seitensprache des Rückmeldedienstes (bearbeiten() setzt sie je Anfrage, #578); kein Import hier
+    if "anmeldung" in sys.modules:
+        monkeypatch.delattr(sys.modules["anmeldung"]._anfrage, "sprache", raising=False)
 
 
 def pytest_configure(config):

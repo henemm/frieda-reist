@@ -762,6 +762,7 @@ def profil_setzen(kid, bereich, text, herkunft, id=None):  # noqa: A002  (Name w
     herkunft = _profil_feld(herkunft, None)
     n = _profil_nummer(id) if id not in (None, "") else None
     with closing(db()) as v, v:
+        v.execute("BEGIN IMMEDIATE")   # Zählen und Einfügen unter derselben Schreibsperre (#578)
         if n is not None:
             _profil_zeile(v, kid, n, id)
             v.execute("UPDATE profil SET bereich = ?, text = ?, herkunft = ?, datum = ? WHERE id = ? AND konto = ?",

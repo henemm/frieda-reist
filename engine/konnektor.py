@@ -2715,8 +2715,8 @@ def frieda_werkzeug(k, name, args):
 
 def profil_werkzeug(k, name, args):
     """Konto-Werkzeuge des Profils (#12) -> (text, ist_fehler). Gelesen und geschrieben wird nur das Profil des Aufrufers;
-    eingetragen wird nur mit bestaetigt=true und Herkunft, das Datum setzt Frieda. Setzen zählt zur Schreibgrenze (#380),
-    Entfernen nie. Profiltexte stehen nie im Protokoll."""
+    eingetragen wird nur mit bestaetigt=true und Herkunft, das Datum setzt Frieda. Ein angenommener Eintrag zählt zur
+    Schreibgrenze (#380, #578), ein abgelehnter und Entfernen nie. Profiltexte stehen nie im Protokoll."""
     sprache = k.get("sprache") or texte.VORGABE_REISE
     try:
         if name == "mein_profil":
@@ -2735,8 +2735,8 @@ def profil_werkzeug(k, name, args):
         if warten is not None:
             sys.stderr.write(f"grenze {k['id']} schreiben\n")
             return texte.t(sprache, "konnektor.grenze.schreiben", minuten=math.ceil(warten / 60)), True
-        konten.schreiben_vormerken(k)
         e = konten.profil_setzen(k["id"], args.get("bereich"), args.get("text"), args.get("herkunft"), id=args.get("id"))
+        konten.schreiben_vormerken(k)   # nur ein angenommener Eintrag zählt (#578)
         return texte.t(sprache, "konnektor.profil.gesetzt", id=e["id"]), False
     except konten.KontoFehler as f:
         return f.text(sprache), True
@@ -3402,8 +3402,10 @@ def anleitung(zugang, d):
         z.append(anl(sp, "alternativen"))
     if bausteine is None or "waechter" in bausteine:
         z.append(anl(sp, "waechter"))
-    # Profil je Person (#12): lesbar ist es immer (Konto-Werkzeug), die Wirkung je Reise steuert dieser Satz
-    z.append(anl(sp, "profil_nutzen" if bausteine is None or "profile" in bausteine else "profil_nicht_nutzen"))
+    # Profil je Person (#12): lesbar ist es immer (Konto-Werkzeug), die Wirkung je Reise steuert dieser Satz; im
+    # reisebezogenen Zugang ohne Konto gibt es mein_profil nicht, dort entfällt er (#578)
+    if zugang.get("konto_id"):
+        z.append(anl(sp, "profil_nutzen" if bausteine is None or "profile" in bausteine else "profil_nicht_nutzen"))
     if "wuensche" in (bausteine or []):
         z.append(anl(sp, "wuensche"))
     if "packliste" in (bausteine or []):
