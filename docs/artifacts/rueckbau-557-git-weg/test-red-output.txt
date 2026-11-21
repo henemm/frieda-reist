@@ -310,7 +310,7 @@ E         WantedBy=multi-user.target
 E         
 E       assert '/tmp/pytest...po-schreiben' not in '# Schreibwe...ser.target\n'
 E         
-E         '/tmp/pytest-of-hem...itt0/repo-schreiben' is contained here:
+E         '/tmp/pytest-of-<benutzer>...itt0/repo-schreiben' is contained here:
 E           eitskopie <tmp>/popen-gw0/test_units_ohne_handschritt0/repo-schreiben aus (ein Git-Worktree auf main, legt der Dienst an).
 E           # git pusht mit der Anmeldung von reisen (gh als Credential-Helfer); sie wird nur gelesen (ProtectHome=read-only).
 E           #

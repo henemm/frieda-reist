@@ -73,7 +73,7 @@ engine/tests/test_betrieb.py:2605: AssertionError
 _ test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen __
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/<arbeitskopie>/engine/.venv/bin/python
 
-sw = namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73e...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-hem/pytest-18161/popen-gw0/test_f002_rueckfall_mit_rot_da0/rotmelden.sh'})
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73e...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<benutzer>/pytest-18161/popen-gw0/test_f002_rueckfall_mit_rot_da0/rotmelden.sh'})
 
     def test_f002_rueckfall_mit_rot_datei_kein_erneuter_rollout_und_kein_nachziehen(sw):
         """F002: Scheitert der Deploy der Dienste mit C, fällt die Software auf software-gut zurück, die Rot-Datei nennt C, und
@@ -96,7 +96,7 @@ sw = namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=
 >       assert len(_dienste_mit(sw, c)) == 1 and sw.kopf() == sw.a
 E       AssertionError: assert (2 == 1)
 E        +  where 2 = len(['--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d', '--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d'])
-E        +    where ['--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d', '--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d'] = _dienste_mit(namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73e...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-hem/pytest-18161/popen-gw0/test_f002_rueckfall_mit_rot_da0/rotmelden.sh'}), '9044f0cf00dbe5fe14487f3fce5699b5aa180d6d')
+E        +    where ['--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d', '--dienste 9044f0cf00dbe5fe14487f3fce5699b5aa180d6d'] = _dienste_mit(namespace(lauf=<function sw.<locals>.lauf at 0x73e665038e00>, neuer_commit=<function sw.<locals>.neuer_commit at 0x73e...0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<benutzer>/pytest-18161/popen-gw0/test_f002_rueckfall_mit_rot_da0/rotmelden.sh'}), '9044f0cf00dbe5fe14487f3fce5699b5aa180d6d')
 
 engine/tests/test_software_weg_454.py:1008: AssertionError
 =========================== short test summary info ============================

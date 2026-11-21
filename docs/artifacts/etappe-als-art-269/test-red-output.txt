@@ -2,7 +2,7 @@ FF..FFFFF                                                                [100%]
 =================================== FAILURES ===================================
 __________ test_1_strecken_tragen_titel_und_kennzahlen_mit_kennungen ___________
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-9141/test_1_strecken_tragen_titel_u0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-9141/test_1_strecken_tragen_titel_u0')
 
     def test_1_strecken_tragen_titel_und_kennzahlen_mit_kennungen(tmp_path):
         """Test 1 / K1: jede wandern-Strecke hat Titel und Kennzahlen; kein Abschnitt vom Typ etappe mehr."""
@@ -24,7 +24,7 @@ E             'abstieg'
 engine/tests/test_etappe_als_art.py:51: AssertionError
 _________ test_2_nachziehen_stellt_beispielreise_um_und_ist_idempotent _________
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-9141/test_2_nachziehen_stellt_beisp0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-9141/test_2_nachziehen_stellt_beisp0')
 
     def test_2_nachziehen_stellt_beispielreise_um_und_ist_idempotent(tmp_path):
         """Test 2 / K4: Altformat (Dossier „Etappe N: Name“, etappen_kennzahlen) wird ohne Handschritt umgestellt."""
@@ -95,7 +95,7 @@ E         Use -v to get more diff
 engine/tests/test_etappe_als_art.py:120: AssertionError
 _______________ test_7_dossier_abschnitt_ohne_strecke_bricht_ab ________________
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-9141/test_7_dossier_abschnitt_ohne_0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-9141/test_7_dossier_abschnitt_ohne_0')
 
     def test_7_dossier_abschnitt_ohne_strecke_bricht_ab(tmp_path):
         """Test 7: ein Abschnitt mit unbekannter ID wird gemeldet, nicht still ignoriert (Text aus dem Katalog)."""

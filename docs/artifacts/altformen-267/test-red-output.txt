@@ -9,7 +9,7 @@ engine/tests/test_altformen_267.py FFFFF..                               [100%]
 ____________ test_ohne_reise_yaml_bricht_der_bau_ab[beispielreise] _____________
 
 name = 'beispielreise'
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8456/test_ohne_reise_yaml_bricht_de0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-8456/test_ohne_reise_yaml_bricht_de0')
 
     @pytest.mark.parametrize("name", BEISPIELE)
     def test_ohne_reise_yaml_bricht_der_bau_ab(name, tmp_path):
@@ -24,7 +24,7 @@ engine/tests/test_altformen_267.py:33: Failed
 ___________ test_ohne_reise_yaml_bricht_der_bau_ab[stadtwochenende] ____________
 
 name = 'stadtwochenende'
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8456/test_ohne_reise_yaml_bricht_de1')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-8456/test_ohne_reise_yaml_bricht_de1')
 
     @pytest.mark.parametrize("name", BEISPIELE)
     def test_ohne_reise_yaml_bricht_der_bau_ab(name, tmp_path):

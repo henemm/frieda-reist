@@ -50,7 +50,7 @@ Bug (Betrieb): Alarm für etwas, das kein Ausfall ist, plus fehlender Selbstabla
 - Ursache: `wege_pruefen` (`betrieb/gemeinsam.sh:167`) meldet jeden fehlenden Pfad mit `fr_melden high` (Telegram). Seit #436 prüft sie `/info/pruefung.webp`; der installierte Baustein `frieda-reisen-konnektor-orte.inc` kennt `/info/` noch nicht (Handschritt `nginx.py anwenden` nie gelaufen).
 - Doppelt gemeldet: `nginx_abgleichen` (`veroeffentlichen.sh:658`) meldet dieselbe Abweichung bereits einmal als normale Meldung (Issue) mit dem Befehl. Die `high`-Meldung aus `wege_pruefen` ist also redundant und verstößt gegen „MQ nur für Ausfälle“.
 - Folge für Nutzer: nur die Bilder der Infoseite fehlen; Konnektor und Reiseseiten laufen.
-- Der Betriebsbenutzer `hem` hat auf diesem Server passwortloses sudo: `nginx.py anwenden` kann jetzt ohne Handarbeit des PO laufen (Sicherung, `nginx -t`, Rollback eingebaut).
+- Der Betriebsbenutzer hat auf diesem Server passwortloses sudo: `nginx.py anwenden` kann jetzt ohne Handarbeit des PO laufen (Sicherung, `nginx -t`, Rollback eingebaut).
 
 ### Affected Files (with changes)
 | File | Change Type | Description |

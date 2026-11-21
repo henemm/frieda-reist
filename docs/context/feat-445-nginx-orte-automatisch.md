@@ -33,7 +33,7 @@ Teile 1, 2 und 4 sind erledigt (PR #447 auf `main`, henemm-infra#415): Wegeprüf
 ## Dependencies
 - Upstream: `einrichten.sh --erzeugen` (Soll), sudo (`FR_SUDO`), `/usr/sbin/nginx -t`, `systemctl reload nginx`.
 - Downstream: `veroeffentlichen.sh` (nach grünem Lauf), Monitor der Instanz (henemm-infra `monitor.sh`, Konnektor-Pfade), `wege_pruefen`.
-- Server-Stand (9.11.2026): `/usr/local/sbin/frieda-reisen-units-installieren` installiert (root), sudoers NOPASSWD dafür vorhanden; für hem zusätzlich `nginx`, `systemctl reload nginx`, `cat /etc/nginx/*`.
+- Server-Stand (9.11.2026): `/usr/local/sbin/frieda-reisen-units-installieren` installiert (root), sudoers NOPASSWD dafür vorhanden; für den Betriebsbenutzer zusätzlich `nginx`, `systemctl reload nginx`, `cat /etc/nginx/*`.
 
 ## Existing Specs
 - `docs/specs/betrieb/wegepruefung-ohne-alarm-445.md` – Teile 1/2/4, grenzt diese Automatik ausdrücklich aus.
@@ -106,7 +106,7 @@ Aufrufer installiert nur, wenn ausschließlich die Orte-Datei abweicht; eine neu
 
 ### Befunde, die gegen den Plan sprechen
 - Keiner, der ihn kippt.
-- **Rechtegrenze auf diesem Server:** `sudo -l` für hem zeigt `(ALL) NOPASSWD: ALL` (dazu die engen Zeilen). Auf dieser Instanz ist der Helfer daher Schutz vor Fehlern (falsche Vorlage legt den Webserver nicht lahm, keine Pfadüberdeckung), keine Sicherheitsgrenze gegen einen kompromittierten Dienstbenutzer. Außerdem braucht `freischalten.sh` laut `einrichten.sh` ohnehin `install/rm` im Snippets-Ordner per sudo. Die Software baut die Grenze trotzdem richtig (für Instanzen mit engen sudoers); die breite sudo-Regel des Servers ist Sache von henemm-infra und nicht Teil dieses Issues.
+- **Rechtegrenze auf diesem Server:** `sudo -l` für den Betriebsbenutzer zeigt `(ALL) NOPASSWD: ALL` (dazu die engen Zeilen). Auf dieser Instanz ist der Helfer daher Schutz vor Fehlern (falsche Vorlage legt den Webserver nicht lahm, keine Pfadüberdeckung), keine Sicherheitsgrenze gegen einen kompromittierten Dienstbenutzer. Außerdem braucht `freischalten.sh` laut `einrichten.sh` ohnehin `install/rm` im Snippets-Ordner per sudo. Die Software baut die Grenze trotzdem richtig (für Instanzen mit engen sudoers); die breite sudo-Regel des Servers ist Sache von henemm-infra und nicht Teil dieses Issues.
 - Nebenbefund im Vorbild `units-installieren.py` (ungefangener `daemon-reload`-Fehler) wird mitbehoben.
 
 ### Open Questions

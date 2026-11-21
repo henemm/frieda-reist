@@ -605,7 +605,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 __ test_bild_hinzufuegen_legt_eintrag_mit_herkunft_und_zwei_webp_fassungen_an __
 [gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_hinzufuegen_legt_ein0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw0test_bild_hinzufuegen_legt_ein0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f6bbb00>
 
     def test_bild_hinzufuegen_legt_eintrag_mit_herkunft_und_zwei_webp_fassungen_an(wanderung, monkeypatch):
@@ -653,7 +653,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 ____ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args2-bild.abgelehnt.ziel] ____
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bild_hinzufuegen_lehnt_ab0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_bild_hinzufuegen_lehnt_ab0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e437830>
 args = {'commons': 'X.jpg', 'zu': 'E-99'}, schluessel = 'bild.abgelehnt.ziel'
 
@@ -682,7 +682,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 _____ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[CC BY-NC 4.0] _____
 [gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_bild_mit_unfreier_lizenz_0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_bild_mit_unfreier_lizenz_0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a9809e0>
 lizenz = 'CC BY-NC 4.0'
 
@@ -705,7 +705,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 ____________________________ test_bild_aus_wikidata ____________________________
 [gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_aus_wikidata0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw0test_bild_aus_wikidata0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f7144d0>
 
     def test_bild_aus_wikidata(wanderung, monkeypatch):
@@ -726,7 +726,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 _________ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[GFDL] _________
 [gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bild_mit_unfreier_lizenz_0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw2test_bild_mit_unfreier_lizenz_0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342df4980>
 lizenz = 'GFDL'
 
@@ -749,7 +749,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 ____ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args3-bild.abgelehnt.ziel] ____
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bild_hinzufuegen_lehnt_ab1beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_bild_hinzufuegen_lehnt_ab1beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e434aa0>
 args = {'commons': 'X.jpg', 'zu': 'Quatsch'}, schluessel = 'bild.abgelehnt.ziel'
 
@@ -778,7 +778,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 _____ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[CC BY-ND 4.0] _____
 [gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_bild_mit_unfreier_lizenz_1beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_bild_mit_unfreier_lizenz_1beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8a981280>
 lizenz = 'CC BY-ND 4.0'
 
@@ -801,7 +801,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 _________ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[None] _________
 [gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bild_mit_unfreier_lizenz_1beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw2test_bild_mit_unfreier_lizenz_1beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342df5340>
 lizenz = None
 
@@ -824,7 +824,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 ___ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args0-bild.abgelehnt.quelle] ___
 [gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_hinzufuegen_lehnt_ab0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw0test_bild_hinzufuegen_lehnt_ab0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f7145f0>
 args = {'commons': 'X.jpg', 'wikidata': 'Q1', 'zu': 'E-01'}
 schluessel = 'bild.abgelehnt.quelle'
@@ -854,7 +854,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 ___ test_bild_mit_unfreier_lizenz_kommt_nicht_in_die_reise[Free Art License] ___
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bild_mit_unfreier_lizenz_0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_bild_mit_unfreier_lizenz_0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e435580>
 lizenz = 'Free Art License'
 
@@ -877,7 +877,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 __________________________ test_zu_reise_ist_erlaubt ___________________________
 [gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_zu_reise_ist_erlaubt0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_zu_reise_ist_erlaubt0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f7a8aa7a3c0>
 
     def test_zu_reise_ist_erlaubt(wanderung, monkeypatch):
@@ -898,7 +898,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 _____________ test_titelbild_nur_organisator_und_hoechstens_eines ______________
 [gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_titelbild_nur_organisator0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw2test_titelbild_nur_organisator0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342db7440>
 
     def test_titelbild_nur_organisator_und_hoechstens_eines(wanderung, monkeypatch):
@@ -930,7 +930,7 @@ teststest_bilder.py:317: AssertionError
 ___ test_bild_hinzufuegen_lehnt_ab_ohne_eintrag[args1-bild.abgelehnt.quelle] ___
 [gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_bild_hinzufuegen_lehnt_ab1beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw0test_bild_hinzufuegen_lehnt_ab1beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x70399f716360>
 args = {'zu': 'E-01'}, schluessel = 'bild.abgelehnt.quelle'
 
@@ -959,7 +959,7 @@ teststest_bilder.py:53: ModuleNotFoundError
 _________ test_mitwirkend_aendert_zieht_zurueck_und_stellt_wieder_her __________
 [gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_mitwirkend_aendert_zieht_0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw2test_mitwirkend_aendert_zieht_0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe342d9b830>
 
     def test_mitwirkend_aendert_zieht_zurueck_und_stellt_wieder_her(wanderung, monkeypatch):
@@ -1004,7 +1004,7 @@ teststest_bilder.py:373: AttributeError
 _____________________________ test_grenze_je_reise _____________________________
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_grenze_je_reise0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_grenze_je_reise0beispielreise')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77556e437200>
 
     def test_grenze_je_reise(wanderung, monkeypatch):
@@ -1036,7 +1036,7 @@ teststest_bilder.py:427: KeyError
 ____________________ test_bi_und_b_werden_nicht_verwechselt ____________________
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_bi_und_b_werden_nicht_ver0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_bi_und_b_werden_nicht_ver0beispielreise')
 
     def test_bi_und_b_werden_nicht_verwechselt(wanderung):
 >       assert "BI" in neu.ARTEN and "B" in neu.ARTEN
@@ -1076,7 +1076,7 @@ teststest_bilder.py:457: AssertionError
 __ test_fremdes_bild_im_text_ist_ein_baufehler[https:example.orgbild.jpg] ___
 [gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_fremdes_bild_im_text_ist_0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_fremdes_bild_im_text_ist_0beispielreise')
 ziel = 'https:example.orgbild.jpg'
 
     @pytest.mark.parametrize("ziel", ["https:example.orgbild.jpg", "http:example.orgbild.png", "example.orgbild.jpg"])
@@ -1088,7 +1088,7 @@ ziel = 'https:example.orgbild.jpg'
 teststest_bilder.py:477: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-ordner = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_fremdes_bild_im_text_ist_0beispielreise')
+ordner = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_fremdes_bild_im_text_ist_0beispielreise')
 
     def bau_meldungen(ordner):
         with tempfile.TemporaryDirectory() as t:
@@ -1099,7 +1099,7 @@ teststest_bilder.py:464: Failed
 _____ test_fremdes_bild_im_text_ist_ein_baufehler[example.orgbild.jpg] ______
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_fremdes_bild_im_text_ist_0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_fremdes_bild_im_text_ist_0beispielreise')
 ziel = 'example.orgbild.jpg'
 
     @pytest.mark.parametrize("ziel", ["https:example.orgbild.jpg", "http:example.orgbild.png", "example.orgbild.jpg"])
@@ -1156,8 +1156,8 @@ teststest_bilder.py:441: AssertionError
 _______________ test_link_bleibt_erlaubt_und_csp_begrenzt_bilder _______________
 [gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_link_bleibt_erlaubt_und_c0beispielreise')
-tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_link_bleibt_erlaubt_und_c0')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_link_bleibt_erlaubt_und_c0beispielreise')
+tmp_path = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_link_bleibt_erlaubt_und_c0')
 
     def test_link_bleibt_erlaubt_und_csp_begrenzt_bilder(wanderung, tmp_path):
         text_anhaengen(wanderung, "[Fahrplan](https:example.orgfahrplan) und [anderswo](example.orgx)")
@@ -1226,8 +1226,8 @@ Done wissen_schreiben 200 in 1.6 s
 __________ test_nennung_gemeinfrei_nur_urheber_und_aus_der_reise_ohne __________
 [gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nennung_gemeinfrei_nur_ur0beispielreise')
-tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nennung_gemeinfrei_nur_ur0')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_nennung_gemeinfrei_nur_ur0beispielreise')
+tmp_path = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_nennung_gemeinfrei_nur_ur0')
 
     def test_nennung_gemeinfrei_nur_urheber_und_aus_der_reise_ohne(wanderung, tmp_path):
         bild_eintragen(wanderung, "BI-51", lizenz="CC0", urheber="Erika Frei")
@@ -1242,8 +1242,8 @@ teststest_bilder.py:543: AssertionError
 _______ test_bi_im_text_zeigt_grosse_fassung_mit_nennung_und_im_precache _______
 [gw2] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bi_im_text_zeigt_grosse_f0beispielreise')
-tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw2test_bi_im_text_zeigt_grosse_f0')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw2test_bi_im_text_zeigt_grosse_f0beispielreise')
+tmp_path = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw2test_bi_im_text_zeigt_grosse_f0')
 
     def test_bi_im_text_zeigt_grosse_fassung_mit_nennung_und_im_precache(wanderung, tmp_path):
         b = bild_eintragen(wanderung, "BI-50")
@@ -1258,8 +1258,8 @@ teststest_bilder.py:530: AssertionError
 ___________ test_nachziehen_stellt_altbestand_um_und_ist_idempotent ____________
 [gw3] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nachziehen_stellt_altbest0beispielreise')
-tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw3test_nachziehen_stellt_altbest0')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_nachziehen_stellt_altbest0beispielreise')
+tmp_path = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw3test_nachziehen_stellt_altbest0')
 
     def test_nachziehen_stellt_altbestand_um_und_ist_idempotent(wanderung, tmp_path):
         p = wanderung  "inhalt"  "etappen.md"
@@ -1286,7 +1286,7 @@ teststest_bilder.py:567: AssertionError
 ___ test_fremdes_bild_im_text_ist_ein_baufehler[http:example.orgbild.png] ___
 [gw0] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_fremdes_bild_im_text_ist_0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw0test_fremdes_bild_im_text_ist_0beispielreise')
 ziel = 'http:example.orgbild.png'
 
     @pytest.mark.parametrize("ziel", ["https:example.orgbild.jpg", "http:example.orgbild.png", "example.orgbild.jpg"])
@@ -1298,7 +1298,7 @@ ziel = 'http:example.orgbild.png'
 teststest_bilder.py:477: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-ordner = PosixPath('tmppytest-of-hempytest-16482popen-gw0test_fremdes_bild_im_text_ist_0beispielreise')
+ordner = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw0test_fremdes_bild_im_text_ist_0beispielreise')
 
     def bau_meldungen(ordner):
         with tempfile.TemporaryDirectory() as t:
@@ -1309,8 +1309,8 @@ teststest_bilder.py:464: Failed
 __ test_zurueckgezogenes_bild_entfaellt_ohne_fehler_unbekanntes_ist_baufehler __
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_zurueckgezogenes_bild_ent0beispielreise')
-tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_zurueckgezogenes_bild_ent0')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_zurueckgezogenes_bild_ent0beispielreise')
+tmp_path = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_zurueckgezogenes_bild_ent0')
 
     def test_zurueckgezogenes_bild_entfaellt_ohne_fehler_unbekanntes_ist_baufehler(wanderung, tmp_path):
         b = bild_eintragen(wanderung, "BI-53", status="zurueckgezogen")
@@ -1324,7 +1324,7 @@ tmp_path = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_zurueckgezogenes
 teststest_bilder.py:553: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-ordner = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_zurueckgezogenes_bild_ent0beispielreise')
+ordner = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_zurueckgezogenes_bild_ent0beispielreise')
 
     def bau_meldungen(ordner):
         with tempfile.TemporaryDirectory() as t:
@@ -1335,7 +1335,7 @@ teststest_bilder.py:464: Failed
 _____________ test_nachziehen_aendert_die_beispielreise_nicht_mehr _____________
 [gw1] linux -- Python 3.12.3 homehemfrieda-reist.claudeworktreessleepy-puzzling-owlengine.venvbinpython
 
-wanderung = PosixPath('tmppytest-of-hempytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreise')
+wanderung = PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreise')
 
     def test_nachziehen_aendert_die_beispielreise_nicht_mehr(wanderung):
         """Die Beispielreise im Repo ist schon umgestellt (V24): Altbestand steht als BI-, ein Bild mit Commons-Herkunft und ein Titelbild."""
@@ -1346,7 +1346,7 @@ E       assert {PosixPath('...fen |\n', ...} == {PosixPath('...fen |\n', ...}
 E         
 E         Omitting 21 identical items, use -vv to show
 E         Differing items:
-E         {PosixPath('tmppytest-of-hempytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreiseplanarten.yaml'):...\n    merkmale:\n      gewicht:\n        name: Gewicht\n        typ: zahl\n        einheit: g\n        rolle: summe\n"} != {PosixPath('tmppytest-of-hempytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreiseplanarten.yaml'):...e: grau\n    ausgeblendet: true\n    merkmale:\n      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}\n'}
+E         {PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreiseplanarten.yaml'):...\n    merkmale:\n      gewicht:\n        name: Gewicht\n        typ: zahl\n        einheit: g\n        rolle: summe\n"} != {PosixPath('tmppytest-of-<benutzer>pytest-16482popen-gw1test_nachziehen_aendert_die_be0beispielreiseplanarten.yaml'):...e: grau\n    ausgeblendet: true\n    merkmale:\n      gewicht: {name: Gewicht, typ: zahl, einheit: g, rolle: summe}\n'}
 E         Use -v to get more diff
 
 teststest_bilder.py:590: AssertionError

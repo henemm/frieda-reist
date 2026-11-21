@@ -1,0 +1,13 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ~/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: ~
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collecting ... collected 3 items
+
+engine/tests/test_protokolle_ohne_pfade.py::test_protokolle_ohne_absolute_pfade PASSED [ 33%]
+engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pfade PASSED [ 66%]
+engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pytest_tmp PASSED [100%]
+
+============================== 3 passed in 0.25s ===============================

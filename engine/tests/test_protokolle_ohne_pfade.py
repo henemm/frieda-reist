@@ -7,6 +7,7 @@ from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[2]
 ABSOLUT = re.compile(r"(?<![\w.~-])/(?:home|Users|srv|mnt|root|var/www)/[\w.-]+")
+PYTEST_TMP = re.compile(r"pytest-of-\w[\w-]*|\.\.\.-\w+/pytest-\d")
 
 
 def test_protokolle_ohne_absolute_pfade():
@@ -30,7 +31,7 @@ def test_muster_erkennt_pfade():
 
 def test_muster_erkennt_pytest_tmp():
     """#602: Der Temp-Ordner von pytest trägt den Benutzernamen, auch ohne Schrägstriche oder gekürzt."""
-    for beispiel in ("rootdir: /tmp/pytest-of-jemand/pytest-3/test_bau0", "PosixPath('tmppytest-of-jemandpytest-3')", "/tmp/pytest-of-jem…/pytest-3"):
+    for beispiel in ("rootdir: /tmp/pytest-of-jemand/pytest-3/test_bau0", "PosixPath('tmppytest-of-jemandpytest-3')", "/tmp/pytest-of-jem…/pytest-3", "', ...-jemand/pytest-15574/popen-gw2/x"):
         assert PYTEST_TMP.search(beispiel), beispiel
-    for platzhalter in ("/tmp/pytest-of-<benutzer>/pytest-3", "/tmp/pytest-of-<user>/x", "rm -rf /tmp/pytest-of-*", "/tmp/pytest-of-.../pytest-3"):
+    for platzhalter in ("/tmp/pytest-of-<benutzer>/pytest-3", "/tmp/pytest-of-<user>/x", "rm -rf /tmp/pytest-of-*", "/tmp/pytest-of-.../pytest-3", "...-<benutzer>/pytest-15574/popen-gw2"):
         assert not PYTEST_TMP.search(platzhalter), platzhalter

@@ -2,7 +2,7 @@ F                                                                        [100%]
 =================================== FAILURES ===================================
 ____________ test_installieren_ohne_hilfsprogramm_meldet_ausgang_5 _____________
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-8921/test_installieren_ohne_hilfspr0')
 
     def test_installieren_ohne_hilfsprogramm_meldet_ausgang_5(tmp_path):
         systemd, env = _installierte_einheiten(tmp_path)
@@ -15,11 +15,11 @@ tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilf
         # nur die Meldung, nicht noch einmal die Liste der Abweichungen: veroeffentlichen.sh hängt diese Ausgabe an die Prüfung an,
         # die dieselbe Liste enthält (#306)
 >       assert "is not installed" in r.stdout and "FR_ZEITZONE" not in r.stdout, r.stdout
-E       AssertionError: units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing installed (docs/betrieb.md, Einheiten abgleichen).
+E       AssertionError: units helper /tmp/pytest-of-<benutzer>/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing installed (docs/betrieb.md, Einheiten abgleichen).
 E         probe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC
 E         
-E       assert ('is not installed' in 'units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' and 'FR_ZEITZONE' not in 'units helpe...ITZONE=UTC\n'
-E        +  where 'units helper /tmp/pytest-of-hem/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' = CompletedProcess(args=['~/frieda-reist/engine/.venv/bin/python', '/home....md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n', stderr='').stdout
+E       assert ('is not installed' in 'units helper /tmp/pytest-of-<benutzer>/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' and 'FR_ZEITZONE' not in 'units helpe...ITZONE=UTC\n'
+E        +  where 'units helper /tmp/pytest-of-<benutzer>/pytest-8921/test_installieren_ohne_hilfspr0/gibt-es-nicht is not installed, nothing i...docs/betrieb.md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n' = CompletedProcess(args=['~/frieda-reist/engine/.venv/bin/python', '/home....md, Einheiten abgleichen).\nprobe-konnektor.service: allowed, add [Service] Environment=FR_ZEITZONE=UTC\n', stderr='').stdout
 E         
 E         'FR_ZEITZONE' is contained here:
 E           vironment=FR_ZEITZONE=UTC)

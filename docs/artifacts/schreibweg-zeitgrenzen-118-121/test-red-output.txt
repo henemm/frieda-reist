@@ -8,7 +8,7 @@ engine/tests/test_schreiben.py ..FFFFFFF                                 [100%]
 =================================== FAILURES ===================================
 ______________ test_zu_langsamer_vorgang_gibt_meldung_in_der_zeit ______________
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt..._gibt0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_zu_langsamer_vorgang_gibt0/reisen'), PosixPath('/tmp/pytest-of-<benutzer>/pyt..._gibt0/reisen-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_zu_langsamer_vorgang_gibt0/veroeffentlicht'))
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a7500>
 capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a75f0>
 
@@ -19,7 +19,7 @@ capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a75f0>
 engine/tests/test_schreiben.py:358: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt..._gibt0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_zu_langsamer_vorgang_gibt0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_zu_langsamer_vorgang_gibt0/reisen'), PosixPath('/tmp/pytest-of-<benutzer>/pyt..._gibt0/reisen-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_zu_langsamer_vorgang_gibt0/veroeffentlicht'))
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a7500>
 capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a75f0>
 origin_kaputt = True
@@ -51,7 +51,7 @@ E       AttributeError: module 'schreiben' has no attribute 'ZEIT_GESAMT'
 engine/tests/test_schreiben.py:899: AttributeError
 _______________ test_haengendes_vorbereiten_gibt_504_in_der_zeit _______________
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_haengendes_vorbereiten_gi0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...en_gi0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_haengendes_vorbereiten_gi0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_haengendes_vorbereiten_gi0/reisen'), PosixPath('/tmp/pytest-of-<benutzer>/pyt...en_gi0/reisen-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_haengendes_vorbereiten_gi0/veroeffentlicht'))
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d06911fd40>
 
     def test_haengendes_vorbereiten_gibt_504_in_der_zeit(repo, monkeypatch):
@@ -66,7 +66,7 @@ E       AttributeError: <module 'schreiben' from '<arbeitskopie>/.claude/worktre
 engine/tests/test_schreiben.py:909: AttributeError
 ____________ test_veroeffentlichen_startet_mit_niedriger_prioritaet ____________
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_veroeffentlichen_startet_0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...rtet_0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_veroeffentlichen_startet_0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_veroeffentlichen_startet_0/reisen'), PosixPath('/tmp/pytest-of-<benutzer>/pyt...rtet_0/reisen-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_veroeffentlichen_startet_0/veroeffentlicht'))
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a4470>
 
     def test_veroeffentlichen_startet_mit_niedriger_prioritaet(repo, monkeypatch):
@@ -85,12 +85,12 @@ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a4470>
 E       AssertionError: assert ('/tmp/pytest-...fentlichen.sh' == 'nice'
 E         
 E         - nice
-E         + /tmp/pytest-of-hem/pytest-5588/test_veroeffentlichen_startet_0/veroeffentlichen.sh)
+E         + /tmp/pytest-of-<benutzer>/pytest-5588/test_veroeffentlichen_startet_0/veroeffentlichen.sh)
 
 engine/tests/test_schreiben.py:928: AssertionError
 ___________ test_nach_abbruch_sagt_die_antwort_ob_eingetragen_wurde ____________
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_nach_abbruch_sagt_die_ant0/reisen'), PosixPath('/tmp/pytest-of-hem/pyt...e_ant0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_nach_abbruch_sagt_die_ant0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_nach_abbruch_sagt_die_ant0/reisen'), PosixPath('/tmp/pytest-of-<benutzer>/pyt...e_ant0/reisen-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_nach_abbruch_sagt_die_ant0/veroeffentlicht'))
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0691a6900>
 capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a7b60>
 
@@ -103,12 +103,12 @@ capsys = <_pytest.capture.CaptureFixture object at 0x73d0691a7b60>
         s.schreiben("beispielreise", "art_definieren", {**IDA, "args": {"bezeichnung": "Refugi", "grundform": "aufenthalt"}})
 >       assert "Frieda-Vorgang: k4711" in git(wurzel, "log", "-1", "--format=%B", "origin/main")
 E       AssertionError: assert 'Frieda-Vorgang: k4711' in 'Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt\n\nArt „Refugi“ angelegt: Schlüssel refugi, Gr...ktor (art_definieren) von Ida (organisator), 2026-10-29; Prüfung: Rolle, Status, Form, Probebau (engine/schreiben.py).'
-E        +  where 'Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt\n\nArt „Refugi“ angelegt: Schlüssel refugi, Gr...ktor (art_definieren) von Ida (organisator), 2026-10-29; Prüfung: Rolle, Status, Form, Probebau (engine/schreiben.py).' = git(PosixPath('/tmp/pytest-of-hem/pytest-5588/test_nach_abbruch_sagt_die_ant0/reisen'), 'log', '-1', '--format=%B', 'origin/main')
+E        +  where 'Beispielreise – Malerweg in vier Tagen: Art „Refugi“ (refugi) angelegt\n\nArt „Refugi“ angelegt: Schlüssel refugi, Gr...ktor (art_definieren) von Ida (organisator), 2026-10-29; Prüfung: Rolle, Status, Form, Probebau (engine/schreiben.py).' = git(PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_nach_abbruch_sagt_die_ant0/reisen'), 'log', '-1', '--format=%B', 'origin/main')
 
 engine/tests/test_schreiben.py:938: AssertionError
 ___________ test_kommando_mit_frist_beendet_die_ganze_prozessgruppe ____________
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-5588/test_kommando_mit_frist_beende0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_kommando_mit_frist_beende0')
 
     def test_kommando_mit_frist_beendet_die_ganze_prozessgruppe(tmp_path):
         import time
@@ -121,7 +121,7 @@ E           AttributeError: module 'schreiben' has no attribute 'befehl_mit_fris
 engine/tests/test_schreiben.py:957: AttributeError
 ________________________ test_dauer_steht_im_protokoll _________________________
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-5588/test_dauer_steht_im_protokoll0/reisen'), PosixPath('/tmp/pytest-of-hem/pyte...tokoll0/reisen-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-5588/test_dauer_steht_im_protokoll0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_dauer_steht_im_protokoll0/reisen'), PosixPath('/tmp/pytest-of-<benutzer>/pyte...tokoll0/reisen-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-5588/test_dauer_steht_im_protokoll0/veroeffentlicht'))
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x73d0689b8f20>
 capsys = <_pytest.capture.CaptureFixture object at 0x73d0689baea0>
 

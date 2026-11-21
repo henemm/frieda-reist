@@ -15,7 +15,7 @@ engine/tests/test_option_dinge.py:113: ImportError
 ____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[A-99] _____________
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef0')
 did = 'A-99'
 
     @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
@@ -28,7 +28,7 @@ did = 'A-99'
 engine/tests/test_option_dinge.py:150: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef0')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef0')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -39,7 +39,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ________________ test_dinge_wird_in_gruppen_aufgeteilt_und_baut ________________
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_dinge_wird_in_gruppen_auf0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_dinge_wird_in_gruppen_auf0')
 
     def test_dinge_wird_in_gruppen_aufgeteilt_und_baut(tmp_path):
         """AC-1: dinge: [E-02, A-01, O-04] steht in der Ausgabe als strecken, aufenthalte, orte, ohne Fehler."""
@@ -55,7 +55,7 @@ engine/tests/test_option_dinge.py:124: AssertionError
 ______ test_altes_feld_an_option_ist_pruefehler[False-aufenthalte-wert1] _______
 [gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_0')
 feld = 'aufenthalte', wert = ['A-01'], neben_dinge = False
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -70,7 +70,7 @@ feld = 'aufenthalte', wert = ['A-01'], neben_dinge = False
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_0')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_0')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -81,7 +81,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ___________________ test_unbekannter_praefix_ist_ein_fehler ____________________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekannter_praefix_ist_e0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_unbekannter_praefix_ist_e0')
 
     def test_unbekannter_praefix_ist_ein_fehler(tmp_path):
         """AC-3: dinge: [X-01] ist genau ein Prüffehler mit Wahlstelle, Möglichkeit und ID."""
@@ -92,7 +92,7 @@ tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekannter
 engine/tests/test_option_dinge.py:139: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekannter_praefix_ist_e0')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_unbekannter_praefix_ist_e0')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -103,7 +103,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[O-99] _____________
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef1')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef1')
 did = 'O-99'
 
     @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
@@ -116,7 +116,7 @@ did = 'O-99'
 engine/tests/test_option_dinge.py:150: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef1')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_unbekanntes_ding_je_praef1')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -127,7 +127,7 @@ engine/tests/test_option_dinge.py:66: Failed
 __________ test_altes_feld_an_option_ist_pruefehler[False-orte-wert2] __________
 [gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_1')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_1')
 feld = 'orte', wert = ['O-04'], neben_dinge = False
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -142,7 +142,7 @@ feld = 'orte', wert = ['O-04'], neben_dinge = False
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_1')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_1')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -153,7 +153,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ____________________ test_dinge_bewahrt_eingabereihenfolge _____________________
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_dinge_bewahrt_eingabereih0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_dinge_bewahrt_eingabereih0')
 
     def test_dinge_bewahrt_eingabereihenfolge(tmp_path):
         """AC-2: dinge: [O-06, O-04] bleibt in der Gruppe orte in dieser Reihenfolge."""
@@ -167,7 +167,7 @@ engine/tests/test_option_dinge.py:133: AssertionError
 ____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[U-99] _____________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef0')
 did = 'U-99'
 
     @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
@@ -180,7 +180,7 @@ did = 'U-99'
 engine/tests/test_option_dinge.py:150: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef0')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef0')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -191,7 +191,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ______ test_altes_feld_an_option_ist_pruefehler[False-unterkuenfte-wert0] ______
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_0')
 feld = 'unterkuenfte', wert = ['U-02'], neben_dinge = False
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -206,7 +206,7 @@ feld = 'unterkuenfte', wert = ['U-02'], neben_dinge = False
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_0')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_0')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -217,7 +217,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ____________ test_unbekanntes_ding_je_praefix_ist_ein_fehler[E-99] _____________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef1')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef1')
 did = 'E-99'
 
     @pytest.mark.parametrize("did", ["U-99", "E-99", "A-99", "O-99"])
@@ -230,7 +230,7 @@ did = 'E-99'
 engine/tests/test_option_dinge.py:150: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef1')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_unbekanntes_ding_je_praef1')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -241,7 +241,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ________ test_altes_feld_an_option_ist_pruefehler[False-strecken-wert3] ________
 [gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_2')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_2')
 feld = 'strecken', wert = ['E-02'], neben_dinge = False
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -256,7 +256,7 @@ feld = 'strecken', wert = ['E-02'], neben_dinge = False
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_2')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_altes_feld_an_option_ist_2')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...n': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -331,7 +331,7 @@ engine/tests/test_option_dinge.py:194: AssertionError
 ______ test_altes_feld_an_option_ist_pruefehler[True-unterkuenfte-wert0] _______
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_0')
 feld = 'unterkuenfte', wert = ['U-02'], neben_dinge = True
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -346,7 +346,7 @@ feld = 'unterkuenfte', wert = ['U-02'], neben_dinge = True
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_0')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_0')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -453,7 +453,7 @@ engine/tests/test_option_dinge.py:194: AssertionError
 _________________________ test_praefixregel_beim_bauen _________________________
 [gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_praefixregel_beim_bauen0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_praefixregel_beim_bauen0')
 
     def test_praefixregel_beim_bauen(tmp_path):
         """AC-6 im handgepflegten YAML: dinge: [U-02, O-04] ist ein Prüffehler der Möglichkeit."""
@@ -465,7 +465,7 @@ tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_praefixrege
 engine/tests/test_option_dinge.py:201: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_praefixregel_beim_bauen0')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_praefixregel_beim_bauen0')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -476,7 +476,7 @@ engine/tests/test_option_dinge.py:66: Failed
 ________ test_altes_feld_an_option_ist_pruefehler[True-strecken-wert3] _________
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_1')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_1')
 feld = 'strecken', wert = ['E-02'], neben_dinge = True
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -491,7 +491,7 @@ feld = 'strecken', wert = ['E-02'], neben_dinge = True
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_1')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_altes_feld_an_option_ist_1')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...n': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -502,7 +502,7 @@ engine/tests/test_option_dinge.py:66: Failed
 _______ test_altes_feld_an_option_ist_pruefehler[True-aufenthalte-wert1] _______
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_1')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_1')
 feld = 'aufenthalte', wert = ['A-01'], neben_dinge = True
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -517,7 +517,7 @@ feld = 'aufenthalte', wert = ['A-01'], neben_dinge = True
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_1')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_1')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -528,7 +528,7 @@ engine/tests/test_option_dinge.py:66: Failed
 __________ test_altes_feld_an_option_ist_pruefehler[True-orte-wert2] ___________
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_2')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_2')
 feld = 'orte', wert = ['O-04'], neben_dinge = True
 
     @pytest.mark.parametrize("feld, wert", [("unterkuenfte", ["U-02"]), ("aufenthalte", ["A-01"]), ("orte", ["O-04"]), ("strecken", ["E-02"])])
@@ -543,7 +543,7 @@ feld = 'orte', wert = ['O-04'], neben_dinge = True
 engine/tests/test_option_dinge.py:162: 
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-tmp = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_2')
+tmp = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_altes_feld_an_option_ist_2')
 abwandlung = {'wahl': [('V-91', {'titel': 'V-91: erfundenes Beispiel', 'wann': 'unterwegs', 'optionen': [{'id': 'V-91.a', 'titel': ...e': [...], ...}, {'id': 'V-91.b', 'titel': 'Ort (Beispiel)', 'quelle': 'erfunden (Beispiel)', 'dinge': [...], ...}]})]}
 
     def baufehler(tmp, **abwandlung):
@@ -554,7 +554,7 @@ engine/tests/test_option_dinge.py:66: Failed
 _____________ test_schreibweg_nimmt_dinge_und_verlauf_hat_wechsel ______________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_schreibweg_nimmt_dinge_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_schreibweg_nimmt_dinge_un0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_schreibweg_nimmt_dinge_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_schreibweg_nimmt_dinge_un0/veroeffentlicht'))
 
     def test_schreibweg_nimmt_dinge_und_verlauf_hat_wechsel(repo):
         """AC-7: choice_create und option_create schreiben dinge als Liste der IDs in Eingabereihenfolge (ohne Anführungszeichen);
@@ -589,7 +589,7 @@ engine/tests/test_option_dinge.py:273: AssertionError
 __________ test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args0] ___________
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un0/veroeffentlicht'))
 args = {'choice': 'V-02', 'title': 'Rast (Beispiel)', 'source': 'erfunden (Beispiel)', 'things': ['O-03'], ...}
 
     @pytest.mark.parametrize("args", [
@@ -609,7 +609,7 @@ engine/tests/test_option_dinge.py:329: Failed
 _________________ test_nachziehen_stellt_optionen_auf_dinge_um _________________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_nachziehen_stellt_optione0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_nachziehen_stellt_optione0')
 
     def test_nachziehen_stellt_optionen_auf_dinge_um(tmp_path):
         """AC-12: nachziehen stellt alte Felder auf dinge um (an der Stelle des ersten alten Felds, Reihenfolge Unterkünfte, Aufenthalte,
@@ -642,7 +642,7 @@ engine/tests/test_option_dinge.py:360: AssertionError
 _____________ test_konnektor_alte_parameter_werden_uebersetzt[de] ______________
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_alte_parameter_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_alte_parameter_0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_konnektor_alte_parameter_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_konnektor_alte_parameter_0/veroeffentlicht'))
 sprache = 'de'
 
     @pytest.mark.parametrize("sprache", ["en", "de"])
@@ -669,7 +669,7 @@ engine/tests/test_option_dinge.py:305: KeyError
 _______________ test_option_update_dinge_setzen_ersetzen_leeren ________________
 [gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_option_update_dinge_setze0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_option_update_dinge_setze0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_option_update_dinge_setze0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_option_update_dinge_setze0/veroeffentlicht'))
 
     def test_option_update_dinge_setzen_ersetzen_leeren(repo):
         """AC-8: option_update setzt, ersetzt und leert dinge; Präfixregel auf dem zusammengeführten Stand; nur dinge ist eine Änderung
@@ -696,7 +696,7 @@ engine/schreiben.py:5542: in anwenden_im_ordner
                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-reise_dir = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_option_update_dinge_setze0/reisen-schreiben/reisen/beispielreise')
+reise_dir = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_option_update_dinge_setze0/reisen-schreiben/reisen/beispielreise')
 wer = {'name': 'Karl', 'rolle': 'mitwirkend', 'person': 'karl', 'titel': 'Beispielreise – Malerweg in vier Tagen'}
 args = {'ziel': 'V-02.c', 'dinge': ['O-03', 'A-01']}
 heute = datetime.date(2026, 11, 17)
@@ -790,7 +790,7 @@ engine/schreiben.py:4143: Ablehnung
 ________________________ test_nachziehen_ist_idempotent ________________________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_nachziehen_ist_idempotent0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_nachziehen_ist_idempotent0')
 
     def test_nachziehen_ist_idempotent(tmp_path):
         """AC-13: ein zweiter Lauf ändert nichts (byte-gleich) und meldet nichts zu dinge."""
@@ -803,13 +803,13 @@ tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_nachziehen_
 >       assert "dinge" in option_roh(routen_von(q), "V-03.a")
 E       AssertionError: assert 'dinge' in {'id': 'V-03.a', 'titel': 'Pension Burgblick', 'unterkuenfte': ['U-02'], 'quelle': 'erfunden (Beispiel)', ...}
 E        +  where {'id': 'V-03.a', 'titel': 'Pension Burgblick', 'unterkuenfte': ['U-02'], 'quelle': 'erfunden (Beispiel)', ...} = option_roh({'start': {'datum': datetime.date(2027, 5, 13), 'ort': 'O-01'}, 'ende': {'datum': datetime.date(2027, 5, 16), 'ort': '...al', ...}, 'O-04': {'name': 'Altendorf', 'an': 'O-07', 'art': 'ort_am_weg', 'quelle': 'OpenStreetMap', ...}, ...}, ...}, 'V-03.a')
-E        +    where {'start': {'datum': datetime.date(2027, 5, 13), 'ort': 'O-01'}, 'ende': {'datum': datetime.date(2027, 5, 16), 'ort': '...al', ...}, 'O-04': {'name': 'Altendorf', 'an': 'O-07', 'art': 'ort_am_weg', 'quelle': 'OpenStreetMap', ...}, ...}, ...} = routen_von(PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_nachziehen_ist_idempotent0/quelle'))
+E        +    where {'start': {'datum': datetime.date(2027, 5, 13), 'ort': 'O-01'}, 'ende': {'datum': datetime.date(2027, 5, 16), 'ort': '...al', ...}, 'O-04': {'name': 'Altendorf', 'an': 'O-07', 'art': 'ort_am_weg', 'quelle': 'OpenStreetMap', ...}, ...}, ...} = routen_von(PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_nachziehen_ist_idempotent0/quelle'))
 
 engine/tests/test_option_dinge.py:383: AssertionError
 ___________ test_beispielreise_wanderung_nutzt_dinge_und_baut_gleich ___________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_beispielreise_wanderung_n0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_beispielreise_wanderung_n0')
 
     def test_beispielreise_wanderung_nutzt_dinge_und_baut_gleich(tmp_path):
         """AC-15: V-03 und V-06 der Wanderung nutzen dinge; Summen der Reise und der Pläne sind unverändert."""
@@ -824,7 +824,7 @@ engine/tests/test_option_dinge.py:409: AssertionError
 ______________ test_arten_ableiten_und_art_der_option_ueber_dinge ______________
 [gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw3/test_arten_ableiten_und_art_de0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw3/test_arten_ableiten_und_art_de0')
 
     def test_arten_ableiten_und_art_der_option_ueber_dinge(tmp_path):
         """AC-18: arten_ableiten nimmt die Art der Wahlstelle aus dem ersten Ding mit Art in dinge; aufraeumen kennt die Art der Option
@@ -859,7 +859,7 @@ engine/tests/test_option_dinge.py:471: AssertionError
 __________ test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args2] ___________
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_mischung_alt_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_konnektor_mischung_alt_un0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_konnektor_mischung_alt_un0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_konnektor_mischung_alt_un0/veroeffentlicht'))
 args = {'choice': 'V-02', 'title': 'Rast (Beispiel)', 'source': 'erfunden (Beispiel)', 'things': ['E-04'], ...}
 
     @pytest.mark.parametrize("args", [
@@ -879,7 +879,7 @@ engine/tests/test_option_dinge.py:329: Failed
 __________ test_konnektor_mischung_alt_und_neu_wird_abgelehnt[args1] ___________
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un1/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un1/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un1/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_konnektor_mischung_alt_un1/veroeffentlicht'))
 args = {'choice': 'V-02', 'title': 'Rast (Beispiel)', 'source': 'erfunden (Beispiel)', 'dinge': ['O-03'], ...}
 
     @pytest.mark.parametrize("args", [
@@ -899,7 +899,7 @@ engine/tests/test_option_dinge.py:329: Failed
 __ test_stadtwochenende_baut_unveraendert_und_erfundene_wahlstelle_a_gegen_a ___
 [gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw2/test_stadtwochenende_baut_unve0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw2/test_stadtwochenende_baut_unve0')
 
     def test_stadtwochenende_baut_unveraendert_und_erfundene_wahlstelle_a_gegen_a(tmp_path):
         """AC-16: das Stadtwochenende baut ohne Fehler und Warnung; eine erfundene Wahlstelle am Sonntag (Stadtmuseum gegen ein
@@ -920,7 +920,7 @@ engine/tests/test_option_dinge.py:431: AssertionError
 _____________ test_konnektor_alte_parameter_werden_uebersetzt[en] ______________
 [gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-repo = (PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_konnektor_alte_parameter_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_konnektor_alte_parameter_0/veroeffentlicht'))
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_konnektor_alte_parameter_0/reisen'), PosixPath('/tmp/pytest...en-schreiben'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_konnektor_alte_parameter_0/veroeffentlicht'))
 sprache = 'en'
 
     @pytest.mark.parametrize("sprache", ["en", "de"])
@@ -947,7 +947,7 @@ engine/tests/test_option_dinge.py:305: KeyError
 __________________ test_seitendaten_unveraendert_gegen_vorher __________________
 [gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw1/test_seitendaten_unveraendert_0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw1/test_seitendaten_unveraendert_0')
 
     def test_seitendaten_unveraendert_gegen_vorher(tmp_path):
         """AC-17: die Seitendaten der Wanderung (R.wahlstellen[].optionen[]) haben dieselben Gruppen wie vor der Umstellung."""
@@ -961,7 +961,7 @@ engine/tests/test_option_dinge.py:437: AssertionError
 ____________ test_nachziehen_speicher_stellt_um_und_ist_idempotent _____________
 [gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/concurrent-giggling-eclipse/engine/.venv/bin/python
 
-tmp_path = PosixPath('/tmp/pytest-of-hem/pytest-17851/popen-gw0/test_nachziehen_speicher_stell0')
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-17851/popen-gw0/test_nachziehen_speicher_stell0')
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7635a583fe90>
 
     def test_nachziehen_speicher_stellt_um_und_ist_idempotent(tmp_path, monkeypatch):
