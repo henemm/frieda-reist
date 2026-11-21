@@ -117,3 +117,17 @@ Feature (groß, in drei Paketen)
 
 ### Open Questions
 - [ ] Wortlaut der Hinweise (Personen auf Fotos, Zusage beim Löschen) und Gestaltung: Freigabe über den Artefakt-Entwurf in der Spec-Phase (#436). Keine weiteren offenen Produktfragen; Grenzen, Link-Laufzeit und Verlaufseintrag sind technische Vorgaben (Begründung oben).
+
+## Hinweise aus der RED-Phase (21.11.2026, für die Umsetzung)
+
+Die festgelegte Schnittstelle steht im Kopf-Docstring von `engine/tests/test_bilder_eigen.py`. Darüber hinaus:
+
+1. Rückmeldedienst und Schreibweg lesen zu große Bodies (bis zur doppelten Grenze) und verwerfen sie vor der 413-Antwort (Muster `_beleg_hochladen`); der Schreibweg antwortet heute bei mehr als `MAX_BODY` sofort, die neue Route `bild_hochladen` braucht das Lesen.
+2. Pillow meldet zwischen 60 und 120 MP nur `DecompressionBombWarning`; die Warnung muss als Fehler gelten (Test mit 64 MP verlangt Ablehnung `bild.abgelehnt.format`).
+3. `pruefen()` meldet heute „externalized without checksum“ für ausgelagerte Zeilen mit `inhalt` und `pruefsumme` NULL: `bild_entfernen` hinterlässt die Zeilen als Tombstone (`ausgelagert = 0`) oder `pruefen` lernt geleerte Zeilen.
+4. Service Worker: gelöschte Bilder müssen schon beim Laden aus dem aktiven Cache, auch wenn die neue Version noch wartet (Test auf localhost).
+5. `bild.abgelehnt.zu_gross` (15 MB, Commons) bleibt; eigene Fotos nutzen den neuen Schlüssel `bild.abgelehnt.foto_zu_gross`.
+6. Die Link-Route `/hochladen/` liegt am Rückmeldedienst; eine Vorlage unter `betrieb/vorlagen/` braucht `location ^~ /hochladen/` mit 12m bis 14m.
+7. Der Test zu AC-9 (Glibc, venv-Neubau) steht in `test_bilder_eigen.py` (Fixture `sw` aus `test_software_weg_454`); `VF_GLIBC` überschreibt die erkannte Version im Test.
+8. `pillow_heif` auch in `engine/.venv` installieren, nicht nur in `requirements.txt`.
+9. `besitzer` ist der Personenschlüssel der Reise (z. B. `karl`), nicht die Konto-ID.

@@ -139,7 +139,11 @@ class Umgebung:
                 self.wfile.write(daten)
 
             def do_POST(self):
-                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                roh = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                try:
+                    body = json.loads(roh)
+                except (UnicodeDecodeError, ValueError):   # roher Body (Foto, #582): Bytes und Kopfzeilen festhalten
+                    body = {"roh": roh, "kopf": dict(self.headers.items())}
                 umgebung.schreibweg.append((self.path, body))
                 daten = json.dumps({"ok": True, "text": f"geschrieben: {self.path}"}).encode()
                 self.send_response(200)

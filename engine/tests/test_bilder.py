@@ -504,7 +504,7 @@ def test_grenze_je_reise(wanderung, monkeypatch):
 
 
 def test_vorgabe_der_grenze_ist_60():
-    assert rg.VORGABEN_BILDER == {"max_anzahl": 60, "offline_mb": 25}
+    assert rg.VORGABEN_BILDER == {"max_anzahl": 60, "offline_mb": 25, "max_mb": 150}   # max_mb seit #582
 
 
 # ---------- Kennung BI- neben B- (V1, AC-9) ----------

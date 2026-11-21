@@ -1,0 +1,485 @@
+bringing up nodes...
+bringing up nodes...
+
+...F..F...F.FFFFFF.FFF.F.FF.............F...F..F.F...F..F.F..F.FFFFFF.FF [ 13%]
+.....F.FF.FFF..F...F.FFF.FFF.FFF..F....F..F...F.................F....... [ 27%]
+...................F........................................F........... [ 41%]
+F......................................................................F [ 54%]
+........................................F............................... [ 68%]
+.........................................................F.............. [ 82%]
+........................................................................ [ 96%]
+.....................                                                    [100%]
+=================================== FAILURES ===================================
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'MAX_EIGEN'
+engine/tests/test_bilder_eigen.py:186: AttributeError: module 'bilder' has no attribute 'MAX_EIGEN'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:193: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:205: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:215: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   ModuleNotFoundError: No module named 'pillow_heif'
+engine/tests/test_bilder_eigen.py:173: ModuleNotFoundError: No module named 'pillow_heif'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:241: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:241: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:241: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:241: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:241: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:248: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:260: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:260: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+engine/tests/test_bilder_eigen.py:260: AttributeError: module 'bilder' has no attribute 'eigen_umwandeln'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert {'max_anzahl'...fline_mb': 25} == {'max_anzahl'...'max_mb': 150}
+      
+      Omitting 2 identical items, use -vv to show
+      Right contains 1 more item:
+      {'max_mb': 150}
+      Use -v to get more diff
+engine/tests/test_bilder_eigen.py:267: AssertionError: assert {'max_anzahl'...fline_mb': 25} == {'max_anzahl'...'max_mb': 150}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: <urlopen error [Errno 32] Broken pipe>
+    assert (0 == 200)
+----------------------------- Captured stderr call -----------------------------
+POST /beispielreise/bild_hochladen 404
+engine/tests/test_bilder_eigen.py:327: AssertionError: <urlopen error [Errno 32] Broken pipe>
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+    assert not True
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+engine/tests/test_bilder_eigen.py:774: AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+    assert (404 == 200)
+----------------------------- Captured stderr call -----------------------------
+POST /stadtwochenende/bild_hochladen 404
+engine/tests/test_bilder_eigen.py:327: AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   assert 0 == 413
+----------------------------- Captured stderr call -----------------------------
+POST /beispielreise/bild_hochladen 403
+POST /beispielreise/bild_hochladen 404
+engine/tests/test_bilder_eigen.py:346: assert 0 == 413
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+    assert (404 == 422)
+----------------------------- Captured stderr call -----------------------------
+POST /beispielreise/bild_hochladen 404
+engine/tests/test_bilder_eigen.py:370: AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+    assert not True
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+engine/tests/test_bilder_eigen.py:774: AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+    assert (404 == 422)
+----------------------------- Captured stderr call -----------------------------
+POST /beispielreise/bild_hochladen 404
+engine/tests/test_bilder_eigen.py:370: AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'konten' has no attribute 'hochladelink_anlegen'
+engine/tests/test_bilder_eigen.py:886: AttributeError: module 'konten' has no attribute 'hochladelink_anlegen'
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert ('image_upload_link' in '# Konnektor: Reisen in der Claude-App\n\nMit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen...rnamen, die zugleich deutsche Wörter sind (von, nach, an, ab, bei, vor, was, art), bleiben im Fließtext unverändert.\n')
+engine/tests/test_bilder_eigen.py:895: AssertionError: assert ('image_upload_link' in '# Konnektor: Reisen in der Claude-App\n\nMit dem Konnektor lässt sich eine Reise in jedem normalen Claude-Chat nutzen...rnamen, die zugleich deutsche Wörter sind (von, nach, an, ab, bei, vor, was, art), bleiben im Fließtext unverändert.\n')
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: ('de', ['seite.bild.hochladen', 'seite.bild.hochladen_blatt', 'seite.bild.hochladen_abbrechen', 'seite.bild.hochladen_knopf', 'seite.bild.hochladen_anmelden', 'seite.bild.hinweis_personen', ...])
+    assert ['seite.bild....ersonen', ...] == []
+      
+      Left contains 28 more items, first extra item: 'seite.bild.hochladen'
+      Use -v to get more diff
+engine/tests/test_bilder_eigen.py:915: AssertionError: ('de', ['seite.bild.hochladen', 'seite.bild.hochladen_blatt', 'seite.bild.hochladen_abbrechen', 'seite.bild.hochladen_knopf', 'seite.bild.hochladen_anmelden', 'seite.bild.hinweis_personen', ...])
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   KeyError: 'seite.bild.hochladen'
+engine/tests/test_bilder_eigen.py:923: KeyError: 'seite.bild.hochladen'
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   ModuleNotFoundError: No module named 'pillow_heif'
+<frozen importlib._bootstrap>:1324: ModuleNotFoundError: No module named 'pillow_heif'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+    assert (404 == 200)
+----------------------------- Captured stderr call -----------------------------
+POST /beispielreise/bild_hochladen 404
+engine/tests/test_bilder_eigen.py:382: AssertionError: {'fehler': 'unbekannt', 'fehler_code': 'schreiben.dienst.unbekannt', 'werte': {}}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'bilder' has no attribute 'eigen_vorab_schreiben'. Did you mean: 'vorab_schreiben'?
+engine/tests/test_bilder_eigen.py:399: AttributeError: module 'bilder' has no attribute 'eigen_vorab_schreiben'. Did you mean: 'vorab_schreiben'?
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   assert ('2.28' in '#!/usr/bin/env bash\n# Veröffentlicht automatisch (docs/betrieb.md, Veröffentlichen). Gestartet alle 5 Minuten vom Ti..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n')
+engine/tests/test_bilder_eigen.py:951: assert ('2.28' in '#!/usr/bin/env bash\n# Veröffentlicht automatisch (docs/betrieb.md, Veröffentlichen). Gestartet alle 5 Minuten vom Ti..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n')
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: location ^~ /hochladen/ in einer Vorlage
+    assert []
+engine/tests/test_bilder_eigen.py:968: AssertionError: location ^~ /hochladen/ in einer Vorlage
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: ('karl', 404, {'fehler': 'unbekannt', 'fehler_code': 'dienst.do_get.2', 'werte': {}})
+    assert 404 in (200, 201)
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+engine/tests/test_bilder_eigen.py:464: AssertionError: ('karl', 404, {'fehler': 'unbekannt', 'fehler_code': 'dienst.do_get.2', 'werte': {}})
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: (404, {'fehler': 'unbekannt', 'fehler_code': 'dienst.do_get.2', 'werte': {}})
+    assert 404 == 403
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+engine/tests/test_bilder_eigen.py:483: AssertionError: (404, {'fehler': 'unbekannt', 'fehler_code': 'dienst.do_get.2', 'werte': {}})
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: (0, '[Errno 32] Broken pipe')
+    assert 0 == 413
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+engine/tests/test_bilder_eigen.py:491: AssertionError: (0, '[Errno 32] Broken pipe')
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: [404, 404, 404, 404, 404, 404, ...]
+    assert (404 == 429)
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+POST 404
+engine/tests/test_bilder_eigen.py:501: AssertionError: [404, 404, 404, 404, 404, 404, ...]
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: (404, {'fehler': 'unbekannt', 'fehler_code': 'dienst.do_get.2', 'werte': {}})
+    assert 404 in (200, 201)
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+engine/tests/test_bilder_eigen.py:511: AssertionError: (404, {'fehler': 'unbekannt', 'fehler_code': 'dienst.do_get.2', 'werte': {}})
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   assert 404 == 401
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+DELETE 404
+engine/tests/test_bilder_eigen.py:519: assert 404 == 401
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'id': 'BI-90', 'zu': 'O-01', 'klein': 'medien/bilder/BI-90-480.webp', 'gross': 'medien/bilder/BI-90-1600.webp', ...}
+    assert (None is True)
+     +  where None = <built-in method get of dict object at 0x71af12ef8dc0>('eigen')
+     +    where <built-in method get of dict object at 0x71af12ef8dc0> = {'id': 'BI-90', 'zu': 'O-01', 'klein': 'medien/bilder/BI-90-480.webp', 'gross': 'medien/bilder/BI-90-1600.webp', ...}.get
+engine/tests/test_bilder_eigen.py:573: AssertionError: {'id': 'BI-90', 'zu': 'O-01', 'klein': 'medien/bilder/BI-90-480.webp', 'gross': 'medien/bilder/BI-90-1600.webp', ...}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   reisespeicher.NichtsGeaendert: beispielreise: nothing changed
+engine/reisespeicher.py:383: reisespeicher.NichtsGeaendert: beispielreise: nothing changed
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'reisespeicher' has no attribute 'bild_entfernen'. Did you mean: 'reise_entfernen'?
+engine/tests/test_bilder_eigen.py:672: AttributeError: module 'reisespeicher' has no attribute 'bild_entfernen'. Did you mean: 'reise_entfernen'?
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Unbekanntes Werkzeug „bild_entfernen“.', 'fehler_code': 'schreiben.schreiben.2', 'werte': {'werkzeug': 'bild_entfernen'}, ...}
+    assert (422 == 200)
+----------------------------- Captured stderr call -----------------------------
+Rejected bild_entfernen 422: Unbekanntes Werkzeug „bild_entfernen“.
+Done bild_entfernen 422 in 0.0 s
+engine/tests/test_bilder_eigen.py:690: AssertionError: {'ok': False, 'fehler': 'Unbekanntes Werkzeug „bild_entfernen“.', 'fehler_code': 'schreiben.schreiben.2', 'werte': {'werkzeug': 'bild_entfernen'}, ...}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Unbekanntes Werkzeug „bild_entfernen“.', 'fehler_code': 'schreiben.schreiben.2', 'werte': {'werkzeug': 'bild_entfernen'}, ...}
+    assert (422 == 200)
+----------------------------- Captured stderr call -----------------------------
+Rejected bild_entfernen 422: Unbekanntes Werkzeug „bild_entfernen“.
+Done bild_entfernen 422 in 0.0 s
+engine/tests/test_bilder_eigen.py:690: AssertionError: {'ok': False, 'fehler': 'Unbekanntes Werkzeug „bild_entfernen“.', 'fehler_code': 'schreiben.schreiben.2', 'werte': {'werkzeug': 'bild_entfernen'}, ...}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert ('bild_entfernen' in {'art_definieren': <function art_definieren at 0x71af11b4c7c0>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x71af11b4c9a0>, 'wert_eintragen': <function wert_eintragen at 0x71af11b4d300>, ...})
+     +  where {'art_definieren': <function art_definieren at 0x71af11b4c7c0>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x71af11b4c9a0>, 'wert_eintragen': <function wert_eintragen at 0x71af11b4d300>, ...} = sb.WERKZEUGE
+engine/tests/test_bilder_eigen.py:705: AssertionError: assert ('bild_entfernen' in {'art_definieren': <function art_definieren at 0x71af11b4c7c0>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x71af11b4c9a0>, 'wert_eintragen': <function wert_eintragen at 0x71af11b4d300>, ...})
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert 'bild_entfernen' in {'art_definieren': <function art_definieren at 0x71af11b4c7c0>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x71af11b4c9a0>, 'wert_eintragen': <function wert_eintragen at 0x71af11b4d300>, ...}
+     +  where {'art_definieren': <function art_definieren at 0x71af11b4c7c0>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x71af11b4c9a0>, 'wert_eintragen': <function wert_eintragen at 0x71af11b4d300>, ...} = sb.WERKZEUGE
+engine/tests/test_bilder_eigen.py:717: AssertionError: assert 'bild_entfernen' in {'art_definieren': <function art_definieren at 0x71af11b4c7c0>, 'merkmal_definieren': <function merkmal_definieren at ... <function kategorie_definieren at 0x71af11b4c9a0>, 'wert_eintragen': <function wert_eintragen at 0x71af11b4d300>, ...}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'ok': False, 'fehler': 'Unbekanntes Werkzeug „bild_entfernen“.', 'fehler_code': 'schreiben.schreiben.2', 'werte': {'werkzeug': 'bild_entfernen'}, ...}
+    assert 422 == 200
+----------------------------- Captured stderr call -----------------------------
+Rejected bild_entfernen 422: Unbekanntes Werkzeug „bild_entfernen“.
+Done bild_entfernen 422 in 0.0 s
+engine/tests/test_bilder_eigen.py:731: AssertionError: {'ok': False, 'fehler': 'Unbekanntes Werkzeug „bild_entfernen“.', 'fehler_code': 'schreiben.schreiben.2', 'werte': {'werkzeug': 'bild_entfernen'}, ...}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'id': 'BI-90', 'zu': 'O-01', 'quelle': 'eigen', 'urheber': 'Karl', ...}
+    assert ('Karl' == 'gelöschte Person'
+      
+      - gelöschte Person
+      + Karl)
+engine/tests/test_bilder_eigen.py:746: AssertionError: {'id': 'BI-90', 'zu': 'O-01', 'quelle': 'eigen', 'urheber': 'Karl', ...}
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AttributeError: module 'reisespeicher' has no attribute 'bild_entfernen'. Did you mean: 'reise_entfernen'?
+engine/tests/test_bilder_eigen.py:754: AttributeError: module 'reisespeicher' has no attribute 'bild_entfernen'. Did you mean: 'reise_entfernen'?
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: Zeile zu eigenen Fotos mit höchstens 30 Tagen
+    assert False
+     +  where False = any(<generator object test_datenschutztabelle_nennt_eigene_fotos.<locals>.<genexpr> at 0x71af105681e0>)
+engine/tests/test_bilder_eigen.py:763: AssertionError: Zeile zu eigenen Fotos mit höchstens 30 Tagen
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   KeyError: 'image_upload_link'
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+engine/tests/test_bilder_eigen.py:793: KeyError: 'image_upload_link'
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+    assert not True
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+engine/tests/test_bilder_eigen.py:774: AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: Schlüssel hochladen.abgelaufen fehlt im Katalog
+    assert 'hochladen.abgelaufen' != 'hochladen.abgelaufen'
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 404
+engine/tests/conftest.py:118: AssertionError: Schlüssel hochladen.abgelaufen fehlt im Katalog
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+    assert not True
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+engine/tests/test_bilder_eigen.py:774: AssertionError: Unbekanntes Werkzeug bild_hochladelink.
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: ["waehlen: TimeoutError: locator.click: Timeout 4000ms exceeded.
+      Call log:
+      \x1b[2m  - waiting for locator('body butt...[role=button]').filter({ hasText: /^\\s*seite\\.bild\\.hochladen\\s*$/ }).filter({ visible: true }).first()\x1b[22m
+      "]
+    assert ['waehlen: Ti...()\x1b[22m\n'] == []
+      
+      Left contains 2 more items, first extra item: "waehlen: TimeoutError: locator.click: Timeout 4000ms exceeded.\nCall log:\n\x1b[2m  - waiting for locator('body butto... [role=button]').filter({ hasText: /^\\s*seite\\.bild\\.hochladen\\s*$/ }).filter({ visible: true }).first()\x1b[22m\n"
+      Use -v to get more diff
+engine/tests/test_bilder_eigen.py:1037: AssertionError: ["waehlen: TimeoutError: locator.click: Timeout 4000ms exceeded.
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: assert {'max_anzahl'...fline_mb': 25} == {'max_anzahl'...'max_mb': 150}
+      
+      Omitting 2 identical items, use -vv to show
+      Right contains 1 more item:
+      {'max_mb': 150}
+      Use -v to get more diff
+engine/tests/test_bilder.py:507: AssertionError: assert {'max_anzahl'...fline_mb': 25} == {'max_anzahl'...'max_mb': 150}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: ["waehlen: TimeoutError: locator.click: Timeout 4000ms exceeded.
+      Call log:
+      \x1b[2m  - waiting for locator('body butt...[role=button]').filter({ hasText: /^\\s*seite\\.bild\\.hochladen\\s*$/ }).filter({ visible: true }).first()\x1b[22m
+      "]
+    assert ['waehlen: Ti...()\x1b[22m\n'] == []
+      
+      Left contains 2 more items, first extra item: "waehlen: TimeoutError: locator.click: Timeout 4000ms exceeded.\nCall log:\n\x1b[2m  - waiting for locator('body butto... [role=button]').filter({ hasText: /^\\s*seite\\.bild\\.hochladen\\s*$/ }).filter({ visible: true }).first()\x1b[22m\n"
+      Use -v to get more diff
+engine/tests/test_bilder_eigen.py:1037: AssertionError: ["waehlen: TimeoutError: locator.click: Timeout 4000ms exceeded.
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'namen_ersetzen', 'reise_entfernen'}
+    assert {'namen_erset...se_entfernen'} == {'bild_entfer...se_entfernen'}
+      
+      Extra items in the right set:
+      'bild_entfernen'
+      Use -v to get more diff
+engine/tests/test_loeschen_reise.py:610: AssertionError: {'namen_ersetzen', 'reise_entfernen'}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'fehler': [], 'vorher': 2, 'nachher': 2}
+    assert 2 == 0
+engine/tests/test_bilder_eigen.py:1074: AssertionError: {'fehler': [], 'vorher': 2, 'nachher': 2}
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: {'fehler': [], 'vorher': 2, 'nachher': 2}
+    assert 2 == 0
+engine/tests/test_bilder_eigen.py:1074: AssertionError: {'fehler': [], 'vorher': 2, 'nachher': 2}
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+E   AssertionError: Block für Foto-Uploads fehlt
+    assert None
+engine/tests/test_betrieb.py:3319: AssertionError: Block für Foto-Uploads fehlt
+=========================== short test summary info ============================
+FAILED engine/tests/test_bilder_eigen.py::test_grenzen_der_umwandlung - Attri...
+FAILED engine/tests/test_bilder_eigen.py::test_jpeg_mit_gps_ergibt_zwei_webp_ohne_metadaten
+FAILED engine/tests/test_bilder_eigen.py::test_drehung_wird_angewendet_und_verschwindet
+FAILED engine/tests/test_bilder_eigen.py::test_png_und_webp_werden_angenommen
+FAILED engine/tests/test_bilder_eigen.py::test_heic_ergibt_zwei_fassungen_falsche_magic_bytes_nicht
+FAILED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[Das ist kein Foto, nur eine Datei mit der Endung .jpg (Beispiel)]
+FAILED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[GIF89a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00]
+FAILED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[%PDF-1.4\n%%EOF\n]
+FAILED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[<svg xmlns="http://www.w3.org/2000/svg"/>]
+FAILED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[]
+FAILED engine/tests/test_bilder_eigen.py::test_zu_grosses_foto_vor_der_verkleinerung
+FAILED engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[64-megapixel]
+FAILED engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[400-megapixel]
+FAILED engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[abgeschnitten]
+FAILED engine/tests/test_bilder_eigen.py::test_vorgabe_max_mb_150_und_einstellbar
+FAILED engine/tests/test_bilder_eigen.py::test_upload_route_legt_eigenes_foto_an_ohne_original[beispielreise-wer0-O-01]
+FAILED engine/tests/test_bilder_eigen.py::test_token_erlaubt_nur_hochladen - ...
+FAILED engine/tests/test_bilder_eigen.py::test_upload_route_legt_eigenes_foto_an_ohne_original[stadtwochenende-wer1-O-02]
+FAILED engine/tests/test_bilder_eigen.py::test_upload_route_nur_mit_dienst_geheimnis_und_bis_12_mb
+FAILED engine/tests/test_bilder_eigen.py::test_grenze_je_reise_lehnt_ab_und_speichert_nichts[anzahl]
+FAILED engine/tests/test_bilder_eigen.py::test_link_seite_mit_eigener_csp_ohne_seitenlink
+FAILED engine/tests/test_bilder_eigen.py::test_grenze_je_reise_lehnt_ab_und_speichert_nichts[mb]
+FAILED engine/tests/test_bilder_eigen.py::test_konto_loeschen_raeumt_tokens_ab
+FAILED engine/tests/test_bilder_eigen.py::test_doku_des_konnektors_nennt_werkzeug_und_routen
+FAILED engine/tests/test_bilder_eigen.py::test_neue_texte_in_allen_sprachen
+FAILED engine/tests/test_bilder_eigen.py::test_wortlaut_folgt_dem_entwurf - K...
+FAILED engine/tests/test_bilder_eigen.py::test_pillow_heif_installiert_mit_lizenz_und_hashes
+FAILED engine/tests/test_bilder_eigen.py::test_waisen_werden_beim_naechsten_hochladen_aufgeraeumt
+FAILED engine/tests/test_bilder_eigen.py::test_waisen_aufraeumen_und_fehler_mitten_im_speichern
+FAILED engine/tests/test_bilder_eigen.py::test_glibc_pruefung_vor_dem_tausch_der_python_umgebung
+FAILED engine/tests/test_bilder_eigen.py::test_nginx_block_fuer_fotos_der_hochlade_link
+FAILED engine/tests/test_bilder_eigen.py::test_rueckmeldedienst_nimmt_fotos_nur_von_mitwirkenden_an
+FAILED engine/tests/test_bilder_eigen.py::test_rolle_aus_dem_aktuellen_stand
+FAILED engine/tests/test_bilder_eigen.py::test_zu_gross_und_falsches_format_erreichen_den_schreibweg_nicht
+FAILED engine/tests/test_bilder_eigen.py::test_drosselung_wie_bei_belegen - A...
+FAILED engine/tests/test_bilder_eigen.py::test_stadtwochenende_nimmt_fotos_an
+FAILED engine/tests/test_bilder_eigen.py::test_loeschen_am_rueckmeldedienst_nur_angemeldet
+FAILED engine/tests/test_bilder_eigen.py::test_bau_nennung_foto_von_und_verlauf_foto_entfernt
+FAILED engine/tests/test_bilder_eigen.py::test_bild_entfernen_leert_nur_die_zwei_pfade
+FAILED engine/tests/test_bilder_eigen.py::test_zwei_uploads_mit_gleichem_inhalt_teilen_den_blob
+FAILED engine/tests/test_bilder_eigen.py::test_werkzeug_entfernt_foto_verlauf_bleibt[hochladende-person]
+FAILED engine/tests/test_bilder_eigen.py::test_werkzeug_entfernt_foto_verlauf_bleibt[organisatorin]
+FAILED engine/tests/test_bilder_eigen.py::test_andere_mitwirkende_person_darf_nicht_entfernen
+FAILED engine/tests/test_bilder_eigen.py::test_commons_bild_ist_nicht_echt_loeschbar
+FAILED engine/tests/test_bilder_eigen.py::test_alte_sicherung_bringt_das_bild_nicht_zurueck
+FAILED engine/tests/test_bilder_eigen.py::test_konto_geloescht_nennung_gelöschte_person_organisatorin_loescht
+FAILED engine/tests/test_bilder_eigen.py::test_quelltext_und_adr_nennen_die_dritte_ausnahme
+FAILED engine/tests/test_bilder_eigen.py::test_datenschutztabelle_nennt_eigene_fotos
+FAILED engine/tests/test_bilder_eigen.py::test_werkzeug_gibt_link_token_nur_als_hash
+FAILED engine/tests/test_bilder_eigen.py::test_hochladen_ueber_link_ohne_anmeldung
+FAILED engine/tests/test_bilder_eigen.py::test_abgelaufen_aufgebraucht_fremd_dieselbe_antwort
+FAILED engine/tests/test_bilder_eigen.py::test_herabgestufte_rolle_mit_gueltigem_token
+FAILED engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+FAILED engine/tests/test_bilder.py::test_vorgabe_der_grenze_ist_60 - Assertio...
+FAILED engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[webkit]
+FAILED engine/tests/test_loeschen_reise.py::test_quelltext_nur_drei_funktionen_nutzen_die_ausnahme
+FAILED engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[webkit]
+FAILED engine/tests/test_betrieb.py::test_nginx_reise_block_fuer_fotos_und_der_rest_unveraendert
+59 failed, 466 passed in 114.46s (0:01:54)

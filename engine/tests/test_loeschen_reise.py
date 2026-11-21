@@ -598,15 +598,17 @@ def test_nach_entfernen_sind_alle_trigger_da_und_nur_anhaengen_gilt(speicher):
             v.execute("DELETE FROM vorgaenge WHERE reise = 'stadtwochenende'")
 
 
-def test_quelltext_nur_zwei_funktionen_nutzen_die_ausnahme():
+def test_quelltext_nur_drei_funktionen_nutzen_die_ausnahme():
+    """Genau reise_entfernen (#381), namen_ersetzen (#381) und bild_entfernen (#582, zwei feste Pfade je Bild) nutzen die
+    Verbindung ohne Schutz; keine weitere."""
     import reisespeicher as rs
     quelle = inspect.getsource(rs)
     nutzer = set()
     for name, f in inspect.getmembers(rs, inspect.isfunction):
         if f.__module__ == rs.__name__ and name != "_db_ausnahme" and "_db_ausnahme" in inspect.getsource(f):
             nutzer.add(name)
-    assert nutzer == {"reise_entfernen", "namen_ersetzen"}, nutzer
-    for f in (rs.reise_entfernen, rs.namen_ersetzen):
+    assert nutzer == {"reise_entfernen", "namen_ersetzen", "bild_entfernen"}, nutzer
+    for f in (rs.reise_entfernen, rs.namen_ersetzen, rs.bild_entfernen):
         assert "BEGIN IMMEDIATE" in inspect.getsource(f) or "_ausnahme_transaktion" in inspect.getsource(f)
     assert "SQLITE_DELETE" in quelle and rs.VERBOTEN >= {sqlite3.SQLITE_DROP_TRIGGER, sqlite3.SQLITE_DROP_TABLE}
 

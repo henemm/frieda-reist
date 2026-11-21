@@ -3301,3 +3301,26 @@ def test_einrichten_bausteine_nur_der_eigenen_instanz(tmp_path):
     subprocess.run(["bash", "-c", befehl], check=True)
     assert oct(eigen.stat().st_mode & 0o777) == "0o640"
     assert oct(fremd.stat().st_mode & 0o777) == "0o644"
+
+
+# ---------- Eigene Fotos (#582, Spec docs/specs/oberflaeche/bilder-582-eigene-fotos.md, AC-9) ----------
+
+def _ort(text, praefix):
+    """Inhalt des location-Blocks mit genau diesem Präfix (^~) oder None."""
+    m = re.search(r"location \^~ " + re.escape(praefix) + r" \{(.*?)\n\}", text, re.S)
+    return m.group(1) if m else None
+
+
+def test_nginx_reise_block_fuer_fotos_und_der_rest_unveraendert():
+    """Der Foto-Upload der Reiseseite hat einen eigenen Block (client_max_body_size 12m bis 14m, wie Belege mit Drossel,
+    ohne Dienst-Geheimnis von außen) zum Rückmeldedienst /<reise>/bilder/; api/ bleibt bei 16k, Belege bei 11m."""
+    text = (BETRIEB / "vorlagen" / "nginx-reise.conf").read_text(encoding="utf-8")
+    fotos = _ort(text, "/__REISE__-__TOKEN__/api/bilder/")
+    assert fotos, "Block für Foto-Uploads fehlt"
+    groesse = re.search(r"client_max_body_size (\d+)m;", fotos)
+    assert groesse and 12 <= int(groesse.group(1)) <= 14, fotos
+    assert "proxy_pass http://127.0.0.1:__RM_PORT__/__REISE__/bilder/;" in fotos
+    assert 'proxy_set_header X-Frieda-Dienst   "";' in fotos and "limit_req zone=__ZONE__" in fotos
+    assert 'add_header Referrer-Policy "no-referrer" always;' in fotos
+    assert "client_max_body_size 16k;" in _ort(text, "/__REISE__-__TOKEN__/api/")
+    assert "client_max_body_size 11m;" in _ort(text, "/__REISE__-__TOKEN__/api/belege/")
