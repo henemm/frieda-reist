@@ -11,7 +11,7 @@ Datum: 2026-11-21 20:12
 ## Dialog
 
 ### Runde 1
-**Adversary:** Nachbesserung gegen F001/F002 des Runde-1-Dialogs geprüft. Muster Zeile 10: `pytest-of-\w[\w-]*|\.\.\.-\w+/pytest-\d`. Gezielter Lauf der Datei: 3 passed (adversary-test-output.txt). Die frühere Fundstelle in sicherheit-552-dienstrechte/test-red-output-nachtrag.txt:277 trägt jetzt `<tmp>/pytest-of-<benutzer>/pytest-15574/...`, kein Name mehr. Positivbeispiel `...-jemand/pytest-15574/popen-gw2/x` (Zeile 34) wird erkannt, Negativbeispiel `...-<benutzer>/pytest-15574/popen-gw2` (Zeile 35) nicht. Eigener Gegenversuch: `...-jemand/pytest-1` erkannt; `re.../pytest-20203/x` (kein Name, mehrere Stellen in rueckbau-557) nicht gemeldet; `pytest-of-` allein und `pytest-of-<b>` still.
+**Adversary:** Nachbesserung gegen F001/F002 des Runde-1-Dialogs geprüft. Muster Zeile 10: `pytest-of-\w[\w-]*|\.\.\.-\w+/pytest-\d`. Gezielter Lauf der Datei: 3 passed (adversary-test-output.txt). Die frühere Fundstelle in sicherheit-552-dienstrechte/test-red-output-nachtrag.txt:277 trägt jetzt `<tmp>/pytest-of-<benutzer>/pytest-15574/...`, kein Name mehr. Positivbeispiel `...-<name>/pytest-15574/popen-gw2/x` (Zeile 34) wird erkannt, Negativbeispiel `...-<benutzer>/pytest-15574/popen-gw2` (Zeile 35) nicht. Eigener Gegenversuch: `...-<name>/pytest-1` erkannt; `re.../pytest-20203/x` (kein Name, mehrere Stellen in rueckbau-557) nicht gemeldet; `pytest-of-` allein und `pytest-of-<b>` still.
 **Implementierer:** Beide Zweige und beide Beispielgruppen decken AC-1 und AC-2 ab (Code reference: engine/tests/test_protokolle_ohne_pfade.py:34). F002 ist eine Benennungsabweichung der eingefrorenen Spec, das Verhalten stimmt.
 
 ### Runde 2
@@ -27,7 +27,7 @@ Keine offenen Findings. F001 aus dem Runde-1-Dialog ist behoben und verifiziert;
 Confirmation:
   AC: AC-1
   Code reference: engine/tests/test_protokolle_ohne_pfade.py:34
-  Evidence: volle Form, Form ohne Schrägstriche, gekürzt mit Namensanfang und mittig gekürzt (`...-jemand/pytest-15574`) werden erkannt; Test grün.
+  Evidence: volle Form, Form ohne Schrägstriche, gekürzt mit Namensanfang und mittig gekürzt (`...-<name>/pytest-15574`) werden erkannt; Test grün.
   Status: CONFIRMED
 
 Confirmation:

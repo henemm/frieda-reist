@@ -127,3 +127,4 @@ Alle in `engine/tests/test_protokolle_ohne_pfade.py`.
 ## Changelog
 
 - 2026-11-21: Initiale Spec (#602)
+- 2026-11-21: Nachtrag Adversary-Runde 1: `PYTEST_TMP` hat eine zweite Alternative für die mittig gekürzte Form (`...-<name>/pytest-<Ziffer>`); AC-1/AC-2 belegt `test_muster_erkennt_pytest_tmp`.
