@@ -1,0 +1,287 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ./engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collecting ... collected 71 items / 55 deselected / 16 selected
+
+tests/test_profil.py::test_schreibgrenze_setzen_ja_entfernen_nie PASSED  [  6%]
+tests/test_profil.py::test_anleitung_je_reise_nach_baustein[None-konnektor.anleitung.profil_nutzen] PASSED [ 12%]
+tests/test_profil.py::test_anleitung_je_reise_nach_baustein[bausteine1-konnektor.anleitung.profil_nutzen] PASSED [ 18%]
+tests/test_profil.py::test_anleitung_je_reise_nach_baustein[bausteine2-konnektor.anleitung.profil_nicht_nutzen] PASSED [ 25%]
+tests/test_profil.py::test_abgelehnter_eintrag_zaehlt_nicht_zur_schreibgrenze FAILED [ 31%]
+tests/test_profil.py::test_angenommener_eintrag_zaehlt_zur_schreibgrenze PASSED [ 37%]
+tests/test_profil.py::test_profil_voll_zaehlt_nicht FAILED               [ 43%]
+tests/test_profil.py::test_anleitung_ohne_konto_ohne_profilsatz[None] FAILED [ 50%]
+tests/test_profil.py::test_anleitung_ohne_konto_ohne_profilsatz[bausteine1] FAILED [ 56%]
+tests/test_profil.py::test_anleitung_ohne_konto_ohne_profilsatz[bausteine2] FAILED [ 62%]
+tests/test_profil.py::test_profil_setzen_beginnt_immediate_vor_dem_zaehlen FAILED [ 68%]
+tests/test_profil.py::test_profil_setzen_obergrenze_bei_gleichzeitigkeit FAILED [ 75%]
+tests/test_profil.py::test_profil_setzen_frische_datenbank PASSED        [ 81%]
+tests/test_anmeldung.py::test_seitensprache_frueherer_test_setzt PASSED  [ 87%]
+tests/test_anmeldung.py::test_seitensprache_frueherer_test_stoert_nicht FAILED [ 93%]
+tests/test_anmeldung.py::test_pruefungen_buendeln_je_reise_und_tag FAILED [100%]
+
+=================================== FAILURES ===================================
+___________ test_abgelehnter_eintrag_zaehlt_nicht_zur_schreibgrenze ____________
+
+zwei = <function zwei.<locals>.neu at 0x7709760287c0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x770976e04410>
+
+    def test_abgelehnter_eintrag_zaehlt_nicht_zur_schreibgrenze(zwei, monkeypatch):
+        """#578 F001, AC-1: leer, zu lang, unbekannte PR-<n> werden abgelehnt und zählen nicht; danach gehen zwei gültige."""
+        u = zwei()
+        monkeypatch.setenv("FR_GRENZE_SCHREIBEN", "2")
+        abgelehnt = [dict(bereich="Essen", text="  ", herkunft="Gespräch"),
+                     dict(bereich="Essen", text="x" * (instanz.grenze_profil_text() + 1), herkunft="Gespräch"),
+                     dict(bereich="Essen", text="vegetarisch", herkunft="Gespräch", id="PR-999")]
+        for args in abgelehnt:
+            text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bestaetigt=True, **args)
+            assert fehler, (args, text)
+>           assert not meldet(text, "konnektor.grenze.schreiben"), text
+E           AssertionError: In der letzten Stunde hast du sehr viel eingetragen, mehr geht gerade nicht. In 60 Min. kannst du weitermachen; bis dahin kannst du alles lesen.
+E           assert not True
+E            +  where True = meldet('In der letzten Stunde hast du sehr viel eingetragen, mehr geht gerade nicht. In 60 Min. kannst du weitermachen; bis dahin kannst du alles lesen.', 'konnektor.grenze.schreiben')
+
+tests/test_profil.py:543: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+grenze K-f3f556ec42701415 schreiben
+________________________ test_profil_voll_zaehlt_nicht _________________________
+
+zwei = <function zwei.<locals>.neu at 0x770976e2be20>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x770976098380>
+
+    def test_profil_voll_zaehlt_nicht(zwei, monkeypatch):
+        """#578 F001, AC-1: ein Eintrag, der an der Obergrenze des Profils scheitert, zählt nicht zur Schreibgrenze."""
+        u = zwei()
+        monkeypatch.setenv("FR_GRENZE_PROFIL_EINTRAEGE", "1")
+        text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bereich="Essen", text="vegetarisch", herkunft="Gespräch",
+                                bestaetigt=True)
+        assert not fehler, text
+        vorher = schreibzaehler(u.a)
+        text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bereich="Tempo", text="gemütlich", herkunft="Gespräch",
+                                bestaetigt=True)
+        assert fehler and meldet(text, "konto.fehler.profil_voll"), text
+>       assert schreibzaehler(u.a) == vorher
+E       AssertionError: assert 2 == 1
+E        +  where 2 = schreibzaehler({'id': 'K-550f39208fd2fe82', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...})
+E        +    where {'id': 'K-550f39208fd2fe82', 'email': 'ida@beispiel.invalid', 'name': 'Ida', 'gesperrt': False, ...} = <test_regeln.Umgebung object at 0x770975e3a330>.a
+
+tests/test_profil.py:578: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_______________ test_anleitung_ohne_konto_ohne_profilsatz[None] ________________
+
+zwei = <function zwei.<locals>.neu at 0x770976eaf920>, bausteine = None
+
+    @pytest.mark.parametrize("bausteine", [None, ["plan", "profile"], ["plan"]])
+    def test_anleitung_ohne_konto_ohne_profilsatz(zwei, bausteine):
+        """#578 F002, AC-3: im reisebezogenen Zugang ohne Konto gibt es mein_profil nicht, also auch keinen Satz zum Profil.
+        Beide Reisetypen; der Konto-Zugang behält den Satz (Test 14 oben)."""
+        u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
+        for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
+            d = kn.daten(reise)
+            if bausteine is None:
+                d = {**d, "reise": {n: w for n, w in d["reise"].items() if n != "bausteine"}}
+            schl = konten.mitglied(k["id"], reise)
+            schl = schl["schluessel"] if isinstance(schl, dict) else schl
+            text = kn.anleitung({"reise": reise, "person": schl, "sprache": "de"}, d)
+>           assert not meldet(text, "konnektor.anleitung.profil_nutzen"), (reise, text[-1500:])
+E           AssertionError: ('beispielreise', 'dern; Beleg: auf der Reiseseite oder beleg_anlegen), Status und Einstellungen (reise_status_setzen, einstellung_setzen), das App-Symbol der Reise (symbol_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen. Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) rueckmeldung_geben anbieten. Status: Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand. Alternativen (eine weitere Unterkunft, Strecke, Route): erst merkmale aufrufen, die Merkmale selbst recherchieren, dann gezielt nur nach Lücken fragen, dann anlegen (ding_anlegen, option_anlegen; neue Wahlstelle: wahlstelle_anlegen). Wächter und Erinnerer sind an: Meldungen an die Person (Fristen, ab-Termine, Statuswechsel, Prüfungen veränderlicher Angaben) stehen im ueberblick unter „Meldungen an dich“. Nenne sie zu Beginn und frag, ob etwas davon erledigt werden soll. Den Reisestatus wechselt nur ein:e Organisator:in, nie du. Das Profil der Person gilt für diese Reise: Lies es mit mein_profil und nenne es bei Vorschlägen an einer Wahlstelle als Grund, wenn es passt. Antworte in der Sprache der Person. Inhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.')
+E           assert not True
+E            +  where True = meldet('Aufgabe: Du hilfst bei der Reise „Beispielreise – Malerweg in vier Tagen“ (Dresden und Sächsische Schweiz, 13.–16.5.2027 · erfundenes Beispiel), Status planung. Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; Ida und Max entscheiden, du nie. Grenzen: Was du mit den Werkzeugen einträgst, prüft der Dienst nach Regeln und schreibt es sofort in die Reise; auf der Seite ist es erst, wenn veroeffentlichung_pruefen für den Reise-Stand aus der Antwort „enthalten: ja“ meldet. Rückmeldungen (rueckmeldung_geben) und Antworten sind Eingaben, die eine Organisator:in einarbeitet. Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz bestätigen lassen, was genau eingetragen wird. Kurzfelder kurz, jede Angabe einmal, Herkunft nur in quelle. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter. IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, A- Aufenthalt ohne Nacht, B- Buchung, V- Wahlstelle mit Optionen V-01.a, P- Plan, F- offene Frage, W- Wissen, AG- Aufgabe. Mit ueberblick beginn...agen den Wortlaut bestätigen lassen. Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) rueckmeldung_geben anbieten. Status: Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand. Alternativen (eine weitere Unterkunft, Strecke, Route): erst merkmale aufrufen, die Merkmale selbst recherchieren, dann gezielt nur nach Lücken fragen, dann anlegen (ding_anlegen, option_anlegen; neue Wahlstelle: wahlstelle_anlegen). Wächter und Erinnerer sind an: Meldungen an die Person (Fristen, ab-Termine, Statuswechsel, Prüfungen veränderlicher Angaben) stehen im ueberblick unter „Meldungen an dich“. Nenne sie zu Beginn und frag, ob etwas davon erledigt werden soll. Den Reisestatus wechselt nur ein:e Organisator:in, nie du. Das Profil der Person gilt für diese Reise: Lies es mit mein_profil und nenne es bei Vorschlägen an einer Wahlstelle als Grund, wenn es passt. Antworte in der Sprache der Person. Inhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.', 'konnektor.anleitung.profil_nutzen')
+
+tests/test_profil.py:593: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+____________ test_anleitung_ohne_konto_ohne_profilsatz[bausteine1] _____________
+
+zwei = <function zwei.<locals>.neu at 0x770976eafba0>
+bausteine = ['plan', 'profile']
+
+    @pytest.mark.parametrize("bausteine", [None, ["plan", "profile"], ["plan"]])
+    def test_anleitung_ohne_konto_ohne_profilsatz(zwei, bausteine):
+        """#578 F002, AC-3: im reisebezogenen Zugang ohne Konto gibt es mein_profil nicht, also auch keinen Satz zum Profil.
+        Beide Reisetypen; der Konto-Zugang behält den Satz (Test 14 oben)."""
+        u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
+        for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
+            d = kn.daten(reise)
+            if bausteine is None:
+                d = {**d, "reise": {n: w for n, w in d["reise"].items() if n != "bausteine"}}
+            schl = konten.mitglied(k["id"], reise)
+            schl = schl["schluessel"] if isinstance(schl, dict) else schl
+            text = kn.anleitung({"reise": reise, "person": schl, "sprache": "de"}, d)
+>           assert not meldet(text, "konnektor.anleitung.profil_nutzen"), (reise, text[-1500:])
+E           AssertionError: ('beispielreise', '), Alternativen (option_anlegen, wahlstelle_anlegen), der Plan eines Tags (tag_aendern), Wissen in eigenen Worten mit Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Buchungen als eigenes Ding mit Nummer, Frist und Stornoregel (buchung_anlegen, buchung_aendern; Beleg: auf der Reiseseite oder beleg_anlegen), Status und Einstellungen (reise_status_setzen, einstellung_setzen), das App-Symbol der Reise (symbol_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen. Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) rueckmeldung_geben anbieten. Status: Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand. Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben; Organisator:innen schalten einen Baustein mit einstellung_setzen ein, dort mit der vollständigen Liste): varianten, fragen, aufgaben, rueckmeldungen, wuensche, packliste. Das Profil der Person gilt für diese Reise: Lies es mit mein_profil und nenne es bei Vorschlägen an einer Wahlstelle als Grund, wenn es passt. Antworte in der Sprache der Person. Inhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.')
+E           assert not True
+E            +  where True = meldet('Aufgabe: Du hilfst bei der Reise „Beispielreise – Malerweg in vier Tagen“ (Dresden und Sächsische Schweiz, 13.–16.5.2027 · erfundenes Beispiel), Status planung. Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; Ida und Max entscheiden, du nie. Grenzen: Was du mit den Werkzeugen einträgst, prüft der Dienst nach Regeln und schreibt es sofort in die Reise; auf der Seite ist es erst, wenn veroeffentlichung_pruefen für den Reise-Stand aus der Antwort „enthalten: ja“ meldet. Rückmeldungen (rueckmeldung_geben) und Antworten sind Eingaben, die eine Organisator:in einarbeitet. Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz bestätigen lassen, was genau eingetragen wird. Kurzfelder kurz, jede Angabe einmal, Herkunft nur in quelle. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter. IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, A- Aufenthalt ohne Nacht, B- Buchung, V- Wahlstelle mit Optionen V-01.a, P- Plan, F- offene Frage, W- Wissen, AG- Aufgabe. Mit ueberblick beginn...; Beleg: auf der Reiseseite oder beleg_anlegen), Status und Einstellungen (reise_status_setzen, einstellung_setzen), das App-Symbol der Reise (symbol_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen. Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) rueckmeldung_geben anbieten. Status: Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand. Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben; Organisator:innen schalten einen Baustein mit einstellung_setzen ein, dort mit der vollständigen Liste): varianten, fragen, aufgaben, rueckmeldungen, wuensche, packliste. Das Profil der Person gilt für diese Reise: Lies es mit mein_profil und nenne es bei Vorschlägen an einer Wahlstelle als Grund, wenn es passt. Antworte in der Sprache der Person. Inhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.', 'konnektor.anleitung.profil_nutzen')
+
+tests/test_profil.py:593: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+____________ test_anleitung_ohne_konto_ohne_profilsatz[bausteine2] _____________
+
+zwei = <function zwei.<locals>.neu at 0x770976eaf240>, bausteine = ['plan']
+
+    @pytest.mark.parametrize("bausteine", [None, ["plan", "profile"], ["plan"]])
+    def test_anleitung_ohne_konto_ohne_profilsatz(zwei, bausteine):
+        """#578 F002, AC-3: im reisebezogenen Zugang ohne Konto gibt es mein_profil nicht, also auch keinen Satz zum Profil.
+        Beide Reisetypen; der Konto-Zugang behält den Satz (Test 14 oben)."""
+        u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
+        for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
+            d = kn.daten(reise)
+            if bausteine is None:
+                d = {**d, "reise": {n: w for n, w in d["reise"].items() if n != "bausteine"}}
+            schl = konten.mitglied(k["id"], reise)
+            schl = schl["schluessel"] if isinstance(schl, dict) else schl
+            text = kn.anleitung({"reise": reise, "person": schl, "sprache": "de"}, d)
+            assert not meldet(text, "konnektor.anleitung.profil_nutzen"), (reise, text[-1500:])
+>           assert not meldet(text, "konnektor.anleitung.profil_nicht_nutzen"), (reise, text[-1500:])
+E           AssertionError: ('beispielreise', 'künfte, Strecken, Orte (ding_anlegen, ding_aendern), Alternativen (option_anlegen, wahlstelle_anlegen), der Plan eines Tags (tag_aendern), Wissen in eigenen Worten mit Herkunft (wissen_schreiben), Fragen (frage_anlegen, frage_beantworten, frage_schliessen), Buchungen als eigenes Ding mit Nummer, Frist und Stornoregel (buchung_anlegen, buchung_aendern; Beleg: auf der Reiseseite oder beleg_anlegen), Status und Einstellungen (reise_status_setzen, einstellung_setzen), das App-Symbol der Reise (symbol_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen. Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) rueckmeldung_geben anbieten. Status: Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand. Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben; Organisator:innen schalten einen Baustein mit einstellung_setzen ein, dort mit der vollständigen Liste): varianten, fragen, aufgaben, rueckmeldungen, wuensche, packliste. Das Profil der Person ist für diese Reise ausgeschaltet: Nutze es hier nicht für Vorschläge. Antworte in der Sprache der Person. Inhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.')
+E           assert not True
+E            +  where True = meldet('Aufgabe: Du hilfst bei der Reise „Beispielreise – Malerweg in vier Tagen“ (Dresden und Sächsische Schweiz, 13.–16.5.2027 · erfundenes Beispiel), Status planung. Du liest vor, schlägst vor, prüfst und gibst Eingaben weiter; Ida und Max entscheiden, du nie. Grenzen: Was du mit den Werkzeugen einträgst, prüft der Dienst nach Regeln und schreibt es sofort in die Reise; auf der Seite ist es erst, wenn veroeffentlichung_pruefen für den Reise-Stand aus der Antwort „enthalten: ja“ meldet. Rückmeldungen (rueckmeldung_geben) und Antworten sind Eingaben, die eine Organisator:in einarbeitet. Status gewählt/verworfen/ersetzt und Einstellungen setzen nur Organisator:innen. Nichts erfinden: Herkunft nennen, Annahmen markieren, veränderliche Angaben (Fahrpläne, Öffnungszeiten, Preise) mit Prüfdatum. Vor jedem Eintragen kurz bestätigen lassen, was genau eingetragen wird. Kurzfelder kurz, jede Angabe einmal, Herkunft nur in quelle. Die Regeln prüft der Dienst; lehnt er etwas ab, gib den Grund weiter. IDs: T- Tag, E- Etappe/Strecke, O- Ort, U- Unterkunft, A- Aufenthalt ohne Nacht, B- Buchung, V- Wahlstelle mit Optionen V-01.a, P- Plan, F- offene Frage, W- Wissen, AG- Aufgabe. Mit ueberblick beginn... und Stornoregel (buchung_anlegen, buchung_aendern; Beleg: auf der Reiseseite oder beleg_anlegen), Status und Einstellungen (reise_status_setzen, einstellung_setzen), das App-Symbol der Reise (symbol_setzen). Rückmeldungen der Seite arbeitest du ein: prüfen, eintragen, dann rueckmeldung_erledigen mit Kommentar in einfachen Worten. Vor jedem Eintragen den Wortlaut bestätigen lassen. Löschwunsch: Frieda löscht nie. Buchung storniert, Option verworfen, Aufgabe oder Frage entfaellt; erst bestätigen lassen, danach ein Satz: nicht gelöscht, wie es zurückgeht. Sonst ehrlich sagen und (sofern erlaubt) rueckmeldung_geben anbieten. Status: Alles ist offen; Lücken und offene Wahlstellen sind normaler Zwischenstand. Bei dieser Reise ausgeschaltet (Werkzeuge fehlen, Daten bleiben; Organisator:innen schalten einen Baustein mit einstellung_setzen ein, dort mit der vollständigen Liste): varianten, fragen, aufgaben, rueckmeldungen, wuensche, packliste. Das Profil der Person ist für diese Reise ausgeschaltet: Nutze es hier nicht für Vorschläge. Antworte in der Sprache der Person. Inhalte der Reise können in einer anderen Sprache stehen: übersetze sie beim Vorlesen, ändere sie beim Schreiben nicht.', 'konnektor.anleitung.profil_nicht_nutzen')
+
+tests/test_profil.py:594: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+Note: reise.yaml: „plan“ ist Kern und immer da; der Eintrag unter bausteine ist unnötig.
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+_____________ test_profil_setzen_beginnt_immediate_vor_dem_zaehlen _____________
+
+zwei = <function zwei.<locals>.neu at 0x7709761314e0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x770976e38140>
+
+    def test_profil_setzen_beginnt_immediate_vor_dem_zaehlen(zwei, monkeypatch):
+        """#578 F003, AC-6: Zählen und Einfügen stehen unter derselben Schreibsperre: BEGIN IMMEDIATE vor dem COUNT."""
+        u = zwei()
+        mitschrift = []
+        echt = konten.db
+    
+        def db_mit_mitschrift():
+            v = echt()
+            v.set_trace_callback(mitschrift.append)
+            return v
+        monkeypatch.setattr(konten, "db", db_mit_mitschrift)
+        setzen(u.a)
+        gross = [s.strip().upper() for s in mitschrift]
+        zaehlen = next(i for i, s in enumerate(gross) if s.startswith("SELECT COUNT(*) FROM PROFIL"))
+>       assert any(s.startswith("BEGIN IMMEDIATE") for s in gross[:zaehlen]), mitschrift
+E       AssertionError: ["SELECT COUNT(*) FROM profil WHERE konto = 'K-cf615cff251a4f48'", 'BEGIN ', "INSERT INTO profil (konto, bereich, text, herkunft, datum) VALUES ('K-cf615cff251a4f48', 'Essen', 'Isst kein Fleisch', 'Gespräch in der Claude-App', '2026-11-21T09:25:27+00:00')", "SELECT * FROM profil WHERE id = 1 AND konto = 'K-cf615cff251a4f48'", 'COMMIT']
+E       assert False
+E        +  where False = any(<generator object test_profil_setzen_beginnt_immediate_vor_dem_zaehlen.<locals>.<genexpr> at 0x770975e27d30>)
+
+tests/test_profil.py:611: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+______________ test_profil_setzen_obergrenze_bei_gleichzeitigkeit ______________
+
+zwei = <function zwei.<locals>.neu at 0x770976130900>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x770976e1acc0>
+
+    def test_profil_setzen_obergrenze_bei_gleichzeitigkeit(zwei, monkeypatch):
+        """#578 F003, AC-5: Obergrenze 1, zwei gleichzeitige Neuanlagen: genau eine gelingt, die andere bekommt profil_voll.
+        Die Schranke sitzt zwischen Zählen und Einfügen (beim Lesen der Obergrenze). Ohne Schreibsperre zählen beide null
+        und legen beide an; mit Sperre kommt der zweite Aufruf erst nach dem Einfügen des ersten zum Zählen, die Schranke
+        läuft für den ersten ab und er schreibt allein."""
+        import threading
+        u = zwei()
+        schranke = threading.Barrier(2)
+    
+        def grenze():
+            try:
+                schranke.wait(timeout=2)
+            except threading.BrokenBarrierError:
+                pass
+            return 1
+        monkeypatch.setattr(instanz, "grenze_profil_eintraege", grenze)
+        ergebnisse = []
+    
+        def anlegen(bereich):
+            try:
+                ergebnisse.append(setzen(u.a, bereich, "Beispielwert")["id"])
+            except konten.KontoFehler as f:
+                ergebnisse.append(f.schluessel)
+        faeden = [threading.Thread(target=anlegen, args=(b,)) for b in ("Essen", "Tempo")]
+        for f in faeden:
+            f.start()
+        for f in faeden:
+            f.join(timeout=30)
+        assert len(ergebnisse) == 2, ergebnisse
+>       assert ergebnisse.count("konto.fehler.profil_voll") == 1, ergebnisse
+E       AssertionError: ['PR-1', 'PR-2']
+E       assert 0 == 1
+E        +  where 0 = <built-in method count of list object at 0x77097764e040>('konto.fehler.profil_voll')
+E        +    where <built-in method count of list object at 0x77097764e040> = ['PR-1', 'PR-2'].count
+
+tests/test_profil.py:643: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+________________ test_seitensprache_frueherer_test_stoert_nicht ________________
+
+    def test_seitensprache_frueherer_test_stoert_nicht():
+        """#578 F004, Teil 2 (läuft direkt nach Teil 1): die Seitensprache ist wieder die Vorgabe."""
+        import anmeldung
+>       assert anmeldung.sprache_der_seite() == texte.VORGABE
+E       AssertionError: assert 'de' == 'en'
+E         
+E         - en
+E         + de
+
+tests/test_anmeldung.py:561: AssertionError
+__________________ test_pruefungen_buendeln_je_reise_und_tag ___________________
+
+    def test_pruefungen_buendeln_je_reise_und_tag():
+        """#407: Prüfmeldungen werden je Reise und Tag eine Zeile; eine einzelne bleibt mit ihrer Stelle stehen."""
+        import anmeldung
+        ms = [{"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-13T09:00:00+00:00", "text": "a", "ziel": "O-01"},
+              {"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-13T08:00:00+00:00", "text": "b", "ziel": "O-02"},
+              {"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-12T08:00:00+00:00", "text": "c", "ziel": "O-03"},
+              {"reise": "beispielreise", "art": "pruefung", "erstellt": "2027-05-13T07:00:00+00:00", "text": "d", "ziel": "U-01"}]
+        aus = anmeldung.meldungen_ordnen(ms, "Europe/Berlin")
+        assert [(e["reise"], e["anker"]) for e in aus] == [("stadtwochenende", "zu-tun"), ("beispielreise", "U-01"),
+                                                             ("stadtwochenende", "O-03")]
+>       assert aus[0]["text"] == texte.t(texte.VORGABE, "konto.meldungen.pruefungen", n=2)
+E       AssertionError: assert '2 Angaben zu prüfen' == '2 details to check'
+E         
+E         - 2 details to check
+E         + 2 Angaben zu prüfen
+
+tests/test_anmeldung.py:579: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_profil.py::test_abgelehnter_eintrag_zaehlt_nicht_zur_schreibgrenze
+FAILED tests/test_profil.py::test_profil_voll_zaehlt_nicht - AssertionError: ...
+FAILED tests/test_profil.py::test_anleitung_ohne_konto_ohne_profilsatz[None]
+FAILED tests/test_profil.py::test_anleitung_ohne_konto_ohne_profilsatz[bausteine1]
+FAILED tests/test_profil.py::test_anleitung_ohne_konto_ohne_profilsatz[bausteine2]
+FAILED tests/test_profil.py::test_profil_setzen_beginnt_immediate_vor_dem_zaehlen
+FAILED tests/test_profil.py::test_profil_setzen_obergrenze_bei_gleichzeitigkeit
+FAILED tests/test_anmeldung.py::test_seitensprache_frueherer_test_stoert_nicht
+FAILED tests/test_anmeldung.py::test_pruefungen_buendeln_je_reise_und_tag - A...
+================= 9 failed, 7 passed, 55 deselected in 20.07s ==================

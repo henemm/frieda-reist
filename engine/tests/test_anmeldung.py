@@ -546,6 +546,26 @@ def test_meldung_anker_und_text_ohne_adresse():
     assert anmeldung.meldung_text(quelle) == quelle["text"]
 
 
+def test_seitensprache_frueherer_test_setzt():
+    """#578 F004, Teil 1: ein Test setzt im selben Thread die Seitensprache, wie es bearbeiten() je Anfrage tut, und
+    räumt bewusst nicht auf. Der folgende Test darf davon nichts merken (autouse-Fixture in conftest.py)."""
+    import anmeldung
+    anderssprache = next(s for s in texte.sprachen() if s != texte.VORGABE)
+    anmeldung._anfrage.sprache = anderssprache
+    assert anmeldung.sprache_der_seite() == anderssprache
+
+
+def test_seitensprache_frueherer_test_stoert_nicht():
+    """#578 F004, Teil 2 (läuft direkt nach Teil 1): die Seitensprache ist wieder die Vorgabe."""
+    import anmeldung
+    assert anmeldung.sprache_der_seite() == texte.VORGABE
+    aus = anmeldung.meldungen_ordnen([{"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-13T09:00:00+00:00",
+                                       "text": "a", "ziel": "O-01"},
+                                      {"reise": "stadtwochenende", "art": "pruefung", "erstellt": "2027-05-13T08:00:00+00:00",
+                                       "text": "b", "ziel": "O-02"}], "Europe/Berlin")
+    assert aus[0]["text"] == texte.t(texte.VORGABE, "konto.meldungen.pruefungen", n=2)
+
+
 def test_pruefungen_buendeln_je_reise_und_tag():
     """#407: Prüfmeldungen werden je Reise und Tag eine Zeile; eine einzelne bleibt mit ihrer Stelle stehen."""
     import anmeldung

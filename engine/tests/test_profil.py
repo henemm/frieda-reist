@@ -520,3 +520,134 @@ def test_doku_nachgezogen():
     assert all(n in konnektor_doku for n in WERKZEUGE.values())
     produkt = (WURZEL / "docs" / "produkt.md").read_text(encoding="utf-8")
     assert not re.search(r"profile[^\n]{0,80}nicht gebaut|nicht gebaut[^\n]{0,80}profile", produkt, re.I)
+
+
+# ---------------------------------------------------------------- Nacharbeiten aus der Prüfung (#578)
+# Spec: docs/specs/konnektor/profil-nacharbeiten-578.md (AC-1 bis AC-7)
+
+def schreibzaehler(k):
+    with closing(konten.db()) as v:
+        return v.execute("SELECT COUNT(*) FROM schreibvorgaenge WHERE konto = ?", (k["id"],)).fetchone()[0]
+
+
+def test_abgelehnter_eintrag_zaehlt_nicht_zur_schreibgrenze(zwei, monkeypatch):
+    """#578 F001, AC-1: leer, zu lang, unbekannte PR-<n> werden abgelehnt und zählen nicht; danach gehen zwei gültige."""
+    u = zwei()
+    monkeypatch.setenv("FR_GRENZE_SCHREIBEN", "2")
+    abgelehnt = [dict(bereich="Essen", text="  ", herkunft="Gespräch"),
+                 dict(bereich="Essen", text="x" * (instanz.grenze_profil_text() + 1), herkunft="Gespräch"),
+                 dict(bereich="Essen", text="vegetarisch", herkunft="Gespräch", id="PR-999")]
+    for args in abgelehnt:
+        text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bestaetigt=True, **args)
+        assert fehler, (args, text)
+        assert not meldet(text, "konnektor.grenze.schreiben"), text
+    assert schreibzaehler(u.a) == 0
+    for bereich in ("Essen", "Tempo"):
+        text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bereich=bereich, text="Beispielwert", herkunft="Gespräch",
+                                bestaetigt=True)
+        assert not fehler, text
+    assert len(konten.profil_liste(u.a["id"])) == 2 and schreibzaehler(u.a) == 2
+
+
+def test_angenommener_eintrag_zaehlt_zur_schreibgrenze(zwei, monkeypatch):
+    """#578 F001, AC-2 (Gegenprobe): ein angenommener Eintrag zählt; ist die Grenze erreicht, wird vor dem Schreiben
+    abgelehnt und nichts gespeichert."""
+    u = zwei()
+    monkeypatch.setenv("FR_GRENZE_SCHREIBEN", "1")
+    text, fehler = werkzeug(u.b, "profil_eintrag_setzen", bereich="Essen", text="vegetarisch", herkunft="Gespräch",
+                            bestaetigt=True)
+    assert not fehler, text
+    assert schreibzaehler(u.b) == 1
+    text, fehler = werkzeug(u.b, "profil_eintrag_setzen", bereich="Tempo", text="gemütlich", herkunft="Gespräch",
+                            bestaetigt=True)
+    assert fehler and meldet(text, "konnektor.grenze.schreiben"), text
+    assert len(konten.profil_liste(u.b["id"])) == 1 and schreibzaehler(u.b) == 1
+
+
+def test_profil_voll_zaehlt_nicht(zwei, monkeypatch):
+    """#578 F001, AC-1: ein Eintrag, der an der Obergrenze des Profils scheitert, zählt nicht zur Schreibgrenze."""
+    u = zwei()
+    monkeypatch.setenv("FR_GRENZE_PROFIL_EINTRAEGE", "1")
+    text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bereich="Essen", text="vegetarisch", herkunft="Gespräch",
+                            bestaetigt=True)
+    assert not fehler, text
+    vorher = schreibzaehler(u.a)
+    text, fehler = werkzeug(u.a, "profil_eintrag_setzen", bereich="Tempo", text="gemütlich", herkunft="Gespräch",
+                            bestaetigt=True)
+    assert fehler and meldet(text, "konto.fehler.profil_voll"), text
+    assert schreibzaehler(u.a) == vorher
+
+
+@pytest.mark.parametrize("bausteine", [None, ["plan", "profile"], ["plan"]])
+def test_anleitung_ohne_konto_ohne_profilsatz(zwei, bausteine):
+    """#578 F002, AC-3: im reisebezogenen Zugang ohne Konto gibt es mein_profil nicht, also auch keinen Satz zum Profil.
+    Beide Reisetypen; der Konto-Zugang behält den Satz (Test 14 oben)."""
+    u = zwei(**({"bausteine": bausteine, "stadt_bausteine": bausteine} if bausteine else {}))
+    for k, reise in ((u.a, "beispielreise"), (u.b, "stadtwochenende")):
+        d = kn.daten(reise)
+        if bausteine is None:
+            d = {**d, "reise": {n: w for n, w in d["reise"].items() if n != "bausteine"}}
+        schl = konten.mitglied(k["id"], reise)
+        schl = schl["schluessel"] if isinstance(schl, dict) else schl
+        text = kn.anleitung({"reise": reise, "person": schl, "sprache": "de"}, d)
+        assert not meldet(text, "konnektor.anleitung.profil_nutzen"), (reise, text[-1500:])
+        assert not meldet(text, "konnektor.anleitung.profil_nicht_nutzen"), (reise, text[-1500:])
+
+
+def test_profil_setzen_beginnt_immediate_vor_dem_zaehlen(zwei, monkeypatch):
+    """#578 F003, AC-6: Zählen und Einfügen stehen unter derselben Schreibsperre: BEGIN IMMEDIATE vor dem COUNT."""
+    u = zwei()
+    mitschrift = []
+    echt = konten.db
+
+    def db_mit_mitschrift():
+        v = echt()
+        v.set_trace_callback(mitschrift.append)
+        return v
+    monkeypatch.setattr(konten, "db", db_mit_mitschrift)
+    setzen(u.a)
+    gross = [s.strip().upper() for s in mitschrift]
+    zaehlen = next(i for i, s in enumerate(gross) if s.startswith("SELECT COUNT(*) FROM PROFIL"))
+    assert any(s.startswith("BEGIN IMMEDIATE") for s in gross[:zaehlen]), mitschrift
+
+
+def test_profil_setzen_obergrenze_bei_gleichzeitigkeit(zwei, monkeypatch):
+    """#578 F003, AC-5: Obergrenze 1, zwei gleichzeitige Neuanlagen: genau eine gelingt, die andere bekommt profil_voll.
+    Die Schranke sitzt zwischen Zählen und Einfügen (beim Lesen der Obergrenze). Ohne Schreibsperre zählen beide null
+    und legen beide an; mit Sperre kommt der zweite Aufruf erst nach dem Einfügen des ersten zum Zählen, die Schranke
+    läuft für den ersten ab und er schreibt allein."""
+    import threading
+    u = zwei()
+    schranke = threading.Barrier(2)
+
+    def grenze():
+        try:
+            schranke.wait(timeout=2)
+        except threading.BrokenBarrierError:
+            pass
+        return 1
+    monkeypatch.setattr(instanz, "grenze_profil_eintraege", grenze)
+    ergebnisse = []
+
+    def anlegen(bereich):
+        try:
+            ergebnisse.append(setzen(u.a, bereich, "Beispielwert")["id"])
+        except konten.KontoFehler as f:
+            ergebnisse.append(f.schluessel)
+    faeden = [threading.Thread(target=anlegen, args=(b,)) for b in ("Essen", "Tempo")]
+    for f in faeden:
+        f.start()
+    for f in faeden:
+        f.join(timeout=30)
+    assert len(ergebnisse) == 2, ergebnisse
+    assert ergebnisse.count("konto.fehler.profil_voll") == 1, ergebnisse
+    assert len(konten.profil_liste(u.a["id"])) == 1
+
+
+def test_profil_setzen_frische_datenbank(tmp_path, monkeypatch):
+    """#578 F003, AC-6: profil_setzen als erster Zugriff auf eine noch nicht angelegte Kontendatenbank gelingt ohne
+    „cannot start a transaction within a transaction“. Schutz für BEGIN IMMEDIATE; schon vor der Korrektur grün."""
+    monkeypatch.setenv("FR_KONTEN", str(tmp_path / "frisch"))
+    assert not (tmp_path / "frisch" / "konten.db").exists()
+    e = konten.profil_setzen("konto-beispiel", "Essen", "vegetarisch", "Gespräch")
+    assert e["id"] == "PR-1" and len(konten.profil_liste("konto-beispiel")) == 1
