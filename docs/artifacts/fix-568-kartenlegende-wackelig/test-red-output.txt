@@ -1,0 +1,171 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFF                                                               [100%]
+=================================== FAILURES ===================================
+___________ test_skripte_warten_auf_signal[seiten_karte_legende.mjs] ___________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+skript = 'seiten_karte_legende.mjs'
+
+    @pytest.mark.parametrize("skript", ["seiten_karte_legende.mjs", "seiten_bilder_csp.mjs"])
+    def test_skripte_warten_auf_signal(skript):
+        """AC-4: Vor dem ersten Zugriff auf .ekarte warten die Messskripte auf html[data-geladen]."""
+        quelle = (TESTS / skript).read_text(encoding="utf-8")
+        karte = quelle.index('waitForSelector(".ekarte"')
+>       assert "html[data-geladen]" in quelle[:karte], f"{skript}: kein Wartepunkt auf das Signal vor .ekarte"
+E       AssertionError: seiten_karte_legende.mjs: kein Wartepunkt auf das Signal vor .ekarte
+E       assert 'html[data-geladen]' in '// Legende der Karten nach Arten am Telefon (ADR-0007 Schritt d, frieda-reist#296), aufgerufen von test_karte_legende...n: r.left >= -1 && r.right <= innerWidth + 1};\n}), [sel]);\n// Etappenkarte\nawait p.goto(basis + "#E-01");\nawait p.'
+
+engine/tests/test_wartepunkt_geladen.py:77: AssertionError
+____________ test_skripte_warten_auf_signal[seiten_bilder_csp.mjs] _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+skript = 'seiten_bilder_csp.mjs'
+
+    @pytest.mark.parametrize("skript", ["seiten_karte_legende.mjs", "seiten_bilder_csp.mjs"])
+    def test_skripte_warten_auf_signal(skript):
+        """AC-4: Vor dem ersten Zugriff auf .ekarte warten die Messskripte auf html[data-geladen]."""
+        quelle = (TESTS / skript).read_text(encoding="utf-8")
+        karte = quelle.index('waitForSelector(".ekarte"')
+>       assert "html[data-geladen]" in quelle[:karte], f"{skript}: kein Wartepunkt auf das Signal vor .ekarte"
+E       AssertionError: seiten_bilder_csp.mjs: kein Wartepunkt auf das Signal vor .ekarte
+E       assert 'html[data-geladen]' in '// Bilder Stufe 1 (#455, #581, V10): die gebaute Beispielreise unter der Meta-CSP img-src \'self\' data:, aufgerufen ...h("console: " + m.text()); });\n\n// Etappenkarte: Kacheln und Ebenen-Symbol\nawait p.goto(basis + "#E-01");\nawait p.'
+
+engine/tests/test_wartepunkt_geladen.py:77: AssertionError
+__________________ test_vorlage_setzt_signal_nach_neuzeichnen __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_vorlage_setzt_signal_nach_neuzeichnen():
+        """AC-1 statisch: Das Signal steht im then-Zweig nach route(true), nicht davor."""
+        v = (WURZEL / "engine/vorlage.html").read_text(encoding="utf-8")
+        start = v.index("Promise.all([ichLaden()")
+        zweig = v[start:v.index("\n\n", start)]
+>       assert "route(true)" in zweig and "dataset.geladen" in zweig, zweig
+E       AssertionError: Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden(), psLaden()]).then(() => route(true));
+E       assert ('route(true)' in 'Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden(), psLaden()]).then(() => route(true));' and 'dataset.geladen' in 'Promise.all([ichLaden(), rmLaden(), agLaden(), brLaden(), blLaden(), psLaden()]).then(() => route(true));')
+
+engine/tests/test_wartepunkt_geladen.py:85: AssertionError
+__________________________ test_doku_nennt_wartepunkt __________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_doku_nennt_wartepunkt():
+        """AC-5: docs/design.md nennt data-geladen als Wartepunkt für Browsertests."""
+        d = (WURZEL / "docs/design.md").read_text(encoding="utf-8")
+>       assert "data-geladen" in d, "docs/design.md nennt das Signal nicht"
+E       AssertionError: docs/design.md nennt das Signal nicht
+E       assert 'data-geladen' in '# Design: Grundregeln und Bausteine\n\nDie Seite folgt einem Designsystem (Issue #18): wenige Bausteine, die jede Ans...n einen Reiter und in die Quellen, Kennung und Fenster, Merkmallisten ohne doppelte Kennzahlen, gestapelte Tabellen.\n'
+
+engine/tests/test_wartepunkt_geladen.py:92: AssertionError
+______________ test_signal_ohne_dienst[stadtwochenende--chromium] ______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw1/test_signal_ohne_dienst_stadtw0')
+browser = 'chromium', reise = 'stadtwochenende', anker = ''
+
+    @ohne_browser
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("reise,anker", REISEN)
+    def test_signal_ohne_dienst(tmp_path, browser, reise, anker):
+        """AC-1: Auch wenn alle Lader scheitern (api/** abgebrochen), setzt die Seite html[data-geladen] nach dem Neuzeichnen."""
+        a = sonde(tmp_path, reise, anker, browser)
+>       assert a["geladen"] and a["signal"] == "1", a
+E       AssertionError: {'gesamt': 2, 'nachSignal': 0, 'signal': None, 'karteGleich': None, ...}
+E       assert (False)
+
+engine/tests/test_wartepunkt_geladen.py:57: AssertionError
+____________ test_kein_neuzeichnen_nach_signal[beispielreise-E-01] _____________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw3/test_kein_neuzeichnen_nach_sig0')
+reise = 'beispielreise', anker = 'E-01'
+
+    @ohne_browser
+    @pytest.mark.parametrize("reise,anker", REISEN)
+    def test_kein_neuzeichnen_nach_signal(tmp_path, reise, anker):
+        """AC-2: Nach dem Signal ersetzt der Erstaufbau #main nicht mehr; die Etappenkarte bleibt dasselbe Element."""
+        a = sonde(tmp_path, reise, anker)
+>       assert a["geladen"], a
+E       AssertionError: {'gesamt': 2, 'nachSignal': 0, 'signal': None, 'karteGleich': None, ...}
+E       assert False
+
+engine/tests/test_wartepunkt_geladen.py:66: AssertionError
+_____________ test_signal_ohne_dienst[beispielreise-E-01-chromium] _____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw0/test_signal_ohne_dienst_beispi0')
+browser = 'chromium', reise = 'beispielreise', anker = 'E-01'
+
+    @ohne_browser
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("reise,anker", REISEN)
+    def test_signal_ohne_dienst(tmp_path, browser, reise, anker):
+        """AC-1: Auch wenn alle Lader scheitern (api/** abgebrochen), setzt die Seite html[data-geladen] nach dem Neuzeichnen."""
+        a = sonde(tmp_path, reise, anker, browser)
+>       assert a["geladen"] and a["signal"] == "1", a
+E       AssertionError: {'gesamt': 2, 'nachSignal': 0, 'signal': None, 'karteGleich': None, ...}
+E       assert (False)
+
+engine/tests/test_wartepunkt_geladen.py:57: AssertionError
+_____________ test_kein_neuzeichnen_nach_signal[stadtwochenende-] ______________
+[gw3] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw3/test_kein_neuzeichnen_nach_sig1')
+reise = 'stadtwochenende', anker = ''
+
+    @ohne_browser
+    @pytest.mark.parametrize("reise,anker", REISEN)
+    def test_kein_neuzeichnen_nach_signal(tmp_path, reise, anker):
+        """AC-2: Nach dem Signal ersetzt der Erstaufbau #main nicht mehr; die Etappenkarte bleibt dasselbe Element."""
+        a = sonde(tmp_path, reise, anker)
+>       assert a["geladen"], a
+E       AssertionError: {'gesamt': 2, 'nachSignal': 0, 'signal': None, 'karteGleich': None, ...}
+E       assert False
+
+engine/tests/test_wartepunkt_geladen.py:66: AssertionError
+______________ test_signal_ohne_dienst[beispielreise-E-01-webkit] ______________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw0/test_signal_ohne_dienst_beispi1')
+browser = 'webkit', reise = 'beispielreise', anker = 'E-01'
+
+    @ohne_browser
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("reise,anker", REISEN)
+    def test_signal_ohne_dienst(tmp_path, browser, reise, anker):
+        """AC-1: Auch wenn alle Lader scheitern (api/** abgebrochen), setzt die Seite html[data-geladen] nach dem Neuzeichnen."""
+        a = sonde(tmp_path, reise, anker, browser)
+>       assert a["geladen"] and a["signal"] == "1", a
+E       AssertionError: {'gesamt': 2, 'nachSignal': 0, 'signal': None, 'karteGleich': None, ...}
+E       assert (False)
+
+engine/tests/test_wartepunkt_geladen.py:57: AssertionError
+_______________ test_signal_ohne_dienst[stadtwochenende--webkit] _______________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+tmp_path = PosixPath('<tmp>/popen-gw1/test_signal_ohne_dienst_stadtw1')
+browser = 'webkit', reise = 'stadtwochenende', anker = ''
+
+    @ohne_browser
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("reise,anker", REISEN)
+    def test_signal_ohne_dienst(tmp_path, browser, reise, anker):
+        """AC-1: Auch wenn alle Lader scheitern (api/** abgebrochen), setzt die Seite html[data-geladen] nach dem Neuzeichnen."""
+        a = sonde(tmp_path, reise, anker, browser)
+>       assert a["geladen"] and a["signal"] == "1", a
+E       AssertionError: {'gesamt': 2, 'nachSignal': 0, 'signal': None, 'karteGleich': None, ...}
+E       assert (False)
+
+engine/tests/test_wartepunkt_geladen.py:57: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_wartepunkt_geladen.py::test_skripte_warten_auf_signal[seiten_karte_legende.mjs]
+FAILED engine/tests/test_wartepunkt_geladen.py::test_skripte_warten_auf_signal[seiten_bilder_csp.mjs]
+FAILED engine/tests/test_wartepunkt_geladen.py::test_vorlage_setzt_signal_nach_neuzeichnen
+FAILED engine/tests/test_wartepunkt_geladen.py::test_doku_nennt_wartepunkt - ...
+FAILED engine/tests/test_wartepunkt_geladen.py::test_signal_ohne_dienst[stadtwochenende--chromium]
+FAILED engine/tests/test_wartepunkt_geladen.py::test_kein_neuzeichnen_nach_signal[beispielreise-E-01]
+FAILED engine/tests/test_wartepunkt_geladen.py::test_signal_ohne_dienst[beispielreise-E-01-chromium]
+FAILED engine/tests/test_wartepunkt_geladen.py::test_kein_neuzeichnen_nach_signal[stadtwochenende-]
+FAILED engine/tests/test_wartepunkt_geladen.py::test_signal_ohne_dienst[beispielreise-E-01-webkit]
+FAILED engine/tests/test_wartepunkt_geladen.py::test_signal_ohne_dienst[stadtwochenende--webkit]
+10 failed in 40.72s
