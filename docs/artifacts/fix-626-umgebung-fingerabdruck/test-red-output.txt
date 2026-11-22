@@ -1,0 +1,103 @@
+..FF...F                                                                 [100%]
+=================================== FAILURES ===================================
+__________________ test_626_rot_bleibt_uebersprungen_mit_npm ___________________
+
+mit_npm = namespace(lauf=<function sw.<locals>.lauf at 0x74dc2edbe980>, neuer_commit=<function sw.<locals>.neuer_commit at 0x74d..._uebersprun0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<benutzer>/pytest-1610/test_626_rot_bleibt_uebersprun0/rotmelden.sh'})
+
+    def test_626_rot_bleibt_uebersprungen_mit_npm(mit_npm):
+        """AC-1 (#626): Mit npm (Playwright-Kopie der Instanz) und unveränderter Umgebung wird ein gescheiterter Deploy der
+        Dienste im nächsten Takt übersprungen, nicht als „environment changed“ erneut ausgerollt. Bisher fehlte vor
+        abhaengigkeiten_playwright die Playwright-Version im Fingerabdruck, danach war sie drin: jeder Takt rollte neu aus."""
+        sw = mit_npm
+        c = _dienste_rot(sw)
+        r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+>       assert "environment changed" not in r.stdout, r.stdout
+E       AssertionError: Known red state 4befa1a, checking again (environment changed).
+E         Software 4befa1a: required checks green on GitHub (same commit), server tests skipped (#403).
+E         Software 39bd198 -> 4befa1a.
+E         Publishing software 4befa1a neu
+E         ERROR: deploy of the services with software 4befa1a failed (exit 1); back to the last good software state 39bd198, the pages stay at their last good state.
+E         
+E       assert 'environment changed' not in 'Known red s...ood state.\n'
+E         
+E         'environment changed' is contained here:
+E           Known red state 4befa1a, checking again (environment changed).
+E         ?                                          +++++++++++++++++++
+E           Software 4befa1a: required checks green on GitHub (same commit), server tests skipped (#403).
+E           Software 39bd198 -> 4befa1a.
+E           Publishing software 4befa1a neu
+E           ERROR: deploy of the services with software 4befa1a failed (exit 1); back to the last good software state 39bd198, the pages stay at their last good state.
+
+engine/tests/test_software_weg_454.py:777: AssertionError
+______________ test_626_rot_der_art_reise_gleicher_fingerabdruck _______________
+
+mit_npm = namespace(lauf=<function sw.<locals>.lauf at 0x74dc2edabec0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x74d...t_reise_gle0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<benutzer>/pytest-1610/test_626_rot_der_art_reise_gle0/rotmelden.sh'})
+
+    def test_626_rot_der_art_reise_gleicher_fingerabdruck(mit_npm):
+        """AC-2 (#626): Eine Rot-Datei der Art reise entsteht nach abhaengigkeiten_playwright. Ihr Fingerabdruck muss dem eines
+        späteren Laufs vor abhaengigkeiten_playwright gleichen: Steht derselbe Stand erneut zur Prüfung an, ohne dass sich
+        Umgebung, Commit oder Frist geändert haben, wird er übersprungen. Nachgestellt, indem die Rot-Datei auf den nächsten
+        Commit zeigt (der Vergleich in rot_erneut_pruefen ist für beide Arten derselbe)."""
+        sw = mit_npm
+        rot_reise = REISEN[0]
+        deploy = sw.t / "deploy.sh"
+        deploy.write_text(deploy.read_text().replace(
+            'kopf=$(git -C "$FR_WURZEL" rev-parse HEAD)\n',
+            f'kopf=$(git -C "$FR_WURZEL" rev-parse HEAD)\n[ "$1" = {rot_reise} ] && [ -e {sw.t}/rot-reise ] && exit 2\n'))
+        (sw.t / "rot-reise").touch()
+        r = sw.lauf(VF_JETZT=str(T0))
+        assert r.returncode != 0, r.stdout
+        rot = _rot(sw)
+        assert rot["art"] == "reise" and rot_reise in rot["reisen"], rot
+        sw.nachweis_gruen()
+        c = sw.neuer_commit()
+        datei = sw.dienst / "veroeffentlichen-rot"
+        datei.write_text(datei.read_text().replace(f"commit={rot['commit']}", f"commit={c}"))
+        r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+>       assert "environment changed" not in r.stdout, r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         ERROR: build of beispielreise failed, the trip stays at its last good state.
+E         Known red state bbc4a32, checking again (environment changed).
+E         Software bbc4a32: required checks green on GitHub (same commit), server tests skipped (#403).
+E         Software d990936 -> bbc4a32.
+E         Publishing software bbc4a32 neu
+E         Publishing beispielreise from the trip store, state 1.
+E         ERROR: build of beispielreise failed, the trip stays at its last good state.
+E         Software changed (d990936 -> bbc4a32): converting stadtwochenende from the trip store.
+E           nichts umzustellen
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Published stadtwochenende state 1 again (already on the page).
+E         Red: trips from the trip store not built: beispielreise.
+E         
+E       assert 'environment changed' not in 'Publishing ...pielreise.\n'
+E         
+E         'environment changed' is contained here:
+E           ng again (environment changed).
+E           Software bbc4a32: required checks green on GitHub (same commit), server tests skipped (#403).
+E           Software d990936 -> bbc4a32.
+E           Publishing software bbc4a32 neu
+E           Publishing beispielreise from the trip store, state 1....
+E         
+E         ...Full output truncated (6 lines hidden), use '-vv' to show
+
+engine/tests/test_software_weg_454.py:803: AssertionError
+__________ test_626_kopfkommentar_nennt_quelle_der_playwright_version __________
+
+    def test_626_kopfkommentar_nennt_quelle_der_playwright_version():
+        """AC-7 (#626): Der Kopfkommentar von umgebung_stand nennt, woher die Playwright-Version kommt (Einstellung beim Start,
+        sonst Kopie der Instanz), und dass der Wert nicht von der Reihenfolge im Lauf abhängt."""
+        text = (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+        start = text.index("umgebung_stand() {")
+        kopf = text[start:text.index("\n  {", start)]
+>       assert "#626" in kopf, kopf
+E       AssertionError: umgebung_stand() {  # Fingerabdruck der Prüfumgebung: installierte Bibliotheken, Python, Node, Playwright (#203)
+E           if [ -n "${VF_UMGEBUNG+x}" ]; then printf '%s' "$VF_UMGEBUNG" | sha256sum | cut -c1-16; return; fi
+E           # Jeder Teil darf fehlen (kein Python, kein Node, kein Playwright): dann zählt er leer, der Lauf bricht nicht ab
+E       assert '#626' in 'umgebung_stand() {  # Fingerabdruck der Prüfumgebung: installierte Bibliotheken, Python, Node, Playwright (#203)\n  i...fi\n  # Jeder Teil darf fehlen (kein Python, kein Node, kein Playwright): dann zählt er leer, der Lauf bricht nicht ab'
+
+engine/tests/test_software_weg_454.py:846: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_software_weg_454.py::test_626_rot_bleibt_uebersprungen_mit_npm
+FAILED engine/tests/test_software_weg_454.py::test_626_rot_der_art_reise_gleicher_fingerabdruck
+FAILED engine/tests/test_software_weg_454.py::test_626_kopfkommentar_nennt_quelle_der_playwright_version
+3 failed, 5 passed, 36 deselected in 16.63s

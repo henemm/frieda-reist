@@ -727,6 +727,126 @@ def test_f002_andere_stoerung_ohne_rueckfall(sw):
     assert sw.kopf() == c and sw.lesen("software-gut") == c
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# #626: Fingerabdruck der Prüfumgebung hängt nicht von der Reihenfolge im Lauf ab
+# ----------------------------------------------------------------------------------------------------------------------
+
+@pytest.fixture
+def mit_npm(sw):
+    """npm-Attrappe (#626): legt bei „ci“ node_modules/playwright mit index.mjs und package.json (Version 1.0.0) an, wie
+    eine echte Installation unter <FR_DIENST>/playwright. Nur wenige Bytes; die Kopie wird nach dem Test entfernt, damit
+    der Wächter aus #628 (PLAYWRIGHT_ATTRAPPEN) nicht anschlägt und die Liste nicht wächst."""
+    npm = ausfuehrbar(sw.t / "npm.sh", '#!/bin/sh\n[ "$1" = ci ] && mkdir -p node_modules/playwright '
+                                       '&& touch node_modules/playwright/index.mjs '
+                                       '&& printf \'{\\n  "name": "playwright",\\n  "version": "1.0.0"\\n}\\n\' '
+                                       '> node_modules/playwright/package.json\nexit 0\n')
+    sw.env["VF_NPM"] = str(npm)
+    yield sw
+    shutil.rmtree(sw.dienst / "playwright", ignore_errors=True)
+
+
+def _pw_version_setzen(sw, version):
+    paket = sw.dienst / "playwright" / "node_modules" / "playwright" / "package.json"
+    assert paket.exists(), "die npm-Attrappe hat Playwright nicht angelegt"
+    paket.write_text('{\n  "name": "playwright",\n  "version": "%s"\n}\n' % version)
+
+
+def _rot(sw):
+    return dict(z.split("=", 1) for z in (sw.dienst / "veroeffentlichen-rot").read_text().splitlines() if "=" in z)
+
+
+def _dienste_rot(sw):
+    """Lauf 1 mit npm: Deploy der Dienste mit neuem Commit c scheitert, Rot-Datei am Commit c. Gibt c zurück."""
+    _ok(sw.lauf())
+    sw.nachweis_gruen()
+    c = sw.neuer_commit()
+    (sw.t / "infra-neu").write_text(c)
+    r = sw.lauf(VF_JETZT=str(T0))
+    assert r.returncode != 0, r.stdout
+    assert _rot(sw)["commit"] == c and len(_dienste_mit(sw, c)) == 1
+    return c
+
+
+def test_626_rot_bleibt_uebersprungen_mit_npm(mit_npm):
+    """AC-1 (#626): Mit npm (Playwright-Kopie der Instanz) und unveränderter Umgebung wird ein gescheiterter Deploy der
+    Dienste im nächsten Takt übersprungen, nicht als „environment changed“ erneut ausgerollt. Bisher fehlte vor
+    abhaengigkeiten_playwright die Playwright-Version im Fingerabdruck, danach war sie drin: jeder Takt rollte neu aus."""
+    sw = mit_npm
+    c = _dienste_rot(sw)
+    r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+    assert "environment changed" not in r.stdout, r.stdout
+    assert f"Known red state {c[:7]}, skipped" in r.stdout, r.stdout
+    assert len(_dienste_mit(sw, c)) == 1 and sw.kopf() == sw.a
+
+
+def test_626_rot_der_art_reise_gleicher_fingerabdruck(mit_npm):
+    """AC-2 (#626): Eine Rot-Datei der Art reise entsteht nach abhaengigkeiten_playwright. Ihr Fingerabdruck muss dem eines
+    späteren Laufs vor abhaengigkeiten_playwright gleichen: Steht derselbe Stand erneut zur Prüfung an, ohne dass sich
+    Umgebung, Commit oder Frist geändert haben, wird er übersprungen. Nachgestellt, indem die Rot-Datei auf den nächsten
+    Commit zeigt (der Vergleich in rot_erneut_pruefen ist für beide Arten derselbe)."""
+    sw = mit_npm
+    rot_reise = REISEN[0]
+    deploy = sw.t / "deploy.sh"
+    deploy.write_text(deploy.read_text().replace(
+        'kopf=$(git -C "$FR_WURZEL" rev-parse HEAD)\n',
+        f'kopf=$(git -C "$FR_WURZEL" rev-parse HEAD)\n[ "$1" = {rot_reise} ] && [ -e {sw.t}/rot-reise ] && exit 2\n'))
+    (sw.t / "rot-reise").touch()
+    r = sw.lauf(VF_JETZT=str(T0))
+    assert r.returncode != 0, r.stdout
+    rot = _rot(sw)
+    assert rot["art"] == "reise" and rot_reise in rot["reisen"], rot
+    sw.nachweis_gruen()
+    c = sw.neuer_commit()
+    datei = sw.dienst / "veroeffentlichen-rot"
+    datei.write_text(datei.read_text().replace(f"commit={rot['commit']}", f"commit={c}"))
+    r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+    assert "environment changed" not in r.stdout, r.stdout
+    assert f"Known red state {c[:7]}, skipped" in r.stdout, r.stdout
+    assert sw.kopf() == sw.a
+
+
+def test_626_neue_playwright_version_zaehlt_als_aenderung(mit_npm):
+    """AC-3 (#626): Eine echte Änderung der Playwright-Kopie unter <FR_DIENST>/playwright (andere Version) gilt weiterhin
+    als geänderte Umgebung: der rote Stand wird neu geprüft."""
+    sw = mit_npm
+    c = _dienste_rot(sw)
+    _pw_version_setzen(sw, "2.0.0")
+    r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+    assert f"Known red state {c[:7]}, checking again (environment changed)" in r.stdout, r.stdout
+
+
+def test_626_vf_umgebung_hat_vorrang(mit_npm):
+    """AC-4 (#626): Mit VF_UMGEBUNG zählt nur dieser Wert (Tests zu #203), auch wenn sich die Playwright-Version ändert."""
+    sw = mit_npm
+    sw.env["VF_UMGEBUNG"] = "fest"
+    c = _dienste_rot(sw)
+    _pw_version_setzen(sw, "2.0.0")
+    r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+    assert f"Known red state {c[:7]}, skipped" in r.stdout, r.stdout
+
+
+def test_626_ohne_playwright_kein_abbruch(sw):
+    """AC-5 (#626): Ohne npm, ohne PLAYWRIGHT_MODUL und ohne Kopie unter <FR_DIENST>/playwright bricht der Lauf nicht ab;
+    der Playwright-Teil des Fingerabdrucks bleibt leer und der rote Stand wird übersprungen."""
+    assert "PLAYWRIGHT_MODUL" not in sw.env
+    c = _dienste_rot(sw)
+    assert not (sw.dienst / "playwright").exists()
+    assert _rot(sw)["umgebung"]
+    r = sw.lauf(VF_JETZT=str(T0 + 5 * MINUTE))
+    assert "environment changed" not in r.stdout, r.stdout
+    assert f"Known red state {c[:7]}, skipped" in r.stdout, r.stdout
+
+
+def test_626_kopfkommentar_nennt_quelle_der_playwright_version():
+    """AC-7 (#626): Der Kopfkommentar von umgebung_stand nennt, woher die Playwright-Version kommt (Einstellung beim Start,
+    sonst Kopie der Instanz), und dass der Wert nicht von der Reihenfolge im Lauf abhängt."""
+    text = (BETRIEB / "veroeffentlichen.sh").read_text(encoding="utf-8")
+    start = text.index("umgebung_stand() {")
+    kopf = text[start:text.index("\n  {", start)]
+    assert "#626" in kopf, kopf
+    assert "Reihenfolge" in kopf and "<FR_DIENST>/playwright" in kopf, kopf
+
+
 def _venv_attrappe(sw):
     return ausfuehrbar(sw.t / "venv-echt.sh", f'#!/bin/sh\necho "$1" >> {sw.t}/venv.log\n'
                                               f'mkdir -p "$1/bin" && ln -sf {sys.executable} "$1/bin/python"\n')
