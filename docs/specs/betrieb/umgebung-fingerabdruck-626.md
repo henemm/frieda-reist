@@ -69,7 +69,7 @@ Eine echte Neuinstallation von Playwright mit anderer Version unter `<FR_DIENST>
 | `VF_UMGEBUNG` | Testvariable (#203) | überschreibt den Fingerabdruck, behält Vorrang |
 | `VF_NPM` | Testvariable (#628) | npm-Pfad; Standard in Tests: nicht vorhanden; der Regressionstest setzt gezielt eine Attrappe |
 | `betrieb/deploy.sh`, `engine/konnektor.py` | Muster | gleicher Rückfall ohne `PLAYWRIGHT_MODUL` |
-| `PLAYWRIGHT_ATTRAPPEN` in `engine/tests/conftest.py` | Wächter (#628) | Tests mit Playwright-Attrappe unter `tmp_path` müssen dort stehen |
+| `PLAYWRIGHT_ATTRAPPEN` in `engine/tests/conftest.py` | Wächter (#628) | Tests mit Playwright-Attrappe unter `tmp_path` stehen dort oder räumen sie selbst weg (hier: Fixture `mit_npm`) |
 
 ## Scope
 
