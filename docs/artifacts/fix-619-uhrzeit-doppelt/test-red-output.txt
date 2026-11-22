@@ -1,0 +1,710 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+rootdir: ~/frieda-reist/.claude/worktrees/functional-jumping-lantern
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collecting ... collected 28 items
+
+tests/test_zeit_doppelt.py::test_uhrzeit_hinter_freitext_entfaellt FAILED [  3%]
+tests/test_zeit_doppelt.py::test_nur_uhrzeit_entfaellt_ganz FAILED       [  7%]
+tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16:00\u201318:00 Uhr-16:00-18:00-] FAILED [ 10%]
+tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16.00\u201318.00 Uhr-16:00-18:00-] FAILED [ 14%]
+tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16-18 Uhr-16:00-18:00-] FAILED [ 17%]
+tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16\u201318-16:00-18:00-] FAILED [ 21%]
+tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[13 Uhr, Treffpunkt am Tor-13:00-15:00-Treffpunkt am Tor] FAILED [ 25%]
+tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[Sonntag \xb7 13 Uhr-13:00-15:00-Sonntag] FAILED [ 28%]
+tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16:30 Uhr-16:30-None-] FAILED [ 32%]
+tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[Sonntag Vormittag-10:00-12:00] FAILED [ 35%]
+tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[ab 16 Uhr-16:00-18:00] FAILED [ 39%]
+tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[17\u201319 Uhr-16:00-18:00] FAILED [ 42%]
+tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[16:30 Uhr-16:00-18:00] FAILED [ 46%]
+tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[16\u201319 Uhr-16:00-18:00] FAILED [ 50%]
+tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[18 Uhr-16:00-18:00] FAILED [ 53%]
+tests/test_zeit_doppelt.py::test_ohne_beginn_bleibt_alles FAILED         [ 57%]
+tests/test_zeit_doppelt.py::test_einheit_aus_dem_katalog_jeder_sprache FAILED [ 60%]
+tests/test_zeit_doppelt.py::test_code_kennt_kein_einheitswort FAILED     [ 64%]
+tests/test_zeit_doppelt.py::test_seitendaten_tragen_den_anzeigetext[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00] FAILED [ 67%]
+tests/test_zeit_doppelt.py::test_seitendaten_tragen_den_anzeigetext[stadtwochenende-A-01-13 Uhr--13:00\u201315:00] FAILED [ 71%]
+tests/test_zeit_doppelt.py::test_jeder_freitext_bekommt_ein_anzeigefeld FAILED [ 75%]
+tests/test_zeit_doppelt.py::test_etiketten_der_vorlage_lesen_den_anzeigetext FAILED [ 78%]
+tests/test_zeit_doppelt.py::test_konnektor_nennt_die_uhrzeit_einmal[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00] FAILED [ 82%]
+tests/test_zeit_doppelt.py::test_konnektor_nennt_die_uhrzeit_einmal[stadtwochenende-A-01-13 Uhr--13:00\u201315:00] FAILED [ 85%]
+tests/test_zeit_doppelt.py::test_kalender_termin_ohne_doppelte_uhrzeit[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00] FAILED [ 89%]
+tests/test_zeit_doppelt.py::test_kalender_termin_ohne_doppelte_uhrzeit[stadtwochenende-A-01-13 Uhr--13:00\u201315:00] FAILED [ 92%]
+tests/test_zeit_doppelt.py::test_gespeicherte_daten_bleiben[beispielreise] FAILED [ 96%]
+tests/test_zeit_doppelt.py::test_gespeicherte_daten_bleiben[stadtwochenende] FAILED [100%]
+
+=================================== FAILURES ===================================
+____________________ test_uhrzeit_hinter_freitext_entfaellt ____________________
+
+    def test_uhrzeit_hinter_freitext_entfaellt():
+        """Test 1 (AC-1): „nach der Wanderung, 16–18 Uhr“ bei 16:00–18:00 → nur noch der Freitext."""
+>       assert zou("nach der Wanderung, 16–18 Uhr", "16:00", "18:00") == "nach der Wanderung"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:39: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = 'nach der Wanderung, 16–18 Uhr', beginn = '16:00', ende = '18:00'
+einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+_______________________ test_nur_uhrzeit_entfaellt_ganz ________________________
+
+    def test_nur_uhrzeit_entfaellt_ganz():
+        """Test 2 (AC-1): „13 Uhr“ bei 13:00–15:00 (eine Zeit gleich dem Beginn) → leer."""
+>       assert zou("13 Uhr", "13:00", "15:00") == ""
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:44: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '13 Uhr', beginn = '13:00', ende = '15:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+____ test_weitere_schreibweisen_passend[16:00\u201318:00 Uhr-16:00-18:00-] _____
+
+zeit = '16:00–18:00 Uhr', beginn = '16:00', ende = '18:00', rest = ''
+
+    @pytest.mark.parametrize("zeit, beginn, ende, rest", [
+        ("16:00–18:00 Uhr", "16:00", "18:00", ""),          # Minuten ausgeschrieben
+        ("16.00–18.00 Uhr", "16:00", "18:00", ""),          # Punkt statt Doppelpunkt
+        ("16-18 Uhr", "16:00", "18:00", ""),                # einfacher Bindestrich
+        ("16–18", "16:00", "18:00", ""),                    # ohne Einheitswort
+        ("13 Uhr, Treffpunkt am Tor", "13:00", "15:00", "Treffpunkt am Tor"),
+        ("Sonntag · 13 Uhr", "13:00", "15:00", "Sonntag"),
+        ("16:30 Uhr", "16:30", None, ""),
+    ])
+    def test_weitere_schreibweisen_passend(zeit, beginn, ende, rest):
+>       assert zou(zeit, beginn, ende) == rest
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16:00–18:00 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+____ test_weitere_schreibweisen_passend[16.00\u201318.00 Uhr-16:00-18:00-] _____
+
+zeit = '16.00–18.00 Uhr', beginn = '16:00', ende = '18:00', rest = ''
+
+    @pytest.mark.parametrize("zeit, beginn, ende, rest", [
+        ("16:00–18:00 Uhr", "16:00", "18:00", ""),          # Minuten ausgeschrieben
+        ("16.00–18.00 Uhr", "16:00", "18:00", ""),          # Punkt statt Doppelpunkt
+        ("16-18 Uhr", "16:00", "18:00", ""),                # einfacher Bindestrich
+        ("16–18", "16:00", "18:00", ""),                    # ohne Einheitswort
+        ("13 Uhr, Treffpunkt am Tor", "13:00", "15:00", "Treffpunkt am Tor"),
+        ("Sonntag · 13 Uhr", "13:00", "15:00", "Sonntag"),
+        ("16:30 Uhr", "16:30", None, ""),
+    ])
+    def test_weitere_schreibweisen_passend(zeit, beginn, ende, rest):
+>       assert zou(zeit, beginn, ende) == rest
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16.00–18.00 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+__________ test_weitere_schreibweisen_passend[16-18 Uhr-16:00-18:00-] __________
+
+zeit = '16-18 Uhr', beginn = '16:00', ende = '18:00', rest = ''
+
+    @pytest.mark.parametrize("zeit, beginn, ende, rest", [
+        ("16:00–18:00 Uhr", "16:00", "18:00", ""),          # Minuten ausgeschrieben
+        ("16.00–18.00 Uhr", "16:00", "18:00", ""),          # Punkt statt Doppelpunkt
+        ("16-18 Uhr", "16:00", "18:00", ""),                # einfacher Bindestrich
+        ("16–18", "16:00", "18:00", ""),                    # ohne Einheitswort
+        ("13 Uhr, Treffpunkt am Tor", "13:00", "15:00", "Treffpunkt am Tor"),
+        ("Sonntag · 13 Uhr", "13:00", "15:00", "Sonntag"),
+        ("16:30 Uhr", "16:30", None, ""),
+    ])
+    def test_weitere_schreibweisen_passend(zeit, beginn, ende, rest):
+>       assert zou(zeit, beginn, ende) == rest
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16-18 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+_________ test_weitere_schreibweisen_passend[16\u201318-16:00-18:00-] __________
+
+zeit = '16–18', beginn = '16:00', ende = '18:00', rest = ''
+
+    @pytest.mark.parametrize("zeit, beginn, ende, rest", [
+        ("16:00–18:00 Uhr", "16:00", "18:00", ""),          # Minuten ausgeschrieben
+        ("16.00–18.00 Uhr", "16:00", "18:00", ""),          # Punkt statt Doppelpunkt
+        ("16-18 Uhr", "16:00", "18:00", ""),                # einfacher Bindestrich
+        ("16–18", "16:00", "18:00", ""),                    # ohne Einheitswort
+        ("13 Uhr, Treffpunkt am Tor", "13:00", "15:00", "Treffpunkt am Tor"),
+        ("Sonntag · 13 Uhr", "13:00", "15:00", "Sonntag"),
+        ("16:30 Uhr", "16:30", None, ""),
+    ])
+    def test_weitere_schreibweisen_passend(zeit, beginn, ende, rest):
+>       assert zou(zeit, beginn, ende) == rest
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16–18', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+_ test_weitere_schreibweisen_passend[13 Uhr, Treffpunkt am Tor-13:00-15:00-Treffpunkt am Tor] _
+
+zeit = '13 Uhr, Treffpunkt am Tor', beginn = '13:00', ende = '15:00'
+rest = 'Treffpunkt am Tor'
+
+    @pytest.mark.parametrize("zeit, beginn, ende, rest", [
+        ("16:00–18:00 Uhr", "16:00", "18:00", ""),          # Minuten ausgeschrieben
+        ("16.00–18.00 Uhr", "16:00", "18:00", ""),          # Punkt statt Doppelpunkt
+        ("16-18 Uhr", "16:00", "18:00", ""),                # einfacher Bindestrich
+        ("16–18", "16:00", "18:00", ""),                    # ohne Einheitswort
+        ("13 Uhr, Treffpunkt am Tor", "13:00", "15:00", "Treffpunkt am Tor"),
+        ("Sonntag · 13 Uhr", "13:00", "15:00", "Sonntag"),
+        ("16:30 Uhr", "16:30", None, ""),
+    ])
+    def test_weitere_schreibweisen_passend(zeit, beginn, ende, rest):
+>       assert zou(zeit, beginn, ende) == rest
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '13 Uhr, Treffpunkt am Tor', beginn = '13:00', ende = '15:00'
+einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+_ test_weitere_schreibweisen_passend[Sonntag \xb7 13 Uhr-13:00-15:00-Sonntag] __
+
+zeit = 'Sonntag · 13 Uhr', beginn = '13:00', ende = '15:00', rest = 'Sonntag'
+
+    @pytest.mark.parametrize("zeit, beginn, ende, rest", [
+        ("16:00–18:00 Uhr", "16:00", "18:00", ""),          # Minuten ausgeschrieben
+        ("16.00–18.00 Uhr", "16:00", "18:00", ""),          # Punkt statt Doppelpunkt
+        ("16-18 Uhr", "16:00", "18:00", ""),                # einfacher Bindestrich
+        ("16–18", "16:00", "18:00", ""),                    # ohne Einheitswort
+        ("13 Uhr, Treffpunkt am Tor", "13:00", "15:00", "Treffpunkt am Tor"),
+        ("Sonntag · 13 Uhr", "13:00", "15:00", "Sonntag"),
+        ("16:30 Uhr", "16:30", None, ""),
+    ])
+    def test_weitere_schreibweisen_passend(zeit, beginn, ende, rest):
+>       assert zou(zeit, beginn, ende) == rest
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = 'Sonntag · 13 Uhr', beginn = '13:00', ende = '15:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+__________ test_weitere_schreibweisen_passend[16:30 Uhr-16:30-None-] ___________
+
+zeit = '16:30 Uhr', beginn = '16:30', ende = None, rest = ''
+
+    @pytest.mark.parametrize("zeit, beginn, ende, rest", [
+        ("16:00–18:00 Uhr", "16:00", "18:00", ""),          # Minuten ausgeschrieben
+        ("16.00–18.00 Uhr", "16:00", "18:00", ""),          # Punkt statt Doppelpunkt
+        ("16-18 Uhr", "16:00", "18:00", ""),                # einfacher Bindestrich
+        ("16–18", "16:00", "18:00", ""),                    # ohne Einheitswort
+        ("13 Uhr, Treffpunkt am Tor", "13:00", "15:00", "Treffpunkt am Tor"),
+        ("Sonntag · 13 Uhr", "13:00", "15:00", "Sonntag"),
+        ("16:30 Uhr", "16:30", None, ""),
+    ])
+    def test_weitere_schreibweisen_passend(zeit, beginn, ende, rest):
+>       assert zou(zeit, beginn, ende) == rest
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16:30 Uhr', beginn = '16:30', ende = None, einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+_______ test_freitext_bleibt_unveraendert[Sonntag Vormittag-10:00-12:00] _______
+
+zeit = 'Sonntag Vormittag', beginn = '10:00', ende = '12:00'
+
+    @pytest.mark.parametrize("zeit, beginn, ende", [
+        ("Sonntag Vormittag", "10:00", "12:00"),            # keine Uhrzeit im Text (Test 3)
+        ("ab 16 Uhr", "16:00", "18:00"),                    # „ab“ trägt Bedeutung (Test 3)
+        ("17–19 Uhr", "16:00", "18:00"),                    # widerspricht dem Fenster: nie verstecken (Test 4)
+        ("16:30 Uhr", "16:00", "18:00"),                    # andere Minute
+        ("16–19 Uhr", "16:00", "18:00"),                    # Ende passt nicht
+        ("18 Uhr", "16:00", "18:00"),                       # eine Zeit, aber nicht der Beginn
+    ])
+    def test_freitext_bleibt_unveraendert(zeit, beginn, ende):
+        """Test 3 und 4 (AC-2)."""
+>       assert zou(zeit, beginn, ende) == zeit
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = 'Sonntag Vormittag', beginn = '10:00', ende = '12:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+___________ test_freitext_bleibt_unveraendert[ab 16 Uhr-16:00-18:00] ___________
+
+zeit = 'ab 16 Uhr', beginn = '16:00', ende = '18:00'
+
+    @pytest.mark.parametrize("zeit, beginn, ende", [
+        ("Sonntag Vormittag", "10:00", "12:00"),            # keine Uhrzeit im Text (Test 3)
+        ("ab 16 Uhr", "16:00", "18:00"),                    # „ab“ trägt Bedeutung (Test 3)
+        ("17–19 Uhr", "16:00", "18:00"),                    # widerspricht dem Fenster: nie verstecken (Test 4)
+        ("16:30 Uhr", "16:00", "18:00"),                    # andere Minute
+        ("16–19 Uhr", "16:00", "18:00"),                    # Ende passt nicht
+        ("18 Uhr", "16:00", "18:00"),                       # eine Zeit, aber nicht der Beginn
+    ])
+    def test_freitext_bleibt_unveraendert(zeit, beginn, ende):
+        """Test 3 und 4 (AC-2)."""
+>       assert zou(zeit, beginn, ende) == zeit
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = 'ab 16 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+________ test_freitext_bleibt_unveraendert[17\u201319 Uhr-16:00-18:00] _________
+
+zeit = '17–19 Uhr', beginn = '16:00', ende = '18:00'
+
+    @pytest.mark.parametrize("zeit, beginn, ende", [
+        ("Sonntag Vormittag", "10:00", "12:00"),            # keine Uhrzeit im Text (Test 3)
+        ("ab 16 Uhr", "16:00", "18:00"),                    # „ab“ trägt Bedeutung (Test 3)
+        ("17–19 Uhr", "16:00", "18:00"),                    # widerspricht dem Fenster: nie verstecken (Test 4)
+        ("16:30 Uhr", "16:00", "18:00"),                    # andere Minute
+        ("16–19 Uhr", "16:00", "18:00"),                    # Ende passt nicht
+        ("18 Uhr", "16:00", "18:00"),                       # eine Zeit, aber nicht der Beginn
+    ])
+    def test_freitext_bleibt_unveraendert(zeit, beginn, ende):
+        """Test 3 und 4 (AC-2)."""
+>       assert zou(zeit, beginn, ende) == zeit
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '17–19 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+___________ test_freitext_bleibt_unveraendert[16:30 Uhr-16:00-18:00] ___________
+
+zeit = '16:30 Uhr', beginn = '16:00', ende = '18:00'
+
+    @pytest.mark.parametrize("zeit, beginn, ende", [
+        ("Sonntag Vormittag", "10:00", "12:00"),            # keine Uhrzeit im Text (Test 3)
+        ("ab 16 Uhr", "16:00", "18:00"),                    # „ab“ trägt Bedeutung (Test 3)
+        ("17–19 Uhr", "16:00", "18:00"),                    # widerspricht dem Fenster: nie verstecken (Test 4)
+        ("16:30 Uhr", "16:00", "18:00"),                    # andere Minute
+        ("16–19 Uhr", "16:00", "18:00"),                    # Ende passt nicht
+        ("18 Uhr", "16:00", "18:00"),                       # eine Zeit, aber nicht der Beginn
+    ])
+    def test_freitext_bleibt_unveraendert(zeit, beginn, ende):
+        """Test 3 und 4 (AC-2)."""
+>       assert zou(zeit, beginn, ende) == zeit
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16:30 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+________ test_freitext_bleibt_unveraendert[16\u201319 Uhr-16:00-18:00] _________
+
+zeit = '16–19 Uhr', beginn = '16:00', ende = '18:00'
+
+    @pytest.mark.parametrize("zeit, beginn, ende", [
+        ("Sonntag Vormittag", "10:00", "12:00"),            # keine Uhrzeit im Text (Test 3)
+        ("ab 16 Uhr", "16:00", "18:00"),                    # „ab“ trägt Bedeutung (Test 3)
+        ("17–19 Uhr", "16:00", "18:00"),                    # widerspricht dem Fenster: nie verstecken (Test 4)
+        ("16:30 Uhr", "16:00", "18:00"),                    # andere Minute
+        ("16–19 Uhr", "16:00", "18:00"),                    # Ende passt nicht
+        ("18 Uhr", "16:00", "18:00"),                       # eine Zeit, aber nicht der Beginn
+    ])
+    def test_freitext_bleibt_unveraendert(zeit, beginn, ende):
+        """Test 3 und 4 (AC-2)."""
+>       assert zou(zeit, beginn, ende) == zeit
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16–19 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+____________ test_freitext_bleibt_unveraendert[18 Uhr-16:00-18:00] _____________
+
+zeit = '18 Uhr', beginn = '16:00', ende = '18:00'
+
+    @pytest.mark.parametrize("zeit, beginn, ende", [
+        ("Sonntag Vormittag", "10:00", "12:00"),            # keine Uhrzeit im Text (Test 3)
+        ("ab 16 Uhr", "16:00", "18:00"),                    # „ab“ trägt Bedeutung (Test 3)
+        ("17–19 Uhr", "16:00", "18:00"),                    # widerspricht dem Fenster: nie verstecken (Test 4)
+        ("16:30 Uhr", "16:00", "18:00"),                    # andere Minute
+        ("16–19 Uhr", "16:00", "18:00"),                    # Ende passt nicht
+        ("18 Uhr", "16:00", "18:00"),                       # eine Zeit, aber nicht der Beginn
+    ])
+    def test_freitext_bleibt_unveraendert(zeit, beginn, ende):
+        """Test 3 und 4 (AC-2)."""
+>       assert zou(zeit, beginn, ende) == zeit
+               ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:71: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '18 Uhr', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+________________________ test_ohne_beginn_bleibt_alles _________________________
+
+    def test_ohne_beginn_bleibt_alles():
+        """Test 4 (AC-2): ohne Zeitfenster wird nichts verändert."""
+>       assert zou("nach der Wanderung, 16–18 Uhr", None, None) == "nach der Wanderung, 16–18 Uhr"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:76: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = 'nach der Wanderung, 16–18 Uhr', beginn = None, ende = None
+einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+__________________ test_einheit_aus_dem_katalog_jeder_sprache __________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76413116f7a0>
+
+    def test_einheit_aus_dem_katalog_jeder_sprache(monkeypatch):
+        """Test 5 (AC-3): Das Einheitswort kommt aus seite.zeit.uhr; en (leer) und die Pseudo-Sprache der Tests entfernen
+        „16–18“ ebenso, ohne dass der Code eine Sprache beim Namen kennt."""
+        monkeypatch.setenv("FR_TEXTE_ZUSATZ", "xx")
+        assert "xx" in texte.sprachen()
+        for k in texte.sprachen():
+            e = einheit(k)
+>           assert zou("16–18", "16:00", "18:00", e) == "", (k, e)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_zeit_doppelt.py:89: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+zeit = '16–18', beginn = '16:00', ende = '18:00', einheit = 'Uhr'
+
+    def zou(zeit, beginn, ende, einheit="Uhr"):
+>       return routen.zeit_ohne_uhr(zeit, beginn, ende, einheit)
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:27: AttributeError
+______________________ test_code_kennt_kein_einheitswort _______________________
+
+    def test_code_kennt_kein_einheitswort():
+        """AC-3: Das Wort „Uhr“ steht nicht im Code der Hilfsfunktion, nur im Katalog."""
+        import inspect
+>       quelle = inspect.getsource(routen.zeit_ohne_uhr)
+                                   ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'routen' has no attribute 'zeit_ohne_uhr'
+
+tests/test_zeit_doppelt.py:99: AttributeError
+_ test_seitendaten_tragen_den_anzeigetext[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00] _
+
+gebaut = {'beispielreise': {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische ...p><em>Herkunft: erfunden (Beispiel); geschrieben am 11.11.2026 von Tom über den Konnektor.</em></p>', ...}, ...], ...}}
+reise = 'beispielreise', aid = 'A-01', zeit = 'nach der Wanderung, 16–18 Uhr'
+rest = 'nach der Wanderung', fenster = '16:00–18:00'
+
+    @pytest.mark.parametrize("reise, aid, zeit, rest, fenster", FAELLE)
+    def test_seitendaten_tragen_den_anzeigetext(gebaut, reise, aid, zeit, rest, fenster):
+        """Test 6 (AC-4, AC-5): zeit_rest ist der Anzeigetext, zeit bleibt wie gespeichert."""
+        a = gebaut[reise]["route"]["aufenthalte"][aid]
+        assert a["zeit"] == zeit
+>       assert a["zeit_rest"] == rest
+               ^^^^^^^^^^^^^^
+E       KeyError: 'zeit_rest'
+
+tests/test_zeit_doppelt.py:125: KeyError
+_ test_seitendaten_tragen_den_anzeigetext[stadtwochenende-A-01-13 Uhr--13:00\u201315:00] _
+
+gebaut = {'beispielreise': {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische ...p><em>Herkunft: erfunden (Beispiel); geschrieben am 11.11.2026 von Tom über den Konnektor.</em></p>', ...}, ...], ...}}
+reise = 'stadtwochenende', aid = 'A-01', zeit = '13 Uhr', rest = ''
+fenster = '13:00–15:00'
+
+    @pytest.mark.parametrize("reise, aid, zeit, rest, fenster", FAELLE)
+    def test_seitendaten_tragen_den_anzeigetext(gebaut, reise, aid, zeit, rest, fenster):
+        """Test 6 (AC-4, AC-5): zeit_rest ist der Anzeigetext, zeit bleibt wie gespeichert."""
+        a = gebaut[reise]["route"]["aufenthalte"][aid]
+        assert a["zeit"] == zeit
+>       assert a["zeit_rest"] == rest
+               ^^^^^^^^^^^^^^
+E       KeyError: 'zeit_rest'
+
+tests/test_zeit_doppelt.py:125: KeyError
+_________________ test_jeder_freitext_bekommt_ein_anzeigefeld __________________
+
+gebaut = {'beispielreise': {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische ...p><em>Herkunft: erfunden (Beispiel); geschrieben am 11.11.2026 von Tom über den Konnektor.</em></p>', ...}, ...], ...}}
+
+    def test_jeder_freitext_bekommt_ein_anzeigefeld(gebaut):
+        """Test 6: Jeder Aufenthalt und jede Unterkunft mit Freitext trägt das Anzeigefeld; ohne Zeitfenster gleich dem Freitext."""
+        geprueft = 0
+        for d in gebaut.values():
+            r = d["route"]
+            for x in list((r.get("aufenthalte") or {}).values()) + list((r.get("unterkuenfte") or {}).values()):
+                if x.get("zeit"):
+                    geprueft += 1
+>                   assert "zeit_rest" in x, x.get("name")
+E                   AssertionError: Burg Hohnstein
+E                   assert 'zeit_rest' in {'name': 'Burg Hohnstein', 'ort': 'O-03', 'zeit': 'nach der Wanderung, 16–18 Uhr', 'beginn': '16:00', ...}
+
+tests/test_zeit_doppelt.py:136: AssertionError
+_______________ test_etiketten_der_vorlage_lesen_den_anzeigetext _______________
+
+    def test_etiketten_der_vorlage_lesen_den_anzeigetext():
+        """Test 6: Jedes Etikett, das das Zeitfenster zeigt (Aufenthaltszeile, Unterkunftskarte, Zeile ohne Tag), liest
+        zeit_rest statt zeit; die Vorlage rechnet nichts."""
+        q = (WURZEL / "engine" / "vorlage.html").read_text(encoding="utf-8")
+        stellen = re.findall(r"\[[^\[\]]*uhrText\((\w+)\)\]", q)
+        ganze = re.findall(r"\[[^\[\]]*uhrText\(\w+\)\]", q)
+        assert len(ganze) >= 3, ganze
+        for x, stelle in zip(stellen, ganze):
+>           assert f"{x}.zeit_rest ?? {x}.zeit" in stelle, stelle
+E           AssertionError: [artName(a.art), a.zeit, uhrText(a)]
+E           assert 'a.zeit_rest ?? a.zeit' in '[artName(a.art), a.zeit, uhrText(a)]'
+
+tests/test_zeit_doppelt.py:152: AssertionError
+_ test_konnektor_nennt_die_uhrzeit_einmal[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00] _
+
+gebaut = {'beispielreise': {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische ...p><em>Herkunft: erfunden (Beispiel); geschrieben am 11.11.2026 von Tom über den Konnektor.</em></p>', ...}, ...], ...}}
+reise = 'beispielreise', aid = 'A-01', zeit = 'nach der Wanderung, 16–18 Uhr'
+rest = 'nach der Wanderung', fenster = '16:00–18:00'
+
+    @pytest.mark.parametrize("reise, aid, zeit, rest, fenster", FAELLE)
+    def test_konnektor_nennt_die_uhrzeit_einmal(gebaut, reise, aid, zeit, rest, fenster):
+        """Test 7 (AC-4): show und Tagestext nennen die Uhrzeit je einmal."""
+        h = kn.Handbuch(gebaut[reise])
+        zeile = h.aufenthalt(aid)
+>       assert zeile.count("Uhr") == 1, zeile
+E       AssertionError: Burg Hohnstein (A-01), Besichtigung, nach der Wanderung, 16–18 Uhr, 16:00–18:00 Uhr, Buchung: offen
+E       assert 2 == 1
+E        +  where 2 = <built-in method count of str object at 0x764130794e30>('Uhr')
+E        +    where <built-in method count of str object at 0x764130794e30> = 'Burg Hohnstein (A-01), Besichtigung, nach der Wanderung, 16–18 Uhr, 16:00–18:00 Uhr, Buchung: offen'.count
+
+tests/test_zeit_doppelt.py:161: AssertionError
+_ test_konnektor_nennt_die_uhrzeit_einmal[stadtwochenende-A-01-13 Uhr--13:00\u201315:00] _
+
+gebaut = {'beispielreise': {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische ...p><em>Herkunft: erfunden (Beispiel); geschrieben am 11.11.2026 von Tom über den Konnektor.</em></p>', ...}, ...], ...}}
+reise = 'stadtwochenende', aid = 'A-01', zeit = '13 Uhr', rest = ''
+fenster = '13:00–15:00'
+
+    @pytest.mark.parametrize("reise, aid, zeit, rest, fenster", FAELLE)
+    def test_konnektor_nennt_die_uhrzeit_einmal(gebaut, reise, aid, zeit, rest, fenster):
+        """Test 7 (AC-4): show und Tagestext nennen die Uhrzeit je einmal."""
+        h = kn.Handbuch(gebaut[reise])
+        zeile = h.aufenthalt(aid)
+>       assert zeile.count("Uhr") == 1, zeile
+E       AssertionError: Mittagessen bei Onkel Paul (A-01), Essen, 13 Uhr, 13:00–15:00 Uhr, Buchung: offen
+E       assert 2 == 1
+E        +  where 2 = <built-in method count of str object at 0x764130790d50>('Uhr')
+E        +    where <built-in method count of str object at 0x764130790d50> = 'Mittagessen bei Onkel Paul (A-01), Essen, 13 Uhr, 13:00–15:00 Uhr, Buchung: offen'.count
+
+tests/test_zeit_doppelt.py:161: AssertionError
+_ test_kalender_termin_ohne_doppelte_uhrzeit[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00] _
+
+gebaut = {'beispielreise': {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische ...p><em>Herkunft: erfunden (Beispiel); geschrieben am 11.11.2026 von Tom über den Konnektor.</em></p>', ...}, ...], ...}}
+reise = 'beispielreise', aid = 'A-01', zeit = 'nach der Wanderung, 16–18 Uhr'
+rest = 'nach der Wanderung', fenster = '16:00–18:00'
+
+    @pytest.mark.parametrize("reise, aid, zeit, rest, fenster", FAELLE)
+    def test_kalender_termin_ohne_doppelte_uhrzeit(gebaut, reise, aid, zeit, rest, fenster):
+        """Test 8 (AC-4): Der Termin trägt die Uhrzeit selbst; der Termintext nennt sie nicht noch einmal."""
+        e = [x for x in kalender.eintraege(gebaut[reise]) if x["id"] == aid and x["sorte"] == "aufenthalte"]
+        assert e, aid
+        for x in e:
+            assert isinstance(x.get("beginn"), datetime.datetime), x
+>           assert zeit not in x["text"], x["text"]
+E           AssertionError: nach der Wanderung, 16–18 Uhr
+E             erfundenes Beispiel; Burg über dem Polenztal
+E           assert 'nach der Wa...g, 16–18 Uhr' not in 'nach der Wa...em Polenztal'
+E             
+E             'nach der Wanderung, 16–18 Uhr' is contained here:
+E               nach der Wanderung, 16–18 Uhr
+E               erfundenes Beispiel; Burg über dem Polenztal
+
+tests/test_zeit_doppelt.py:183: AssertionError
+_ test_kalender_termin_ohne_doppelte_uhrzeit[stadtwochenende-A-01-13 Uhr--13:00\u201315:00] _
+
+gebaut = {'beispielreise': {'reise': {'titel': 'Beispielreise – Malerweg in vier Tagen', 'untertitel': 'Dresden und Sächsische ...p><em>Herkunft: erfunden (Beispiel); geschrieben am 11.11.2026 von Tom über den Konnektor.</em></p>', ...}, ...], ...}}
+reise = 'stadtwochenende', aid = 'A-01', zeit = '13 Uhr', rest = ''
+fenster = '13:00–15:00'
+
+    @pytest.mark.parametrize("reise, aid, zeit, rest, fenster", FAELLE)
+    def test_kalender_termin_ohne_doppelte_uhrzeit(gebaut, reise, aid, zeit, rest, fenster):
+        """Test 8 (AC-4): Der Termin trägt die Uhrzeit selbst; der Termintext nennt sie nicht noch einmal."""
+        e = [x for x in kalender.eintraege(gebaut[reise]) if x["id"] == aid and x["sorte"] == "aufenthalte"]
+        assert e, aid
+        for x in e:
+            assert isinstance(x.get("beginn"), datetime.datetime), x
+>           assert zeit not in x["text"], x["text"]
+E           AssertionError: 13 Uhr
+E           assert '13 Uhr' not in '13 Uhr'
+E             
+E             '13 Uhr' is contained here:
+E               13 Uhr
+
+tests/test_zeit_doppelt.py:183: AssertionError
+________________ test_gespeicherte_daten_bleiben[beispielreise] ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-834/test_gespeicherte_daten_bleibe0')
+reise = 'beispielreise'
+
+    @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
+    def test_gespeicherte_daten_bleiben(tmp_path, reise):
+        """Test 9 (AC-5): Das Bauen verändert die Reisedaten nicht; zeit, beginn und ende bleiben, kein nachziehen nötig."""
+        q = tmp_path / reise
+        shutil.copytree(BEISPIELE / reise, q)
+        vorher = (q / "plan" / "routen.yaml").read_bytes()
+        d = bauen.bauen(q, tmp_path / "web" / reise)
+        assert (q / "plan" / "routen.yaml").read_bytes() == vorher
+        a = d["route"]["aufenthalte"]["A-01"]
+        zeit, fenster = next((f[2], f[4]) for f in FAELLE if f[0] == reise)
+        assert a["zeit"] == zeit and f"{a['beginn']}–{a['ende']}" == fenster
+>       assert "zeit_rest" in a   # das Anzeigefeld steht nur in den Seitendaten
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 'zeit_rest' in {'name': 'Burg Hohnstein', 'ort': 'O-03', 'zeit': 'nach der Wanderung, 16–18 Uhr', 'beginn': '16:00', ...}
+
+tests/test_zeit_doppelt.py:199: AssertionError
+_______________ test_gespeicherte_daten_bleiben[stadtwochenende] _______________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-834/test_gespeicherte_daten_bleibe1')
+reise = 'stadtwochenende'
+
+    @pytest.mark.parametrize("reise", ["beispielreise", "stadtwochenende"])
+    def test_gespeicherte_daten_bleiben(tmp_path, reise):
+        """Test 9 (AC-5): Das Bauen verändert die Reisedaten nicht; zeit, beginn und ende bleiben, kein nachziehen nötig."""
+        q = tmp_path / reise
+        shutil.copytree(BEISPIELE / reise, q)
+        vorher = (q / "plan" / "routen.yaml").read_bytes()
+        d = bauen.bauen(q, tmp_path / "web" / reise)
+        assert (q / "plan" / "routen.yaml").read_bytes() == vorher
+        a = d["route"]["aufenthalte"]["A-01"]
+        zeit, fenster = next((f[2], f[4]) for f in FAELLE if f[0] == reise)
+        assert a["zeit"] == zeit and f"{a['beginn']}–{a['ende']}" == fenster
+>       assert "zeit_rest" in a   # das Anzeigefeld steht nur in den Seitendaten
+        ^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: assert 'zeit_rest' in {'name': 'Mittagessen bei Onkel Paul', 'ort': 'O-02', 'zeit': '13 Uhr', 'beginn': '13:00', ...}
+
+tests/test_zeit_doppelt.py:199: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_zeit_doppelt.py::test_uhrzeit_hinter_freitext_entfaellt - A...
+FAILED tests/test_zeit_doppelt.py::test_nur_uhrzeit_entfaellt_ganz - Attribut...
+FAILED tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16:00\u201318:00 Uhr-16:00-18:00-]
+FAILED tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16.00\u201318.00 Uhr-16:00-18:00-]
+FAILED tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16-18 Uhr-16:00-18:00-]
+FAILED tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16\u201318-16:00-18:00-]
+FAILED tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[13 Uhr, Treffpunkt am Tor-13:00-15:00-Treffpunkt am Tor]
+FAILED tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[Sonntag \xb7 13 Uhr-13:00-15:00-Sonntag]
+FAILED tests/test_zeit_doppelt.py::test_weitere_schreibweisen_passend[16:30 Uhr-16:30-None-]
+FAILED tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[Sonntag Vormittag-10:00-12:00]
+FAILED tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[ab 16 Uhr-16:00-18:00]
+FAILED tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[17\u201319 Uhr-16:00-18:00]
+FAILED tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[16:30 Uhr-16:00-18:00]
+FAILED tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[16\u201319 Uhr-16:00-18:00]
+FAILED tests/test_zeit_doppelt.py::test_freitext_bleibt_unveraendert[18 Uhr-16:00-18:00]
+FAILED tests/test_zeit_doppelt.py::test_ohne_beginn_bleibt_alles - AttributeE...
+FAILED tests/test_zeit_doppelt.py::test_einheit_aus_dem_katalog_jeder_sprache
+FAILED tests/test_zeit_doppelt.py::test_code_kennt_kein_einheitswort - Attrib...
+FAILED tests/test_zeit_doppelt.py::test_seitendaten_tragen_den_anzeigetext[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00]
+FAILED tests/test_zeit_doppelt.py::test_seitendaten_tragen_den_anzeigetext[stadtwochenende-A-01-13 Uhr--13:00\u201315:00]
+FAILED tests/test_zeit_doppelt.py::test_jeder_freitext_bekommt_ein_anzeigefeld
+FAILED tests/test_zeit_doppelt.py::test_etiketten_der_vorlage_lesen_den_anzeigetext
+FAILED tests/test_zeit_doppelt.py::test_konnektor_nennt_die_uhrzeit_einmal[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00]
+FAILED tests/test_zeit_doppelt.py::test_konnektor_nennt_die_uhrzeit_einmal[stadtwochenende-A-01-13 Uhr--13:00\u201315:00]
+FAILED tests/test_zeit_doppelt.py::test_kalender_termin_ohne_doppelte_uhrzeit[beispielreise-A-01-nach der Wanderung, 16\u201318 Uhr-nach der Wanderung-16:00\u201318:00]
+FAILED tests/test_zeit_doppelt.py::test_kalender_termin_ohne_doppelte_uhrzeit[stadtwochenende-A-01-13 Uhr--13:00\u201315:00]
+FAILED tests/test_zeit_doppelt.py::test_gespeicherte_daten_bleiben[beispielreise]
+FAILED tests/test_zeit_doppelt.py::test_gespeicherte_daten_bleiben[stadtwochenende]
+============================== 28 failed in 2.53s ==============================
