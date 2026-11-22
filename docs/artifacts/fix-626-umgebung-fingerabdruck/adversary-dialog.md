@@ -21,7 +21,21 @@ Datum: 2026-11-22 21:55
 **Adversary:** Randfälle per isolierter Ausführung von umgebung_stand unter `set -euo pipefail`: FR_DIENST leer -> rc=0; PLAYWRIGHT_MODUL auf nicht existente Datei -> rc=0 (grep scheitert, `|| true`). Unterschalen: pw_modul_einstellung ist eine normale Shell-Variable, Unterschalen (software_pruefen, Zeile 662) erben sie; abhaengigkeiten_playwright setzt sie nicht, daher in Eltern und Kind gleicher Wert. Beobachtung: Ist PLAYWRIGHT_MODUL eingestellt, wird die Kopie unter FR_DIENST ignoriert (kein Rückfall); beide Seiten des Vergleichs nutzen dieselbe Regel, daher stabil. deploy.sh und konnektor.py unverändert (git status: nur veroeffentlichen.sh modifiziert). F002 ist grün; bei AC-1 durch test_626_rot_bleibt_uebersprungen_mit_npm mit npm-Attrappe abgedeckt (grün).
 **Implementierer:** (Gerüst)
 
+### Runde 3
+**Adversary:** Nachprüfung nach rotem CI-Lauf: .github/workflows/tests.yml setzt PLAYWRIGHT_MODUL in GITHUB_ENV, die Tests test_626_* erbten es über sw.env (SAUBER filtert nur FR_/VF_). Fix: Fixture mit_npm (engine/tests/test_software_weg_454.py:744) und Test 5 (:832) entfernen die Variable. `PLAYWRIGHT_MODUL=<attrappe 9.9.9> pytest engine/tests/test_software_weg_454.py`: 44 passed; ohne Variable: 44 passed. Das Ausblenden schwächt keinen Test: AC-3/AC-4 prüfen erst dadurch die Kopie unter <FR_DIENST>/playwright, AC-5 stellt die Vorbedingung her statt sie nur anzunehmen. Andere Tests setzen oder blenden die Variable selbst aus (test_seite_ansehen.py, test_betrieb.py:662). CI des PR danach: tests (leer), tests (instanz), gitleaks grün.
+**Implementierer:** Übernommen; Hinweis (zentral im Fixture sw ausblenden) als F002 LOW vermerkt, keine Änderung nötig.
+
 ## Findings
+Finding:
+  ID: F002
+  Severity: LOW
+  Category: maintainability
+  Code reference: engine/tests/test_software_weg_454.py:744
+  Description: PLAYWRIGHT_MODUL wird je Test ausgeblendet statt zentral im Fixture sw.
+  Spec requirement: AC-3, AC-5 — Tests ohne eingestelltes PLAYWRIGHT_MODUL
+  Conflict: Kein Verstoß; beide betroffenen Stellen blenden aus, alle Tests grün.
+  Remediation: keine nötig.
+
 Finding:
   ID: F001
   Severity: LOW
@@ -104,3 +118,14 @@ Tests: 44 passed (Datei), 3488 passed (Gesamtlauf laut Nachweis), 0 failed. Edge
 - base: a0af665793aa742a870a5b1399ca360f5dd2acaf
 - blob:1a222e6bb2eda1b0b40d3abafa9b79644dd5bf2a  betrieb/veroeffentlichen.sh
 - blob:427eaad5c241884cf826546719fbcf591370829c  engine/tests/test_software_weg_454.py
+
+## Geprüfte Dateien
+
+- sha256:220053c1b1f3d74dda1b85491e31dc02ca396b16e8b9c879c8bcb55fed7e3399  betrieb/veroeffentlichen.sh
+- sha256:95b88c7b0e8359580643f8cfafbf29dd1ef5eb02de9cae21b9e39167aa456bf5  engine/tests/test_software_weg_454.py
+
+## Prüfbasis
+
+- base: f2a935715ab2ff4733a57e890fe72386b447eb7a
+- blob:1a222e6bb2eda1b0b40d3abafa9b79644dd5bf2a  betrieb/veroeffentlichen.sh
+- blob:1ff18183d7194ab8e268e0c040f525aaf99cfd4f  engine/tests/test_software_weg_454.py
