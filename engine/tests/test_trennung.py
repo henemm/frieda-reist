@@ -235,15 +235,17 @@ def test_waechter_und_erinnerer_nur_an_eigene_reise(zwei):
     u = zwei(status="fest", bausteine=["varianten", "karte", "tagesseiten", "rueckmeldungen", "fragen", "aufgaben",
                                        "wuensche", "waechter"],
              stadt_status="fest", stadt_bausteine=bausteine)
+    heute = D.today()
+    frist = (heute + datetime.timedelta(days=3)).isoformat()
     for reise, wer in (("beispielreise", "Karl"), ("stadtwochenende", "Tom")):
-        a, fehler = rm.aufgabe_anlegen(u.ablage / reise, {"name": wer, "titel": f"Frist {wer}", "frist": "2026-11-10",
+        a, fehler = rm.aufgabe_anlegen(u.ablage / reise, {"name": wer, "titel": f"Frist {wer}", "frist": frist,
                                                          "zustaendig": wer})
         assert not fehler, fehler
     personen = {r: {p["name"] for p in (kn.daten(r).get("reise") or {}).get("personen") or []}
                 for r in ("beispielreise", "stadtwochenende")}
     gesamt = 0
     for reise in ("beispielreise", "stadtwochenende"):
-        erg = wa.lauf_reise(reise, D(2026, 11, 7))
+        erg = wa.lauf_reise(reise, heute)
         for m in erg["meldungen"]:
             assert set(m["an"]) <= personen[reise], (reise, m)
             gesamt += 1
