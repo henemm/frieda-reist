@@ -388,6 +388,50 @@ def lage_merkmale_falten(d, wo, fehl):
     return neu
 
 
+_ZEIT_TEIL = r"(\d{1,2})(?:[:.](\d{2}))?"
+_ZEIT_ANGABE = re.compile(rf"{_ZEIT_TEIL}(?:\s*[–-]\s*{_ZEIT_TEIL})?")
+
+
+def uhr_einheit(sprache):
+    """Einheitswort einer Sprache für Uhrzeiten: der Text von seite.zeit.uhr ohne die Zeit (kann leer sein, ADR-0006)."""
+    return texte.t(sprache, "seite.zeit.uhr", zeit="").strip()
+
+
+def _uhr_minuten(h, m):
+    return int(h) * 60 + int(m or 0)
+
+
+def _nur_fenster(stueck, beginn, ende, einheit):
+    """Ist das Teilstück ausschließlich eine Uhrzeitangabe, die genau zum Zeitfenster passt? (#619)"""
+    if einheit and stueck.endswith(einheit) and (stueck[:-len(einheit)] == "" or stueck[:-len(einheit)][-1].isspace()):
+        stueck = stueck[:-len(einheit)].rstrip()
+    m = _ZEIT_ANGABE.fullmatch(stueck)
+    if not m:
+        return False
+    try:
+        b = _uhr_minuten(*beginn.split(":")[:2])
+        e = _uhr_minuten(*ende.split(":")[:2]) if ende else None
+    except (ValueError, TypeError, AttributeError):
+        return False
+    if _uhr_minuten(m[1], m[2]) != b:
+        return False
+    return m[3] is None or (e is not None and _uhr_minuten(m[3], m[4]) == e)
+
+
+def zeit_ohne_uhr(zeit, beginn, ende, einheit):
+    """Anzeigetext des freien Zeittexts neben dem Zeitfenster beginn/ende (#619): Teilstücke (getrennt an , ; ·), die nur eine
+    zum Fenster passende Uhrzeit sind, fallen weg; alles andere bleibt. Ohne beginn oder im Zweifel unverändert.
+    einheit ist das Einheitswort der Sprache (uhr_einheit), der Code kennt keine Sprache."""
+    if not zeit or not beginn or not isinstance(zeit, str) or not isinstance(beginn, str):
+        return zeit
+    teile = re.split(r"(\s*[,;·]\s*)", zeit)
+    stuecke = [("", teile[0])] + [(teile[i], teile[i + 1]) for i in range(1, len(teile), 2)]
+    bleiben = [(s, x) for s, x in stuecke if not _nur_fenster(x.strip(), beginn, ende, (einheit or "").strip())]
+    if len(bleiben) == len(stuecke):
+        return zeit
+    return "".join(x if i == 0 else s + x for i, (s, x) in enumerate(bleiben)).strip()
+
+
 LINK_MUSTER = re.compile(r"https?://[^\s<>\"]+\Z", re.I)
 
 

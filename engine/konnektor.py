@@ -71,7 +71,7 @@ import texte  # noqa: E402
 import textform  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort, uhr_einheit, zeit_ohne_uhr  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}\Z")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -923,7 +923,10 @@ class Handbuch:
         a = (self.r.get("aufenthalte") or {}).get(aid) or {}
         art = ((self.r.get("arten") or {}).get(a.get("art")) or {}).get("name") or a.get("art") or ""
         uhr = "–".join(x for x in (a.get("beginn"), a.get("ende")) if x)
-        return ", ".join(x for x in [f"{a.get('name', aid)} ({aid})", art, a.get("zeit"), uhr and tk("konnektor.ausgabe.uhr", w1=uhr),
+        # Freitext ohne die Uhrzeit, die das Zeitfenster schon nennt (#619); Einheitswort in der Sprache der Reise
+        einheit = uhr_einheit((self.d.get("reise") or {}).get("sprache") or texte.VORGABE_REISE)
+        zeit = zeit_ohne_uhr(a.get("zeit"), a.get("beginn"), a.get("ende"), einheit)
+        return ", ".join(x for x in [f"{a.get('name', aid)} ({aid})", art, zeit, uhr and tk("konnektor.ausgabe.uhr", w1=uhr),
                                      tk("konnektor.ausgabe.sammeln.15", w1=dw(a['buchung'])) if a.get("buchung") else ""] if x)
 
     def strecke(self, sid):

@@ -2091,7 +2091,7 @@ function aufenthaltZeile(id, voll) {
   const a = (R.aufenthalte || {})[id];
   if (!a) return null;
   const z = el("div", {class: "z aufenthalt" + (voll ? " ziel" : ""), id: voll ? id : null, "data-ziel": voll ? id : null},
-    dingEtikett([artName(a.art), a.zeit, uhrText(a)].filter(Boolean).join(" · "), a.art, a.art),
+    dingEtikett([artName(a.art), (a.zeit_rest ?? a.zeit), uhrText(a)].filter(Boolean).join(" · "), a.art, a.art),
     el("div", {class: "titelzeile"}, el("span", {}, !voll && a.ohne_tag && heimat(id) ? link(id, a.name) : a.name), zid(id)));
   // Der Stand steht einmal: voll mit Buchung trägt sie ihn, sonst der Chip
   const bs = voll ? buchungenBei(id) : [];
@@ -2269,7 +2269,7 @@ function dingKarte(id, tid, mehr, ohneOrt) {
   // An einer Nacht oder einem Tag zählen nur die Buchungen, deren Zeitraum ihn enthält (#463); an der Heimat ohne Tag alle
   const datum = tid && tag.datum, st = buchungsStandAm(u, id, datum, nachtDing), gebucht = !!(st && st.gebucht);
   // Check-in-Ansicht (#463): gebucht steht der Teaser (hinweis) gleich unter dem Namen, nicht in „Aus der Planung“
-  const etikett = nachtDing ? artName(u.art) || T("seite.etikett.unterkunft") : [artName(u.art), u.zeit, uhrText(u)].filter(Boolean).join(" · ");
+  const etikett = nachtDing ? artName(u.art) || T("seite.etikett.unterkunft") : [artName(u.art), (u.zeit_rest ?? u.zeit), uhrText(u)].filter(Boolean).join(" · ");
   // Die Karte steht nur an der Heimat des Dings (erste Nacht, ADR-0003): dort oben sein Kopfbild (V14)
   const k = el("div", {class: "karte ziel", id, "data-ziel": id}, kopfBild(id), dingEtikett(etikett, u.art, u.art), el("div", {class: "k"}, u.name, zid(id)));
   // Die Art steht im Etikett; der Ort nur, wenn ihn die Nacht oder die Seite nicht schon nennt
@@ -3740,7 +3740,7 @@ for (const id of OHNE_TAG_HIER) zeileZu.set(id, "reise");   // Ersatzheimat ist 
 // Aufenthalt ohne Tag mit Heimat anderswo: Listenzeile mit Link dorthin (#328; die Zeile der Zeitleiste gehört in die Zeitleiste)
 function ohneTagZeile(id) {
   const a = R.aufenthalte[id];
-  return listenZeile("aufenthalt", artSym(a.art, "aufenthalt"), a.name, [artName(a.art), a.zeit, uhrText(a)].filter(Boolean).join(" · ") || null, id, id);
+  return listenZeile("aufenthalt", artSym(a.art, "aufenthalt"), a.name, [artName(a.art), (a.zeit_rest ?? a.zeit), uhrText(a)].filter(Boolean).join(" · ") || null, id, id);
 }
 function ohneTag(m) {
   if (!OHNE_TAG_HIER.length) return;

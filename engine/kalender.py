@@ -155,9 +155,11 @@ def eintraege(daten, aufgaben=None):
             a = aufenth.get(aid)
             if not a or aid in (t.get("aufenthalte_offen") or []):
                 continue
-            text = "\n".join(x for x in (a.get("zeit"), textform.klartext(a.get("hinweis"))) if x) + _buchung_text(r, a.get("buchung_id"), sprache)
-            e = {"sorte": "aufenthalte", "id": aid, "uid": f"{aid}-{tag.isoformat()}", "titel": a.get("name") or aid, "ort": lage(a), "text": text.strip()}
             b, ende = _spanne(tag, a.get("beginn"), a.get("ende"))
+            # Trägt der Termin die Uhrzeit selbst, steht im Text nur der Rest des Freitexts (zeit_rest der Seitendaten, #619)
+            zeit = a.get("zeit_rest", a.get("zeit")) if b else a.get("zeit")
+            text = "\n".join(x for x in (zeit, textform.klartext(a.get("hinweis"))) if x) + _buchung_text(r, a.get("buchung_id"), sprache)
+            e = {"sorte": "aufenthalte", "id": aid, "uid": f"{aid}-{tag.isoformat()}", "titel": a.get("name") or aid, "ort": lage(a), "text": text.strip()}
             if b:
                 e.update(beginn=b, ende=ende)
             else:

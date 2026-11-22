@@ -41,7 +41,7 @@ except ImportError:
              "  python3 -m venv engine/.venv && engine/.venv/bin/pip install -r engine/requirements.txt\n"
              "Then run:  python3 engine/bauen.py <reise>")
 from reise import Reise, bilder_grenzen, eckdaten_text  # noqa: E402
-from routen import FARBEN, Routen, kartenpunkte_aus_dingen, verhalten_anwenden  # noqa: E402
+from routen import FARBEN, Routen, kartenpunkte_aus_dingen, uhr_einheit, verhalten_anwenden, zeit_ohne_uhr  # noqa: E402
 import bilder as bildliste  # noqa: E402
 import gpx  # noqa: E402
 import stand as reisestand  # noqa: E402
@@ -830,6 +830,7 @@ class Bauer:
                 self.karte_bauen(r_cfg, route, lesetexte)
                 self.lage_ergaenzen(route)
                 self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
             if route:
                 for art in ("tagesplan", "unterkuenfte"):
                     if art not in r_cfg:
@@ -1428,6 +1429,15 @@ class Bauer:
                 for wort in STICHWORT.findall(b["html"]):
                     if wort.strip().rstrip(".:").strip().casefold() not in namen:
                         self.hinweise.append(texte.satz("pruefung.bauen.72", eid=eid, w1=wort.strip().rstrip('.:'), art=art, w2=', '.join(r['name'] for r in rubriken)))
+
+    def zeit_anzeigen(self, route):
+        """Anzeigefeld zeit_rest an Unterkunft und Aufenthalt (#619): der freie Zeittext ohne die Uhrzeit, die das
+        Zeitfenster (beginn/ende) schon zeigt; zeit selbst bleibt wie gespeichert. Die Vorlage liest zeit_rest ?? zeit."""
+        einheit = uhr_einheit(self.eck["sprache"])
+        for gruppe in ("unterkuenfte", "aufenthalte"):
+            for d in (route.get(gruppe) or {}).values():
+                if d.get("zeit"):
+                    d["zeit_rest"] = zeit_ohne_uhr(d["zeit"], d.get("beginn"), d.get("ende"), einheit)
 
     def dinge_lesetext(self, route, r_rel):
         """Lesetext an Unterkunft und Aufenthalt (Feld lesetext in routen.yaml, #334) als HTML; ein fettes Stichwort, das keine
