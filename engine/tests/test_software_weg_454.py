@@ -741,6 +741,7 @@ def mit_npm(sw):
                                        '&& printf \'{\\n  "name": "playwright",\\n  "version": "1.0.0"\\n}\\n\' '
                                        '> node_modules/playwright/package.json\nexit 0\n')
     sw.env["VF_NPM"] = str(npm)
+    sw.env.pop("PLAYWRIGHT_MODUL", None)  # CI setzt es für die Seitentests; hier zählt nur die Kopie der Instanz
     yield sw
     shutil.rmtree(sw.dienst / "playwright", ignore_errors=True)
 
@@ -828,7 +829,7 @@ def test_626_vf_umgebung_hat_vorrang(mit_npm):
 def test_626_ohne_playwright_kein_abbruch(sw):
     """AC-5 (#626): Ohne npm, ohne PLAYWRIGHT_MODUL und ohne Kopie unter <FR_DIENST>/playwright bricht der Lauf nicht ab;
     der Playwright-Teil des Fingerabdrucks bleibt leer und der rote Stand wird übersprungen."""
-    assert "PLAYWRIGHT_MODUL" not in sw.env
+    sw.env.pop("PLAYWRIGHT_MODUL", None)  # CI setzt es für die Seitentests
     c = _dienste_rot(sw)
     assert not (sw.dienst / "playwright").exists()
     assert _rot(sw)["umgebung"]
