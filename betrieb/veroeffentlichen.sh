@@ -58,6 +58,7 @@
 # <ordner>: baut das Archiv des alten Bauordners) für das Aufräumen.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/gemeinsam.sh"
+pw_modul_einstellung="${PLAYWRIGHT_MODUL:-}"  # Wert der Instanz beim Start, bevor abhaengigkeiten_playwright ihn setzt (#626)
 
 erfolg_melden() {
   mkdir -p "$FR_DIENST"
@@ -373,12 +374,16 @@ rot_schreiben() {  # <commit> <art> <reisen> [tests]: roter Stand; seit und geme
 
 umgebung_stand() {  # Fingerabdruck der Prüfumgebung: installierte Bibliotheken, Python, Node, Playwright (#203)
   if [ -n "${VF_UMGEBUNG+x}" ]; then printf '%s' "$VF_UMGEBUNG" | sha256sum | cut -c1-16; return; fi
+  # Die Playwright-Version kommt aus der Einstellung PLAYWRIGHT_MODUL beim Start, sonst aus der Kopie der Instanz unter
+  # <FR_DIENST>/playwright (#626). Bewusst nicht aus dem Wert, den abhaengigkeiten_playwright mitten im Lauf setzt: Der
+  # Fingerabdruck hängt so nur vom Zustand auf der Platte ab, nicht von der Reihenfolge im Lauf.
   # Jeder Teil darf fehlen (kein Python, kein Node, kein Playwright): dann zählt er leer, der Lauf bricht nicht ab
+  local modul="${pw_modul_einstellung:-$FR_DIENST/playwright/node_modules/playwright/index.mjs}"
   {
     "$FR_PYTHON" --version 2>/dev/null || true
     "$FR_PYTHON" -m pip freeze --disable-pip-version-check 2>/dev/null || true
     node --version 2>/dev/null || true
-    if [ -n "${PLAYWRIGHT_MODUL:-}" ]; then grep -m1 '"version"' "$(dirname "$PLAYWRIGHT_MODUL")/package.json" 2>/dev/null || true; fi
+    grep -m1 '"version"' "$(dirname "$modul")/package.json" 2>/dev/null || true
   } | sha256sum | cut -c1-16
 }
 
