@@ -1,9 +1,3 @@
----
-spec_file: docs/specs/betrieb/umgebung-fingerabdruck-626.md
-spec_sha256: 6fcc510418df5a021af14afee5f14652a1462ee95015790375a0855ed9f6ead8
-spec_frozen_sha256: 1d797852e1a7380366e1c20ec5b2de2b8d315f38b36d2d3ca31633eac9d1cd1e
----
-
 # PO-Briefing: fix-626-umgebung-fingerabdruck
 
 - **Spec:** docs/specs/betrieb/umgebung-fingerabdruck-626.md
