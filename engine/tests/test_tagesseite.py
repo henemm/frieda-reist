@@ -61,8 +61,9 @@ def test_tagesseite_in_ebenen(tmp_path, browser):
         # Die Nacht kommt zuletzt: nach dem Hintergrund, vor den Quellen (Product Owner 31.10.2026), auf beiden Geräten
         n = a["nacht"]
         assert not n["voll"] and n["hintergrund"] < n["oben"] < n["quellen"], n
-        # Stand-Leiter: nicht gebucht (Pension Burgblick) sind die Einzelheiten offen
-        assert n["einzelheiten"] == [True], n
+        # Beim Laden zu, offen nur der Kern (#632, Product Owner 23.11.2026): auch nicht gebucht (Pension Burgblick) sind die
+        # Einzelheiten zu
+        assert n["einzelheiten"] == [False], n
         # gebucht (Hotel am Elbufer, B-01): Einzelheiten von Unterkunft und Buchung zu; oben die Check-in-Ansicht (#463, Product
         # Owner 9.11.2026): Nummer, Check-in, Check-out, vor Ort zu zahlen; Preis, Zahlung und Storno in den Einzelheiten; der Stand
         # steht einmal (die Buchung trägt ihn, kein Chip an der Karte); im Tageskasten „gebucht“
