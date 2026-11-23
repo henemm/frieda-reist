@@ -1,0 +1,143 @@
+FFFFFFFF...                                                              [100%]
+=================================== FAILURES ===================================
+___________ test_ist_doku_nennt_reisen_repo_nicht_als_aktuellen_ort ____________
+
+    def test_ist_doku_nennt_reisen_repo_nicht_als_aktuellen_ort():
+        """Test 1, AC-10, AC-13: kein Reisen-Repo als aktueller Ort in Ist-Doku, Usage und sichtbaren Texten."""
+        funde = _fundstellen()
+>       assert not funde, "Reisen-Repo als aktueller Ort (privates Repo der Instanz bzw. <FR_DIENST>/instanz/ nennen):\n" + \
+            "\n".join(funde)
+E       AssertionError: Reisen-Repo als aktueller Ort (privates Repo der Instanz bzw. <FR_DIENST>/instanz/ nennen):
+E         CLAUDE.md:44: - Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/`, `werkzeuge/` oder die Engine (Pfade, Adressen, Benutzer, Meldeweg, Kennung kom
+E         CLAUDE.md:59: - Ändert ein PR Meldungstexte, Schnittstellen, Umgebungswerte oder Dateiformate, die eine Instanz nutzt, laufen vor dem Vorspulen auch die Tests der einbindende
+E         README.md:47: Seiten ausliefern, Rückmeldungen annehmen, was der AI-Client über den Konnektor festlegt sofort in die Reise schreiben und veröffentlichen: `betrieb/` mit Anlei
+E         docs/betrieb.md:46: Der Name der Instanz (`FR_INSTANZ`) steht vor Units, Zonen und nginx-Bausteinen und nennt nur diese Instanz, nicht die Software. Eine zweite Reisegruppe bekommt
+E         docs/betrieb.md:57: | Reise (Pläne, Personen, Entscheidungen) | Mitglieder nach Rolle (`reisend`, `einbringer`, `bestimmer`), nie öffentlich ohne Link | Organisator:innen löschen e
+E         docs/betrieb.md:58: | Meldungen an den Betreiber (Text, Zusammenhang, Reise, Zeitpunkt, Konto; #530) | nur der Betreiber (Mail an alle Betreiber-Konten, `konten.py meldungen`, `my_
+E         docs/betrieb.md:66: **Export der Daten (#498):** Auf Mein Konto lädt jede Person mit „Meine Daten herunterladen“ eine ZIP herunter: `person.json` (Name, Adresse, Sprache, Mitglieds
+E         docs/betrieb.md:252: Meldung entstehen nur im privaten Reisen-Repo der Instanz, nie im öffentlichen Repo (Name, Adresse und Text sind
+E         docs/design.md:178: Entwurf und Konzept: Artefakte „Seitenordnung“ im Reisen-Repo der Instanz.
+E         docs/konnektor.md:7: - **Der Konnektor schreibt direkt in die Reise** (seit 29.10.2026, ADR-0001 Paket O-3): Frieda enthält keine KI; was im Gespräch festgelegt wird, prüfen Regeln 
+E         docs/konten.md:187: `--alle` auch erledigte), `meldung-erledigt` hakt eine mit dem Verweis auf das Issue im privaten Reisen-Repo ab (mit
+E         docs/produkt.md:145: Die Rollen und Status der laufenden Reisen stehen in deren `reise.yaml`, die Entscheidungen dazu in der `CLAUDE.md` des Reisen-Repos.
+E         docs/werkzeuge.md:3: Die Werkzeuge unter `werkzeuge/` holen Daten aus dem Netz und legen sie als Dateien in die Reise. Der Generator liest später nur diese Dateien und holt selbst n
+E         betrieb/einstellungen.beispiel:145: # hier: Der Konnektor läuft ohne Zugriff auf das Reisen-Repo und liest nur <FR_DIENST>/konten.env (Zeilen NAME=wert,
+E         betrieb/zustellen.py:12: Aufruf:  zustellen.py <wurzel> <datei>   (mit dem Python der Software; <wurzel> ist das Reisen-Repo, engine/ darin
+E         engine/texte_de.py:2162: "konnektor.ontologie_werkzeug.4": "Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); bis dahin ändert eine
+E         engine/konten.py:37: python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Reisen-Repo
+E         engine/konten.py:903: # Issue im privaten Reisen-Repo der Instanz (konten.py meldung-erledigt).
+E       assert not ['CLAUDE.md:44: - Änderungen gelten für alle Instanzen: nichts Instanzspezifisches in `betrieb/`, `werkzeuge/` oder di..., Reise, Zeitpunkt, Konto; #530) | nur der Betreiber (Mail an alle Betreiber-Konten, `konten.py meldungen`, `my_', ...]
+
+engine/tests/test_meldeweg_ziel_641.py:70: AssertionError
+________________ test_claude_md_und_readme_nennen_instanz_orte _________________
+
+    def test_claude_md_und_readme_nennen_instanz_orte():
+        """AC-10: Einstellungen unter <FR_DIENST>/instanz/, Anleitung der Instanz-Tests im privaten Repo der Instanz."""
+        claude = (WURZEL / "CLAUDE.md").read_text(encoding="utf-8")
+        readme = (WURZEL / "README.md").read_text(encoding="utf-8")
+>       assert "<FR_DIENST>/instanz/einstellungen.env" in claude
+E       AssertionError: assert '<FR_DIENST>/instanz/einstellungen.env' in '# Frieda Reist – Arbeitsregeln für die Software\n\nDieses Repo enthält nur die Software (Generator, Vorlage, Service ...tanzen mit dem Branch (Anleitung im Reisen-Repo der Instanz). Die öffentliche CI kann private Tests nicht ausführen.\n'
+
+engine/tests/test_meldeweg_ziel_641.py:78: AssertionError
+___________ test_betrieb_md_meldeweg_nennt_instanz_repo_und_variable ___________
+
+    def test_betrieb_md_meldeweg_nennt_instanz_repo_und_variable():
+        """AC-10: Abschnitt Meldeweg nennt FR_MELDEN_REPO und das private Repo der Instanz als Ziel der Stufe normal."""
+        betrieb = (WURZEL / "docs/betrieb.md").read_text(encoding="utf-8")
+>       assert "FR_MELDEN_REPO" in betrieb
+E       AssertionError: assert 'FR_MELDEN_REPO' in '# Betrieb einer Instanz\n\nWie Frieda auf einem eigenen Server läuft: Seiten ausliefern, Rückmeldungen annehmen, was ...dungen`, dann `rueckmeldung_erledigen`); `python3 engine/rueckmeldungen.py liste <reise>` zeigt sie auf dem Server |\n'
+
+engine/tests/test_meldeweg_ziel_641.py:86: AssertionError
+_______________ test_meldung_erledigt_verweist_auf_instanz_repo ________________
+
+    def test_meldung_erledigt_verweist_auf_instanz_repo():
+        """Test 2, AC-11: konten.py (Usage, Kommentar) und docs/konten.md nennen das private Repo der Instanz."""
+        for datei in ("engine/konten.py", "docs/konten.md"):
+            text = (WURZEL / datei).read_text(encoding="utf-8")
+>           assert WORT not in text, datei
+E           AssertionError: engine/konten.py
+E           assert 'Reisen-Repo' not in '#!/usr/bin/...argv[1:]))\n'
+E             
+E             'Reisen-Repo' is contained here:
+E                privaten Reisen-Repo
+E                 python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
+E                 python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
+E               """
+E               import datetime...
+E             
+E             ...Full output truncated (1870 lines hidden), use '-vv' to show
+
+engine/tests/test_meldeweg_ziel_641.py:94: AssertionError
+_______ test_ontologie_text_ohne_reisen_repo_in_allen_sprachen[texte_de] _______
+
+katalog = 'texte_de'
+
+    @pytest.mark.parametrize("katalog", sorted(p.stem for p in ENGINE.glob("texte_*.py")))
+    def test_ontologie_text_ohne_reisen_repo_in_allen_sprachen(katalog):
+        """Test 2, AC-11: konnektor.ontologie_werkzeug.4 nennt in keiner Sprache das Reisen-Repo als Ort einer Sitzung."""
+        texte = importlib.import_module(katalog).TEXTE
+        wert = texte["konnektor.ontologie_werkzeug.4"]
+>       assert not re.search(r"reisen-repo|trips? repo", wert, re.IGNORECASE), (katalog, wert)
+E       AssertionError: ('texte_de', 'Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); bis dahin ändert eine Sitzung im Reisen-Repo die Reise.')
+E       assert not <re.Match object; span=(137, 148), match='Reisen-Repo'>
+E        +  where <re.Match object; span=(137, 148), match='Reisen-Repo'> = <function search at 0x79e82d7313a0>('reisen-repo|trips? repo', 'Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); bis dahin ändert eine Sitzung im Reisen-Repo die Reise.', re.IGNORECASE)
+E        +    where <function search at 0x79e82d7313a0> = re.search
+E        +    and   re.IGNORECASE = re.IGNORECASE
+
+engine/tests/test_meldeweg_ziel_641.py:103: AssertionError
+_______ test_ontologie_text_ohne_reisen_repo_in_allen_sprachen[texte_en] _______
+
+katalog = 'texte_en'
+
+    @pytest.mark.parametrize("katalog", sorted(p.stem for p in ENGINE.glob("texte_*.py")))
+    def test_ontologie_text_ohne_reisen_repo_in_allen_sprachen(katalog):
+        """Test 2, AC-11: konnektor.ontologie_werkzeug.4 nennt in keiner Sprache das Reisen-Repo als Ort einer Sitzung."""
+        texte = importlib.import_module(katalog).TEXTE
+        wert = texte["konnektor.ontologie_werkzeug.4"]
+>       assert not re.search(r"reisen-repo|trips? repo", wert, re.IGNORECASE), (katalog, wert)
+E       AssertionError: ('texte_en', 'The write path is not set up on this instance (engine/schreiben.py dienst, docs/betrieb.md); until then a session in the trips repo changes the trip.')
+E       assert not <re.Match object; span=(121, 131), match='trips repo'>
+E        +  where <re.Match object; span=(121, 131), match='trips repo'> = <function search at 0x79e82d7313a0>('reisen-repo|trips? repo', 'The write path is not set up on this instance (engine/schreiben.py dienst, docs/betrieb.md); until then a session in the trips repo changes the trip.', re.IGNORECASE)
+E        +    where <function search at 0x79e82d7313a0> = re.search
+E        +    and   re.IGNORECASE = re.IGNORECASE
+
+engine/tests/test_meldeweg_ziel_641.py:103: AssertionError
+______________ test_einstellungen_beispiel_dokumentiert_meldeziel ______________
+
+    def test_einstellungen_beispiel_dokumentiert_meldeziel():
+        """Test 3, AC-12: FR_MELDEN_REPO steht mit Platzhalter in der Vorlage, das Reisen-Repo nicht als Ort."""
+        beispiel = (BETRIEB / "einstellungen.beispiel").read_text(encoding="utf-8")
+>       assert re.search(r"^#FR_MELDEN_REPO=", beispiel, re.MULTILINE)
+E       AssertionError: assert None
+E        +  where None = <function search at 0x79e82d7313a0>('^#FR_MELDEN_REPO=', '# Einstellungen einer Instanz (docs/betrieb.md). Kopie nach <FR_DIENST>/instanz/einstellungen.env und anpassen.\n# Fo...rsetzt die Vorgabe und gehört in <FR_DIENST>/konten.env. (leer)\n#FR_PUSH_DIENSTE=push.example.org,.push.example.net\n', re.MULTILINE)
+E        +    where <function search at 0x79e82d7313a0> = re.search
+E        +    and   re.MULTILINE = re.MULTILINE
+
+engine/tests/test_meldeweg_ziel_641.py:109: AssertionError
+____________________ test_zustellen_usage_ohne_reisen_repo _____________________
+
+    def test_zustellen_usage_ohne_reisen_repo():
+        """Test 3, AC-12: Usage von zustellen.py nennt den Software-Klon als Wurzel, nicht das Reisen-Repo."""
+>       assert WORT not in (BETRIEB / "zustellen.py").read_text(encoding="utf-8")
+E       assert 'Reisen-Repo' not in '#!/usr/bin/...argv[1:]))\n'
+E         
+E         'Reisen-Repo' is contained here:
+E           > ist das Reisen-Repo, engine/ darin
+E         ?           +++++++++++
+E                    die Software). Rückgabe 5, wenn etwas nicht zugestellt wurde.
+E           Umgebung: RM_ABLAGE (Rückmelde-Ablage), KN_SEITEN (veröffentlichte Seiten).
+E           """...
+E         
+E         ...Full output truncated (87 lines hidden), use '-vv' to show
+
+engine/tests/test_meldeweg_ziel_641.py:116: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_ist_doku_nennt_reisen_repo_nicht_als_aktuellen_ort
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_claude_md_und_readme_nennen_instanz_orte
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_betrieb_md_meldeweg_nennt_instanz_repo_und_variable
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_meldung_erledigt_verweist_auf_instanz_repo
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_ontologie_text_ohne_reisen_repo_in_allen_sprachen[texte_de]
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_ontologie_text_ohne_reisen_repo_in_allen_sprachen[texte_en]
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_einstellungen_beispiel_dokumentiert_meldeziel
+FAILED engine/tests/test_meldeweg_ziel_641.py::test_zustellen_usage_ohne_reisen_repo
+8 failed, 3 passed in 0.24s
