@@ -136,6 +136,13 @@ Code reference: engine/tests/seiten_tagesseite.mjs:53
 Code reference: engine/vorlage.html:1822
 Code reference: docs/design.md:68
 
+### Runde 3
+**Adversary:** Nach der Validierung wurde nur `docs/design.md` geändert (F002 umgesetzt: Rückblick „bis dahin bis zur Buchung offen“ gestrichen; Abschnitt Buchung an das Verhalten seit #463 angeglichen: gebucht stehen Preis, Zahlung und Belege in den „Einzelheiten zur Buchung“). Jede Aussage gegen `buchungBlock` gelesen: oben Nummer, Check-in/Check-out bzw. Reisedatum, Ab (ohne Doppelung mit Check-in), vor Ort zu zahlen, laufende Frist; `gebucht ? null : preisZ` oben, `gebucht ? preisZ : null` und `belegeListe(b)` in den Einzelheiten; Titel nennt die Zahl der Belege. Die alte Formulierung steht weder in `docs/design.md` noch in `engine/vorlage.html`. Hinweis „Nummer nur bei gebucht“ sofort korrigiert (Nummer steht bei jedem Stand oben).
+**Implementierer:** Doku folgt dem Code, kein Code geändert.
+  Code reference: docs/design.md:259
+  Evidence: `test_design.py`, `test_klappen_zugeklappt.py`, `test_protokolle_ohne_pfade.py`: 42 passed; volle Suite vorher 3507 passed.
+  Status: CONFIRMED
+
 ## Herkunft der Vorbedingungen
 
 kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
@@ -160,6 +167,27 @@ Nur LOW-Findings (F001 bis F003), keine Spec-Verletzung mit Wirkung. Tests: 139 
 
 - base: 100cff3047cc564501d33c95fa524b75987732a3
 - blob:23063bbea4bdb26440e61a59c5741e7873a67930  docs/design.md
+- blob:4256de8496f61b247c4bfb3f6306a37c958ba2ab  engine/tests/klappen_browser.mjs
+- blob:d11460610b3e2a0532c6e6b360e48061404b5c2a  engine/tests/seiten_b2.mjs
+- blob:7e0b3b7179af3b3d49194c56eb2788a5d13fed32  engine/tests/seiten_tagesseite.mjs
+- blob:5d55f97e9f1f17c277d28d7d3f414f41a99118f1  engine/tests/test_klappen_zugeklappt.py
+- blob:e8be9c79af3c279851681d318ec085fca3d2ab71  engine/tests/test_tagesseite.py
+- blob:b5fc44d8ab5ba8a806a394bab9e657b3d9152b6a  engine/vorlage.html
+
+## Geprüfte Dateien
+
+- sha256:e704035e2df289ebe8d7b4fec5fc06cf5894e6c382d59208eb772d6a283115b9  docs/design.md
+- sha256:dd9f2c33eecd9ac4f7cbcb421bb420e14480b5d9fc86dc9b2a5d55356926f6c2  engine/tests/klappen_browser.mjs
+- sha256:7ff7c6b1588bc67d1e1c69cd737ee0c79448131967666ff73069741bf07c8f8f  engine/tests/seiten_b2.mjs
+- sha256:05903e7ada1eeee801db0f4fe081aad0038876b48ca86108f39d3ec07da633f1  engine/tests/seiten_tagesseite.mjs
+- sha256:8548f418804b6739e863a7886de601c67d10ca3de3ddc2a99527977c3c0fd2e5  engine/tests/test_klappen_zugeklappt.py
+- sha256:a2710c993ac44d69fd72aae5993ce7102b480bedd27dc592e898ef6aa4b88463  engine/tests/test_tagesseite.py
+- sha256:f5e7f360cb3c7b7d31225b714666c527647da260d230f93288284de45a93c015  engine/vorlage.html
+
+## Prüfbasis
+
+- base: 100cff3047cc564501d33c95fa524b75987732a3
+- blob:73852c5edd7c8943d7de5bd9d49844d1d0bbeac2  docs/design.md
 - blob:4256de8496f61b247c4bfb3f6306a37c958ba2ab  engine/tests/klappen_browser.mjs
 - blob:d11460610b3e2a0532c6e6b360e48061404b5c2a  engine/tests/seiten_b2.mjs
 - blob:7e0b3b7179af3b3d49194c56eb2788a5d13fed32  engine/tests/seiten_tagesseite.mjs

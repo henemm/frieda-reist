@@ -118,6 +118,8 @@ Angepasste bestehende Erwartungen: `seiten_tagesseite.mjs` (Einzelheiten offen �
 - Alle Klappen der Seite ändern ihr Pfeilbild nicht, nur die Kapitel; Kapitel wirken nach der Änderung anders, ohne dass sich ihr Verhalten ändert.
 - Die Packliste bleibt bewusst offen (Kern); eine spätere Entscheidung, auch dort zu starten, wäre eine eigene Änderung.
 - Der Regeltest kennt die Kern-Liste fest; ein neuer offener Kern braucht eine Entscheidung und einen Eintrag dort.
+- Die Bausteinseite (Entwicklerseite, nicht in der Leiste) zeigt das Muster „Fläche: aufklappbarer Abschnitt“ offen, damit man den offenen Zustand sieht; sie gehört nicht zu den Ansichten des Regeltests.
+- Bei einer gebuchten Buchung steht der Preis seit #463 in den „Einzelheiten zur Buchung“ (oben Nummer, Check-in, Check-out, Zahlstand); „Preis außerhalb“ in AC-3 gilt für ungebuchte Dinge und Buchungen. #632 ändert daran nichts.
 
 ## Definition of Done
 
