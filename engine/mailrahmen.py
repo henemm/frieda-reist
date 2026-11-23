@@ -19,6 +19,7 @@ DUNKEL = ("@media (prefers-color-scheme: dark) {\n"
           "  .fr-leise { color: #b5aea3 !important; }\n"
           "  .fr-code { background-color: #1c1b19 !important; color: #ffffff !important; border-color: #4a463f !important; }\n"
           "  .fr-knopf { background-color: #8fb3a0 !important; color: #10201a !important; }\n"
+          "  .fr-fuss { border-top-color: #3d3a35 !important; }\n"
           "  .fr-link { color: #a9cbb9 !important; }\n"
           "}")
 SCHRIFT = "font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;"
@@ -118,7 +119,7 @@ def code_mail(sprache, zweck, code, minuten, link, basis=""):
 <tr><td class="fr-text" style="padding: 8px 32px 24px 32px; color: #2b2925; font-size: 16px; line-height: 1.5; {SCHRIFT}">{esc(eingabe)}</td></tr>
 {knopf}
 <tr><td class="fr-text" style="padding: 0 32px 24px 32px; color: #2b2925; font-size: 15px; line-height: 1.5; {SCHRIFT}"><strong>{esc(sicher_titel)}</strong><br>{esc(sicher_text)}</td></tr>
-<tr><td style="padding: 20px 32px 28px 32px; border-top: 1px solid #e3ddd3; {SCHRIFT}">
+<tr><td class="fr-fuss" style="padding: 20px 32px 28px 32px; border-top: 1px solid #e3ddd3; {SCHRIFT}">
 {fuss_html}
 </td></tr>
 </table>

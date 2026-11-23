@@ -332,6 +332,21 @@ def test_html_geruest_dunkelmodus_inline_stile(umgebung, sprache):
 
 
 @pytest.mark.parametrize("sprache", SPRACHEN)
+def test_fusslinie_im_dunkelmodus_dunkel_638(umgebung, sprache):
+    """Die Linie über dem Fuß wird im Dunkelmodus dunkel (#638): Die Fußzelle trägt die Klasse fr-fuss, der
+    Dunkelblock färbt ihren oberen Rand wie den Kartenrand, und der helle Inline-Stil bleibt für Mailprogramme
+    ohne Stilblock erhalten."""
+    h = code_mail(umgebung, sprache)["html"]
+    zellen = re.findall(r"<td([^>]*)>", h)
+    fuss = [z for z in zellen if "border-top: 1px solid #e3ddd3" in z]
+    assert len(fuss) == 1, "genau eine Fußzelle mit der hellen Linie als Inline-Stil"
+    assert re.search(r'\bclass="fr-fuss"', fuss[0]), "Fußzelle trägt die Klasse fr-fuss"
+    block = re.findall(r"<style[^>]*>(.*?)</style>", h, flags=re.S)[0]
+    assert "@media (prefers-color-scheme: dark)" in block
+    assert re.search(r"\.fr-fuss\s*\{\s*border-top-color:\s*#3d3a35\s*!important;\s*\}", block)
+
+
+@pytest.mark.parametrize("sprache", SPRACHEN)
 @pytest.mark.parametrize("zweck", ZWECKE)
 def test_html_ohne_bild_pixel_externe_ressourcen(umgebung, sprache, zweck):
     h = code_mail(umgebung, sprache, zweck)["html"]

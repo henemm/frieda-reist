@@ -1,0 +1,48 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_________________ test_fusslinie_im_dunkelmodus_dunkel_638[de] _________________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-of-<benutzer>/pytest-2478/test_fusslinie_im_dunkelmodus_0'), 'uhr': {'t': 1800000000.0}}
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fusslinie_im_dunkelmodus_dunkel_638(umgebung, sprache):
+        """Die Linie über dem Fuß wird im Dunkelmodus dunkel (#638): Die Fußzelle trägt die Klasse fr-fuss, der
+        Dunkelblock färbt ihren oberen Rand wie den Kartenrand, und der helle Inline-Stil bleibt für Mailprogramme
+        ohne Stilblock erhalten."""
+        h = code_mail(umgebung, sprache)["html"]
+        zellen = re.findall(r"<td([^>]*)>", h)
+        fuss = [z for z in zellen if "border-top: 1px solid #e3ddd3" in z]
+        assert len(fuss) == 1, "genau eine Fußzelle mit der hellen Linie als Inline-Stil"
+>       assert re.search(r'\bclass="fr-fuss"', fuss[0]), "Fußzelle trägt die Klasse fr-fuss"
+E       AssertionError: Fußzelle trägt die Klasse fr-fuss
+E       assert None
+E        +  where None = <function search at 0x73f7524153a0>('\\bclass="fr-fuss"', ' style="padding: 20px 32px 28px 32px; border-top: 1px solid #e3ddd3; font-family: -apple-system, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif;"')
+E        +    where <function search at 0x73f7524153a0> = re.search
+
+engine/tests/test_mailrahmen.py:343: AssertionError
+_________________ test_fusslinie_im_dunkelmodus_dunkel_638[en] _________________
+
+umgebung = {'tmp': PosixPath('<tmp>/pytest-of-<benutzer>/pytest-2478/test_fusslinie_im_dunkelmodus_1'), 'uhr': {'t': 1800000000.0}}
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", SPRACHEN)
+    def test_fusslinie_im_dunkelmodus_dunkel_638(umgebung, sprache):
+        """Die Linie über dem Fuß wird im Dunkelmodus dunkel (#638): Die Fußzelle trägt die Klasse fr-fuss, der
+        Dunkelblock färbt ihren oberen Rand wie den Kartenrand, und der helle Inline-Stil bleibt für Mailprogramme
+        ohne Stilblock erhalten."""
+        h = code_mail(umgebung, sprache)["html"]
+        zellen = re.findall(r"<td([^>]*)>", h)
+        fuss = [z for z in zellen if "border-top: 1px solid #e3ddd3" in z]
+        assert len(fuss) == 1, "genau eine Fußzelle mit der hellen Linie als Inline-Stil"
+>       assert re.search(r'\bclass="fr-fuss"', fuss[0]), "Fußzelle trägt die Klasse fr-fuss"
+E       AssertionError: Fußzelle trägt die Klasse fr-fuss
+E       assert None
+E        +  where None = <function search at 0x73f7524153a0>('\\bclass="fr-fuss"', ' style="padding: 20px 32px 28px 32px; border-top: 1px solid #e3ddd3; font-family: -apple-system, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif;"')
+E        +    where <function search at 0x73f7524153a0> = re.search
+
+engine/tests/test_mailrahmen.py:343: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_mailrahmen.py::test_fusslinie_im_dunkelmodus_dunkel_638[de]
+FAILED engine/tests/test_mailrahmen.py::test_fusslinie_im_dunkelmodus_dunkel_638[en]
+2 failed, 67 deselected in 0.31s
