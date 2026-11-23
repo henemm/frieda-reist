@@ -184,7 +184,7 @@ einladen <reise> <schluessel> <email> <rolle> <Name> <von> | meldungen [--alle] 
 
 Meldungen an den Betreiber (#530) aus der Claude-App liegen in der Tabelle `betreiber_meldungen` (Text, Art,
 Zusammenhang, Reise, Zeitpunkt, Konto, Verweis auf das Issue, solange offen leer). `meldungen` listet die offenen (mit
-`--alle` auch erledigte), `meldung-erledigt` hakt eine mit dem Verweis auf das Issue im privaten Reisen-Repo ab (mit
+`--alle` auch erledigte), `meldung-erledigt` hakt eine mit dem Verweis auf das Issue im privaten Repo der Instanz ab (mit
 Anbindung an die Entwicklung, #587, trägt der Konnektor die Adresse des öffentlichen Issues selbst ein). Konto
 löschen nimmt die Meldungen und ihre Zählzeilen mit; der Export der Person enthält sie, ohne den Verweis. Ablauf und
 Grenzen: `docs/betrieb.md`, „Meldungen an den Betreiber“.

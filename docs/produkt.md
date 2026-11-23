@@ -142,7 +142,7 @@ Eine Reise bekommt eine Packliste: was mitkommt, in Kategorien, wer es packt, wa
 - Brett-Kontingent: Punkte, 10 je Person.
 - Eigene Konnektoren gibt es nur in bezahlten Claude-Konten; jede Person, die mitgestalten soll, braucht so ein Konto (vor Stufe 1 noch einmal gegen den aktuellen Stand prüfen).
 
-Die Rollen und Status der laufenden Reisen stehen in deren `reise.yaml`, die Entscheidungen dazu in der `CLAUDE.md` des Reisen-Repos.
+Die Rollen und Status der laufenden Reisen stehen in deren `reise.yaml`, die Entscheidungen dazu in der `CLAUDE.md` des privaten Repos der Instanz.
 
 ## Ausbaustufen und Arbeitspakete
 

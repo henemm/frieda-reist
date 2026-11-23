@@ -2158,7 +2158,7 @@ TEXTE = {
     "konnektor.ontologie_werkzeug.14": " The booking document is not stored ({bt}); please add it with beleg_anlegen.",
     "konnektor.ontologie_werkzeug.2": " No booking document included: add it afterwards with beleg_anlegen (transcript or file) or signed in on the trip page; it stays outside the repo.",
     "konnektor.ontologie_werkzeug.3": "All entries must be text, numbers, yes/no, lists or objects.",
-    "konnektor.ontologie_werkzeug.4": "The write path is not set up on this instance (engine/schreiben.py dienst, docs/betrieb.md); until then a session in the trips repo changes the trip.",
+    "konnektor.ontologie_werkzeug.4": "The write path is not set up on this instance (engine/schreiben.py dienst, docs/betrieb.md); until then a session in the instance's private repo changes the trip.",
     "konnektor.ontologie_werkzeug.5": "Proposal {w1} saved. Kinds and attributes are set by organisers; {organisator} sees the proposal under feedback_list and can take it up in conversation.",
     "konnektor.ontologie_werkzeug.6": "beleg_text, beleg_base64 and beleg_dateiname exist only for buchung_anlegen; otherwise beleg_anlegen.",
     "konnektor.ontologie_werkzeug.8": "addition",

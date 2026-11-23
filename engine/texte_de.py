@@ -2159,7 +2159,7 @@ TEXTE = {
     "konnektor.ontologie_werkzeug.14": " Der Beleg ist nicht abgelegt ({bt}); bitte mit beleg_anlegen nachholen.",
     "konnektor.ontologie_werkzeug.2": " Kein Beleg mitgegeben: nachträglich mit beleg_anlegen (Abschrift oder Datei) oder angemeldet auf der Reiseseite; er bleibt außerhalb des Repos.",
     "konnektor.ontologie_werkzeug.3": "Alle Angaben müssen Text, Zahlen, ja/nein, Listen oder Objekte sein.",
-    "konnektor.ontologie_werkzeug.4": "Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); bis dahin ändert eine Sitzung im Reisen-Repo die Reise.",
+    "konnektor.ontologie_werkzeug.4": "Bei dieser Instanz ist der Schreibweg nicht eingerichtet (engine/schreiben.py dienst, docs/betrieb.md); bis dahin ändert eine Sitzung im privaten Repo der Instanz die Reise.",
     "konnektor.ontologie_werkzeug.5": "Vorschlag {w1} gespeichert. Arten und Merkmale legen Organisator:innen fest; {organisator} sieht den Vorschlag unter rueckmeldungen und kann ihn im Gespräch übernehmen.",
     "konnektor.ontologie_werkzeug.6": "beleg_text, beleg_base64 und beleg_dateiname gibt es nur bei buchung_anlegen; sonst beleg_anlegen.",
     "konnektor.ontologie_werkzeug.8": "Ergänzung",

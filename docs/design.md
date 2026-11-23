@@ -175,7 +175,7 @@ Analyse, Konzept und grafische Ausarbeitung hat der Product Owner am 28.10.2026 
 - **Weitere Wege** (Wissen, Plan gewählt, #58): die Etappen außerhalb des Plans in der `wegTabelle`: am Rechner eine Tabelle (Weg, eine Spalte je Kennzahl, Zahlen rechtsbündig, Regel 4), am Handy und Tablet je Weg ein Eintrag mit Titel, Variante und einer Zeile Kennzahlen. Die Übersicht der Etappen steht als Listenzeile wie Wissen und Praxis (`listenZeile`). Die Kacheln stehen auf der Seite der Etappe.
 - **Tiefe** (#332, ADR-0003 Nachtrag): Ein Ding steht höchstens zwei Ebenen tief voll, auf der Seite seiner Heimat und als Karte darauf. Was in einer Karte steckt, ist eine Zeile mit einem Link. Eine Option zeigt ihre Tage als `tagZeile`, nie als Karte (`optionBlock`). Eine zu lange Kette von Elternbezügen endet sichtbar: `heimat()` liefert `{kreis: true}`, der Router zeigt „Geht noch nicht auf“ mit dem Hinweis; den Kreis selbst meldet schon der Generator. Test: `test_design.py`.
 
-Entwurf und Konzept: Artefakte „Seitenordnung“ im Reisen-Repo der Instanz.
+Entwurf und Konzept: Artefakte „Seitenordnung“ im privaten Repo der Instanz.
 
 ## Tagesseite (B2 „Freundlich“, 27.10.2026)
 

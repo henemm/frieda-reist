@@ -34,7 +34,7 @@ Aufrufe:
   python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
   python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
   python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
-  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Reisen-Repo
+  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Repo der Instanz
   python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
   python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
 """
@@ -900,7 +900,7 @@ def freischalten(kid, ja=True):
 # ---------------------------------------------------------------- Meldungen an den Betreiber (#530)
 # Fehler, Wünsche und Fragen zu Frieda selbst aus der Claude-App (Konto-Werkzeug an_frieda_melden): eine Zeile je Meldung,
 # eine Mail an jedes Betreiber-Konto mit der Adresse der Person als Antwortadresse. Abgehakt wird mit dem Verweis auf das
-# Issue im privaten Reisen-Repo der Instanz (konten.py meldung-erledigt).
+# Issue im privaten Repo der Instanz (konten.py meldung-erledigt).
 
 def an_betreiber_melden(k, art, text, reise=None, zusammenhang=None, issue_anlegen=None):
     """Meldung des Kontos an den Betreiber ablegen und mailen. -> Nummer der Meldung oder KontoFehler.

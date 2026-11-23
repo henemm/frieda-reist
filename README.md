@@ -44,7 +44,7 @@ Aufbau einer Reise: `beispiel/reisen/beispielreise/` (Wanderung) und `beispiel/r
 
 ## Auf dem eigenen Server
 
-Seiten ausliefern, Rückmeldungen annehmen, was der AI-Client über den Konnektor festlegt sofort in die Reise schreiben und veröffentlichen: `betrieb/` mit Anleitung in `docs/betrieb.md`. Auf dem Server läuft keine KI (`docs/adr/0001-kern.md`). Eine Reisegruppe mit eigenem Betreiber ist eine Instanz (ein Reisen-Repo, eigene Ordner und Dienste); ihre Werte stehen in `betrieb/einstellungen.env` des Reisen-Repos, die Skripte kennen keine Instanz. Grundkarten und Punkte aus OpenStreetMap holen die Werkzeuge in `werkzeuge/` (`docs/werkzeuge.md`).
+Seiten ausliefern, Rückmeldungen annehmen, was der AI-Client über den Konnektor festlegt sofort in die Reise schreiben und veröffentlichen: `betrieb/` mit Anleitung in `docs/betrieb.md`. Auf dem Server läuft keine KI (`docs/adr/0001-kern.md`). Eine Reisegruppe mit eigenem Betreiber ist eine Instanz (eigene Ordner und Dienste, ein privates Repo für Anleitung und Meldungen); ihre Werte stehen unter `<FR_DIENST>/instanz/` in `einstellungen.env`, die Skripte kennen keine Instanz. Grundkarten und Punkte aus OpenStreetMap holen die Werkzeuge in `werkzeuge/` (`docs/werkzeuge.md`).
 
 ## Tests
 

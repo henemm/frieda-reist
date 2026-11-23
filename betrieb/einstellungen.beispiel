@@ -58,6 +58,10 @@ FR_ADRESSE=https://reisen.example.org
 # sonst keine Nachrichten. (leer)
 #FR_MELDEN=/srv/beispiel/_dienst/instanz/melden.sh
 
+# Ziel der Meldungen der Stufe normal (#641): das private Repo der Instanz, in dem melden.sh der Instanz ein Issue
+# anlegt. Die Software liest den Wert nicht selbst; sie reicht ihn nur in der Umgebung an melden.sh weiter. (leer)
+#FR_MELDEN_REPO=<Instanz-Repo>
+
 # Scheitert git fetch (GitHub oder Netz weg), veröffentlicht der Lauf die Reisen aus dem Reisespeicher trotzdem; nur die
 # Software-Aktualisierung wartet (Merker <FR_DIENST>/software-wartet, #350). Nach so vielen Stunden steht genau
 # einmal je Störung eine Warnung im Protokoll und gemeldet=1 im Merker (für den Monitor), keine Nachricht. (6)
@@ -142,7 +146,7 @@ FR_ADRESSE=https://reisen.example.org
 
 # Betreiber der Instanz für das Impressum (/impressum, #383): Name, Anschrift (eine Zeile) und Kontakt (z. B. eine
 # E-Mail-Adresse). Alle drei sind Pflicht; fehlt eine, zeigt das Impressum „nicht eingerichtet“. Echte Angaben nie
-# hier: Der Konnektor läuft ohne Zugriff auf das Reisen-Repo und liest nur <FR_DIENST>/konten.env (Zeilen NAME=wert,
+# hier: Der Konnektor läuft ohne Zugriff auf diese Datei und liest nur <FR_DIENST>/konten.env (Zeilen NAME=wert,
 # danach den Konnektor neu starten). Dort steht auch die Anschrift in einer Zeile. (leer)
 #FR_BETREIBER_NAME=Beispiel-Betreiber
 #FR_BETREIBER_ANSCHRIFT=Musterweg 1, 12345 Beispielstadt

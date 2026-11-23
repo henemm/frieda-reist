@@ -9,8 +9,8 @@ nicht mehr (#421). Links und Adressen stehen nie im Protokoll. Was noch nicht ve
 für den nächsten Lauf stehen.
 
 Die Logik steckt hier statt in der Shell, damit sie getestet werden kann (engine/tests/test_betrieb.py).
-Aufruf:  zustellen.py <wurzel> <datei>   (mit dem Python der Software; <wurzel> ist das Reisen-Repo, engine/ darin
-         die Software). Rückgabe 5, wenn etwas nicht zugestellt wurde.
+Aufruf:  zustellen.py <wurzel> <datei>   (mit dem Python der Software; <wurzel> ist der Software-Klon,
+         engine/ darin die Software). Rückgabe 5, wenn etwas nicht zugestellt wurde.
 Umgebung: RM_ABLAGE (Rückmelde-Ablage), KN_SEITEN (veröffentlichte Seiten).
 """
 import json

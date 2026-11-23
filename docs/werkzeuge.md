@@ -1,8 +1,8 @@
 # Werkzeuge für Inhalte
 
-Die Werkzeuge unter `werkzeuge/` holen Daten aus dem Netz und legen sie als Dateien in die Reise. Der Generator liest später nur diese Dateien und holt selbst nie etwas aus dem Netz. Alle brauchen Internet, laufen also auf dem Server oder einem eigenen Rechner, nicht in einer Cloud-Sitzung ohne Netz. Aufgerufen werden sie in der Wurzel des Reisen-Repos (oder mit `FR_WURZEL`).
+Die Werkzeuge unter `werkzeuge/` holen Daten aus dem Netz und legen sie als Dateien in die Reise. Der Generator liest später nur diese Dateien und holt selbst nie etwas aus dem Netz. Alle brauchen Internet, laufen also auf dem Server oder einem eigenen Rechner, nicht in einer Cloud-Sitzung ohne Netz. Aufgerufen werden sie in einem Ordner, dessen Unterordner `reisen/` die Reise enthält (oder mit `FR_WURZEL`).
 
-Gegenüber OpenStreetMap melden sich die Werkzeuge mit `FR_KENNUNG` aus den Einstellungen der Instanz (`betrieb/einstellungen.env`, `docs/betrieb.md`). Die Nutzungsregeln von Nominatim und Overpass verlangen dabei eine Kontaktangabe, etwa `Meine-Reisen/1 (betrieb@example.org)`. Ohne Angabe nennen die Werkzeuge nur die Software.
+Gegenüber OpenStreetMap melden sich die Werkzeuge mit `FR_KENNUNG` aus den Einstellungen der Instanz (`<FR_DIENST>/instanz/einstellungen.env`, `docs/betrieb.md`). Die Nutzungsregeln von Nominatim und Overpass verlangen dabei eine Kontaktangabe, etwa `Meine-Reisen/1 (betrieb@example.org)`. Ohne Angabe nennen die Werkzeuge nur die Software.
 
 ## Offline-Grundkarte (PMTiles)
 
