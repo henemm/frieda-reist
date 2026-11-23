@@ -1,0 +1,602 @@
+bringing up nodes...
+bringing up nodes...
+
+FFF.FFFFFFF.FFFFFFFF.....FFF                                             [100%]
+=================================== FAILURES ===================================
+____________ test_639_umzug_fertig_bei_reiner_gesperrter_abweichung ____________
+[gw2] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x75744bf77ec0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x757...n0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw2/test_639_umzug_fertig_bei_rein0/rotmelden.sh'})
+
+    def test_639_umzug_fertig_bei_reiner_gesperrter_abweichung(sw):
+        """AC-3 (#639): Endet units.py pruefen mit 4 und nennt den alten Bauordner nicht (nur die gesperrte Zeile
+        ReadWritePaths des Klons), setzt der Lauf aus dem Klon den Umzug auf fertig."""
+        _umzug_begonnen(sw)
+        zeile = (f"probe-schreiben.service: BLOCKED, probe-schreiben.service: [Service] ReadWritePaths=-{sw.klon}-schreiben "
+                 f"{sw.klon} {sw.dienst} installed")
+        r = _gruen(sw.lauf(VF_UNITS=_units(sw, "units-rwp.sh", zeile, 4)))
+>       assert sw.lesen("umzug-454") == "fertig", r.stdout
+E       AssertionError: Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 947e4bf A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Warning: installed units differ from the templates (exit 4).
+E         Done: software 947e4bf is online.
+E         
+E       assert None == 'fertig'
+E        +  where None = <function sw.<locals>.lesen at 0x75744bfa80e0>('umzug-454')
+E        +    where <function sw.<locals>.lesen at 0x75744bfa80e0> = namespace(lauf=<function sw.<locals>.lauf at 0x75744bf77ec0>, neuer_commit=<function sw.<locals>.neuer_commit at 0x757...n0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw2/test_639_umzug_fertig_bei_rein0/rotmelden.sh'}).lesen
+
+engine/tests/test_rueckbau_557.py:633: AssertionError
+______ test_639_altbau_schuetzt_ablage_konten_konnektor[FR_ABLAGE-gleich] ______
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x746756f3fec0>, neuer_commit=<function sw.<locals>.neuer_co...ltbau-557'), platz_log=PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag0/platz.log'))
+variable = 'FR_ABLAGE', ort = 'gleich'
+
+    @pytest.mark.parametrize("variable, ort", [("FR_ABLAGE", "gleich"), ("FR_ABLAGE", "darin"), ("FR_KONTEN", "darin"),
+                                               ("FR_KONNEKTOR", "darin")])
+    def test_639_altbau_schuetzt_ablage_konten_konnektor(ab, variable, ort):
+        """AC-1/AC-2 (#639): Fällt FR_ABLAGE, FR_KONTEN oder FR_KONNEKTOR mit dem alten Bauordner zusammen oder liegt darin,
+        wird nichts gelöscht: Warnzeile, Lauf grün, kein Alarm."""
+        alt = Path(ab.sw.env[variable])
+        ziel = ab.bau if ort == "gleich" else ab.bau / variable.lower()
+        if alt.exists():
+            shutil.copytree(alt, ziel, dirs_exist_ok=True)
+        else:
+            ziel.mkdir(parents=True, exist_ok=True)
+        (ziel / "schutz.txt").write_text("darf nicht weg (Beispiel)\n")
+        r = _gruen(ab.lauf(**{variable: str(ziel)}))
+>       assert (ziel / "schutz.txt").exists(), r.stdout
+E       AssertionError: Old build folder archived: /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag0/seiten/_dienst/archiv/bau-20261123T131523Z.tar.gz.
+E         Old build folder removed (3 folders), the archive stays in /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag0/seiten/_dienst/archiv.
+E         Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 947e4bf A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 947e4bf is online.
+E         
+E       assert False
+E        +  where False = exists()
+E        +    where exists = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag0/seiten/_bau') / 'schutz.txt').exists
+
+engine/tests/test_rueckbau_557.py:609: AssertionError
+______ test_639_altbau_schuetzt_ablage_konten_konnektor[FR_KONTEN-darin] _______
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7773c3377ec0>, neuer_commit=<function sw.<locals>.neuer_co...ltbau-557'), platz_log=PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag0/platz.log'))
+variable = 'FR_KONTEN', ort = 'darin'
+
+    @pytest.mark.parametrize("variable, ort", [("FR_ABLAGE", "gleich"), ("FR_ABLAGE", "darin"), ("FR_KONTEN", "darin"),
+                                               ("FR_KONNEKTOR", "darin")])
+    def test_639_altbau_schuetzt_ablage_konten_konnektor(ab, variable, ort):
+        """AC-1/AC-2 (#639): Fällt FR_ABLAGE, FR_KONTEN oder FR_KONNEKTOR mit dem alten Bauordner zusammen oder liegt darin,
+        wird nichts gelöscht: Warnzeile, Lauf grün, kein Alarm."""
+        alt = Path(ab.sw.env[variable])
+        ziel = ab.bau if ort == "gleich" else ab.bau / variable.lower()
+        if alt.exists():
+            shutil.copytree(alt, ziel, dirs_exist_ok=True)
+        else:
+            ziel.mkdir(parents=True, exist_ok=True)
+        (ziel / "schutz.txt").write_text("darf nicht weg (Beispiel)\n")
+        r = _gruen(ab.lauf(**{variable: str(ziel)}))
+>       assert (ziel / "schutz.txt").exists(), r.stdout
+E       AssertionError: Old build folder archived: /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag0/seiten/_dienst/archiv/bau-20261123T131523Z.tar.gz.
+E         Old build folder removed (3 folders), the archive stays in /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag0/seiten/_dienst/archiv.
+E         Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 947e4bf A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 947e4bf is online.
+E         
+E       assert False
+E        +  where False = exists()
+E        +    where exists = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag0/seiten/_bau/fr_konten') / 'schutz.txt').exists
+
+engine/tests/test_rueckbau_557.py:609: AssertionError
+______ test_639_altbau_schuetzt_ablage_konten_konnektor[FR_ABLAGE-darin] _______
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x746756f6f240>, neuer_commit=<function sw.<locals>.neuer_co...ltbau-557'), platz_log=PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag1/platz.log'))
+variable = 'FR_ABLAGE', ort = 'darin'
+
+    @pytest.mark.parametrize("variable, ort", [("FR_ABLAGE", "gleich"), ("FR_ABLAGE", "darin"), ("FR_KONTEN", "darin"),
+                                               ("FR_KONNEKTOR", "darin")])
+    def test_639_altbau_schuetzt_ablage_konten_konnektor(ab, variable, ort):
+        """AC-1/AC-2 (#639): Fällt FR_ABLAGE, FR_KONTEN oder FR_KONNEKTOR mit dem alten Bauordner zusammen oder liegt darin,
+        wird nichts gelöscht: Warnzeile, Lauf grün, kein Alarm."""
+        alt = Path(ab.sw.env[variable])
+        ziel = ab.bau if ort == "gleich" else ab.bau / variable.lower()
+        if alt.exists():
+            shutil.copytree(alt, ziel, dirs_exist_ok=True)
+        else:
+            ziel.mkdir(parents=True, exist_ok=True)
+        (ziel / "schutz.txt").write_text("darf nicht weg (Beispiel)\n")
+        r = _gruen(ab.lauf(**{variable: str(ziel)}))
+>       assert (ziel / "schutz.txt").exists(), r.stdout
+E       AssertionError: Old build folder archived: /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag1/seiten/_dienst/archiv/bau-20261123T131524Z.tar.gz.
+E         Old build folder removed (3 folders), the archive stays in /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag1/seiten/_dienst/archiv.
+E         Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 171208a A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 171208a is online.
+E         
+E       assert False
+E        +  where False = exists()
+E        +    where exists = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_schuetzt_ablag1/seiten/_bau/fr_ablage') / 'schutz.txt').exists
+
+engine/tests/test_rueckbau_557.py:609: AssertionError
+__________ test_639_altbau_fr_seiten_nicht_betretbar_bricht_nicht_ab ___________
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_fr_seiten_nich0')
+
+    def test_639_altbau_fr_seiten_nicht_betretbar_bricht_nicht_ab(tmp_path):
+        """AC-5 (#639): Lässt sich FR_SEITEN nicht betreten (cd scheitert), bricht altbau_entfernen unter set -euo pipefail
+        nicht ab: Rückgabe 0, der Lauf geht weiter, nichts wird gelöscht."""
+        seiten, dienst = tmp_path / "seiten", tmp_path / "seiten" / "_dienst"
+        (seiten / "_bau" / "reisen").mkdir(parents=True)
+        dienst.mkdir()
+        (dienst / "umzug-454").write_text("fertig\n")
+        skript = tmp_path / "probe.sh"
+        skript.write_text("set -euo pipefail\n" + _alle_funktionen() +
+                          'cd() { return 1; }\naltbau_entfernen\necho "WEITER $?"\n', encoding="utf-8")
+        r = subprocess.run(["bash", str(skript)], capture_output=True, text=True,
+                           env={**SAUBER, "FR_SEITEN": str(seiten), "FR_DIENST": str(dienst), "FR_WURZEL": str(tmp_path / "klon"),
+                                "FR_SPEICHER": str(seiten / "_speicher"), "FR_BETRIEB": str(BETRIEB), "PATH": os.environ["PATH"]})
+>       assert r.returncode == 0 and "WEITER 0" in r.stdout, r.stdout + r.stderr
+E       AssertionError: 
+E       assert (1 == 0)
+E        +  where 1 = CompletedProcess(args=['bash', '/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_altbau_fr_seiten_nich0/probe.sh'], returncode=1, stdout='', stderr='').returncode
+
+engine/tests/test_rueckbau_557.py:672: AssertionError
+_____ test_639_altbau_schuetzt_ablage_konten_konnektor[FR_KONNEKTOR-darin] _____
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+ab = namespace(sw=namespace(lauf=<function sw.<locals>.lauf at 0x7773c33a72e0>, neuer_commit=<function sw.<locals>.neuer_co...ltbau-557'), platz_log=PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag1/platz.log'))
+variable = 'FR_KONNEKTOR', ort = 'darin'
+
+    @pytest.mark.parametrize("variable, ort", [("FR_ABLAGE", "gleich"), ("FR_ABLAGE", "darin"), ("FR_KONTEN", "darin"),
+                                               ("FR_KONNEKTOR", "darin")])
+    def test_639_altbau_schuetzt_ablage_konten_konnektor(ab, variable, ort):
+        """AC-1/AC-2 (#639): Fällt FR_ABLAGE, FR_KONTEN oder FR_KONNEKTOR mit dem alten Bauordner zusammen oder liegt darin,
+        wird nichts gelöscht: Warnzeile, Lauf grün, kein Alarm."""
+        alt = Path(ab.sw.env[variable])
+        ziel = ab.bau if ort == "gleich" else ab.bau / variable.lower()
+        if alt.exists():
+            shutil.copytree(alt, ziel, dirs_exist_ok=True)
+        else:
+            ziel.mkdir(parents=True, exist_ok=True)
+        (ziel / "schutz.txt").write_text("darf nicht weg (Beispiel)\n")
+        r = _gruen(ab.lauf(**{variable: str(ziel)}))
+>       assert (ziel / "schutz.txt").exists(), r.stdout
+E       AssertionError: Old build folder archived: /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag1/seiten/_dienst/archiv/bau-20261123T131524Z.tar.gz.
+E         Old build folder removed (3 folders), the archive stays in /tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag1/seiten/_dienst/archiv.
+E         Publishing beispielreise from the trip store, state 1.
+E         Publishing stadtwochenende from the trip store, state 1.
+E         Publishing software 171208a A
+E         Note: npm missing, browser tests use what playwright_pfad.py finds.
+E         Done: software 171208a is online.
+E         
+E       assert False
+E        +  where False = exists()
+E        +    where exists = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw0/test_639_altbau_schuetzt_ablag1/seiten/_bau/fr_konnektor') / 'schutz.txt').exists
+
+engine/tests/test_rueckbau_557.py:609: AssertionError
+___________________ test_639_eine_units_pruefung_fuer_beide ____________________
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+    def test_639_eine_units_pruefung_fuer_beide():
+        """AC-7 (#639): altbau_entfernen und umzug_fertig_im_klon werten units.py pruefen über dieselbe Hilfsfunktion
+        units_ohne_altbau aus; keine der beiden ruft die Prüfung selbst auf."""
+>       hilfe = _funktion("units_ohne_altbau")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rueckbau_557.py:689: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'units_ohne_altbau'
+text = '#!/usr/bin/env bash\n# Veröffentlicht automatisch (docs/betrieb.md, Veröffentlichen). Gestartet alle 5 Minuten vom Ti..."; rot_seit=""; rot_gemeldet=""; rot_umgebung=""; rot_geprueft=""; rot_tests=""\ntrap nachlauf EXIT\nmain "$@"\nexit\n'
+
+    def _funktion(name, text=None):
+        """Quelltext der Shell-Funktion name aus veroeffentlichen.sh (von `name() {` bis zur schließenden Klammer am Zeilenanfang)."""
+        text = text if text is not None else _text("betrieb/veroeffentlichen.sh")
+        m = re.search(rf"^{re.escape(name)}\(\) \{{.*?^\}}\n", text, re.S | re.M)
+>       assert m, f"Funktion {name} fehlt"
+E       AssertionError: Funktion units_ohne_altbau fehlt
+E       assert None
+
+engine/tests/test_rueckbau_557.py:586: AssertionError
+__________________ test_639_doku_schreibziele_und_aufraeumen ___________________
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+    def test_639_doku_schreibziele_und_aufraeumen():
+        """AC-12 (#639): betrieb.md und der Kommentar der Vorlage nennen keinen „Bauordner mit .git“ mehr; das Aufräumen nennt
+        Ablage, Konten und Konnektor als geschützt."""
+        betrieb = _text("docs/betrieb.md")
+>       assert "Bauordner mit `.git`" not in betrieb
+E       AssertionError: assert 'Bauordner mit `.git`' not in '# Betrieb e...m Server |\n'
+E         
+E         'Bauordner mit `.git`' is contained here:
+E         ?           ^
+E           eibziele (Bauordner mit `.git`, Dienstordner mit den Sperren, Konten, Seiten mit dem Reisespeicher, Ablage; Begründung je Ziel in der Vorlage). Er kann keine Shell-Profile und keine Skripte im Home ändern, die später mit höheren Rechten laufen. Die Liste stammt aus einem Messlauf unter der Unit (samt Hochladen und Veröffentlichen, #552); seit #557 fällt die Arbeitskopie des Git-Wegs weg.
+E         ?           ^^^^^^^^^^^^^^^^^^^^^
+E           - **Kartendienst:** eigener Benutzer `<instanz>-karte` (Gruppe `docker`), siehe Eigener Kartendienst.
+E         ...
+E         
+E         ...Full output truncated (215 lines hidden), use '-vv' to show
+
+engine/tests/test_rueckbau_557.py:701: AssertionError
+______________ test_639_zustand_nicht_schreibbar_bricht_nicht_ab _______________
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+sw = namespace(lauf=<function sw.<locals>.lauf at 0x746756f3fe20>, neuer_commit=<function sw.<locals>.neuer_commit at 0x746...b0/nginx.sh', 'VF_ROTMELDEN': '/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_zustand_nicht_schreib0/rotmelden.sh'})
+
+    def test_639_zustand_nicht_schreibbar_bricht_nicht_ab(sw):
+        """AC-6 (#639): Lässt sich die Zustandsdatei nicht ersetzen (an ihrer Stelle liegt ein Ordner mit einem Ordner
+        umzug-454.neu, mv scheitert), bricht der Lauf unter set -e nicht ab: grün, Heartbeat wie immer."""
+        (sw.dienst / "umzug-454").unlink()
+        (sw.dienst / "umzug-454" / "umzug-454.neu").mkdir(parents=True)
+        (sw.dienst / "umzug-454.geprueft").write_text(sw.a + "\n")
+>       r = _gruen(sw.lauf())
+            ^^^^^^^^^^^^^^^^^
+
+engine/tests/test_rueckbau_557.py:682: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+r = CompletedProcess(args=['/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_zustand_nicht_schreib0/seiten/_software/betr...em/pytest-2563/popen-gw1/test_639_zustand_nicht_schreib0/seiten/_dienst/umzug-454/umzug-454.neu' with non-directory\n")
+
+    def _gruen(r):
+>       assert r.returncode == 0, r.stdout + r.stderr
+E       AssertionError: mv: cannot overwrite directory '/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_zustand_nicht_schreib0/seiten/_dienst/umzug-454/umzug-454.neu' with non-directory
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/tmp/pytest-of-<benutzer>/pytest-2563/popen-gw1/test_639_zustand_nicht_schreib0/seiten/_software/betr...em/pytest-2563/popen-gw1/test_639_zustand_nicht_schreib0/seiten/_dienst/umzug-454/umzug-454.neu' with non-directory\n").returncode
+
+engine/tests/test_rueckbau_557.py:403: AssertionError
+_______ test_ablagefehler_gibt_saubere_antwort_ohne_wirkung[beschaedigt] _______
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...0/test_ablagefehler_gibt_saubere0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7773c33a6fc0>)
+art = 'beschaedigt'
+
+    @pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+    def test_ablagefehler_gibt_saubere_antwort_ohne_wirkung(speicher, art):
+        """Stufe 4 (#349, F002): Fehlt eine Datei der Ablage oder ist sie beschädigt, antwortet der Schreibweg mit 503 und
+        pruefung.bauen.79/.80 (Schlüssel und Werte für den Konnektor), schreibt nichts und hinterlässt keinen Ordner; eine
+        andere Reise bekommt beim Lesen der Datei FremdNichtLesbar (fremde_datei; seit #639 ein Speicherfehler statt None)."""
+        rs = speicher.rs
+        with closing(sqlite3.connect(rs.pfad())) as v:
+            pfad, summe = v.execute("SELECT pfad, pruefsumme FROM versionen WHERE reise = 'beispielreise' "
+                                    "AND ausgelagert = 1 ORDER BY pfad LIMIT 1").fetchone()
+        f = rs.ablage_pfad(summe)
+        os.chmod(f.parent, 0o700)
+        if art == "fehlt":
+            f.unlink()
+        else:
+            os.chmod(f, 0o600)
+            f.write_bytes(b"kaputt")
+        vorher = rs.stand_nummer("beispielreise")
+        org, _ = REISEN["beispielreise"]
+        code, a = schreib(speicher, "beispielreise", "frage_anlegen", {**org, "args": {"text": "Markt? (Beispielwert)"}})
+        schluessel = "pruefung.bauen.79" if art == "fehlt" else "pruefung.bauen.80"
+        assert code == 503 and a["ok"] is False and a["fehler_code"] == schluessel, a
+        assert a["werte"]["ziel"] == pfad and a["werte"]["w1"] == "beispielreise" and "{" not in a["fehler"]
+        assert rs.stand_nummer("beispielreise") == vorher and not list(speicher.tmp.iterdir())
+>       with pytest.raises(getattr(sb, "FremdNichtLesbar", type("FremdNichtLesbarFehlt", (Exception,), {}))):
+E       Failed: DID NOT RAISE FremdNichtLesbarFehlt
+
+engine/tests/test_schreiben_speicher.py:285: Failed
+----------------------------- Captured stderr call -----------------------------
+Store frage_anlegen 503: AblageFehler: store file damaged: medien/bilder/BI-01-1600.webp (checksum 34dab8a08e683485658231543161ca5396c7afde816b07ea4e6b7e9d7eb49509)
+Done frage_anlegen 503 in 0.1 s
+__________ test_ablagefehler_gibt_saubere_antwort_ohne_wirkung[fehlt] __________
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...1/test_ablagefehler_gibt_saubere0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x746756faa160>)
+art = 'fehlt'
+
+    @pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+    def test_ablagefehler_gibt_saubere_antwort_ohne_wirkung(speicher, art):
+        """Stufe 4 (#349, F002): Fehlt eine Datei der Ablage oder ist sie beschädigt, antwortet der Schreibweg mit 503 und
+        pruefung.bauen.79/.80 (Schlüssel und Werte für den Konnektor), schreibt nichts und hinterlässt keinen Ordner; eine
+        andere Reise bekommt beim Lesen der Datei FremdNichtLesbar (fremde_datei; seit #639 ein Speicherfehler statt None)."""
+        rs = speicher.rs
+        with closing(sqlite3.connect(rs.pfad())) as v:
+            pfad, summe = v.execute("SELECT pfad, pruefsumme FROM versionen WHERE reise = 'beispielreise' "
+                                    "AND ausgelagert = 1 ORDER BY pfad LIMIT 1").fetchone()
+        f = rs.ablage_pfad(summe)
+        os.chmod(f.parent, 0o700)
+        if art == "fehlt":
+            f.unlink()
+        else:
+            os.chmod(f, 0o600)
+            f.write_bytes(b"kaputt")
+        vorher = rs.stand_nummer("beispielreise")
+        org, _ = REISEN["beispielreise"]
+        code, a = schreib(speicher, "beispielreise", "frage_anlegen", {**org, "args": {"text": "Markt? (Beispielwert)"}})
+        schluessel = "pruefung.bauen.79" if art == "fehlt" else "pruefung.bauen.80"
+        assert code == 503 and a["ok"] is False and a["fehler_code"] == schluessel, a
+        assert a["werte"]["ziel"] == pfad and a["werte"]["w1"] == "beispielreise" and "{" not in a["fehler"]
+        assert rs.stand_nummer("beispielreise") == vorher and not list(speicher.tmp.iterdir())
+>       with pytest.raises(getattr(sb, "FremdNichtLesbar", type("FremdNichtLesbarFehlt", (Exception,), {}))):
+E       Failed: DID NOT RAISE FremdNichtLesbarFehlt
+
+engine/tests/test_schreiben_speicher.py:285: Failed
+----------------------------- Captured stderr call -----------------------------
+Store frage_anlegen 503: AblageFehlt: file missing in store: medien/bilder/BI-01-1600.webp (checksum 34dab8a08e683485658231543161ca5396c7afde816b07ea4e6b7e9d7eb49509)
+Done frage_anlegen 503 in 0.0 s
+_ test_639_datenbank_der_fremden_reise_nicht_lesbar_ist_503[arten_uebernehmen] _
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...0/test_639_datenbank_der_fremden0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7773c33fe840>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7773c33f3fe0>
+capsys = <_pytest.capture.CaptureFixture object at 0x7773c33f1e80>
+werkzeug = 'arten_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    def test_639_datenbank_der_fremden_reise_nicht_lesbar_ist_503(speicher, monkeypatch, capsys, werkzeug):
+        """AC-8 (#639): Ist die Datenbank beim Lesen der fremden Reise nicht lesbar (sqlite3.Error), antwortet der Schreibweg
+        503 speicher_nicht_erreichbar statt „Reise ohne Arten“ (.2), ohne Wirkung, mit einer Protokollzeile."""
+        code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug,
+                                                fehler=sqlite3.DatabaseError("database disk image is malformed"))
+>       assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
+E       AssertionError: {'ok': False, 'fehler': 'Die Reise „beispielreise“ hat keine Arten (plan/arten.yaml) oder ist diese Reise.', 'fehler_code': 'schreiben.arten_uebernehmen.2', 'werte': {'von': 'beispielreise'}, ...}
+E       assert (422 == 503)
+
+engine/tests/test_schreiben_speicher.py:621: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Rejected arten_uebernehmen 422: Die Reise „beispielreise“ hat keine Arten (plan/arten.yaml) oder ist diese Reise.
+____ test_639_kaputte_fremde_ablage_ist_503[ablage_fehlt-arten_uebernehmen] ____
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...0/test_639_kaputte_fremde_ablage0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7773c3132700>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7773c33f0800>
+art = 'ablage_fehlt', werkzeug = 'arten_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    @pytest.mark.parametrize("art", ["ablage_fehlt", "ablage_fehler", "oserror"])
+    def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug):
+        """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
+        kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
+        rs = speicher.rs
+>       fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                  "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                  "oserror": lambda: OSError(5, "Input/output error")}[art]()
+
+engine/tests/test_schreiben_speicher.py:632: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+>   fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+              "oserror": lambda: OSError(5, "Input/output error")}[art]()
+E   TypeError: AblageFehlt.__init__() missing 1 required positional argument: 'summe'
+
+engine/tests/test_schreiben_speicher.py:632: TypeError
+_ test_639_datenbank_der_fremden_reise_nicht_lesbar_ist_503[packliste_uebernehmen] _
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...1/test_639_datenbank_der_fremden0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x746756faa8e0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x746756fb86e0>
+capsys = <_pytest.capture.CaptureFixture object at 0x746756fbb4a0>
+werkzeug = 'packliste_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    def test_639_datenbank_der_fremden_reise_nicht_lesbar_ist_503(speicher, monkeypatch, capsys, werkzeug):
+        """AC-8 (#639): Ist die Datenbank beim Lesen der fremden Reise nicht lesbar (sqlite3.Error), antwortet der Schreibweg
+        503 speicher_nicht_erreichbar statt „Reise ohne Arten“ (.2), ohne Wirkung, mit einer Protokollzeile."""
+        code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug,
+                                                fehler=sqlite3.DatabaseError("database disk image is malformed"))
+>       assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
+E       AssertionError: {'ok': False, 'fehler': 'Die Reise „beispielreise“ hat keine Kategorien für eine Packliste (plan/arten.yaml, grundform...der sie ist nicht lesbar.', 'fehler_code': 'schreiben.packliste_uebernehmen.2', 'werte': {'von': 'beispielreise'}, ...}
+E       assert (422 == 503)
+
+engine/tests/test_schreiben_speicher.py:621: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Rejected packliste_uebernehmen 422: Die Reise „beispielreise“ hat keine Kategorien für eine Packliste (plan/arten.yaml, grundform gegenstand) oder sie ist nicht lesbar.
+_ test_639_kaputte_fremde_ablage_ist_503[ablage_fehler-packliste_uebernehmen] __
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...0/test_639_kaputte_fremde_ablage1/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7773c31323e0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7773c30b07d0>
+art = 'ablage_fehler', werkzeug = 'packliste_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    @pytest.mark.parametrize("art", ["ablage_fehlt", "ablage_fehler", "oserror"])
+    def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug):
+        """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
+        kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
+        rs = speicher.rs
+>       fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                  "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                  "oserror": lambda: OSError(5, "Input/output error")}[art]()
+
+engine/tests/test_schreiben_speicher.py:632: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+>   "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    "oserror": lambda: OSError(5, "Input/output error")}[art]()
+E   TypeError: AblageFehler.__init__() missing 1 required positional argument: 'summe'
+
+engine/tests/test_schreiben_speicher.py:633: TypeError
+___ test_639_kaputte_fremde_ablage_ist_503[ablage_fehler-arten_uebernehmen] ____
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...1/test_639_kaputte_fremde_ablage0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x74675679ea20>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x746756fbb3b0>
+art = 'ablage_fehler', werkzeug = 'arten_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    @pytest.mark.parametrize("art", ["ablage_fehlt", "ablage_fehler", "oserror"])
+    def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug):
+        """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
+        kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
+        rs = speicher.rs
+>       fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                  "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                  "oserror": lambda: OSError(5, "Input/output error")}[art]()
+
+engine/tests/test_schreiben_speicher.py:632: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+>   "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    "oserror": lambda: OSError(5, "Input/output error")}[art]()
+E   TypeError: AblageFehler.__init__() missing 1 required positional argument: 'summe'
+
+engine/tests/test_schreiben_speicher.py:633: TypeError
+______ test_639_kaputte_fremde_ablage_ist_503[oserror-arten_uebernehmen] _______
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...0/test_639_kaputte_fremde_ablage2/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7773c33a79c0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7773c3392c60>
+art = 'oserror', werkzeug = 'arten_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    @pytest.mark.parametrize("art", ["ablage_fehlt", "ablage_fehler", "oserror"])
+    def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug):
+        """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
+        kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
+        rs = speicher.rs
+        fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                  "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                  "oserror": lambda: OSError(5, "Input/output error")}[art]()
+        code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug, fehler=fehler)
+>       assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
+E       AssertionError: {'ok': False, 'fehler': 'Die Reise „beispielreise“ hat keine Arten (plan/arten.yaml) oder ist diese Reise.', 'fehler_code': 'schreiben.arten_uebernehmen.2', 'werte': {'von': 'beispielreise'}, ...}
+E       assert (422 == 503)
+
+engine/tests/test_schreiben_speicher.py:636: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Rejected arten_uebernehmen 422: Die Reise „beispielreise“ hat keine Arten (plan/arten.yaml) oder ist diese Reise.
+____ test_639_kaputte_fremde_ablage_ist_503[oserror-packliste_uebernehmen] _____
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...1/test_639_kaputte_fremde_ablage1/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x74675679e8e0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x74675678de80>
+art = 'oserror', werkzeug = 'packliste_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    @pytest.mark.parametrize("art", ["ablage_fehlt", "ablage_fehler", "oserror"])
+    def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug):
+        """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
+        kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
+        rs = speicher.rs
+        fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                  "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                  "oserror": lambda: OSError(5, "Input/output error")}[art]()
+        code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug, fehler=fehler)
+>       assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
+E       AssertionError: {'ok': False, 'fehler': 'Die Reise „beispielreise“ hat keine Kategorien für eine Packliste (plan/arten.yaml, grundform...der sie ist nicht lesbar.', 'fehler_code': 'schreiben.packliste_uebernehmen.2', 'werte': {'von': 'beispielreise'}, ...}
+E       assert (422 == 503)
+
+engine/tests/test_schreiben_speicher.py:636: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Rejected packliste_uebernehmen 422: Die Reise „beispielreise“ hat keine Kategorien für eine Packliste (plan/arten.yaml, grundform gegenstand) oder sie ist nicht lesbar.
+__ test_639_kaputte_fremde_ablage_ist_503[ablage_fehlt-packliste_uebernehmen] __
+[gw2] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...2/test_639_kaputte_fremde_ablage0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x75744bfaa8e0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75744bf933e0>
+art = 'ablage_fehlt', werkzeug = 'packliste_uebernehmen'
+
+    @pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+    @pytest.mark.parametrize("art", ["ablage_fehlt", "ablage_fehler", "oserror"])
+    def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug):
+        """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
+        kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
+        rs = speicher.rs
+>       fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                  "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+                  "oserror": lambda: OSError(5, "Input/output error")}[art]()
+
+engine/tests/test_schreiben_speicher.py:632: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+>   fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+              "oserror": lambda: OSError(5, "Input/output error")}[art]()
+E   TypeError: AblageFehlt.__init__() missing 1 required positional argument: 'summe'
+
+engine/tests/test_schreiben_speicher.py:632: TypeError
+_____________ test_639_fremde_datei_wirft_bei_ablagefehler[fehlt] ______________
+[gw0] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...0/test_639_fremde_datei_wirft_be0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7773c33a7600>)
+art = 'fehlt'
+
+    @pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+    def test_639_fremde_datei_wirft_bei_ablagefehler(speicher, art):
+        """AC-11 (#639): fremde_datei liefert bei einem Ablagefehler nicht None, sondern wirft FremdNichtLesbar; der Text
+        nennt die eigene Reise nicht als Fehlerort."""
+        rs = speicher.rs
+        with closing(sqlite3.connect(rs.pfad())) as v:
+            pfad, summe = v.execute("SELECT pfad, pruefsumme FROM versionen WHERE reise = 'beispielreise' "
+                                    "AND ausgelagert = 1 ORDER BY pfad LIMIT 1").fetchone()
+        f = rs.ablage_pfad(summe)
+        os.chmod(f.parent, 0o700)
+        if art == "fehlt":
+            f.unlink()
+        else:
+            os.chmod(f, 0o600)
+            f.write_bytes(b"kaputt")
+>       assert hasattr(sb, "FremdNichtLesbar"), "Ausnahme FremdNichtLesbar fehlt"
+E       AssertionError: Ausnahme FremdNichtLesbar fehlt
+E       assert False
+E        +  where False = hasattr(sb, 'FremdNichtLesbar')
+
+engine/tests/test_schreiben_speicher.py:668: AssertionError
+__________ test_639_fremde_datei_wirft_bei_ablagefehler[beschaedigt] ___________
+[gw1] linux -- Python 3.12.3 ./engine/.venv/bin/python
+
+speicher = namespace(rs=<module 'reisespeicher' from './engine/...1/test_639_fremde_datei_wirft_be0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x746756f6ff60>)
+art = 'beschaedigt'
+
+    @pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+    def test_639_fremde_datei_wirft_bei_ablagefehler(speicher, art):
+        """AC-11 (#639): fremde_datei liefert bei einem Ablagefehler nicht None, sondern wirft FremdNichtLesbar; der Text
+        nennt die eigene Reise nicht als Fehlerort."""
+        rs = speicher.rs
+        with closing(sqlite3.connect(rs.pfad())) as v:
+            pfad, summe = v.execute("SELECT pfad, pruefsumme FROM versionen WHERE reise = 'beispielreise' "
+                                    "AND ausgelagert = 1 ORDER BY pfad LIMIT 1").fetchone()
+        f = rs.ablage_pfad(summe)
+        os.chmod(f.parent, 0o700)
+        if art == "fehlt":
+            f.unlink()
+        else:
+            os.chmod(f, 0o600)
+            f.write_bytes(b"kaputt")
+>       assert hasattr(sb, "FremdNichtLesbar"), "Ausnahme FremdNichtLesbar fehlt"
+E       AssertionError: Ausnahme FremdNichtLesbar fehlt
+E       assert False
+E        +  where False = hasattr(sb, 'FremdNichtLesbar')
+
+engine/tests/test_schreiben_speicher.py:668: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_rueckbau_557.py::test_639_umzug_fertig_bei_reiner_gesperrter_abweichung
+FAILED engine/tests/test_rueckbau_557.py::test_639_altbau_schuetzt_ablage_konten_konnektor[FR_ABLAGE-gleich]
+FAILED engine/tests/test_rueckbau_557.py::test_639_altbau_schuetzt_ablage_konten_konnektor[FR_KONTEN-darin]
+FAILED engine/tests/test_rueckbau_557.py::test_639_altbau_schuetzt_ablage_konten_konnektor[FR_ABLAGE-darin]
+FAILED engine/tests/test_rueckbau_557.py::test_639_altbau_fr_seiten_nicht_betretbar_bricht_nicht_ab
+FAILED engine/tests/test_rueckbau_557.py::test_639_altbau_schuetzt_ablage_konten_konnektor[FR_KONNEKTOR-darin]
+FAILED engine/tests/test_rueckbau_557.py::test_639_eine_units_pruefung_fuer_beide
+FAILED engine/tests/test_rueckbau_557.py::test_639_doku_schreibziele_und_aufraeumen
+FAILED engine/tests/test_rueckbau_557.py::test_639_zustand_nicht_schreibbar_bricht_nicht_ab
+FAILED engine/tests/test_schreiben_speicher.py::test_ablagefehler_gibt_saubere_antwort_ohne_wirkung[beschaedigt]
+FAILED engine/tests/test_schreiben_speicher.py::test_ablagefehler_gibt_saubere_antwort_ohne_wirkung[fehlt]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_datenbank_der_fremden_reise_nicht_lesbar_ist_503[arten_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_kaputte_fremde_ablage_ist_503[ablage_fehlt-arten_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_datenbank_der_fremden_reise_nicht_lesbar_ist_503[packliste_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_kaputte_fremde_ablage_ist_503[ablage_fehler-packliste_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_kaputte_fremde_ablage_ist_503[ablage_fehler-arten_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_kaputte_fremde_ablage_ist_503[oserror-arten_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_kaputte_fremde_ablage_ist_503[oserror-packliste_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_kaputte_fremde_ablage_ist_503[ablage_fehlt-packliste_uebernehmen]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_fremde_datei_wirft_bei_ablagefehler[fehlt]
+FAILED engine/tests/test_schreiben_speicher.py::test_639_fremde_datei_wirft_bei_ablagefehler[beschaedigt]
+21 failed, 7 passed in 4.24s

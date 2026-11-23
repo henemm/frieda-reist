@@ -263,7 +263,7 @@ def test_reise_der_liste_ohne_eintrag_gibt_503_ohne_wirkung(speicher, monkeypatc
 def test_ablagefehler_gibt_saubere_antwort_ohne_wirkung(speicher, art):
     """Stufe 4 (#349, F002): Fehlt eine Datei der Ablage oder ist sie beschädigt, antwortet der Schreibweg mit 503 und
     pruefung.bauen.79/.80 (Schlüssel und Werte für den Konnektor), schreibt nichts und hinterlässt keinen Ordner; eine
-    andere Reise liest die Datei als „nicht lesbar“ (fremde_datei)."""
+    andere Reise bekommt beim Lesen der Datei FremdNichtLesbar (fremde_datei; seit #639 ein Speicherfehler statt None)."""
     rs = speicher.rs
     with closing(sqlite3.connect(rs.pfad())) as v:
         pfad, summe = v.execute("SELECT pfad, pruefsumme FROM versionen WHERE reise = 'beispielreise' "
@@ -282,7 +282,8 @@ def test_ablagefehler_gibt_saubere_antwort_ohne_wirkung(speicher, art):
     assert code == 503 and a["ok"] is False and a["fehler_code"] == schluessel, a
     assert a["werte"]["ziel"] == pfad and a["werte"]["w1"] == "beispielreise" and "{" not in a["fehler"]
     assert rs.stand_nummer("beispielreise") == vorher and not list(speicher.tmp.iterdir())
-    assert sb.fremde_datei(speicher.wurzel / "reisen" / "stadtwochenende", "beispielreise", pfad) is None
+    with pytest.raises(getattr(sb, "FremdNichtLesbar", type("FremdNichtLesbarFehlt", (Exception,), {}))):
+        sb.fremde_datei(speicher.wurzel / "reisen" / "stadtwochenende", "beispielreise", pfad)
 
 
 # ---------- AC-10: zwischenzeitliche Änderung ----------
@@ -579,5 +580,94 @@ def test_doku_nennt_speicherweg_und_vorbedingungen():
     zeitgrenzen = (WURZEL / "docs" / "specs" / "betrieb" / "schreibweg-zeitgrenzen.md").read_text(encoding="utf-8")
     assert "Speicherweg" in zeitgrenzen and "#347" in zeitgrenzen
     assert "FR_SPEICHERREISEN" not in (WURZEL / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8")
+
+
+# ---------- #639: Lesefehler der fremden Reise beim Übernehmen sind Speicherfehler, keine fachliche Ablehnung ----------
+
+def _uebernehmen(speicher, monkeypatch, werkzeug, fehler=None, inhalt=None):
+    """arten_uebernehmen / packliste_uebernehmen in der Stadtreise (Tom) aus der Wanderung, im Prozess über `anwenden`
+    (wie im Unterprozess des Schreibwegs). fehler: Ausnahme, die reisespeicher.datei für die Wanderung wirft; inhalt:
+    Bytes, die sie stattdessen liefert. -> (Code, Antwort, Stand vorher, Stand nachher)"""
+    rs = speicher.rs
+    echt = rs.datei
+
+    def datei(reise, pfad_, bis=None):
+        if reise == "beispielreise":
+            if fehler is not None:
+                raise fehler
+            if inhalt is not None:
+                return inhalt
+        return echt(reise, pfad_, bis)
+
+    monkeypatch.setattr(rs, "datei", datei)
+    basis = rs.stand_nummer("stadtwochenende")
+    arbeit = speicher.tmp / "kopie"
+    rs.exportieren("stadtwochenende", arbeit / "reisen" / "stadtwochenende", bis=basis)
+    try:
+        code, a = sb.anwenden(speicher.wurzel, arbeit, "stadtwochenende", werkzeug,
+                              {**TOM, "args": {"von_reise": "beispielreise", "grund": "wie damals (Beispielwert)"}},
+                              basis=basis)
+    finally:
+        shutil.rmtree(arbeit, ignore_errors=True)
+    return code, a, basis, rs.stand_nummer("stadtwochenende")
+
+
+@pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+def test_639_datenbank_der_fremden_reise_nicht_lesbar_ist_503(speicher, monkeypatch, capsys, werkzeug):
+    """AC-8 (#639): Ist die Datenbank beim Lesen der fremden Reise nicht lesbar (sqlite3.Error), antwortet der Schreibweg
+    503 speicher_nicht_erreichbar statt „Reise ohne Arten“ (.2), ohne Wirkung, mit einer Protokollzeile."""
+    code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug,
+                                            fehler=sqlite3.DatabaseError("database disk image is malformed"))
+    assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
+    assert nachher == vorher
+    assert f"Store {werkzeug} 503" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+@pytest.mark.parametrize("art", ["ablage_fehlt", "ablage_fehler", "oserror"])
+def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug):
+    """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
+    kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
+    rs = speicher.rs
+    fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
+              "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+              "oserror": lambda: OSError(5, "Input/output error")}[art]()
+    code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug, fehler=fehler)
+    assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
+    assert nachher == vorher
+
+
+@pytest.mark.parametrize("werkzeug", ["arten_uebernehmen", "packliste_uebernehmen"])
+@pytest.mark.parametrize("art", ["unbekannt", "kein_text"])
+def test_639_fachliche_faelle_bleiben_ablehnung_2(speicher, monkeypatch, art, werkzeug):
+    """AC-10 (#639, Schutz): Gibt es die fremde Reise oder Datei nicht (KeyError) oder ist der Inhalt kein lesbarer Text,
+    bleibt es bei der Ablehnung .2 ohne Wirkung."""
+    if art == "unbekannt":
+        code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug, fehler=KeyError("beispielreise"))
+    else:
+        code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug, inhalt=b"\xff\xfe\xfa kein Text")
+    assert code == 422 and a["fehler_code"] == f"schreiben.{werkzeug}.2", a
+    assert nachher == vorher
+
+
+@pytest.mark.parametrize("art", ["fehlt", "beschaedigt"])
+def test_639_fremde_datei_wirft_bei_ablagefehler(speicher, art):
+    """AC-11 (#639): fremde_datei liefert bei einem Ablagefehler nicht None, sondern wirft FremdNichtLesbar; der Text
+    nennt die eigene Reise nicht als Fehlerort."""
+    rs = speicher.rs
+    with closing(sqlite3.connect(rs.pfad())) as v:
+        pfad, summe = v.execute("SELECT pfad, pruefsumme FROM versionen WHERE reise = 'beispielreise' "
+                                "AND ausgelagert = 1 ORDER BY pfad LIMIT 1").fetchone()
+    f = rs.ablage_pfad(summe)
+    os.chmod(f.parent, 0o700)
+    if art == "fehlt":
+        f.unlink()
+    else:
+        os.chmod(f, 0o600)
+        f.write_bytes(b"kaputt")
+    assert hasattr(sb, "FremdNichtLesbar"), "Ausnahme FremdNichtLesbar fehlt"
+    with pytest.raises(sb.FremdNichtLesbar) as e:
+        sb.fremde_datei(speicher.wurzel / "reisen" / "stadtwochenende", "beispielreise", pfad)
+    assert "stadtwochenende" not in str(e.value)
 
 

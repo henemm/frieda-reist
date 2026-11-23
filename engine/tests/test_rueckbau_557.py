@@ -577,6 +577,136 @@ def test_altbau_archivordner_nicht_anlegbar_haelt_den_lauf_nicht_auf(ab):
     assert not ab.merker.exists()
 
 
+# ---------- #639: Nacharbeiten (Schutzliste, gemeinsame Units-Prüfung, set -e) ----------
+
+def _funktion(name, text=None):
+    """Quelltext der Shell-Funktion name aus veroeffentlichen.sh (von `name() {` bis zur schließenden Klammer am Zeilenanfang)."""
+    text = text if text is not None else _text("betrieb/veroeffentlichen.sh")
+    m = re.search(rf"^{re.escape(name)}\(\) \{{.*?^\}}\n", text, re.S | re.M)
+    assert m, f"Funktion {name} fehlt"
+    return m.group(0)
+
+
+def _alle_funktionen():
+    """Alle Funktionen des Skripts ohne den Aufruf von main, zum Aufruf einzelner Funktionen unter set -euo pipefail."""
+    return "".join(m.group(0) for m in re.finditer(r"^[a-z_]+\(\) \{.*?^\}\n", _text("betrieb/veroeffentlichen.sh"),
+                                                    re.S | re.M))
+
+
+@pytest.mark.parametrize("variable, ort", [("FR_ABLAGE", "gleich"), ("FR_ABLAGE", "darin"), ("FR_KONTEN", "darin"),
+                                           ("FR_KONNEKTOR", "darin")])
+def test_639_altbau_schuetzt_ablage_konten_konnektor(ab, variable, ort):
+    """AC-1/AC-2 (#639): Fällt FR_ABLAGE, FR_KONTEN oder FR_KONNEKTOR mit dem alten Bauordner zusammen oder liegt darin,
+    wird nichts gelöscht: Warnzeile, Lauf grün, kein Alarm."""
+    alt = Path(ab.sw.env[variable])
+    ziel = ab.bau if ort == "gleich" else ab.bau / variable.lower()
+    if alt.exists():
+        shutil.copytree(alt, ziel, dirs_exist_ok=True)
+    else:
+        ziel.mkdir(parents=True, exist_ok=True)
+    (ziel / "schutz.txt").write_text("darf nicht weg (Beispiel)\n")
+    r = _gruen(ab.lauf(**{variable: str(ziel)}))
+    assert (ziel / "schutz.txt").exists(), r.stdout
+    assert ab.altbau() == ALTBAU
+    assert not ab.merker.exists() and ab.archive() == []
+    assert ab.warnungen(r), r.stdout
+    assert not _hoch(ab.sw)
+
+
+def _umzug_begonnen(sw):
+    """Begonnener, noch nicht fertiger Umzug: kein Zustand, nur die Spur .geprueft."""
+    (sw.dienst / "umzug-454").unlink()
+    (sw.dienst / "umzug-454.geprueft").write_text(sw.a + "\n")
+
+
+def _units(sw, name, zeile, rc):
+    return str(ausfuehrbar(sw.t / name, f'#!/bin/sh\n[ "$1" = pruefen ] && echo "{zeile}" && exit {rc}\nexit 1\n'))
+
+
+def test_639_umzug_fertig_bei_reiner_gesperrter_abweichung(sw):
+    """AC-3 (#639): Endet units.py pruefen mit 4 und nennt den alten Bauordner nicht (nur die gesperrte Zeile
+    ReadWritePaths des Klons), setzt der Lauf aus dem Klon den Umzug auf fertig."""
+    _umzug_begonnen(sw)
+    zeile = (f"probe-schreiben.service: BLOCKED, probe-schreiben.service: [Service] ReadWritePaths=-{sw.klon}-schreiben "
+             f"{sw.klon} {sw.dienst} installed")
+    r = _gruen(sw.lauf(VF_UNITS=_units(sw, "units-rwp.sh", zeile, 4)))
+    assert sw.lesen("umzug-454") == "fertig", r.stdout
+    assert "Move (#454) done" in r.stdout
+
+
+@pytest.mark.parametrize("fall", ["exit4_nennt_bau", "exit1"])
+def test_639_umzug_bleibt_bei_abweichung_auf_den_altbau(sw, fall):
+    """AC-4 (#639): Nennt die Ausgabe den alten Bauordner (Exit 4) oder endet die Prüfung außerhalb von 0, 3, 4, bleibt
+    der Umzug, wie er ist."""
+    _umzug_begonnen(sw)
+    if fall == "exit4_nennt_bau":
+        units = _units(sw, "units-bau.sh", f"probe-schreiben.service: BLOCKED, FR_WURZEL={sw.seiten / '_bau'}", 4)
+    else:
+        units = _units(sw, "units-kaputt.sh", "kaputt (Beispiel)", 1)
+    r = _gruen(sw.lauf(VF_UNITS=units))
+    assert sw.lesen("umzug-454") is None, r.stdout
+    assert "Move (#454) done" not in r.stdout
+
+
+def test_639_altbau_bleibt_bei_units_exit_1(ab):
+    """AC-4 (#639): Endet units.py pruefen mit 1, wird nichts gelöscht; Warnzeile."""
+    r = _gruen(ab.lauf(VF_UNITS=_units(ab.sw, "units-kaputt.sh", "kaputt (Beispiel)", 1)))
+    assert ab.altbau() == ALTBAU
+    assert not ab.merker.exists() and ab.archive() == []
+    assert ab.warnungen(r), r.stdout
+
+
+def test_639_altbau_fr_seiten_nicht_betretbar_bricht_nicht_ab(tmp_path):
+    """AC-5 (#639): Lässt sich FR_SEITEN nicht betreten (cd scheitert), bricht altbau_entfernen unter set -euo pipefail
+    nicht ab: Rückgabe 0, der Lauf geht weiter, nichts wird gelöscht."""
+    seiten, dienst = tmp_path / "seiten", tmp_path / "seiten" / "_dienst"
+    (seiten / "_bau" / "reisen").mkdir(parents=True)
+    dienst.mkdir()
+    (dienst / "umzug-454").write_text("fertig\n")
+    skript = tmp_path / "probe.sh"
+    skript.write_text("set -euo pipefail\n" + _alle_funktionen() +
+                      'cd() { return 1; }\naltbau_entfernen\necho "WEITER $?"\n', encoding="utf-8")
+    r = subprocess.run(["bash", str(skript)], capture_output=True, text=True,
+                       env={**SAUBER, "FR_SEITEN": str(seiten), "FR_DIENST": str(dienst), "FR_WURZEL": str(tmp_path / "klon"),
+                            "FR_SPEICHER": str(seiten / "_speicher"), "FR_BETRIEB": str(BETRIEB), "PATH": os.environ["PATH"]})
+    assert r.returncode == 0 and "WEITER 0" in r.stdout, r.stdout + r.stderr
+    assert (seiten / "_bau").is_dir()
+
+
+def test_639_zustand_nicht_schreibbar_bricht_nicht_ab(sw):
+    """AC-6 (#639): Lässt sich die Zustandsdatei nicht ersetzen (an ihrer Stelle liegt ein Ordner mit einem Ordner
+    umzug-454.neu, mv scheitert), bricht der Lauf unter set -e nicht ab: grün, Heartbeat wie immer."""
+    (sw.dienst / "umzug-454").unlink()
+    (sw.dienst / "umzug-454" / "umzug-454.neu").mkdir(parents=True)
+    (sw.dienst / "umzug-454.geprueft").write_text(sw.a + "\n")
+    r = _gruen(sw.lauf())
+    assert sw.zeilen("pings.log") == ["ping"], r.stdout
+
+
+def test_639_eine_units_pruefung_fuer_beide():
+    """AC-7 (#639): altbau_entfernen und umzug_fertig_im_klon werten units.py pruefen über dieselbe Hilfsfunktion
+    units_ohne_altbau aus; keine der beiden ruft die Prüfung selbst auf."""
+    hilfe = _funktion("units_ohne_altbau")
+    assert "pruefen" in hilfe and "_bau" in hilfe
+    for name in ("altbau_entfernen", "umzug_fertig_im_klon"):
+        rumpf = _funktion(name)
+        assert "units_ohne_altbau" in rumpf, name
+        assert not re.search(r"\bpruefen\b", re.sub(r"#[^\n]*", "", rumpf)), name
+
+
+def test_639_doku_schreibziele_und_aufraeumen():
+    """AC-12 (#639): betrieb.md und der Kommentar der Vorlage nennen keinen „Bauordner mit .git“ mehr; das Aufräumen nennt
+    Ablage, Konten und Konnektor als geschützt."""
+    betrieb = _text("docs/betrieb.md")
+    assert "Bauordner mit `.git`" not in betrieb
+    vorlage = _text("betrieb/vorlagen/schreiben.service")
+    assert "Bauordner mit .git" not in vorlage and "Software-Klon" in vorlage
+    m = re.search(r"\*\*Aufräumen des alten Bauordners[^\n]*", betrieb)
+    assert m
+    for wort in ("Ablage", "Konten", "Konnektor"):
+        assert wort in m.group(0), wort
+
+
 @pytest.mark.parametrize("reise", REISEN)
 def test_lauf_im_klon_gruen(sw, reise):
     """AC-16 (Schutz): Ohne Altbau läuft der Klon grün, baut die Reise, pingt einmal und warnt nicht über den Altbau."""
