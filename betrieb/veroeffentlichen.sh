@@ -18,12 +18,14 @@
 # software-gut = C, Units und nginx abgleichen, Heartbeat. Prüfungen der Instanz aus <FR_DIENST>/instanz/tests laufen danach,
 # wenn es sie gibt, und sperren nie (Warnung). Ein Anstoß von der Seite (_anstoss.json) ist nur dieser Lauf.
 # Umzug (#454): Ein Lauf aus dem Klon setzt <FR_DIENST>/umzug-454 auf fertig, wenn es Spuren des Umzugs gibt und die Units auf
-# den Klon zeigen (umzug_fertig_im_klon); eine frische Instanz ohne Umzug bekommt keinen Zustand.
+# den Klon zeigen, also keine mehr den alten Bauordner nennt (umzug_fertig_im_klon, units_ohne_altbau); eine frische Instanz
+# ohne Umzug bekommt keinen Zustand.
 # Aufräumen (#557, altbau_entfernen, docs/betrieb.md „Aufräumen nach dem Umzug“): Liegt noch der alte Bauordner
 # <FR_SEITEN>/_bau (das frühere Reisen-Repo) oder eine alte Arbeitskopie <FR_SEITEN>/_bau-schreiben-*, archiviert der Lauf
 # _bau nach <FR_DIENST>/archiv/ und entfernt beides, aber nur wenn umzug-454 = fertig ist, keine Unit mehr auf _bau zeigt und
 # jede Reise aus _bau/reisen im Reisespeicher steht (oder gelöscht ist). Vorher: Platzprüfung, Archiv gelesen und geprüft,
-# jeder Pfad aufgelöst innerhalb von FR_SEITEN und kein Link. Danach der Merker <FR_DIENST>/altbau-557; mit ihm tut der
+# jeder Pfad aufgelöst innerhalb von FR_SEITEN und kein Link, und weder Klon, Dienstordner, Speicher, Ablage, Konten noch
+# Konnektor liegen darin. Danach der Merker <FR_DIENST>/altbau-557; mit ihm tut der
 # Schritt nichts mehr. Fehler sind eine Warnzeile, einmal je Störung, kein Alarm, kein Abbruch; der nächste Lauf versucht es
 # erneut. Einen Rückweg auf den alten Weg gibt es nicht (Entscheidung des Product Owners, 20.11.2026).
 #
@@ -814,17 +816,28 @@ main_klon() {  # ein Lauf im Software-Klon (#454), Ablauf im Kopf
   erfolg_melden
 }
 
+units_ohne_altbau() {  # #639: Erfolg, wenn keine Unit mehr auf den alten Bauordner <FR_SEITEN>/_bau zeigt: units.py pruefen
+  # endet mit 0 (gleich), 3 (nur erlaubte Abweichungen) oder 4 (gesperrte Abweichung) und die Ausgabe nennt _bau nicht. Eine
+  # Regel für umzug_fertig_im_klon und altbau_entfernen. Der Exitcode der Prüfung steht danach in units_ohne_altbau_rc.
+  local aus
+  units_ohne_altbau_rc=0
+  aus="$("${VF_UNITS:-$FR_BETRIEB/units.py}" pruefen 2>&1)" || units_ohne_altbau_rc=$?
+  case "$units_ohne_altbau_rc" in 0|3|4) ;; *) return 1 ;; esac
+  [[ "$aus" != *"$FR_SEITEN/_bau"* ]]
+}
+
 umzug_fertig_im_klon() {  # Schritt 5 des Umzugs (#454) für einen Lauf aus dem Klon (Units bei der Auslieferung umgestellt):
-  # Zustand selbst auf fertig, falls er es noch nicht ist, aber nur wenn die Units wirklich auf den Klon zeigen (units.py
-  # pruefen ohne Abweichung; FR_WURZEL ist hier der Klon). Ein anderer gesetzter Zustand (alt, aus der Zeit vor #557) bleibt,
-  # wie er ist; dann räumt altbau_entfernen auch nichts auf. Eine frische Instanz ohne Spur eines Umzugs (umzug-454,
-  # .geprueft, .units) bekommt keinen Zustand. Weichen die Units ab: stumm, nichts geschrieben.
+  # Zustand selbst auf fertig, falls er es noch nicht ist, aber nur wenn keine Unit mehr auf den alten Bauordner zeigt
+  # (units_ohne_altbau; eine reine gesperrte Rechte-Abweichung hält nicht auf, #639; FR_WURZEL ist hier der Klon). Ein anderer
+  # gesetzter Zustand (alt, aus der Zeit vor #557) bleibt, wie er ist; dann räumt altbau_entfernen auch nichts auf. Eine frische
+  # Instanz ohne Spur eines Umzugs (umzug-454, .geprueft, .units) bekommt keinen Zustand. Zeigt noch eine Unit auf den alten
+  # Bauordner oder lässt sich die Zustandsdatei nicht schreiben: stumm, kein Abbruch.
   local zustand_datei="$FR_DIENST/umzug-454" zustand
   zustand="$(cat "$zustand_datei" 2>/dev/null || true)"
   [ "$zustand" != fertig ] && [ "$zustand" != alt ] || return 0
   [ -e "$zustand_datei" ] || [ -e "$FR_DIENST/umzug-454.geprueft" ] || [ -e "$FR_DIENST/umzug-454.units" ] || return 0
-  "${VF_UNITS:-$FR_BETRIEB/units.py}" pruefen > /dev/null 2>&1 || return 0
-  echo fertig > "$zustand_datei.neu" && mv "$zustand_datei.neu" "$zustand_datei"
+  units_ohne_altbau || return 0
+  { echo fertig > "$zustand_datei.neu" && mv "$zustand_datei.neu" "$zustand_datei"; } 2>/dev/null || return 0
   rm -f "$FR_DIENST/umzug-454.units"
   echo "Move (#454) done: this run starts from the software clone, the move is marked as done."
 }
@@ -839,7 +852,7 @@ altbau_warnen() {  # <schlüssel> <text>: Warnzeile des Aufräumens, einmal je S
 altbau_entfernen() {  # #557: alten Bauordner <FR_SEITEN>/_bau und <FR_SEITEN>/_bau-schreiben-* nach einem Archiv entfernen
   # (Ablauf und Bedingungen im Kopf). Rückgabe immer 0: Fehler sind eine Warnzeile (altbau_warnen), nie ein Alarm.
   local merker="$FR_DIENST/altbau-557" bau="$FR_SEITEN/_bau" ziele=() p real seiten_real fremd r frei bedarf
-  local units aus rc archiv_ordner archiv tmp liste
+  local rc archiv_ordner archiv tmp liste
   [ ! -e "$merker" ] || return 0
   [ -n "$FR_SEITEN" ] && [ -d "$FR_SEITEN" ] || return 0
   for p in "$bau" "$FR_SEITEN"/_bau-schreiben-*; do
@@ -847,15 +860,18 @@ altbau_entfernen() {  # #557: alten Bauordner <FR_SEITEN>/_bau und <FR_SEITEN>/_
   done
   [ "${#ziele[@]}" -gt 0 ] || return 0
   [ "$(cat "$FR_DIENST/umzug-454" 2>/dev/null || true)" = fertig ] || return 0
-  # Pfadprüfung vor allem anderen: kein Link, aufgelöst innerhalb von FR_SEITEN, nie FR_SEITEN selbst, der Klon oder der
-  # Dienstordner, und nichts davon liegt darin
-  seiten_real="$(cd "$FR_SEITEN" && pwd -P)"
+  # Pfadprüfung vor allem anderen: kein Link, aufgelöst innerhalb von FR_SEITEN, nie FR_SEITEN selbst, der Klon, der
+  # Dienstordner, der Speicher, die Ablage, die Konten oder der Konnektor, und nichts davon liegt darin (#639)
+  seiten_real="$(cd "$FR_SEITEN" && pwd -P)" \
+    || { altbau_warnen "seiten" "$FR_SEITEN cannot be entered"; return 0; }
   for p in "${ziele[@]}"; do
     real="$(realpath -e "$p" 2>/dev/null || true)"
     if [ -L "$p" ] || [ ! -d "$p" ] || [ -z "$real" ] || [ "$real" != "$seiten_real/$(basename "$p")" ]; then
       altbau_warnen "pfad $p" "$p is a link or not a folder inside $FR_SEITEN"; return 0
     fi
-    for fremd in "$FR_WURZEL" "$FR_DIENST" "$FR_SPEICHER" "$FR_SEITEN/_software" "$FR_SEITEN/_dienst"; do
+    for fremd in "$FR_WURZEL" "$FR_DIENST" "$FR_SPEICHER" "$FR_SEITEN/_software" "$FR_SEITEN/_dienst" \
+                 "${FR_ABLAGE:-}" "${FR_KONTEN:-}" "${FR_KONNEKTOR:-}"; do
+      [ -n "$fremd" ] || continue
       fremd="$(realpath -m "$fremd" 2>/dev/null || echo "$fremd")"
       case "$fremd/" in "$real"/*)
         altbau_warnen "pfad $p" "$p contains $fremd"; return 0 ;;
@@ -872,11 +888,10 @@ altbau_entfernen() {  # #557: alten Bauordner <FR_SEITEN>/_bau und <FR_SEITEN>/_
   if [ -n "$fremd" ]; then
     altbau_warnen "reisen $fremd" "trips not in the trip store: $fremd"; return 0
   fi
-  # Keine Unit zeigt mehr auf den alten Bauordner (units.py pruefen: keine Abweichung, die ihn nennt)
-  units="${VF_UNITS:-$FR_BETRIEB/units.py}"
-  rc=0; aus="$("$units" pruefen 2>&1)" || rc=$?
-  if { [ "$rc" != 0 ] && [ "$rc" != 3 ] && [ "$rc" != 4 ]; } || [[ "$aus" == *"$bau"* ]]; then
-    altbau_warnen "units $rc" "units still point to $bau or cannot be compared (exit $rc)"; return 0
+  # Keine Unit zeigt mehr auf den alten Bauordner (units_ohne_altbau, dieselbe Regel wie beim Umzugsabschluss, #639)
+  if ! units_ohne_altbau; then
+    altbau_warnen "units $units_ohne_altbau_rc" \
+      "units still point to $bau or cannot be compared (exit $units_ohne_altbau_rc)"; return 0
   fi
   # Archiv von _bau (ohne _bau-schreiben-*) nach <FR_DIENST>/archiv/: erst Platz, dann bauen, lesen und prüfen
   archiv_ordner="$FR_DIENST/archiv"

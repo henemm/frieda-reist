@@ -6,7 +6,7 @@
 #
 # Sandbox (#552): Der Schreibweg darf keine Dateien ändern, die später mit höheren Rechten laufen (Shell-Profile, Skripte im
 # Home, die der Timer des Veröffentlichens ohne NoNewPrivileges ausführt). Schreiben darf er nur in diese Ziele:
-#   __WURZEL__            Bauordner mit .git (der Software-Klon, #454): Holen von main beim Veröffentlichen.
+#   __WURZEL__            Software-Klon (#454) mit seinen Git-Daten: Holen von main beim Veröffentlichen.
 #                         Restrisiko angenommen (PO, 13.11.2026): darin liegen auch Skripte, die der Timer ohne NoNewPrivileges ausführt
 #   __DIENST__            Dienstordner: Bau-Ordner der Speicher-Reisen, Sperren (FR_SPERREN), Protokolle des Veröffentlichens.
 #                         Restrisiko angenommen (PO, 13.11.2026): ab #454 liegen hier auch Python-Umgebung (python/), Einstellungen und

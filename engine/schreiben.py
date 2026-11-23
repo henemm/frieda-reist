@@ -5148,16 +5148,25 @@ def gegenstand_aendern(reise_dir, wer, args, heute=None):
             + (S("schreiben.antwort.grund", w1=grund) if grund else "") + (S("schreiben.antwort.gegenstand.nicht_geloescht") if weggelassen else ""))
 
 
+class FremdNichtLesbar(Exception):
+    """Der Reisespeicher kann die Datei einer anderen Reise nicht lesen (Ablage fehlt oder beschädigt, Ein-/Ausgabefehler,
+    #639): ein Speicherfehler, keine fachliche Ablehnung. Der Text nennt die andere Reise, nie die eigene als Fehlerort."""
+
+
 def fremde_datei(reise_dir, von, rel):
-    """Datei einer anderen Reise der Instanz lesen -> Text oder None, aus dem Reisespeicher (#557)."""
+    """Datei einer anderen Reise der Instanz lesen -> Text oder None, aus dem Reisespeicher (#557). None nur fachlich: die
+    Reise oder Datei gibt es nicht, oder ihr Inhalt ist kein lesbarer Text. Technische Fehler gehen weiter (#639):
+    sqlite3.Error unverändert, OSError und Fehler der Ablage als FremdNichtLesbar; anwenden antwortet darauf mit 503."""
     try:
         import reisespeicher
     except ImportError:
         return None
     try:
         return reisespeicher.datei(von, rel).decode("utf-8")
-    except (KeyError, OSError, sqlite3.Error, UnicodeDecodeError, reisespeicher.AblageFehlt, reisespeicher.AblageFehler):
-        return None   # nicht lesbar, auch eine fehlende oder beschädigte Datei der Ablage (#349)
+    except (KeyError, UnicodeDecodeError):
+        return None
+    except (OSError, reisespeicher.AblageFehlt, reisespeicher.AblageFehler) as e:
+        raise FremdNichtLesbar(f"{von}/{rel}: {type(e).__name__}: {e}") from e
 
 
 def packliste_uebernehmen(reise_dir, wer, args, heute=None):
@@ -5813,7 +5822,7 @@ def anwenden(wurzel_, arbeit, reise, werkzeug, anfrage, basis=None, frist=None):
         if isinstance(e, reisespeicher.StandGeaendert):
             sys.stderr.write(f"Conflict {werkzeug} 503: {e}\n")
             return 503, fehler_antwort("schreiben.dienst.stand_geaendert")
-        if isinstance(e, sqlite3.Error):
+        if isinstance(e, (sqlite3.Error, FremdNichtLesbar)):   # FremdNichtLesbar: andere Reise nicht lesbar (#639)
             return speicher_fehler(werkzeug, e)
         if ist_ablage_fehler(e):
             return ablage_fehler(werkzeug, reise, e)

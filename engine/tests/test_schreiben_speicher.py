@@ -629,8 +629,8 @@ def test_639_kaputte_fremde_ablage_ist_503(speicher, monkeypatch, art, werkzeug)
     """AC-9 (#639): Fehlende oder beschädigte Ablage der fremden Reise oder ein OSError: 503 speicher_nicht_erreichbar,
     kein 500, keine Ablehnung .2, keine Wirkung; der Fehlerort ist nicht die eigene Reise (kein pruefung.bauen.79/.80)."""
     rs = speicher.rs
-    fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml"),
-              "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml"),
+    fehler = {"ablage_fehlt": lambda: rs.AblageFehlt("plan/arten.yaml", "0" * 64),
+              "ablage_fehler": lambda: rs.AblageFehler("plan/arten.yaml", "0" * 64),
               "oserror": lambda: OSError(5, "Input/output error")}[art]()
     code, a, vorher, nachher = _uebernehmen(speicher, monkeypatch, werkzeug, fehler=fehler)
     assert code == 503 and a["fehler_code"] == "schreiben.dienst.speicher_nicht_erreichbar", a
