@@ -399,7 +399,7 @@ dl.mliste dd{margin:0;overflow-wrap:anywhere}
 .chip.nummer .kopieren::after{content:"";position:absolute;inset:-15px -14px}
 .chip.nummer .kopieren .sym{width:1.05em;height:1.05em}
 .chip.nummer .kopieren:focus-visible{outline:2px solid var(--acc);border-radius:4px}
-/* ---------- Einzelheiten (Stand-Leiter, 31.10.2026): das eine Aufklappen eines Dings, offen bis zur Buchung ---------- */
+/* ---------- Einzelheiten (Stand-Leiter, 31.10.2026): das eine Aufklappen eines Dings, beim Laden zu (#632) ---------- */
 details.einzelheiten{margin-top:6px}
 details.einzelheiten>summary{cursor:pointer;color:var(--acc);font-size:var(--t-klein);font-weight:600;min-height:32px;display:flex;align-items:center}
 details.einzelheiten[open]>summary{margin-bottom:4px}
@@ -696,13 +696,14 @@ h2.tagkopf .tagtitel{font-size:var(--t-titel);line-height:1.15}
 .ebene-unterwegs{background:var(--tint);border-block:1px solid var(--line);margin-inline:-14px;padding:14px 14px 18px}
 @media (min-width:760px){.ebene-unterwegs{margin-inline:-28px;padding-inline:28px}}
 @media (min-width:1100px) and (pointer:fine){.ebene-unterwegs{margin-inline:0;padding:16px 20px 20px;border:1px solid var(--line);border-radius:var(--r-gross)}}
-/* Hintergrund als Kapitel: zugeklappt, eine Zeile Vorschau, Zahl der Einträge */
+/* Hintergrund als Kapitel: zugeklappt, eine Zeile Vorschau, Zahl der Einträge. Pfeil wie bei Pico und allen übrigen Klappen
+   (#632): zu nach rechts, offen nach unten */
 .kapitel-liste{display:flex;flex-direction:column;border-top:1px solid var(--line)}
 details.kapitel{border-bottom:1px solid var(--line)}
 details.kapitel>summary{list-style:none;display:flex;align-items:center;gap:10px;min-height:56px;padding:8px 0;cursor:pointer}
 details.kapitel>summary::-webkit-details-marker{display:none}
-details.kapitel>summary::after{content:"";flex:none;width:8px;height:8px;margin:0 6px 4px 4px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);transition:transform .15s}
-details.kapitel[open]>summary::after{transform:rotate(-135deg);margin-bottom:-4px}
+details.kapitel>summary::after{content:"";flex:none;width:8px;height:8px;margin:0 6px 0 4px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(-45deg);transition:transform .15s}
+details.kapitel[open]>summary::after{transform:rotate(45deg);margin-bottom:4px}
 .kap-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .kap-titel{font-weight:600;line-height:1.3;color:var(--fg)}
 .kap-vorschau{font-size:var(--t-klein);color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1504,6 +1505,9 @@ function zid(id) {
    Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, quelleZeilen, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, bildHinzu, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe, grossAnsicht, blatt, hochladenBlatt, bildEntfernenFragen
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
+   Klappen (#632, Product Owner 23.11.2026): beim Laden zu, offen nur der Kern (das gemerkte Tageskapitel, die Packliste, das
+   Wunschformular mit angefangenem Entwurf); ein Sprung öffnet die umgebenden Klappen. Pfeil nach rechts heißt zu, nach unten
+   offen, bei Kapiteln wie bei allen übrigen Klappen.
    Regeln: docs/adr/0002-atomic-design.md. Eine neue Ansicht nutzt diese Bausteine; ein neuer Baustein kommt hier, in die
    Stile seiner Ebene, auf die Bausteinseite (#bausteine) und in docs/design.md; zeigt er eine Grundform, auch in GRUNDFORMEN.
    Eine Etappe ist der Lesetext einer Strecke mit summierter Art (Prädikat istEtappe, #269); Kennzahlen kommen mit Kennungen
@@ -1815,7 +1819,7 @@ function abschnittInhalt(a, ohneTitel, kennzahlen) {
   }
   // Tage und Unterkünfte stehen an ihrer Heimat (Zeitachse, Tagesseite, Zu tun; ADR-0003, #214); hier nur der Text
   if (a.typ === "ort") { const e = ortEbenen(einmal(a.bloecke), kennzahlen); if (e) s.append(e); }
-  else einmal(a.bloecke).forEach((b, i) => s.append(block(b, i === 0, kennzahlen)));
+  else einmal(a.bloecke).forEach(b => s.append(block(b, false, kennzahlen)));
   return s;
 }
 
@@ -2254,7 +2258,7 @@ function planungsTeil(gebucht, krit, werte, weitere) {
   const bleibt = gebucht ? krit.filter(x => x.nach_buchung) : [];
   // gebucht ohne Herkunft auf dem ersten Blick (#475): sie steht in den Einzelheiten
   return {sichtbar: merkmalListe(bleibt, werte, null, gebucht),
-    block: einzelheiten(!gebucht, [merkmalListe(krit.filter(x => !bleibt.includes(x)), werte), ...weitere], T(gebucht ? "seite.einzelheiten.aus_der_planung" : "seite.buchung.einzelheiten"))};
+    block: einzelheiten([merkmalListe(krit.filter(x => !bleibt.includes(x)), werte), ...weitere], T(gebucht ? "seite.einzelheiten.aus_der_planung" : "seite.buchung.einzelheiten"))};
 }
 // Organismus Ding als Karte: ein Aufenthalt vollständig an seiner Heimat (ADR-0003), mit oder ohne Nacht (#328). Die Karte bringt
 // Rand und Abstand selbst mit; die Zeile eines Aufenthalts (aufenthaltZeile) gehört nur in die Zeitleiste des Tags.
@@ -2406,10 +2410,11 @@ const KANN_BELEG = () => V.schreiben === "alles" && MIT_KONTO();
 const zahlungText = z => z ? T("seite.buchung.zahlung." + z) : "";
 const groesseText = n => n >= 1048576 ? zahlText(n / 1048576, {minimumFractionDigits: 1, maximumFractionDigits: 1}) + " MB" : Math.max(1, Math.round(n / 1024)) + " kB";
 // Molekül Einzelheiten (Stand-Leiter, Product Owner 31.10.2026): was man erst nach dem Handeln nachschlägt, in einem
-// Aufklappen je Ding (bei Unterkunft und Aufenthalt vor der Buchung, bei der Buchung am Ende). Offen, solange noch gehandelt wird (nicht gebucht), zu ab der Buchung. Ohne Inhalt: nichts.
-function einzelheiten(offen, inhalt, titel) {
+// Aufklappen je Ding (bei Unterkunft und Aufenthalt vor der Buchung, bei der Buchung am Ende). Beim Laden zu, gebucht oder nicht
+// (#632, Product Owner 23.11.2026: beim Laden zu, offen nur der Kern); ein Sprung auf einen Eintrag darin öffnet sie. Ohne Inhalt: nichts.
+function einzelheiten(inhalt, titel) {
   const teile = [].concat(...inhalt).filter(Boolean);
-  return teile.length ? el("details", {class: "einzelheiten", open: !!offen}, el("summary", {}, titel || T("seite.buchung.einzelheiten")), teile) : null;
+  return teile.length ? el("details", {class: "einzelheiten"}, el("summary", {}, titel || T("seite.buchung.einzelheiten")), teile) : null;
 }
 // Molekül Buchung: Etikett mit Zustand und Zahlstand als Marke, darunter was man bis zur Reise und vor Ort braucht. Gebucht ist
 // das die Check-in-Ansicht (#463, Product Owner 9.11.2026): Nummer, Check-in ab und Check-out bis (Anreise, Abreise mit Uhrzeit;
@@ -2454,7 +2459,7 @@ function buchungBlock(b, ding) {
   const dingLink = x => link(x, titelZu(x) || x);
   const leise = [b.gebucht_am ? T("seite.buchung.gebucht_am", {datum: datumKurz(b.gebucht_am)}) : "", b.wer ? T("seite.label.von_wer", {wer: b.wer}) : "", b.quelle ? T("seite.label.quelle") + b.quelle : ""].filter(Boolean);
   const nBelege = BL.filter(x => x.buchung === b.id).length;
-  k.append(einzelheiten(!gebucht, [
+  k.append(einzelheiten([
     gebucht ? preisZ : null,
     preise.length ? zeile(T("seite.buchung.preise"), el("span", {}, reihe(preise.map(([x, p]) => el("span", {}, dingLink(x), ": " + p)), " · "))) : null,
     gebucht ? zahlungZ : null,
@@ -3661,7 +3666,7 @@ function ansichtVarianten(m) {
   if (!alle.some(p => p.id === VARIANTE)) VARIANTE = "";
   const gezeigt = VARIANTE ? alle.filter(p => p.id === VARIANTE) : alle;
   const fest = alle.find(planFest);
-  const hinten = el("details", {class: "weg", open: VARIANTE !== fest?.id},
+  const hinten = el("details", {class: "weg"},
     el("summary", {}, T("seite.plan.andere_erwogene_n", {n: alle.length - 1})));
   m.append(el("h2", {}, VARIANTEN_TITEL));
   m.append(el("p", {class: "meldung"}, fest && alle.length > 1
@@ -5062,8 +5067,8 @@ function ansichtBausteine(m) {
   stBlock.forEach(d => d.querySelectorAll("button, form").forEach(k => { k.tagName === "FORM" ? k.remove() : (k.disabled = true); }));
   teil("Molekül", "Stornierte Buchungen", "Die stornierten Buchungen eines Dings, zugeklappt in einem Block „Storniert (n)“ direkt nach den "
     + "geltenden, mit Hinweis zum Zurückholen; darin jede Buchung unverändert." + (buSt ? "" : " (Muster)"), stBlock);
-  teil("Molekül", "Einzelheiten", "Das eine Aufklappen eines Dings (Unterkunft, Aufenthalt, Buchung): offen, solange noch "
-    + "gehandelt wird, zu ab der Buchung (Stand-Leiter).", einzelheiten(false, [el("div", {class: "z"}, "Merkmale, Herkunft, Belege, Verlauf (Muster)")]));
+  teil("Molekül", "Einzelheiten", "Das eine Aufklappen eines Dings (Unterkunft, Aufenthalt, Buchung): beim Laden zu, gebucht "
+    + "oder nicht (#632); Pfeil nach rechts heißt zu, nach unten offen.", einzelheiten([el("div", {class: "z"}, "Merkmale, Herkunft, Belege, Verlauf (Muster)")]));
   const buB = bu || {id: "B-00", fuer: [], status: "gebucht"};
   const bl = belegeListe(buB, BL.some(x => x.buchung === buB.id) ? null : [{id: "muster", buchung: buB.id, name: "Bestätigung (Muster).pdf",
     groesse: 120000, wer: "Muster", hochgeladen: "2027-01-02T10:00:00", sichtbar: "alle"}]);
@@ -5748,7 +5753,7 @@ function ansichtWuensche(m) {
     (punkte ? T("seite.wunsch.kontingent_punkte", {punkte: KONTINGENT.je_person}) :
       T("seite.wunsch.kontingent_anzahl", {n: KONTINGENT.je_person}))));
   // Neuer Wunsch als Fläche (man handelt dort): Wunsch, darunter Link und Name nebeneinander, Senden rechts
-  if (KANN_WUNSCH) m.append(el("details", {class: "wu-neu karte flaeche", open: !RM.some(e => e.art === "Wunsch") || !!WU_ENTWURF.text},
+  if (KANN_WUNSCH) m.append(el("details", {class: "wu-neu karte flaeche", open: !!WU_ENTWURF.text},
     el("summary", {}, symbol("wuensche", "etikett-sym"), T("seite.wunsch.neuer")),
     el("form", {id: "wuForm"},
       el("label", {for: "wuText"}, T("seite.wunsch.dein_wunsch"),

@@ -50,7 +50,7 @@ for (const breite of [390, 1300]) {
       nacht: {voll: !!document.querySelector(".tagseite > .nacht-voll"), inLesen: !!document.querySelector(".tag-lesen > .ebene-nacht"),
         // Platz (Product Owner 31.10.2026): nach dem Hintergrund, vor den Quellen; oben in Pixeln
         oben: oben(".ebene-nacht"), hintergrund: oben(".ebene-hintergrund"), quellen: oben(".ebene-quellen"),
-        // Stand-Leiter: nicht gebucht sind die Einzelheiten der Unterkunft offen
+        // Beim Laden zu (#632): auch nicht gebucht sind die Einzelheiten der Unterkunft zu
         einzelheiten: [...document.querySelectorAll(".ebene-nacht .karte > details.einzelheiten")].map(d => d.open)},
     };
   });

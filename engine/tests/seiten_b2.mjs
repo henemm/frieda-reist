@@ -52,6 +52,8 @@ for (const breite of [390, 820, 1300]) {
   // Herkunft am Wert außerhalb des Vergleichs (gewählte Unterkunft): Tippen öffnet das Fenster und hält es offen;
   // am Rechner reicht Darüberfahren
   await geh("fest/#T-02");
+  // Einzelheiten starten zu, auch ungebucht (#632): erst aufklappen, wie man es tippt
+  await p.evaluate(`document.querySelectorAll("${nacht} details.einzelheiten").forEach(d => { d.open = true; })`);
   const wert = p.locator(`${nacht} button.mk-w:visible`).first();
   await wert.scrollIntoViewIfNeeded();
   if (breite >= 1100) { await wert.hover(); a.vergleich.hover = await wert.evaluate(x => !x.nextElementSibling.hidden); await p.mouse.move(1, 1); }

@@ -111,7 +111,8 @@ const einzelheiten = [];
 for (const h of ansichten.filter(x => /^T-/.test(x))) {
   await laden(h);
   einzelheiten.push(...await p.evaluate(h => [...document.querySelectorAll("#main details.einzelheiten")].map(d => {
-    const karte = d.closest(".karte, .buchung") || d.parentElement;
+    // nächster Behälter: die Zeile (.z, etwa eine Strecke im Wegverlauf des Tageskastens), die Buchung oder die Karte
+    const karte = d.closest(".z, .karte, .buchung") || d.parentElement;
     const aussen = [...karte.children].filter(x => x !== d && !x.contains(d)).map(x => x.textContent).join(" ").trim();
     return {tag: h, offen: d.open, buchung: !!d.closest(".buchung"), aussen: aussen.length > 0};
   }), h));
