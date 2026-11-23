@@ -64,6 +64,16 @@ def test_paritaet_schluessel_und_platzhalter():
             assert set(PLATZHALTER.findall(text)) == set(PLATZHALTER.findall(de[s])), f"{k}: Platzhalter von {s} weichen ab"
 
 
+def test_jeder_status_der_reise_hat_einen_seitentext():
+    """#634: Für jeden Status, den die Software kennt (reise.STATUS, zugleich Auswahl von trip_status_set), hat jede Sprache
+    das Etikett der Seite; sonst zeigt sie den Rohschlüssel. Ein künftiger Status ohne Text macht diesen Test rot."""
+    import reise
+    for k in _sprachen():
+        katalog = texte.sprache(k).TEXTE
+        fehlt = [s for s in reise.STATUS if not katalog.get(f"seite.reise_status.{s}")]
+        assert not fehlt, f"{k}: seite.reise_status.<status> fehlt für {fehlt}"
+
+
 @pytest.mark.parametrize("kuerzel", ["de", "en"])
 def test_reise_yaml_ist_pflicht_im_katalog(kuerzel):
     """#267, PR a: Ohne reise.yaml bricht der Bau ab; der Hinweis auf die alte Form ist weg."""

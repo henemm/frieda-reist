@@ -3985,8 +3985,10 @@ function naechsteFristen() {
   return el("section", {class: "fristen"}, el("h3", {class: "reise-titel"}, T("seite.reise.naechste_fristen")), el("div", {class: "tagzeilen"}, l.slice(0, 3).map(zeile)),
     l.length > 3 ? el("a", {class: "weiter", href: "#aufgaben"}, T("seite.reise.alle_aufgaben_mit_frist", {n: l.length})) : null);
 }
-// Zähler im Kopf: vor der Reise „noch n Tage“, unterwegs „Tag x von n“, danach nichts
+// Zähler im Kopf: vor der Reise „noch n Tage“, unterwegs „Tag x von n“, danach nichts; bei einer archivierten Reise nie (#634):
+// sie ist beiseitegelegt, ein Countdown täuschte vor, sie finde statt. reiseStatus steht weiter unten, gilt aber, wenn route() zeichnet.
 function reiseZaehler(p) {
+  if (reiseStatus() === "archiv") return null;
   const d = p.tage.map(t => t.datum).filter(Boolean);
   if (!d.length) return null;
   const tag = iso => Date.UTC(...iso.split("-").map((x, i) => i === 1 ? x - 1 : +x)) / 864e5;

@@ -767,6 +767,7 @@ TEXTE = {
     "seite.reise_status.fest": "Fixed",
     "seite.reise_status.unterwegs": "Travelling",
     "seite.reise_status.danach": "After",
+    "seite.reise_status.archiv": "Archived",
     "seite.reise_status.erkl.idee": "First thoughts, nothing planned yet.",
     "seite.reise_status.erkl.planung": "Route and accommodation are being chosen.",
     "seite.reise_status.erkl.fest": "The plan is set; Frieda reminds you of deadlines and open decisions.",

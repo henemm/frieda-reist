@@ -273,6 +273,19 @@ def test_seite_je_status_und_baustein(tmp_path, browser):
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+def test_archivierte_reise_mit_wort_und_ohne_zaehler(tmp_path, browser):
+    """#634: Eine archivierte Reise zeigt im Etikett „Archiviert“ statt des Rohschlüssels und im Reisekopf keinen Zähler,
+    auch wenn sie noch bevorsteht. Gegenprobe: dieselbe Reise in Planung zählt die Tage bis zum Start."""
+    archiv = seite_der_variante(tmp_path / "archiv", browser, datum="2027-05-01", status="archiv")
+    assert archiv["etikett"] == "Archiviert", archiv["etikett"]
+    assert archiv["zaehler"] == [], archiv["zaehler"]
+    planung = seite_der_variante(tmp_path / "planung", browser, datum="2027-05-01")
+    assert planung["etikett"] == "Planung", planung["etikett"]
+    assert len(planung["zaehler"]) == 1 and "12" in planung["zaehler"][0], planung["zaehler"]
+
+
+@pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+@pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke(tmp_path, browser):
     """#287: Ein Aufenthalt ohne Nacht, der an keinem Ort der Strecken des Tags liegt (Ladestopp, Bäckerei unterwegs), steht in der
     Zeitleiste nach der Strecke, zu der seine Uhrzeit passt, nicht am Ende nach „Ziel“. Erfundene Abwandlung der Beispielreise:

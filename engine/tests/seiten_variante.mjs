@@ -1,7 +1,7 @@
 // Seite einer abgewandelten Beispielreise prüfen (Verhalten je Status und Bausteine, Paket B), aufgerufen von test_seite.py.
 // Aufruf: node seiten_variante.mjs <playwright-modul> <basis-url> <datum JJJJ-MM-TT>
 // Meldet: Reiter der Leiste, aktiver Reiter beim Start, Tagesseite beim Start, Kasten „Heute“ (seit #433 weg), Ziel von #heute, Zahl der Rückmeldeknöpfe an IDs,
-// Buchung B-01, stornierte Buchungen am Ding (#146), Zeile „Alle Möglichkeiten“, Skriptfehler.
+// Buchung B-01, stornierte Buchungen am Ding (#146), Zeile „Alle Möglichkeiten“, Statusetikett und Zähler im Reisekopf (#634), Skriptfehler.
 const [, , modul, basis, datum] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
@@ -18,6 +18,9 @@ const start = await p.evaluate(() => ({
   reiter: [...document.querySelectorAll("#nav a")].map(a => a.getAttribute("href").slice(1)),
   aktiv: (document.querySelector("#nav a.on") || {getAttribute: () => "#"}).getAttribute("href").slice(1),
   tag: (document.querySelector("#main h2[data-ziel]") || {}).id || null,
+  // Statusetikett unter dem Titel und Zähler im Reisekopf (#634): bei einer archivierten Reise ein Wort und kein Zähler
+  etikett: (document.querySelector("#reiseStatus .status-pille") || {}).textContent || null,
+  zaehler: [...document.querySelectorAll("#main .reisekopf > :not(h2)")].map(x => x.textContent),
 }));
 // Knopf „Heute“ (#433): über die Kennung des heutigen Tags ist er gewählt; „Reise“ zeigt keinen Kasten „Heute“ mehr
 if (start.tag) {

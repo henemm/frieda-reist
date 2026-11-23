@@ -768,6 +768,7 @@ TEXTE = {
     "seite.reise_status.fest": "Fest",
     "seite.reise_status.unterwegs": "Unterwegs",
     "seite.reise_status.danach": "Danach",
+    "seite.reise_status.archiv": "Archiviert",
     "seite.reise_status.erkl.idee": "Erste Gedanken, noch nichts geplant.",
     "seite.reise_status.erkl.planung": "Route und Unterkünfte werden ausgewählt.",
     "seite.reise_status.erkl.fest": "Der Plan steht; Frieda erinnert an Fristen und offene Entscheidungen.",
