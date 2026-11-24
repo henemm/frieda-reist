@@ -1,0 +1,188 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0
+rootdir: ~/frieda-reist/.claude/worktrees/functional-jumping-lantern
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 82 items / 70 deselected / 12 selected
+
+engine/tests/test_bilder_eigen.py .FFFFFFF.FFF                           [100%]
+
+=================================== FAILURES ===================================
+__________ test_alte_protokollzeilen_ohne_neue_spalten_gelten_weiter ___________
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_alte_protokollzeilen_ohne0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a90b920>)
+
+    def test_alte_protokollzeilen_ohne_neue_spalten_gelten_weiter(speicher):
+        """F003, Formatwechsel ohne Handschritt: Eine Kontendatenbank mit der Tabelle von vorher (ohne pruefsummen und
+        bestaetigt) bekommt die Spalten beim Öffnen; ihre Zeilen gelten als bestätigt ohne Prüfsummen."""
+        konten.db().close()
+        with closing(sqlite3.connect(konten.pfad())) as v, v:
+            v.execute("DROP TABLE bild_loeschungen")
+            v.execute("CREATE TABLE bild_loeschungen (reise TEXT NOT NULL, bild TEXT NOT NULL, datum TEXT NOT NULL, "
+                      "PRIMARY KEY (reise, bild))")
+            v.execute("INSERT INTO bild_loeschungen VALUES ('beispielreise', 'BI-90', '2026-11-20')")
+>       assert konten.bild_loeschungen() == [{"reise": "beispielreise", "bild": "BI-90", "datum": "2026-11-20",
+                                             "pruefsummen": set(), "bestaetigt": True, "vorgemerkt": 0}]
+E       AssertionError: assert [{'reise': 'b...: set(), ...}] == [{'reise': 'b...: set(), ...}]
+E         
+E         At index 0 diff: {'reise': 'beispielreise', 'bild': 'BI-90', 'datum': '2026-11-20', 'pruefsummen': set(), 'bestaetigt': True} != {'reise': 'beispielreise', 'bild': 'BI-90', 'datum': '2026-11-20', 'pruefsummen': set(), 'bestaetigt': True, 'vorgemerkt': 0}
+E         Use -v to get more diff
+
+engine/tests/test_bilder_eigen.py:930: AssertionError
+__________________________ test_frist_ist_eine_stunde __________________________
+
+    def test_frist_ist_eine_stunde():
+>       assert konten.BILD_VORMERKUNG_FRIST == 3600
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'BILD_VORMERKUNG_FRIST'
+
+engine/tests/test_bilder_eigen.py:945: AttributeError
+____ test_junge_vormerkung_bleibt_beim_waechter_und_laesst_sich_bestaetigen ____
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_junge_vormerkung_bleibt_b0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a9716c0>)
+
+    def test_junge_vormerkung_bleibt_beim_waechter_und_laesst_sich_bestaetigen(speicher):
+        """AC-1: Läuft der Wächter zwischen Vormerkung und Festschreiben des Vorgangs, bleibt die junge Vormerkung stehen; das
+        Bestätigen danach klappt normal."""
+        import waechter as wa
+        klein, gross = eigen_im_speicher(speicher)
+        assert konten.bild_loeschung_vormerken("beispielreise", "BI-90", {summe(klein), summe(gross)}) is True
+        stand = speicher.rs.stand_nummer("beispielreise")
+        assert wa.bildloeschungen_nachholen() == []
+        z = _protokoll()
+>       assert z is not None and z["bestaetigt"] is False, z
+E       AssertionError: None
+E       assert (None is not None)
+
+engine/tests/test_bilder_eigen.py:957: AssertionError
+____________________ test_vormerkung_traegt_ihren_zeitpunkt ____________________
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_vormerkung_traegt_ihren_z0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a971940>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x731c1a91fe60>
+
+    def test_vormerkung_traegt_ihren_zeitpunkt(speicher, monkeypatch):
+        """AC-8: bild_loeschungen() liefert den Zeitpunkt der Vormerkung (Sekunden wie konten._jetzt)."""
+        eigen_im_speicher(speicher)
+        t = _vorstellen(monkeypatch, 0)
+        konten.bild_loeschung_vormerken("beispielreise", "BI-90")
+>       assert _protokoll()["vorgemerkt"] == pytest.approx(t), _protokoll()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'vorgemerkt'
+
+engine/tests/test_bilder_eigen.py:969: KeyError
+__________ test_vormerkung_auf_alter_zeile_frischt_den_zeitpunkt_auf ___________
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_vormerkung_auf_alter_zeil0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a9719e0>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x731c1aaaa810>
+
+    def test_vormerkung_auf_alter_zeile_frischt_den_zeitpunkt_auf(speicher, monkeypatch):
+        """AC-3: Eine liegengebliebene unbestätigte Zeile bekommt beim erneuten Vormerken die aktuelle Zeit; ein Verwerfen mit
+        Frist lässt sie dann stehen."""
+        eigen_im_speicher(speicher)
+        assert konten.bild_loeschung_vormerken("beispielreise", "BI-90") is True
+>       t = _vorstellen(monkeypatch, 2 * konten.BILD_VORMERKUNG_FRIST)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'BILD_VORMERKUNG_FRIST'
+
+engine/tests/test_bilder_eigen.py:977: AttributeError
+____________ test_verwerfen_mit_frist_nur_alte_unbestaetigte_zeilen ____________
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_verwerfen_mit_frist_nur_a0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a971f80>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x731c1bf1c9e0>
+
+    def test_verwerfen_mit_frist_nur_alte_unbestaetigte_zeilen(speicher, monkeypatch):
+        """AC-2, AC-6: Mit Frist verwirft bild_loeschung_verwerfen nur unbestätigte Zeilen, die älter als die Frist sind."""
+        eigen_im_speicher(speicher)
+        konten.bild_loeschung_vormerken("beispielreise", "BI-90")
+>       konten.bild_loeschung_verwerfen("beispielreise", "BI-90", nur_aelter_als=konten.BILD_VORMERKUNG_FRIST)
+                                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'BILD_VORMERKUNG_FRIST'
+
+engine/tests/test_bilder_eigen.py:988: AttributeError
+_________________ test_bestaetigte_zeile_bleibt_in_jedem_alter _________________
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_bestaetigte_zeile_bleibt_0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a971a80>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x731c1c75fcb0>
+
+    def test_bestaetigte_zeile_bleibt_in_jedem_alter(speicher, monkeypatch):
+        """AC-6: Eine bestätigte Zeile verwirft weder bild_loeschung_verwerfen mit Frist noch der Wächter."""
+        import waechter as wa
+        eigen_im_speicher(speicher)
+        konten.bild_loeschung_vormerken("beispielreise", "BI-90")
+        konten.bild_loeschung_bestaetigen("beispielreise", "BI-90")
+>       _vorstellen(monkeypatch, 100 * konten.BILD_VORMERKUNG_FRIST)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute 'BILD_VORMERKUNG_FRIST'
+
+engine/tests/test_bilder_eigen.py:1001: AttributeError
+_____ test_junge_vormerkung_mit_entferntem_eintrag_wird_sofort_bestaetigt ______
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_junge_vormerkung_mit_entf0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a9dd760>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x731c1a91e0f0>
+
+    def test_junge_vormerkung_mit_entferntem_eintrag_wird_sofort_bestaetigt(speicher, monkeypatch):
+        """AC-7: Ist der Eintrag im neuesten Stand schon entfernt (Vorgang festgeschrieben, Bestätigen gescheitert), bestätigt
+        der Wächter auch eine junge Vormerkung sofort."""
+        import reisespeicher as rs
+        import waechter as wa
+        eigen_im_speicher(speicher)
+    
+        def gesperrt(*a, **kw):
+            raise sqlite3.OperationalError("database is locked (Test)")
+        with monkeypatch.context() as m:
+            m.setattr(konten, "bild_loeschung_bestaetigen", gesperrt)
+            m.setattr(rs, "bild_entfernen", gesperrt)
+            assert entfernen_hier(speicher, tss.KARL)[0] == 200
+        z = _protokoll()
+>       assert z["bestaetigt"] is False and z["vorgemerkt"] >= konten._jetzt() - 60, z
+                                            ^^^^^^^^^^^^^^^
+E       KeyError: 'vorgemerkt'
+
+engine/tests/test_bilder_eigen.py:1033: KeyError
+----------------------------- Captured stderr call -----------------------------
+Image beispielreise/BI-90 not yet removed for good (the watcher retries): OperationalError: database is locked (Test)
+_________ test_alte_unbestaetigte_zeilen_ohne_zeitpunkt_gelten_als_alt _________
+
+speicher = namespace(rs=<module 'reisespeicher' from 'engine/...4/test_alte_unbestaetigte_zeilen0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x731c1a9dfba0>)
+
+    def test_alte_unbestaetigte_zeilen_ohne_zeitpunkt_gelten_als_alt(speicher):
+        """AC-5: Eine Kontendatenbank von vor #649 (Tabelle mit pruefsummen und bestaetigt, ohne vorgemerkt) bekommt die Spalte
+        beim Öffnen ohne Handschritt; ihre Zeilen haben vorgemerkt 0 und gelten als älter als die Frist: der Wächter verwirft
+        eine unbestätigte Zeile, deren Eintrag nicht entfernt ist."""
+        import waechter as wa
+        klein, _ = eigen_im_speicher(speicher)
+        konten.db().close()
+        with closing(sqlite3.connect(konten.pfad())) as v, v:
+            v.execute("DROP TABLE bild_loeschungen")
+            v.execute("CREATE TABLE bild_loeschungen (reise TEXT NOT NULL, bild TEXT NOT NULL, datum TEXT NOT NULL, "
+                      "pruefsummen TEXT NOT NULL DEFAULT '', bestaetigt INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (reise, bild))")
+            v.execute("INSERT INTO bild_loeschungen VALUES ('beispielreise', 'BI-90', '2026-11-20', '', 0)")
+        z = _protokoll()
+>       assert z["vorgemerkt"] == 0 and z["bestaetigt"] is False, z
+               ^^^^^^^^^^^^^^^
+E       KeyError: 'vorgemerkt'
+
+engine/tests/test_bilder_eigen.py:1051: KeyError
+________________ test_betrieb_nennt_die_frist_von_einer_stunde _________________
+
+    def test_betrieb_nennt_die_frist_von_einer_stunde():
+        """AC-9: docs/betrieb.md nennt die Frist, nach der der Wächter eine Vormerkung ohne Vorgang verwirft."""
+        text = (WURZEL / "docs/betrieb.md").read_text(encoding="utf-8")
+>       assert any("Vormerkung" in z and "einer Stunde" in z for z in text.splitlines()), "Frist von einer Stunde in betrieb.md"
+E       AssertionError: Frist von einer Stunde in betrieb.md
+E       assert False
+E        +  where False = any(<generator object test_betrieb_nennt_die_frist_von_einer_stunde.<locals>.<genexpr> at 0x731c1a9ea5a0>)
+
+engine/tests/test_bilder_eigen.py:1060: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_bilder_eigen.py::test_alte_protokollzeilen_ohne_neue_spalten_gelten_weiter
+FAILED engine/tests/test_bilder_eigen.py::test_frist_ist_eine_stunde - Attrib...
+FAILED engine/tests/test_bilder_eigen.py::test_junge_vormerkung_bleibt_beim_waechter_und_laesst_sich_bestaetigen
+FAILED engine/tests/test_bilder_eigen.py::test_vormerkung_traegt_ihren_zeitpunkt
+FAILED engine/tests/test_bilder_eigen.py::test_vormerkung_auf_alter_zeile_frischt_den_zeitpunkt_auf
+FAILED engine/tests/test_bilder_eigen.py::test_verwerfen_mit_frist_nur_alte_unbestaetigte_zeilen
+FAILED engine/tests/test_bilder_eigen.py::test_bestaetigte_zeile_bleibt_in_jedem_alter
+FAILED engine/tests/test_bilder_eigen.py::test_junge_vormerkung_mit_entferntem_eintrag_wird_sofort_bestaetigt
+FAILED engine/tests/test_bilder_eigen.py::test_alte_unbestaetigte_zeilen_ohne_zeitpunkt_gelten_als_alt
+FAILED engine/tests/test_bilder_eigen.py::test_betrieb_nennt_die_frist_von_einer_stunde
+================= 10 failed, 2 passed, 70 deselected in 4.74s ==================

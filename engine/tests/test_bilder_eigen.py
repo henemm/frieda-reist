@@ -854,14 +854,17 @@ def test_gescheiterter_vorgang_hinterlaesst_kein_loeschprotokoll(speicher, monke
     assert speicher.rs.datei("beispielreise", "medien/bilder/BI-90-480.webp")
 
 
-def test_liegengebliebene_vormerkung_ohne_vorgang_schadet_nicht(speicher):
+def test_liegengebliebene_vormerkung_ohne_vorgang_schadet_nicht(speicher, monkeypatch):
     """F002: Stirbt der Dienst zwischen Vormerkung und Vorgang, bleibt eine unbestätigte Zeile. Der Wächter bestätigt sie nur,
-    wenn der Eintrag im neuesten Stand entfernt ist; sonst verwirft er sie, ohne das Foto anzufassen."""
+    wenn der Eintrag im neuesten Stand entfernt ist; sonst verwirft er sie, ohne das Foto anzufassen, sobald sie älter als
+    die Frist ist (#649)."""
     import waechter as wa
     klein, gross = eigen_im_speicher(speicher)
     assert konten.bild_loeschung_vormerken("beispielreise", "BI-90", {summe(klein), summe(gross)}) is True
     assert ("beispielreise", "BI-90") not in konten.bild_loeschprotokoll()
     stand = speicher.rs.stand_nummer("beispielreise")
+    jetzt = konten._jetzt()
+    monkeypatch.setattr(konten, "_jetzt", lambda: jetzt + konten.BILD_VORMERKUNG_FRIST + 1)
     assert wa.bildloeschungen_nachholen() == []
     assert _protokoll() is None and speicher.rs.stand_nummer("beispielreise") == stand
     assert speicher.rs.datei("beispielreise", "medien/bilder/BI-90-480.webp") == klein
@@ -933,8 +936,136 @@ def test_alte_protokollzeilen_ohne_neue_spalten_gelten_weiter(speicher):
                   "PRIMARY KEY (reise, bild))")
         v.execute("INSERT INTO bild_loeschungen VALUES ('beispielreise', 'BI-90', '2026-11-20')")
     assert konten.bild_loeschungen() == [{"reise": "beispielreise", "bild": "BI-90", "datum": "2026-11-20",
-                                         "pruefsummen": set(), "bestaetigt": True}]
+                                         "pruefsummen": set(), "bestaetigt": True, "vorgemerkt": 0}]
     assert konten.bild_loeschprotokoll() == [("beispielreise", "BI-90")]
+
+
+# ---------- #649: Vormerkung erst nach einer Frist verwerfen (Befund F006) ----------
+
+def _vorstellen(monkeypatch, sekunden):
+    """konten._jetzt um sekunden vorstellen (vom echten Jetzt aus)."""
+    echt = konten._jetzt()
+    monkeypatch.setattr(konten, "_jetzt", lambda: echt + sekunden)
+    return echt + sekunden
+
+
+def test_frist_ist_eine_stunde():
+    assert konten.BILD_VORMERKUNG_FRIST == 3600
+
+
+def test_junge_vormerkung_bleibt_beim_waechter_und_laesst_sich_bestaetigen(speicher):
+    """AC-1: Läuft der Wächter zwischen Vormerkung und Festschreiben des Vorgangs, bleibt die junge Vormerkung stehen; das
+    Bestätigen danach klappt normal."""
+    import waechter as wa
+    klein, gross = eigen_im_speicher(speicher)
+    assert konten.bild_loeschung_vormerken("beispielreise", "BI-90", {summe(klein), summe(gross)}) is True
+    stand = speicher.rs.stand_nummer("beispielreise")
+    assert wa.bildloeschungen_nachholen() == []
+    z = _protokoll()
+    assert z is not None and z["bestaetigt"] is False, z
+    assert speicher.rs.stand_nummer("beispielreise") == stand
+    konten.bild_loeschung_bestaetigen("beispielreise", "BI-90")
+    z = _protokoll()
+    assert z["bestaetigt"] is True and z["pruefsummen"] == {summe(klein), summe(gross)}, z
+
+
+def test_vormerkung_traegt_ihren_zeitpunkt(speicher, monkeypatch):
+    """AC-8: bild_loeschungen() liefert den Zeitpunkt der Vormerkung (Sekunden wie konten._jetzt)."""
+    eigen_im_speicher(speicher)
+    t = _vorstellen(monkeypatch, 0)
+    konten.bild_loeschung_vormerken("beispielreise", "BI-90")
+    assert _protokoll()["vorgemerkt"] == pytest.approx(t), _protokoll()
+
+
+def test_vormerkung_auf_alter_zeile_frischt_den_zeitpunkt_auf(speicher, monkeypatch):
+    """AC-3: Eine liegengebliebene unbestätigte Zeile bekommt beim erneuten Vormerken die aktuelle Zeit; ein Verwerfen mit
+    Frist lässt sie dann stehen."""
+    eigen_im_speicher(speicher)
+    assert konten.bild_loeschung_vormerken("beispielreise", "BI-90") is True
+    t = _vorstellen(monkeypatch, 2 * konten.BILD_VORMERKUNG_FRIST)
+    assert konten.bild_loeschung_vormerken("beispielreise", "BI-90") is False
+    assert _protokoll()["vorgemerkt"] == pytest.approx(t), _protokoll()
+    konten.bild_loeschung_verwerfen("beispielreise", "BI-90", nur_aelter_als=konten.BILD_VORMERKUNG_FRIST)
+    assert _protokoll() is not None and _protokoll()["bestaetigt"] is False
+
+
+def test_verwerfen_mit_frist_nur_alte_unbestaetigte_zeilen(speicher, monkeypatch):
+    """AC-2, AC-6: Mit Frist verwirft bild_loeschung_verwerfen nur unbestätigte Zeilen, die älter als die Frist sind."""
+    eigen_im_speicher(speicher)
+    konten.bild_loeschung_vormerken("beispielreise", "BI-90")
+    konten.bild_loeschung_verwerfen("beispielreise", "BI-90", nur_aelter_als=konten.BILD_VORMERKUNG_FRIST)
+    assert _protokoll() is not None, "jung: bleibt"
+    _vorstellen(monkeypatch, konten.BILD_VORMERKUNG_FRIST + 1)
+    konten.bild_loeschung_verwerfen("beispielreise", "BI-90", nur_aelter_als=konten.BILD_VORMERKUNG_FRIST)
+    assert _protokoll() is None, "alt: verworfen"
+
+
+def test_bestaetigte_zeile_bleibt_in_jedem_alter(speicher, monkeypatch):
+    """AC-6: Eine bestätigte Zeile verwirft weder bild_loeschung_verwerfen mit Frist noch der Wächter."""
+    import waechter as wa
+    eigen_im_speicher(speicher)
+    konten.bild_loeschung_vormerken("beispielreise", "BI-90")
+    konten.bild_loeschung_bestaetigen("beispielreise", "BI-90")
+    _vorstellen(monkeypatch, 100 * konten.BILD_VORMERKUNG_FRIST)
+    konten.bild_loeschung_verwerfen("beispielreise", "BI-90", nur_aelter_als=konten.BILD_VORMERKUNG_FRIST)
+    assert _protokoll()["bestaetigt"] is True
+    wa.bildloeschungen_nachholen()
+    assert _protokoll()["bestaetigt"] is True
+
+
+def test_verwerfen_ohne_frist_wie_bisher(speicher):
+    """AC-4: Ohne nur_aelter_als verwirft bild_loeschung_verwerfen die unbestätigte Zeile sofort (Schreibweg nach gescheitertem
+    Vorgang); schreiben.py ruft es weiter ohne Frist."""
+    import inspect
+    eigen_im_speicher(speicher)
+    konten.bild_loeschung_vormerken("beispielreise", "BI-90")
+    konten.bild_loeschung_verwerfen("beispielreise", "BI-90")
+    assert _protokoll() is None
+    assert "nur_aelter_als" not in inspect.getsource(sb)
+
+
+def test_junge_vormerkung_mit_entferntem_eintrag_wird_sofort_bestaetigt(speicher, monkeypatch):
+    """AC-7: Ist der Eintrag im neuesten Stand schon entfernt (Vorgang festgeschrieben, Bestätigen gescheitert), bestätigt
+    der Wächter auch eine junge Vormerkung sofort."""
+    import reisespeicher as rs
+    import waechter as wa
+    eigen_im_speicher(speicher)
+
+    def gesperrt(*a, **kw):
+        raise sqlite3.OperationalError("database is locked (Test)")
+    with monkeypatch.context() as m:
+        m.setattr(konten, "bild_loeschung_bestaetigen", gesperrt)
+        m.setattr(rs, "bild_entfernen", gesperrt)
+        assert entfernen_hier(speicher, tss.KARL)[0] == 200
+    z = _protokoll()
+    assert z["bestaetigt"] is False and z["vorgemerkt"] >= konten._jetzt() - 60, z
+    assert wa.bildloeschungen_nachholen() == [("beispielreise", "BI-90")]
+    assert _protokoll()["bestaetigt"] is True
+
+
+def test_alte_unbestaetigte_zeilen_ohne_zeitpunkt_gelten_als_alt(speicher):
+    """AC-5: Eine Kontendatenbank von vor #649 (Tabelle mit pruefsummen und bestaetigt, ohne vorgemerkt) bekommt die Spalte
+    beim Öffnen ohne Handschritt; ihre Zeilen haben vorgemerkt 0 und gelten als älter als die Frist: der Wächter verwirft
+    eine unbestätigte Zeile, deren Eintrag nicht entfernt ist."""
+    import waechter as wa
+    klein, _ = eigen_im_speicher(speicher)
+    konten.db().close()
+    with closing(sqlite3.connect(konten.pfad())) as v, v:
+        v.execute("DROP TABLE bild_loeschungen")
+        v.execute("CREATE TABLE bild_loeschungen (reise TEXT NOT NULL, bild TEXT NOT NULL, datum TEXT NOT NULL, "
+                  "pruefsummen TEXT NOT NULL DEFAULT '', bestaetigt INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (reise, bild))")
+        v.execute("INSERT INTO bild_loeschungen VALUES ('beispielreise', 'BI-90', '2026-11-20', '', 0)")
+    z = _protokoll()
+    assert z["vorgemerkt"] == 0 and z["bestaetigt"] is False, z
+    assert wa.bildloeschungen_nachholen() == []
+    assert _protokoll() is None
+    assert speicher.rs.datei("beispielreise", "medien/bilder/BI-90-480.webp") == klein
+
+
+def test_betrieb_nennt_die_frist_von_einer_stunde():
+    """AC-9: docs/betrieb.md nennt die Frist, nach der der Wächter eine Vormerkung ohne Vorgang verwirft."""
+    text = (WURZEL / "docs/betrieb.md").read_text(encoding="utf-8")
+    assert any("Vormerkung" in z and "einer Stunde" in z for z in text.splitlines()), "Frist von einer Stunde in betrieb.md"
 
 
 def test_konto_geloescht_nennung_gelöschte_person_organisatorin_loescht(speicher):
