@@ -306,17 +306,37 @@ details.entscheidung>.etikett{margin:4px 0 6px}
 .kzn .sym{width:1.05rem;height:1.05rem}
 .kzw{font-size:var(--t-untertitel);font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .kzz{font-size:var(--t-klein);color:var(--mut)}
-/* Molekül Halteleiste (#509): Zeitleiste der Zwischenstopps einer Strecke */
-ol.halte{list-style:none;margin:10px 0;padding:0;display:flex;flex-direction:column}
-ol.halte>li{display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:10px;position:relative}
-ol.halte>li::before{content:"";position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--line)}
-ol.halte>li:first-child::before{top:12px}ol.halte>li:last-child::before{bottom:calc(100% - 12px)}
-.hl-p{width:12px;height:12px;border-radius:50%;margin:6px 4px 0;background:var(--card);border:3px solid var(--kat,var(--mut));z-index:1}
-ol.halte>li.halt .hl-p{border-color:var(--farbe-braun)}
-ol.halte>li.hl-abschnitt .hl-p{visibility:hidden}
+/* Atome der Leiste (#665, gemeinsam für Halteleiste und Zeitleiste): leiste (CSS) ist die senkrechte Linie durch die Punkte,
+   leistenPunkt der Punkt auf ihr (leer, gefüllt: voll), leistenZeit die Uhrzeit mit gleich breiten Ziffern (ein anderer Tag als
+   .tag darunter), leistenMarke die kleine Pille hinter einer Bezeichnung, leistenZusatz die Zusatzzeile darunter */
+ol.leisten{list-style:none;padding:0;display:flex;flex-direction:column}
+ol.leisten>li{position:relative}
+ol.leisten>li::before{content:"";position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--line)}
+ol.leisten>li:first-child::before{top:12px}ol.leisten>li:last-child::before{bottom:calc(100% - 12px)}
+.leisten-punkt{width:12px;height:12px;border-radius:50%;margin:6px 4px 0;background:var(--card);border:3px solid var(--kat,var(--mut));z-index:1}
+.leisten-punkt.voll{width:16px;height:16px;margin:4px 2px 0;border-color:var(--farbe-blau);background:var(--farbe-blau)}
+.leisten-zeit{font-variant-numeric:tabular-nums}
+.leisten-zeit .tag{display:block}
+.leisten-marke{display:inline-block;background:var(--warnbg);color:var(--farbe-braun);border-radius:var(--r-pille);padding:1px 10px;font-size:var(--t-klein);font-weight:600}
+.leisten-zusatz{display:block;font-weight:400;color:var(--mut)}
+/* Molekül Halteleiste (#509): Zeitleiste der Zwischenstopps einer Strecke, aus den Atomen der Leiste */
+ol.halte{margin:10px 0}
+ol.halte>li{display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:10px}
+ol.halte>li.halt .leisten-punkt{border-color:var(--farbe-braun)}
+ol.halte>li.hl-abschnitt .leisten-punkt{visibility:hidden}
 .hl-ort{padding-block:0 8px;min-width:0}
-.hl-zeit{color:var(--mut);font-variant-numeric:tabular-nums}
-.hl-halt{display:inline-block;margin-top:2px;background:var(--warnbg);color:var(--farbe-braun);border-radius:var(--r-pille);padding:1px 10px;font-size:var(--t-klein);font-weight:600}
+ol.halte .leisten-zeit{color:var(--mut)}
+ol.halte .leisten-marke{margin-top:2px}
+/* Molekül Zeitleiste (#665): der Ablauf einer Bewegung; Punkt, Uhrzeit (feste Spalte, ein anderer Tag fett darunter), Bezeichnung.
+   Eine Schriftgröße für alle Zeiten und Daten; Abfahrt und Ankunft nur mit fettem Namen und gefülltem Punkt */
+ol.zeit{margin:10px 0;font-size:var(--t-text)}
+ol.zeit>li{display:grid;grid-template-columns:22px 4.6em minmax(0,1fr);column-gap:10px;padding-bottom:10px}
+ol.zeit>li:last-child{padding-bottom:0}
+ol.zeit .leisten-zeit{font-weight:600;white-space:nowrap;padding-top:1px}
+ol.zeit .leisten-name{padding-top:1px;min-width:0;overflow-wrap:anywhere}
+ol.zeit>li[data-art="abfahrt"] .leisten-name,ol.zeit>li[data-art="ankunft"] .leisten-name{font-weight:700}
+ol.zeit .leisten-marke{margin-left:6px;vertical-align:1px}
+.zeitleiste-kopf{font-size:var(--t-text);font-weight:600;font-variant-numeric:tabular-nums;margin-top:4px}
 .hl-fahrt{margin:0 0 10px;padding:6px 10px;border:1px dashed var(--line);border-radius:var(--r-klein);font-size:var(--t-klein);display:flex;flex-wrap:wrap;gap:2px 12px;font-variant-numeric:tabular-nums}
 details.herkunft-je{border-top:1px solid var(--line);margin-top:8px;padding-top:6px;font-size:var(--t-klein);color:var(--mut)}
 details.herkunft-je>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}
@@ -1516,8 +1536,8 @@ function zid(id) {
    statt dieselbe Sache selbst zu zeichnen; die Stile stehen im <style> in derselben Ordnung. Diese vier Zeilen sind die eine
    Liste der Bausteine: docs/design.md nennt dieselben Namen, die Bausteinseite (#bausteine) zeichnet jeden, und
    engine/tests/test_design.py prüft das (ADR-0002, vier Stellen). Was ein Name tut, steht an seiner Funktion.
-   Atome: T, zahlText, symbol, chip, etikett (CSS), langtext, merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip, bildEl, miniEl, bildNennung, bildEntferntZeilen
-   Moleküle: block, kennzahlLeiste, halteLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, quelleZeilen, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, bildHinzu, Rechtszeile (HTML im Fuß)
+   Atome: T, zahlText, symbol, chip, etikett (CSS), langtext, merkmalWert, zid, planMarke, webLink, kartenLinks, datumText, datumKurz, zeitText, zahlMarke, nummerChip, bildEl, miniEl, bildNennung, bildEntferntZeilen, leiste (CSS), leistenPunkt, leistenZeit, leistenMarke, leistenZusatz
+   Moleküle: block, kennzahlLeiste, halteLeiste, zeitLeiste, herkunftJeWert, plKlapper, plAlleKnopf, merkmalListe, reiseText, reiterGruppe, ebeneKopf, kapitel, dingEtikett, listenZeile, terminZeile, zeilenKarte, frageZeile, rmEintrag, agEintrag, eintragGruppen, gruppenTitel, kartenLegende, umschalter, kontoKnopf, karteGrossKnopf, nameFeld, fehltZeile, optionChips, standLeiste, lageZeile, reiseEnde, mitreisende, buchungsStand, buchungChip, wahlZustand, belegeListe, einzelheiten, wegTabelle, herkunftZeile, quelleZeilen, heroZeile, ortLiegtIn, packSumme, packAufteilung, packSortKopf, packKategorienWahl, mitnehmenZeile, gegenstandZeile, entscheidung, startfehlerMeldung, statusWahl, galerieEl, kopfBild, bildHinzu, Rechtszeile (HTML im Fuß)
    Organismen: nachtZeile, dingKarte, aufenthaltZeile, haltZeilen, streckeZeile, wahlZeile, buchungBlock, stornierteBuchungen, wahlEinstieg, wahlVergleich, optionBlock, optionEinzelheiten, wahlKarte, tagKarte, wegVerlauf, tagEbenen, tagOrteZeilen, ortEbenen, ortDarin, leseAbschnitt, nachtAbschnitt, tagZeile, uebersichtKarte, tagesKarte, ohneTag, entschieden, dingKurzKarte, zeigeDing, amElement, artUebersicht, zuEntscheiden, zuBuchen, abschnittKarte, steckbrief, wuKarte, packTabelle, packGruppe, grossAnsicht, blatt, hochladenBlatt, bildEntfernenFragen
    Vorlagen: tagKachel, rmFormular, agFormular, ansichtTag, ansichtReise, ansichtZuTun, ansichtWissen, ansichtAbschnitt, ansichtOrt, ansichtFragen, ansichtAufgaben, ansichtWuensche, ansichtPackliste, ansichtPlanDetail, ansichtBausteine
    Klappen (#632, Product Owner 23.11.2026): beim Laden zu, offen nur der Kern (das gemerkte Tageskapitel, die Packliste, das
@@ -1998,17 +2018,57 @@ function kennzahlLeiste(kennzahlen, fahrt, zusatz) {
 // Molekül Halteleiste (#509): die Zwischenstopps einer Strecke als Zeitleiste, Fahrzeit und Länge je Abschnitt, Halt mit Zweck und Dauer
 const haltMin = d => { const m = /^(\d+):(\d{2})$/.exec(String(d || "")); return m ? +m[1] * 60 + +m[2] : null; };
 const haltDauer = m => m == null ? "" : m < 60 ? T("seite.strecke.halt_min", {min: lokaleZiffern(m)}) : dauer(m);
+// Atome der Leiste (#665): Halteleiste und Zeitleiste zeichnen Punkt, Uhrzeit, Marke und Zusatzzeile mit denselben Bausteinen; die
+// Linie durch die Punkte ist der Stil leiste (CSS, ol.leisten). vorsilbe: Kürzel des Moleküls (hl Halteleiste, zl Zeitleiste) für
+// die Klasse seines Teils (hl-p, zl-zeit …), an der Tests und Stile des Moleküls ihn finden.
+// Punkt auf der Linie: leer (Rand in der Farbe der Kategorie) oder gefüllt (voll: Abfahrt und Ankunft)
+function leistenPunkt(vorsilbe, voll) { return el("span", {class: `leisten-punkt ${vorsilbe}-p` + (voll ? " voll" : ""), "aria-hidden": "true"}); }
+// Uhrzeit mit gleich breiten Ziffern; tag: ein anderer Tag, direkt darunter in derselben Spalte
+function leistenZeit(vorsilbe, text, tag) { return el("span", {class: `leisten-zeit ${vorsilbe}-zeit`}, text, tag ? el("span", {class: "tag"}, tag) : null); }
+// Kleine Pille hinter einer Bezeichnung (Halt, erinnert); art: wofür sie steht (Klasse des Moleküls)
+function leistenMarke(vorsilbe, text, art) { return el("span", {class: `leisten-marke ${vorsilbe}-${art}`}, text); }
+// Zusatzzeile unter einer Bezeichnung (normale Größe, gedämpft): ein Merkmal bei einem Zeitpunkt, „aus der Buchung“
+function leistenZusatz(vorsilbe, inhalt) { return el("span", {class: `leisten-zusatz ${vorsilbe}-zusatz`}, inhalt); }
 function halteLeiste(s, fahrt) {
   const ab = s.abschnitte || [];
   if (ab.length < 2) return null;
-  const punkt = (ort, zeit, halt) => el("li", {class: halt ? "halt" : ""}, el("span", {class: "hl-p", "aria-hidden": "true"}),
-    el("div", {class: "hl-ort"}, el("b", {}, ortName(ort)), zeit ? el("span", {class: "hl-zeit"}, " · " + zeit) : null,
-      halt ? el("div", {}, el("span", {class: "hl-halt"}, [halt.zweck, haltDauer(haltMin(halt.dauer))].filter(Boolean).join(" · ") || T("seite.strecke.halt"))) : null));
-  const fahrtZeile = a => el("li", {class: "hl-abschnitt"}, el("span", {class: "hl-p", "aria-hidden": "true"}),
+  const punkt = (ort, zeit, halt) => el("li", {class: halt ? "halt" : ""}, leistenPunkt("hl"),
+    el("div", {class: "hl-ort"}, el("b", {}, ortName(ort)), zeit ? leistenZeit("hl", " · " + zeit) : null,
+      halt ? el("div", {}, leistenMarke("hl", [halt.zweck, haltDauer(haltMin(halt.dauer))].filter(Boolean).join(" · ") || T("seite.strecke.halt"), "halt")) : null));
+  const fahrtZeile = a => el("li", {class: "hl-abschnitt"}, leistenPunkt("hl"),
     el("div", {class: "hl-fahrt"}, Object.entries(a.kennzahlen || {}).map(([n, v]) => { const [k, w] = kzAnzeige(n, v, fahrt);
       return el("span", {}, k === "strecke" ? w : [kennzahlName(k) + " ", el("b", {}, w)]); })));
-  return el("ol", {class: "halte", "aria-label": T("seite.kennzahl.halte")}, punkt(s.von, s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : ""),
+  return el("ol", {class: "leisten halte", "aria-label": T("seite.kennzahl.halte")}, punkt(s.von, s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : ""),
     ...ab.flatMap((a, i) => [fahrtZeile(a), i < ab.length - 1 ? punkt(a.nach, "", a.halt || {}) : punkt(a.nach, s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : "")]));
+}
+// Tag einer Fahrt (#665): ihr Tag im gezeigten Plan, sonst das Datum ihrer Abfahrt aus der Zeitleiste
+const fahrtTag = (s, id) => ((PLAN_ANSICHT && PLAN_ANSICHT.tage.find(t => t.strecken.some(x => x.id === id))) || {}).datum
+  || ((s.zeitleiste || []).find(p => p.art === "abfahrt") || {}).datum || null;
+// Merkmale, die in der Zeitleiste stehen (#665, ADR-0003: eine Heimat): ihre Zeitpunkte und die Merkmale bei einem Punkt, die nach
+// der Buchung sichtbar bleiben (nach_buchung) oder ungebucht sind; leer ohne Zeitleiste. Die Merkmalliste zeigt sie nicht noch einmal.
+function zeitleisteMerkmale(s, gebucht) {
+  const punkte = s.zeitleiste || [], krit = (R.merkmale || {})[s.art_schluessel] || [];
+  const def = Object.fromEntries(krit.map(k => [k.id, k]));
+  const sichtbar = k => def[k] && stufeVon(def[k]) !== "aus" && (!gebucht || def[k].nach_buchung);
+  return new Set(punkte.flatMap(p => [...(p.art === "merkmal" ? [p.merkmal] : []), ...(p.bei || []).filter(sichtbar)]));
+}
+// Molekül Zeitleiste (#665): der Ablauf einer Bewegung in zeitlicher Reihenfolge, aus den Atomen der Leiste. Abfahrt und Ankunft
+// mit fettem Namen und gefülltem Punkt, die übrigen Zeitpunkte (Merkmale ohne Rolle, ab der Buchung) mit leerem Punkt; erinnert
+// trägt eine Marke; ein anderer Tag als der Tag der Fahrt steht unter der Uhrzeit; Merkmale bei einem Punkt als Zusatzzeile.
+// Nur, wenn die Bewegung einen Zeitpunkt außer Abfahrt und Ankunft hat (Seitendaten zeitleiste); sonst null.
+function zeitLeiste(s, id) {
+  const punkte = s.zeitleiste || [];
+  if (!punkte.some(p => p.art !== "abfahrt" && p.art !== "ankunft")) return null;
+  const st = buchungsStand(s), zeigen = zeitleisteMerkmale(s, !!(st && st.gebucht)), tag = fahrtTag(s, id);
+  const def = Object.fromEntries(((R.merkmale || {})[s.art_schluessel] || []).map(k => [k.id, k]));
+  const name = p => p.art === "abfahrt" ? T("seite.zeitleiste.abfahrt", {ort: ortName(s.von)}) : p.art === "ankunft" ? T("seite.zeitleiste.ankunft", {ort: ortName(s.nach)})
+    : p.art === "buchung" ? p.was || T("seite.buchung.ab") : (def[p.merkmal] || {}).name || p.merkmal;
+  return el("ol", {class: "leisten zeit", "aria-label": T("seite.zeitleiste.name")}, punkte.map(p => el("li", {"data-art": p.art, "data-merkmal": p.merkmal || null},
+    leistenPunkt("zl", p.art === "abfahrt" || p.art === "ankunft"),
+    leistenZeit("zl", zeitText(p.zeit), p.datum && p.datum !== tag ? datumText(p.datum) : null),
+    el("span", {class: "leisten-name"}, name(p), p.erinnert ? [" ", leistenMarke("zl", T("seite.zeitleiste.erinnert"), "erinnert")] : null,
+      p.art === "buchung" ? leistenZusatz("zl", T("seite.zeitleiste.aus_buchung")) : null,
+      (p.bei || []).filter(k => zeigen.has(k) && (s.merkmale || {})[k]).map(k => leistenZusatz("zl", merkmalWert(s.merkmale[k])))))));
 }
 // Herkunft je Wert (#508, #509): Kennzahlen mit eigener Herkunft, zugeklappt hinter „Herkunft“; ohne eigene gilt die der Strecke
 function herkunftJeWert(s, fahrt) {
@@ -2096,7 +2156,12 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
   // Abfahrt → Ankunft auf einen Blick (#475); an ihrer Heimat mit dem Datum des Tags
   const tagDatum = voll && ((PLAN_ANSICHT && PLAN_ANSICHT.tage.find(t => t.strecken.some(x => x.id === id))) || {}).datum;
   const zeiten = s.ab && s.an ? T("seite.strecke.ab_an", {ab: zeitText(s.ab), an: zeitText(s.an)}) : [s.ab ? T("seite.strecke.ab_zeit", {zeit: zeitText(s.ab)}) : "", s.an ? T("seite.strecke.an_zeit", {zeit: zeitText(s.an)}) : ""].filter(Boolean).join(" · ");
-  if (art || zeiten) z.append(el("div", {class: "z klein"}, [art, tagDatum && zeiten && !/T/.test(String(s.ab || "")) ? datumText(tagDatum) : "", zeiten].filter(Boolean).join(" · ")));
+  // An der Heimat mit Zeitleiste (#665): statt der kurzen Zeile nur das Datum der Fahrt, dann der Ablauf; die Art zeigt das Symbol
+  const zl = voll ? zeitLeiste(s, id) : null, fTag = zl && fahrtTag(s, id);
+  if (zl) {
+    if (fTag) { const [j, m, d] = fTag.split("-"); z.append(el("div", {class: "zeitleiste-kopf"}, `${wochentag(fTag)} ${nachMuster(TEXTE[SPRACHE].datum, +d, +m, +j)}`)); }
+    z.append(zl);
+  } else if (art || zeiten) z.append(el("div", {class: "z klein"}, [art, tagDatum && zeiten && !/T/.test(String(s.ab || "")) ? datumText(tagDatum) : "", zeiten].filter(Boolean).join(" · ")));
   if (kz) z.append(kz);
   const halte = halteLeiste(s, fahrt);
   if (halte) z.append(halte);
@@ -2109,14 +2174,15 @@ function streckeZeile(id, wahl, ohneKennung, voll) {
     return z;
   }
   // An der Heimat (#448): Merkmale der Art, Hinweis, Herkunft und Lücken nach der Stand-Leiter wie beim Aufenthalt (planungsTeil)
-  const krit = (R.merkmale || {})[s.art_schluessel] || [], st = buchungsStand(s);
+  const st = buchungsStand(s), inLeiste = zl ? zeitleisteMerkmale(s, !!(st && st.gebucht)) : new Set();
+  const krit = ((R.merkmale || {})[s.art_schluessel] || []).filter(x => !inLeiste.has(x.id));
   const name = Object.fromEntries(krit.map(x => [x.id, x.name]));
   const teil = planungsTeil(!!(st && st.gebucht), krit, s.merkmale, [
     langtext(s.hinweis, {class: "z klein"}),
     s.quelle ? el("div", {class: "z klein"}, T("seite.label.quelle") + s.quelle) : null,
     (s.fehlt || []).length ? el("div", {class: "z klein"}, T("seite.label.fehlt_noch") + s.fehlt.map(x => name[x] || x).join(", ")) : null]);
   if (teil.sichtbar) z.append(teil.sichtbar);
-  for (const b of buchungenBei(id)) z.append(buchungBlock(b, id));
+  for (const b of buchungenBei(id)) z.append(buchungBlock(b, id, !!zl));
   if (teil.block) z.append(teil.block);
   const herkunft = herkunftJeWert(s, fahrt);
   if (herkunft) z.append(herkunft);
@@ -2468,7 +2534,8 @@ function einzelheiten(inhalt, titel) {
 // und „gebucht bei“ stehen in den „Einzelheiten zur Buchung“, zu, sobald gebucht (Stand-Leiter, Product Owner 31.10.2026).
 // Angefragt stehen Preis und Zahlung noch oben. Jede Angabe steht einmal. An die Stornofrist erinnert der Wächter.
 // ding: das Ding, an dem der Block steht; hat die Buchung Angaben je Ding (#473), gelten dort nur seine (nichts zum Rückflug am Hinflug)
-function buchungBlock(b, ding) {
+// ohneAb: die ab-Angabe steht schon in der Zeitleiste der Bewegung (#665), der Block zeigt nur das Geschäftliche
+function buchungBlock(b, ding, ohneAb) {
   const je = ding && (b.je_ding || {})[ding];
   if (je) b = {...b, ab: je.ab || null, ab_was: je.ab_was || null, frist: je.frist || null, frist_was: je.frist_was || null};
   const zu = b.status === "storniert", gebucht = b.status === "gebucht", h = heute();
@@ -2493,7 +2560,7 @@ function buchungBlock(b, ding) {
   // „Ab“ (Issue #135) nur, wenn es nicht schon der Check-in ist
   const abDoppelt = b.ab && tagTeil(b.ab) === b.anreise && b.anreise_ab;
   // „Online-Check-in ab Mo 22.2., 17:55“ in einer Zeile (#475); ohne Angabe, was dann geht: „Ab: …“
-  const ab = !b.ab || abDoppelt ? null : b.ab_was ? el("div", {class: "z"}, el("b", {}, b.ab_was), " " + T("seite.buchung.ab_ab", {zeit: zeitpunktText(b.ab)}))
+  const ab = !b.ab || abDoppelt || ohneAb ? null : b.ab_was ? el("div", {class: "z"}, el("b", {}, b.ab_was), " " + T("seite.buchung.ab_ab", {zeit: zeitpunktText(b.ab)}))
     : zeile(T("seite.buchung.ab"), zeitpunktText(b.ab));
   const preisZ = zeile(T("seite.buchung.preis"), b.preis);
   const zahlungZ = zeile(T("seite.buchung.zahlung"), gebucht ? b.bezahlt : [zahlungText(b.zahlung), b.bezahlt].filter(Boolean).join(" · "));
@@ -4927,7 +4994,7 @@ const GRUNDFORMEN_ONTOLOGIE = ["reise", "ort", "aufenthalt", "bewegung", "folge"
 const GRUNDFORMEN = [
   ["reise", "reise", "Reise", "–", {zeile: [], vorschau: [reiseEnde, mitreisende, standLeiste], karte: [uebersichtKarte], seite: [ansichtReise]}],
   ["tag", "folge", "Folge: Tag", "T-01", {zeile: [tagZeile], vorschau: [tagKachel], karte: [tagKarte, tagesKarte], seite: [ansichtTag, ansichtReise]}],
-  ["bewegung", "bewegung", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [dingKurzKarte], seite: [ansichtAbschnitt, tagEbenen]}],
+  ["bewegung", "bewegung", "Bewegung: Etappe, Strecke", "E-01", {zeile: [streckeZeile], vorschau: [abschnittKarte], karte: [dingKurzKarte], seite: [ansichtAbschnitt, tagEbenen, zeitLeiste]}],
   ["ort", "ort", "Ort", "O-01", {zeile: [wegVerlauf, ortLiegtIn], vorschau: [tagOrteZeilen, ortDarin, listenZeile], karte: [dingKurzKarte], seite: [ansichtOrt]}],
   ["unterkunft", "aufenthalt", "Aufenthalt mit Nacht: Unterkunft", "U-01", {zeile: [nachtZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [nachtAbschnitt]}],
   ["aufenthalt", "aufenthalt", "Aufenthalt ohne Nacht", "A-01", {zeile: [aufenthaltZeile], vorschau: [listenZeile], karte: [dingKarte], seite: [tagKarte, ohneTag, ansichtOrt, ansichtAbschnitt]}],
@@ -5162,6 +5229,16 @@ function ansichtBausteine(m) {
   const mitHalten = strecken.find(([, x]) => (x.abschnitte || []).length);
   teil("Molekül", "Halteleiste", "Zwischenstopps einer Strecke als Zeitleiste: Fahrzeit und Länge je Abschnitt, Halt mit Zweck und Dauer (#509).",
     mitHalten ? halteLeiste(mitHalten[1], !mitHalten[1].summiert) : halteLeiste({von: Object.keys(R.orte)[0], abschnitte: [{nach: Object.keys(R.orte)[1], kennzahlen: {fahrzeit: "1:50 h", laenge: 164}, halt: {zweck: "Pause", dauer: "0:30"}}, {nach: Object.keys(R.orte)[0], kennzahlen: {fahrzeit: "0:55 h", laenge: 50}}]}, true));
+  // Zeitleiste (#665): die erste Bewegung der Reise mit Zeitpunkten außer Abfahrt und Ankunft, sonst ein Muster
+  const mitLeiste = strecken.find(([, x]) => (x.zeitleiste || []).length);
+  teil("Molekül", "Zeitleiste", "Ablauf einer Bewegung in zeitlicher Reihenfolge (#665): Abfahrt und Ankunft mit fettem Namen und gefülltem Punkt, die übrigen Zeitpunkte (Merkmale ohne Rolle, ab der Buchung) mit leerem Punkt; ein anderer Tag unter der Uhrzeit; „erinnert“ als Marke; Merkmale bei einem Punkt als Zusatzzeile. Eine Schriftgröße für alle Zeiten.",
+    mitLeiste ? zeitLeiste(mitLeiste[1], mitLeiste[0]) : zeitLeiste({von: Object.keys(R.orte)[0], nach: Object.keys(R.orte)[1], zeitleiste: [
+      {art: "buchung", was: "Online-Check-in ab (Muster)", zeit: "07:05", datum: "2027-03-10", erinnert: true, bei: []},
+      {art: "abfahrt", zeit: "09:10", datum: "2027-03-12", bei: []}, {art: "ankunft", zeit: "11:25", datum: "2027-03-12", bei: []}]}, "E-0"));
+  teil("Atom", "Leiste", "Teile von Halteleiste und Zeitleiste (#665): Linie (Stil leiste), Punkt leer und gefüllt, Uhrzeit mit gleich breiten Ziffern und einem anderen Tag darunter, Marke, Zusatzzeile.",
+    el("ol", {class: "leisten zeit"}, el("li", {}, leistenPunkt("zl"), leistenZeit("zl", zeitText("07:05"), datumText("2027-03-10")),
+      el("span", {class: "leisten-name"}, "Zeitpunkt (Muster) ", leistenMarke("zl", T("seite.zeitleiste.erinnert"), "erinnert"), leistenZusatz("zl", "Zusatzzeile (Muster)"))),
+      el("li", {"data-art": "abfahrt"}, leistenPunkt("zl", true), leistenZeit("zl", zeitText("09:10")), el("span", {class: "leisten-name"}, "Abfahrt (Muster)"))));
   teil("Molekül", "Herkunft je Wert", "Herkunft einzelner Kennzahlen einer Strecke, zugeklappt (#508); ohne eigene gilt die der Strecke.",
     herkunftJeWert({quelle: "Muster", kennzahlen_herkunft: {fahrzeit: {quelle: "Routenplaner (Muster)", geprueft: "2026-11-11"}}}, true));
   const mitKzListe = abschnitte.filter(a => istEtappe(a) && Object.keys(kzVon(a.id)).length).slice(0, 3);

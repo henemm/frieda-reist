@@ -8,6 +8,7 @@ Fristen verstreichen, Preise ändern sich, und irgendwann beginnt die Reise. Fri
 
 - Erinnert werden, bevor eine Aufgabe fällig wird, und wenn sie überfällig ist.
 - Erinnert werden an Fristen und Stornofristen von Buchungen und an Termine wie „Online-Check-in ab …“.
+- Erinnert werden an Zeitpunkte, die die Reise an ihrer Art als „erinnert“ markiert, etwa „Fahrkarte freischalten ab“ an einer Fahrt; das braucht ein Datum, eine Uhrzeit allein wird gezeigt, aber nicht erinnert.
 - Auf Wunsch an offene Zahlungen erinnert werden.
 - Als Organisator:in erfahren, welche veränderlichen Angaben (Preise, Öffnungszeiten, Fahrpläne) zu lange nicht geprüft wurden.
 - Rechtzeitig hören, dass der Status der Reise wechseln sollte, etwa auf „unterwegs“.
@@ -23,6 +24,7 @@ Fristen verstreichen, Preise ändern sich, und irgendwann beginnt die Reise. Fri
 |---|---|---|
 | Frist | Aufgabe offen, Frist in höchstens 3 Tagen; überfällig alle 7 Tage neu | zuständige Person, sonst Organisator:innen |
 | Jetzt möglich | „ab wann möglich“ einer Aufgabe oder Buchung ist erreicht | wie oben bzw. wer gebucht hat |
+| Zeitpunkt | der Tag eines Zeitpunkts, den die Reise als „erinnert“ markiert, ist erreicht (#665); steht dieselbe Zeit schon als „ab“ einer Buchung am selben Ding, kommt nur deren Erinnerung | Organisator:innen |
 | Buchungsfrist, Stornofrist | Frist oder „kostenlos stornieren bis“ einer Buchung in höchstens 3 Tagen | wer gebucht hat, sonst Organisator:innen |
 | Zahlung offen | nur wenn eingeschaltet: Buchung offen oder angezahlt, Frist oder Reisetag naht | wer gebucht hat, sonst Organisator:innen |
 | Prüfung | eine veränderliche Angabe hat kein Prüfdatum oder ein älteres als 60 Tage | Organisator:innen |

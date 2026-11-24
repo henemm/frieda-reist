@@ -106,7 +106,7 @@ PARAMETER = {
     "frist_was": "deadline_what", "fuer": "for", "gebucht_am": "booked_on", "geprueft": "checked", "gilt": "valid_for",
     "grund": "reason", "grundform": "basic_form", "gruppe": "group", "hilfe": "help", "hinweis": "hint", "kategorie": "category", "kennzahlen": "figures", "abschnitte": "sections",
     "kommentar": "comment", "koordinaten": "coordinates", "kurz": "short", "lesetext": "reading_text", "merkmal": "attribute",
-    "merkmale": "attributes", "minus": "cons", "nach": "after", "nach_buchung": "visible_after_booking", "lang": "long_text", "vorlage": "template", "nacht": "night", "neu": "new", "neuer_name": "new_name",
+    "merkmale": "attributes", "minus": "cons", "nach": "after", "nach_buchung": "visible_after_booking", "erinnern": "remind", "lang": "long_text", "vorlage": "template", "nacht": "night", "neu": "new", "neuer_name": "new_name",
     "neuer_titel": "new_title", "notiz": "note", "nummer": "number", "nummeriert": "numbered", "oeffentlicher_text": "public_text", "ohne_route": "without_route", "optional": "optional_stays",
     "optionen": "options", "ort": "place", "orte": "places", "personen": "people", "pfad": "path", "plus": "pros", "preis": "price", "preise": "prices", "zahlung": "payment",
     "prioritaet": "priority", "punkte": "points", "quelle": "source", "regeln": "rules", "reist": "travels", "rolle": "role",
@@ -134,6 +134,9 @@ PARAMETER_JE_WERKZEUG = {
     "buchung_aendern": {"ab": "available_from", "anreise": "arrival", "abreise": "departure"},
     # Profil je Person (#12): nur hier; „bereich“ und „herkunft“ meinen bei anderen Werkzeugen anderes oder fehlen dort
     "profil_eintrag_setzen": {"bereich": "area", "herkunft": "origin", "bestaetigt": "confirmed"},
+    # Merkmal bei einem Zeitpunkt (#665): bei heißt hier at, sonst booked_with (Buchungsfeld „Gebucht bei“); an (sonst at) hat hier
+    # keine Bedeutung und behält seinen Namen, damit at eindeutig bleibt
+    "merkmal_definieren": {"bei": "at", "an": "an"},
     # Bild der Seite (#618): Gerät, auf dem die Seite gezeigt wird
     "seite_ansehen": {"geraet": "device"},
     # Bilder (#455): nur hier; „zu“ und „alt“ meinen bei anderen Werkzeugen nichts

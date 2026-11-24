@@ -346,10 +346,13 @@ def test_waechter_erinnert_einmal_am_tag_des_zeitpunkts(tmp_path, monkeypatch):
 
 
 def test_ohne_datum_keine_erinnerung_und_kein_termin(tmp_path, monkeypatch):
-    """Test 6, AC-3: nur eine Uhrzeit (E-02) erinnert nicht und steht nicht im Kalender."""
+    """Test 6, AC-3: nur eine Uhrzeit (E-02) erinnert nicht und steht nicht im Kalender; der Zeitpunkt mit Datum an E-01 (Beispielwert)
+    erinnert weiter genau einmal."""
     d = stadt_fest(tmp_path, monkeypatch, {"E-02": "17:00"})
-    assert zeit_meldungen(D(2027, 3, 13)) == [] and zeit_meldungen(D(2027, 3, 14)) == []
-    assert not [e for e in kalender.eintraege(d) if "-zeit-" in e["uid"]]
+    meldungen = zeit_meldungen(D(2027, 3, 13)) + zeit_meldungen(D(2027, 3, 14))
+    assert not [m for m in meldungen if m["schluessel"].startswith("zeit:E-02:")], meldungen
+    assert not [e for e in kalender.eintraege(d) if e["uid"] == f"E-02-zeit-{ERINNERND}"]
+    assert len([e for e in kalender.eintraege(d) if e["uid"] == f"E-01-zeit-{ERINNERND}"]) == 1
 
 
 def test_keine_doppelte_erinnerung_bei_gleichem_zeitpunkt_wie_die_buchung(tmp_path, monkeypatch):
@@ -396,19 +399,21 @@ def test_beispielreise_stadtwochenende_traegt_die_neuen_merkmale():
 
 
 def test_zeitleiste_in_den_seitendaten(tmp_path):
-    """Test 9, AC-5: E-01 des Stadtwochenendes: Merkmal (Vortag), Buchungs-ab, Abfahrt, Ankunft; E-02: Merkmal ohne Datum am
-    Tag der Fahrt, bei gleicher Zeit die Buchungs-ab vor der Abfahrt. Jeder Punkt mit Uhrzeit, Datum, erinnert und bei."""
+    """Test 9, AC-5: E-01 des Stadtwochenendes (Fahrt 12.3.): Merkmal und Buchungs-ab am Vortag, Abfahrt, Ankunft; E-02 (Fahrt
+    14.3.): Buchungs-ab am Vortag (13.3., 17:40), Merkmal ohne Datum am Tag der Fahrt vor der Abfahrt, Ankunft. Jeder Punkt mit
+    Uhrzeit, Datum, erinnert und bei."""
     d = bau(kopie(tmp_path), tmp_path)
     assert leiste(d, "E-01") == [("merkmal", ERINNERND), ("buchung", None), ("abfahrt", None), ("ankunft", None)]
-    assert leiste(d, "E-02") == [("merkmal", ERINNERND), ("buchung", None), ("abfahrt", None), ("ankunft", None)]
+    assert leiste(d, "E-02") == [("buchung", None), ("merkmal", ERINNERND), ("abfahrt", None), ("ankunft", None)]
     e1 = d["route"]["strecken"]["E-01"]["zeitleiste"]
     assert [p["datum"] for p in e1] == ["2027-03-11", "2027-03-11", "2027-03-12", "2027-03-12"], e1
-    assert [p["zeit"] for p in e1][1:] == ["09:10", "09:10", "11:25"], e1
+    assert e1[0]["zeit"] < e1[1]["zeit"] and [p["zeit"] for p in e1][1:] == ["09:10", "09:10", "11:25"], e1
     assert [p["erinnert"] for p in e1] == [True, True, False, False], e1
     assert e1[1]["was"] == "Komfort-Check-in" and e1[1]["buchung"] == "B-01", e1
     assert e1[2]["bei"] == [GLEIS] and all(p["bei"] == [] for p in e1 if p["art"] != "abfahrt"), e1
     e2 = d["route"]["strecken"]["E-02"]["zeitleiste"]
-    assert [p["datum"] for p in e2] == ["2027-03-13"] * 4 and e2[0]["zeit"] < e2[1]["zeit"] == e2[2]["zeit"] == "17:40", e2
+    assert [p["datum"] for p in e2] == ["2027-03-13", "2027-03-14", "2027-03-14", "2027-03-14"], e2
+    assert e2[0]["zeit"] == "17:40" and e2[1]["zeit"] < e2[2]["zeit"] == "17:40", e2
     assert all(p["bei"] == [] for p in e2), e2   # Gleis ohne Wert an E-02: nichts zu zeigen
 
 
@@ -509,7 +514,9 @@ def ansehen(seiten, reise, ids, browser, breite=390):
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 @pytest.mark.parametrize("breite", [360, 1200])
 def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
-    """Test 11, 18, AC-5 bis AC-8, AC-11: Stadtwochenende E-01 und E-02 an ihrer Heimat."""
+    """Test 11, 18, AC-5 bis AC-8, AC-11: Stadtwochenende E-01 und E-02 an ihrer Heimat (E-01: Merkmal und Buchungs-ab am
+    Vortag vor der Abfahrt; E-02: Buchungs-ab am Vortag, dann das Merkmal ohne Datum am Tag der Fahrt)."""
+    folge = {"E-01": ["merkmal", "buchung", "abfahrt", "ankunft"], "E-02": ["buchung", "merkmal", "abfahrt", "ankunft"]}
     q = kopie(tmp_path)
     seiten = tmp_path / "seiten"
     bauen.bauen(q, seiten / "stadtwochenende")
@@ -517,7 +524,8 @@ def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
     for did, e in dinge.items():
         assert e["anzahl"] == 1, (did, e)
         arten = [p["art"] for p in e["punkte"]]
-        assert arten == ["merkmal", "buchung", "abfahrt", "ankunft"], (did, arten)
+        assert arten == folge[did], (did, arten)
+        punkt = {p["art"]: p for p in e["punkte"]}
         # eine Schriftgröße für alle Uhrzeiten und Daten, auch das Datum der Kopfzeile und ein abweichendes Datum
         groessen = {p["zeitGroesse"] for p in e["punkte"]} | {p["tagGroesse"] for p in e["punkte"] if p["tag"]} | {e["kopf"]["groesse"]}
         assert len(groessen) == 1, (did, groessen)
@@ -525,9 +533,9 @@ def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
         for p in e["punkte"]:
             fest = p["art"] in ("abfahrt", "ankunft")
             assert p["punkt"] and p["voll"] is fest and (p["nameFett"] >= 600) is fest, (did, p)
-        assert e["punkte"][0]["marke"] and e["punkte"][1]["marke"], (did, e["punkte"])   # erinnert: Merkmal und Buchungs-ab
-        assert not e["punkte"][2]["marke"] and not e["punkte"][3]["marke"], (did, e["punkte"])
-        assert e["punkte"][1]["name"].startswith("Komfort-Check-in") and e["punkte"][1]["zusatz"], (did, e["punkte"][1])
+        assert punkt["merkmal"]["marke"] and punkt["buchung"]["marke"], (did, e["punkte"])   # erinnert: Merkmal und Buchungs-ab
+        assert not punkt["abfahrt"]["marke"] and not punkt["ankunft"]["marke"], (did, e["punkte"])
+        assert punkt["buchung"]["name"].startswith("Komfort-Check-in") and punkt["buchung"]["zusatz"], (did, punkt["buchung"])
         # Kopfzeile: nur das Datum, fett, ohne Art und ohne Uhrzeit; die alte Zeile „Bahn · Datum · ab … → an …“ fehlt
         assert e["kopf"]["fett"] >= 600 and not re.search(r"\d\d:\d\d", e["kopf"]["text"]) and "Bahn" not in e["kopf"]["text"], (did, e["kopf"])
         assert not [z for z in e["kleinZeilen"] if "→" in z and re.search(r"\d\d:\d\d", z)], (did, e["kleinZeilen"])
@@ -541,7 +549,9 @@ def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
     gleis = e1["werte"][GLEIS]
     assert any(gleis in z for z in e1["punkte"][2]["zusatz"]) and gleis not in e1["rest"], e1   # Gleis bei der Abfahrt
     assert e1["punkte"][2]["zusatzGroesse"] == e1["schrift"] and e1["punkte"][2]["zusatzFarbe"] != e1["punkte"][2]["nameFarbe"], e1
-    assert dinge["E-02"]["punkte"][0]["tag"] is None   # nur Uhrzeit: gilt am Tag der Fahrt
+    e2 = {p["art"]: p for p in dinge["E-02"]["punkte"]}
+    assert e2["merkmal"]["tag"] is None   # nur Uhrzeit: gilt am Tag der Fahrt
+    assert e2["buchung"]["tag"] and e2["buchung"]["tagUnterZeit"], e2["buchung"]   # Buchungs-ab am Vortag
 
 
 @OHNE_BROWSER
@@ -596,3 +606,44 @@ def test_halteleiste_sieht_aus_wie_vorher(tmp_path, browser):
     e = seite_der_variante(tmp_path, browser, skript="seiten_halteleiste.mjs", routen_ersetzen=ersetzen)
     vorher = json.loads((Path(__file__).parent / "halteleiste_vorher.json").read_text(encoding="utf-8"))[browser]
     assert e["aus"] == vorher
+
+
+# ---------- Gegenprüfung (adversary-dialog.md): Nachtfahrt, Fahrt ohne Tag, Englisch, Schreibweise von bei ----------
+
+def test_nachtankunft_ohne_datum_liegt_am_tag_danach(tmp_path):
+    """F001: eine Ankunft ohne Datum, deren Uhrzeit nicht nach der Abfahrt liegt, ist am Tag danach (wie im Kalender) und steht
+    hinter der Abfahrt."""
+    q = abwandeln(kopie(tmp_path), werte={"E-01": {"ankunft": {"typ": "zeitpunkt", "rolle": "ankunft", "wert": "06:00", "quelle": Q}}})
+    d = bau(q, tmp_path)
+    e1 = d["route"]["strecken"]["E-01"]["zeitleiste"]
+    assert [(p["art"], p["datum"], p["zeit"]) for p in e1][2:] == [("abfahrt", "2027-03-12", "09:10"), ("ankunft", "2027-03-13", "06:00")], e1
+    fahrt = next(e for e in kalender.eintraege(d) if e["sorte"] == "fahrten" and e["id"] == "E-01")
+    assert fahrt["ende"].date().isoformat() == "2027-03-13", fahrt   # dieselbe Regel wie der Kalender
+
+
+def test_fahrt_ohne_tag_stellt_punkte_mit_datum_davor(tmp_path):
+    """F002: hängt die Fahrt an keinem Tag des Plans, stehen Merkmal und Check-in mit Datum (Vortag) vor Abfahrt und Ankunft
+    ohne Datum; diese folgen untereinander nach Uhrzeit."""
+    q = kopie(tmp_path)
+    r = yaml_lesen(q / "plan" / "routen.yaml")
+    r["tage"]["T-01"]["strecken"] = []
+    yaml_schreiben(q / "plan" / "routen.yaml", r)
+    e1 = bau(q, tmp_path)["route"]["strecken"]["E-01"]["zeitleiste"]
+    assert [p["art"] for p in e1] == ["merkmal", "buchung", "abfahrt", "ankunft"], e1
+    assert [p["datum"] for p in e1] == ["2027-03-11", "2027-03-11", None, None], e1
+
+
+def test_englische_texte_nennen_at_und_remind():
+    """F003: englische Sätze nennen die englischen Namen at und remind (Alias-Konvention)."""
+    for k in ("pruefung.routen.bei", "pruefung.routen.bei_ziel", "schreiben.merkmal_definieren.bei_ziel", "schreiben.merkmal_definieren.bei_abhaengig"):
+        assert "at" in re.findall(r"\w+", texte.t("en", k).replace("“at”", " at ")), k
+    for k in ("pruefung.routen.erinnern", "pruefung.routen.erinnern_typ", "schreiben.merkmal_definieren.erinnern_typ"):
+        assert "remind" in texte.t("en", k), k
+
+
+def test_bei_wird_beim_lesen_wie_im_schreibweg_klein_geschrieben(tmp_path):
+    """F004: bei: Abfahrt (groß) gilt beim Lesen wie im Schreibweg als abfahrt."""
+    q = abwandeln(kopie(tmp_path), definitionen={GLEIS: {**DEF_GLEIS, "bei": "Abfahrt"}})
+    d = bau(q, tmp_path)
+    assert def_von(d, "bahn", GLEIS)["bei"] == "abfahrt"
+    assert next(p for p in d["route"]["strecken"]["E-01"]["zeitleiste"] if p["art"] == "abfahrt")["bei"] == [GLEIS]

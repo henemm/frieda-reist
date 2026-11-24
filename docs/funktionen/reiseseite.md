@@ -34,6 +34,8 @@ Die Reiseseite ist das Nachschlagewerk der Reise: eine Webseite, die Frieda aus 
 
 Am Handy steht alles untereinander, am Rechner Lesen links und Nachschlagen rechts. Grundsatz: Rechner zum Planen, Handy und Tablet für unterwegs.
 
+**Ablauf einer Fahrt** (#665). Hat eine Fahrt außer Abfahrt und Ankunft weitere Zeitpunkte, etwa „Fahrkarte freischalten ab“ oder den Komfort-Check-in aus der Buchung, steht an ihrem Platz statt der kurzen Zeile „ab … → an …“ ihr Ablauf als Zeitleiste: oben das Datum der Fahrt, darunter alle Zeitpunkte in zeitlicher Reihenfolge, alle Zeiten in einer Schriftgröße. Abfahrt und Ankunft haben einen fetten Namen und einen gefüllten Punkt; ein Zeitpunkt an einem anderen Tag zeigt diesen Tag unter seiner Uhrzeit; was erinnert, trägt die Marke „erinnert“. Ein Merkmal, das die Reise einem Zeitpunkt zuordnet (etwa das Gleis der Abfahrt oder das Terminal der Gepäckabgabe), steht als Zeile darunter und nicht noch einmal in der Liste der Merkmale. In der Beispielreise Stadtwochenende zeigt die Hinfahrt das: Fahrkarte freischalten und Komfort-Check-in am Vortag, Abfahrt mit Gleis, Ankunft.
+
 **Jedes Ding hat genau einen Platz.** Eine Unterkunft steht vollständig an der Nacht ihres ersten Tags, eine Buchung bei ihrem ersten gebuchten Ding, ein Ort auf seiner Ortsseite. Überall sonst erscheint es nur als Zeile mit einem Link dorthin. So steht nichts doppelt, und ein Link auf eine Stelle führt immer an denselben Ort.
 
 **Herkunft.** Ein Wert mit gepunkteter Linie darunter trägt seine Herkunft: Fährst du darüber oder tippst darauf, erscheinen Quelle, Notiz und Prüfdatum.

@@ -47,7 +47,7 @@ import reise as rg  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
 import texte  # noqa: E402
 import textform  # noqa: E402
-from routen import ZAHLUNG_OFFEN, buchung_termine  # noqa: E402
+from routen import ZAHLUNG_OFFEN, buchung_termine, erinnernde_zeitpunkte  # noqa: E402
 
 UNGUELTIG = ("verworfen", "ersetzt")      # Optionen, die niemand mehr nachschlagen muss
 MAX_PRUEFUNGEN = 15                       # Prüfmeldungen je Lauf, damit der Überblick lesbar bleibt
@@ -264,6 +264,23 @@ def buchungsfristen(d, heute, vorlauf):
     return aus
 
 
+def zeitpunkte_erinnern(d, heute):
+    """Zeitpunkt-Merkmale mit erinnern (#665) wie das Feld ab einer Buchung: einmal je Termin, sobald sein Tag da ist, an die
+    Organisator:innen. Nur ab Status fest; ohne Datum keine Erinnerung; denselben Zeitpunkt wie eine Buchungs-ab desselben Dings
+    meldet nur die Buchung."""
+    if not rg.verhalten(((d or {}).get("reise") or {}).get("status", {}).get("wert"))["fristen"]:
+        return []
+    sp = sprache_von(d)
+    aus = []
+    for z in erinnernde_zeitpunkte((d or {}).get("route")):
+        if datetime.date.fromisoformat(z["tag"]) > heute:
+            continue
+        aus.append({"schluessel": f"zeit:{z['ding']}:{z['merkmal']}:{z['wert']}", "wiederholen": None,
+                    "text": tw(d, "zeit_merkmal", w1=texte.datum_uhr(z["wert"], sp or texte.VORGABE_REISE), w2=z["name"], w3=f"{z['ding']} {z['titel']}"),
+                    "an": empfaenger(d, None), "art": "erinnerung", "ziel": z["ding"], "bezug": z["ding"]})
+    return aus
+
+
 def erster_tag_je_ding(d):
     """Erster Tag des aktuellen Plans, an dem eine Unterkunft (Nacht), ein Aufenthalt oder eine Strecke vorkommt -> {ID: JJJJ-MM-TT}."""
     aus = {}
@@ -389,7 +406,7 @@ def lauf_reise(reise, heute=None, trocken=False):
     items = zu_pruefen(d, heute, frist)
     ergebnis["zu_pruefen"] = items
     wunsch = (erinnerungen(d, rm.aufgaben(o), heute, regel(d, "erinnerung_vorlauf_tage"))
-              + buchungsfristen(d, heute, regel(d, "erinnerung_vorlauf_tage"))
+              + buchungsfristen(d, heute, regel(d, "erinnerung_vorlauf_tage")) + zeitpunkte_erinnern(d, heute)
               + zahlungen_offen(d, heute, regel(d, "erinnerung_vorlauf_tage")) + pruefmeldungen(d, items, frist))
     ergebnis["meldungen"] = status + neue_meldungen(o, wunsch, jetzt, trocken)
     ergebnis["nachricht"] = "nachricht" in regel(d, "meldekanal")
@@ -631,7 +648,7 @@ def zeige(reise, heute):
     o = rm.ordner(reise)
     vorlauf = regel(d, "erinnerung_vorlauf_tage")
     for m in (erinnerungen(d, rm.aufgaben(o) if o else [], heute, vorlauf) + buchungsfristen(d, heute, vorlauf)
-              + zahlungen_offen(d, heute, vorlauf)):
+              + zeitpunkte_erinnern(d, heute) + zahlungen_offen(d, heute, vorlauf)):
         print(f"  Message to {', '.join(m['an']) or '–'}: {m['text']}")
 
 

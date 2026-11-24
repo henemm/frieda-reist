@@ -46,6 +46,9 @@ arten:
     merkmale:
       preis: {name: Preis, typ: geld, veraenderlich: true, rolle: kosten, hilfe: "Fahrplanauskunft des Betreibers"}
       dauer: {name: Dauer, typ: text, veraenderlich: true}
+      # Zeitleiste der Fahrt (#665, Beispielwerte): ein Zeitpunkt, an den Wächter und Kalender erinnern, und das Gleis bei der Abfahrt
+      freischalten: {name: Fahrkarte freischalten ab, typ: zeitpunkt, erinnern: true, hilfe: "App des Betreibers (Beispielwert)"}
+      gleis: {name: Gleis, typ: text, bei: abfahrt, nach_buchung: true}
   # Kategorien der Packliste (erfunden, Beispielwerte): ohne Gewicht und ohne Raum, ein Wochenende braucht beides nicht (ADR-0010)
   papiere:
     grundform: gegenstand

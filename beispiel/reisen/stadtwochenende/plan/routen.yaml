@@ -20,6 +20,8 @@ strecken:
     merkmale:
       abfahrt: {typ: zeitpunkt, rolle: abfahrt, wert: "09:10", quelle: "erfunden (Beispiel); Fahrplan nicht geprüft"}
       ankunft: {typ: zeitpunkt, rolle: ankunft, wert: "11:25", quelle: "erfunden (Beispiel); Fahrplan nicht geprüft"}
+      freischalten: {wert: "2027-03-11T08:00", quelle: "erfunden (Beispiel)"}
+      gleis: {wert: "Gleis 4 (Beispielwert)", quelle: "erfunden (Beispiel)"}
   E-02:
     titel: "Regionalzug Beispielstadt → Heimatstadt"
     von: O-02
@@ -29,6 +31,7 @@ strecken:
     merkmale:
       abfahrt: {typ: zeitpunkt, rolle: abfahrt, wert: "17:40", quelle: "erfunden (Beispiel); Fahrplan nicht geprüft"}
       ankunft: {typ: zeitpunkt, rolle: ankunft, wert: "19:55", quelle: "erfunden (Beispiel); Fahrplan nicht geprüft"}
+      freischalten: {wert: "17:10", quelle: "erfunden (Beispiel)"}
 
 unterkuenfte:
   U-01:

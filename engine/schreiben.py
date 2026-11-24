@@ -739,6 +739,23 @@ def buchung_merkmal_definieren(reise_dir, wer, args, arten, art):
     return titel, text + (S("schreiben.antwort.grund", w1=grund) if grund else "")
 
 
+def zeit_eigenschaften_pruefen(art, merkmale, key, name, typ, erinnern, bei):
+    """erinnern und bei eines Merkmals (#665), wie sie nach dem Schreiben gälten: erinnern nur am Typ zeitpunkt; bei nicht an
+    zeitpunkt oder uhrzeit und nur auf ein gültiges Ziel der Art; ein Ziel, bei dem andere Merkmale stehen, bleibt ein Zeitpunkt."""
+    from routen import bei_ziele
+    if erinnern and typ != "zeitpunkt":
+        raise Ablehnung("schreiben.merkmal_definieren.erinnern_typ", w1=name, key=key, typ=typ)
+    if bei and typ in ("zeitpunkt", "uhrzeit"):
+        raise Ablehnung("schreiben.merkmal_definieren.bei_typ", w1=name, key=key, typ=typ)
+    if bei:
+        ziele = bei_ziele({k: d for k, d in merkmale.items() if k != key}, art.get("grundform"))
+        if bei not in ziele:
+            raise Ablehnung("schreiben.merkmal_definieren.bei_ziel", ziel=bei, w3=art.get("name", ""), w1=", ".join(ziele) or "–")
+    abhaengig = [f"{d.get('name', k)} ({k})" for k, d in merkmale.items() if k != key and isinstance(d, dict) and d.get("bei") == key]
+    if abhaengig and typ != "zeitpunkt":
+        raise Ablehnung("schreiben.merkmal_definieren.bei_abhaengig", w1=name, key=key, w2=", ".join(abhaengig))
+
+
 def merkmal_definieren(reise_dir, wer, args):
     """Ein Merkmal einer Art anlegen oder ändern (umbenennen, Stufe, abschalten mit Stufe aus). fuer: ding (Vorgabe, das
     Angebot) oder buchung (Merkmale der Buchungen dieser Art, #166). -> (Titel, Text)."""
@@ -775,6 +792,13 @@ def merkmal_definieren(reise_dir, wer, args):
     veraenderlich = bool_wert(args, "veraenderlich")
     nach_buchung = bool_wert(args, "nach_buchung")   # bleibt sichtbar, wenn das Ding gebucht ist (31.10.2026)
     lang = bool_wert(args, "lang")   # Text darf länger als KURZ_TEXT sein (#476)
+    erinnern = bool_wert(args, "erinnern")   # Zeitpunkt erinnert wie ab einer Buchung (#665)
+    # bei (#665): Schlüssel des Zeitpunkts, bei dem das Merkmal steht; ein leerer Text entfernt die Zuordnung
+    bei = None if args.get("bei") is None else (text_wert(args, "bei", laenge=40) or "").lower()
+    if bei:   # die festen Punkte auch englisch (departure, arrival: Einträge wert.* des Katalogs)
+        from routen import BEI_ROLLEN
+        from schnittstelle import ENUM_ALIAS
+        bei = ENUM_ALIAS[bei] if ENUM_ALIAS.get(bei) in BEI_ROLLEN else bei
     einheit, hilfe, frage, grund = (text_wert(args, f) for f in ("einheit", "hilfe", "frage", "grund"))
     rolle = text_wert(args, "rolle", laenge=20)
     if rolle is not None and rolle not in ("", "keine", *ROLLEN):
@@ -798,8 +822,13 @@ def merkmal_definieren(reise_dir, wer, args):
         if werte and typ != "auswahl":
             raise Ablehnung("schreiben.merkmal_definieren.9")
         d = {"name": name, "typ": typ}
+        zeit_eigenschaften_pruefen(a, merkmale, key, name, typ, erinnern, bei)
         if werte:
             d["werte"] = werte
+        if erinnern:
+            d["erinnern"] = True
+        if bei:
+            d["bei"] = bei
         if veraenderlich:
             d["veraenderlich"] = True
         if nach_buchung:
@@ -821,7 +850,9 @@ def merkmal_definieren(reise_dir, wer, args):
         text = (S("schreiben.antwort.merkmal.angelegt", w1=name, w2=key, w3=a.get("name", art), w4=typ)
                 + (f" ({' | '.join(werte)})" if werte else "") + (S("schreiben.antwort.merkmal.veraenderlich_hinweis") if veraenderlich else "")
                 + S("schreiben.antwort.merkmal.stufe_kopf") + stufe_satz(stufe or "empfohlen")
-                + (S("schreiben.antwort.merkmal.nach_buchung_hinweis") if nach_buchung else "") + ".")
+                + (S("schreiben.antwort.merkmal.nach_buchung_hinweis") if nach_buchung else "")
+                + "".join(", " + x for x in ([S("schreiben.antwort.merkmal.erinnern_an")] if erinnern else [])
+                          + ([S("schreiben.antwort.merkmal.bei", w1=bei)] if bei else [])) + ".")
     else:
         d = merkmale[key]
         if d.get("auto") and any(x is not None for x in (typ, werte, veraenderlich, einheit, rolle, nach_buchung)):
@@ -835,6 +866,9 @@ def merkmal_definieren(reise_dir, wer, args):
             else:
                 d.pop("rolle", None)
                 geaendert.append(S("schreiben.antwort.merkmal.keine_rolle"))
+        neuer_typ = (typ or d.get("typ", "text")).lower()
+        zeit_eigenschaften_pruefen(a, merkmale, key, d.get("name", key), neuer_typ,
+                                   d.get("erinnern") if erinnern is None else erinnern, d.get("bei") if bei is None else bei)
         if typ is not None and typ.lower() != d.get("typ", "text"):
             if typ.lower() == "auswahl" and not (werte or d.get("werte")):
                 raise Ablehnung("schreiben.merkmal_definieren.11")
@@ -851,6 +885,18 @@ def merkmal_definieren(reise_dir, wer, args):
         if name is not None and name != d.get("name"):
             geaendert.append(S("schreiben.antwort.art.name", w1=d.get("name"), w2=name))
             d["name"] = name
+        if erinnern is not None and bool(d.get("erinnern")) != erinnern:
+            geaendert.append(S("schreiben.antwort.merkmal.erinnern_an" if erinnern else "schreiben.antwort.merkmal.erinnern_aus"))
+            if erinnern:
+                d["erinnern"] = True
+            else:
+                d.pop("erinnern", None)
+        if bei is not None and bei != (d.get("bei") or ""):
+            geaendert.append(S("schreiben.antwort.merkmal.bei", w1=bei) if bei else S("schreiben.antwort.merkmal.bei_aus"))
+            if bei:
+                d["bei"] = bei
+            else:
+                d.pop("bei", None)
         if veraenderlich is not None and bool(d.get("veraenderlich")) != veraenderlich:
             geaendert.append(S("schreiben.antwort.merkmal.veraenderlich" if veraenderlich else "schreiben.antwort.merkmal.nicht_veraenderlich"))
             if veraenderlich:
@@ -885,7 +931,7 @@ def merkmal_definieren(reise_dir, wer, args):
         if not geaendert:
             raise Ablehnung("schreiben.merkmal_definieren.12", w1=d.get('name', key), key=key, w3=a.get('name', art))
         merkmale[key] = {k: d[k] for k in ("name", "typ", "werte", "auto", "veraenderlich", "einheit", "stufe", "rolle", "nach_buchung",
-                                           "lang", "hilfe", "frage", "auch") if k in d}
+                                           "lang", "erinnern", "bei", "hilfe", "frage", "auch") if k in d}
         titel = S("schreiben.titel.merkmal_geaendert", w1=d['name'], w2=key, w3=a.get('name', art))
         text = S("schreiben.antwort.merkmal.geaendert", w1=d["name"], w2=key, w3=a.get("name", art)) + verbinden(geaendert) + "."
     a["merkmale"] = merkmale

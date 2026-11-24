@@ -358,6 +358,13 @@ def lage_merkmale_falten(d, wo, fehl):
         if t not in LAGE_TYPEN and not (t == "link" and rolle == "buchung"):
             rest[k] = v
             continue
+        if t == "zeitpunkt" and not rolle:
+            # Zeitpunkt ohne Rolle (#665): bleibt Merkmal des Dings (Online-Check-in, Boarding), wird nicht gefaltet
+            if not lage_wert_gueltig(t, v.get("wert")):
+                fehl("pruefung.routen.lage_wert", wo=wo, k=k, typ=t)
+                continue
+            rest[k] = v
+            continue
         feld = TYP_FELD.get((t, rolle if t in ("uhrzeit", "zeitpunkt", "link") else None))
         if feld is None:
             fehl("pruefung.routen.lage_rolle", wo=wo, k=k, typ=t)
@@ -386,6 +393,120 @@ def lage_merkmale_falten(d, wo, fehl):
     if not rest:
         neu.pop("merkmale")
     return neu
+
+
+# ---------- Zeitpunkte eines Dings (#665): Zeitleiste der Bewegung, Erinnerung und Kalender ----------
+
+def bei_ziele(merkmale, grundform):
+    """Gültige Ziele von bei an einer Art: die Schlüssel ihrer Merkmale vom Typ zeitpunkt und, bei einer Bewegung, die
+    festen Rollen abfahrt und ankunft (eine Rolle gilt vor einem gleichnamigen Schlüssel)."""
+    rollen = list(BEI_ROLLEN) if grundform == "bewegung" else []
+    return rollen + [k for k, d in merkmale.items() if isinstance(d, dict) and d.get("typ") == "zeitpunkt" and k not in rollen]
+
+
+def zeit_teile(wert, tag=None):
+    """Zeitpunkt -> (JJJJ-MM-TT oder tag, HH:MM); ohne eigenes Datum gilt tag (der Tag der Strecke). None, wenn keine Zeit."""
+    m = ZEIT_MUSTER.match(str(wert or "").strip())
+    return (m.group(1) or tag, f"{m.group(2)}:{m.group(3)}") if m else None
+
+
+def buchung_ab_am(route, did):
+    """Buchungs-ab eines Dings: [(B-ID, ab, ab_was)] der geltenden Buchungen, die das Ding betreffen (erstes Ding der Buchung
+    oder je_ding, wie die Seite sie zeigt); je_ding gilt vor der Angabe der Buchung (#473)."""
+    aus = []
+    for bid, b in ((route or {}).get("buchungen") or {}).items():
+        fuer = b.get("fuer") or []
+        je = (b.get("je_ding") or {}).get(did)
+        if b.get("status") == "storniert" or did not in fuer or not (fuer[0] == did or je):
+            continue
+        quelle = je if je else b
+        if quelle.get("ab"):
+            aus.append((bid, quelle["ab"], quelle.get("ab_was")))
+    return aus
+
+
+def _dinge(route):
+    """(ID, Ding, Art) aller Dinge mit Merkmalen: Strecken, Unterkünfte, Aufenthalte."""
+    r = route or {}
+    for sid, s in (r.get("strecken") or {}).items():
+        yield sid, s, s.get("art_schluessel")
+    for gruppe in ("unterkuenfte", "aufenthalte"):
+        for did, d in (r.get(gruppe) or {}).items():
+            yield did, d, d.get("art")
+
+
+def erinnernde_zeitpunkte(route):
+    """Zeitpunkte, an die Wächter und Kalender erinnern (#665): je Ding und Merkmal mit erinnern und einem Wert mit Datum ein
+    Eintrag {ding, merkmal, name, wert, tag, titel}. Trägt eine Buchungs-ab desselben Dings denselben Zeitpunkt, gewinnt die
+    Buchung (keine Doppelmeldung)."""
+    aus = []
+    for did, d, art in _dinge(route):
+        defs = {x["id"]: x for x in ((route or {}).get("merkmale") or {}).get(art) or []}
+        werte = d.get("merkmale") or {}
+        buchung = {zeit_teile(ab) for _, ab, _ in buchung_ab_am(route, did)}
+        for k, v in werte.items():
+            teile = zeit_teile((v or {}).get("wert")) if (defs.get(k) or {}).get("erinnern") else None
+            if not teile or not teile[0] or teile in buchung:
+                continue
+            aus.append({"ding": did, "merkmal": k, "name": defs[k]["name"], "wert": str(v["wert"]), "tag": teile[0],
+                        "titel": d.get("titel") or d.get("name") or did})
+    return aus
+
+
+def strecken_tag(route):
+    """Tag jeder Strecke im aktuellen Plan -> {E-…: JJJJ-MM-TT}."""
+    aus = {}
+    for t in (route or {}).get("tage") or []:
+        for s in t.get("strecken") or []:
+            if t.get("datum"):
+                aus.setdefault(s.get("id"), str(t["datum"]))
+    return aus
+
+
+def zeitleiste(route, sid, tag=None):
+    """Zeitleiste einer Bewegung für die Seite (#665): Abfahrt, Ankunft, Zeitpunkt-Merkmale ohne Rolle und Buchungs-ab in
+    zeitlicher Reihenfolge, je Punkt {art, merkmal, zeit, datum, erinnert, bei}; am Punkt buchung dazu buchung und was.
+    Eine Uhrzeit ohne Datum gilt am Tag der Strecke (ohne Tag im Plan: am Datum der Abfahrt, wenn sie eins trägt); eine Ankunft
+    ohne Datum, deren Uhrzeit nicht nach der Abfahrt liegt, am Tag danach (Nachtfahrt, wie im Kalender); bei gleicher Zeit steht
+    ein freier Punkt vor der Abfahrt und hinter der Ankunft. Ist der Tag der Fahrt nicht bekannt, stehen Punkte mit Datum vor
+    denen ohne (ein Vor-Punkt wie der Check-in am Vortag trägt sein Datum, die Fahrt selbst nicht); die ohne Datum folgen
+    untereinander nach Uhrzeit, eine Nachtankunft zuletzt. bei: die Merkmale mit Wert, die an diesem Punkt stehen (die Sichtbarkeit nach der Buchung entscheidet die Seite).
+    -> [] ohne Punkt außer Abfahrt und Ankunft."""
+    s = ((route or {}).get("strecken") or {}).get(sid) or {}
+    tag = tag or (zeit_teile(s.get("ab")) or (None,))[0]
+    defs = {x["id"]: x for x in ((route or {}).get("merkmale") or {}).get(s.get("art_schluessel")) or []}
+    werte = s.get("merkmale") or {}
+    bei = lambda ziel: [k for k, d in defs.items() if d.get("bei") == ziel and (werte.get(k) or {}).get("wert") not in (None, "")]   # noqa: E731
+    punkte = []
+    for k, v in werte.items():
+        if (v or {}).get("typ") != "zeitpunkt" or not (teile := zeit_teile(v.get("wert"), tag)):
+            continue
+        punkte.append({"art": "merkmal", "merkmal": k, "datum": teile[0], "zeit": teile[1], "erinnert": bool((defs.get(k) or {}).get("erinnern")),
+                       "bei": [] if k in BEI_ROLLEN else bei(k)})
+    for bid, ab, was in buchung_ab_am(route, sid):
+        if (teile := zeit_teile(ab, tag)):
+            punkte.append({"art": "buchung", "buchung": bid, "was": was, "datum": teile[0], "zeit": teile[1], "erinnert": True, "bei": []})
+    if not punkte:
+        return []
+    ab, an = zeit_teile(s.get("ab"), tag), zeit_teile(s.get("an"), tag)
+    nacht = bool(ab and an and not zeit_teile(s.get("an"))[0] and an[1] <= ab[1] and an[0] == ab[0])   # Ankunft am Tag danach
+    if nacht and an[0]:
+        an = ((datetime.date.fromisoformat(an[0]) + datetime.timedelta(days=1)).isoformat(), an[1])
+    for art, teile in (("abfahrt", ab), ("ankunft", an)):
+        if teile:
+            punkte.append({"art": art, "datum": teile[0], "zeit": teile[1], "erinnert": False, "bei": bei(art)})
+    rang = {"ankunft": -1, "abfahrt": 1}
+    # ohne Datum (Tag der Fahrt unbekannt): nach allen Punkten mit Datum, untereinander nach Uhrzeit, die Nachtankunft zuletzt
+    return sorted(punkte, key=lambda p: (p["datum"] is None, p["datum"] or "", nacht and not p["datum"] and p["art"] == "ankunft",
+                                         p["zeit"], rang.get(p["art"], 0)))
+
+
+def zeitleisten(route):
+    """Trägt an jeder Strecke mit Zeitleiste (zeitleiste) ihre Punkte ein (#665)."""
+    tage = strecken_tag(route)
+    for sid, s in ((route or {}).get("strecken") or {}).items():
+        if (z := zeitleiste(route, sid, tage.get(sid))):
+            s["zeitleiste"] = z
 
 
 _ZEIT_TEIL = r"(\d{1,2})(?:[:.](\d{2}))?"
@@ -487,7 +608,12 @@ def stufe_schluessel(text):
             if t == w or t == texte.umschrift(w) or t == texte.datenwert(sprache, k).lower():
                 return k
     return None
-DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle", "nach_buchung", "lang"}
+DEF_FELDER = {"name", "typ", "werte", "veraenderlich", "auto", "hilfe", "frage", "einheit", "stufe", "auch", "rolle", "nach_buchung", "lang",
+              "erinnern", "bei"}
+# erinnern: true (#665): ein Merkmal vom Typ zeitpunkt erinnert wie das Feld ab einer Buchung (Wächter und Kalender), sobald sein
+# Wert ein Datum hat. bei: <Schlüssel> (#665): das Merkmal steht auf der Seite bei einem Zeitpunkt, entweder einem Merkmal vom
+# Typ zeitpunkt derselben Art oder einer festen Rolle einer Bewegung (BEI_ROLLEN); es gilt nicht an Zeitpunkten selbst.
+BEI_ROLLEN = ("abfahrt", "ankunft")
 # lang: true (Product Owner 10.11.2026, #476): ein Text-Merkmal darf länger als KURZ_TEXT Zeichen sein (z. B. „Charakter“); sonst
 # ist ein Text-Merkmal kurz, Einzelheiten gehören in Hinweis oder Notiz
 KURZ_TEXT = 60
@@ -1462,7 +1588,7 @@ class Routen:
     def definitionen(self, wo, roh, art, grundform=None, neu=False):
         """Merkmal-Definitionen prüfen -> {Merkmal: Definition}. neu: die Art selbst wird definiert (arten.yaml);
         sonst ergänzt eine Wahlstelle die Art oder ändert nur die Stufe eines Merkmals."""
-        aus = {}
+        aus, bei = {}, {}
         if not isinstance(roh, dict):
             self.fehl(texte.satz("pruefung.routen.68", wo=wo))
             return aus
@@ -1502,11 +1628,29 @@ class Routen:
                 self.fehl(texte.satz("pruefung.routen.nach_buchung", wo=wo, k=k))
             if "lang" in d and not isinstance(d["lang"], bool):
                 self.fehl(texte.satz("pruefung.routen.lang", wo=wo, k=k))
+            if "erinnern" in d and not isinstance(d["erinnern"], bool):
+                self.fehl(texte.satz("pruefung.routen.erinnern", wo=wo, k=k))
+            elif d.get("erinnern") and typ != "zeitpunkt":
+                self.fehl(texte.satz("pruefung.routen.erinnern_typ", wo=wo, k=k, typ=typ))
+            if "bei" in d:
+                if not isinstance(d["bei"], str) or not d["bei"].strip():
+                    self.fehl(texte.satz("pruefung.routen.bei", wo=wo, k=k))
+                elif typ in ("zeitpunkt", "uhrzeit"):
+                    self.fehl(texte.satz("pruefung.routen.bei_typ", wo=wo, k=k, typ=typ))
+                else:
+                    bei[k] = d["bei"].strip().lower()   # wie im Schreibweg: Schlüssel und Rollen klein
             if k in self.katalog.get(art, {}) and not neu:
                 self.fehl(texte.satz("pruefung.routen.80", wo=wo, k=k, art=art))
             aus[k] = {"name": d["name"], "typ": typ, **{f: d[f] for f in ("werte", "veraenderlich", "auto", "hilfe",
                                                                           "frage", "einheit", "stufe", "auch", "rolle",
-                                                                          "nach_buchung", "lang") if d.get(f)}}
+                                                                          "nach_buchung", "lang", "erinnern") if d.get(f)}}
+        # Ziele von bei erst nach allen Merkmalen der Art prüfen: ein Ziel darf weiter unten stehen
+        ziele = bei_ziele({**self.katalog.get(art, {}), **aus}, grundform or self.grundform(art))
+        for k, z in bei.items():
+            if z not in ziele:
+                self.fehl(texte.satz("pruefung.routen.bei_ziel", wo=wo, k=k, ziel=z, w1=", ".join(ziele) or "–"))
+            elif k in aus:
+                aus[k]["bei"] = z
         return aus
 
     def art_der_wahl(self, w, vid):
@@ -1559,6 +1703,10 @@ class Routen:
             return aus
         for k, v in roh.items():
             d = kriterien.get(k)
+            if isinstance(v, dict) and v.get("typ") == "zeitpunkt" and not v.get("rolle"):
+                # Zeitpunkt ohne Rolle am Ding (#665): trägt seinen Typ am Wert und gilt auch ohne Definition an der Art
+                v = {x: y for x, y in v.items() if x != "typ"}
+                d = d or {"name": k, "typ": "zeitpunkt"}
             if d is None:
                 self.fehl(texte.satz("pruefung.routen.83", wo=wo, k=k, w1=', '.join(kriterien) or 'keine'))
                 continue
@@ -2113,6 +2261,7 @@ class Routen:
             "karten_ansichten": self.karten_ansichten(),
         }
         lage_ueber_bezug(aus)
+        zeitleisten(aus)
         return aus
 
     def karten_ansichten(self):

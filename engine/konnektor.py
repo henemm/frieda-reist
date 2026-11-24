@@ -71,7 +71,7 @@ import texte  # noqa: E402
 import textform  # noqa: E402
 from reise import (ENTSCHEIDUNGEN, LESE_BAUSTEIN, ROLLEN, VORGABEN, darf, erlaubt,  # noqa: E402
                    konflikte, neue_reise_pruefen, rolle_neu, schluessel_aus_name, verhalten)
-from routen import FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort, uhr_einheit, zeit_ohne_uhr  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
+from routen import BEI_ROLLEN, FARBEN, FEST_NAMEN, GRUNDFORMEN, STUFEN, SYMBOLE_ARTEN, TYPEN, ZAHLUNG, ZAHLUNG_ALIAS, art_schluessel, zahlung_wort, stufe_gilt, stufe_schluessel, stufe_wort, uhr_einheit, zeit_ohne_uhr  # noqa: E402  (Form der Ontologie, docs/ontologie.md)
 
 PERSON_MUSTER = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}\Z")
 SCHREIB_WERKZEUGE = {"rueckmeldung_geben", "aufgabe_anlegen", "aufgabe_aendern", "rueckmeldung_erledigen",
@@ -973,6 +973,13 @@ class Handbuch:
             z.append(tk("konnektor.summe.2") + ", ".join(f"{k} {v}" for k, v in s["unterkunftstypen"].items()))
         return "; ".join(z)
 
+    @staticmethod
+    def zeit_eigenschaften(k, kriterien):
+        """erinnern und bei eines Merkmals (#665) als Zusätze („; erinnert“, „; steht bei …“ mit dem Namen des Ziels)."""
+        name = {x["id"]: x["name"] for x in kriterien or []}
+        return ([tk("konnektor.merkmale.erinnern")] if k.get("erinnern") else []) + \
+            ([tk("konnektor.merkmale.bei", w1=dw(k["bei"]) if k["bei"] in BEI_ROLLEN else name.get(k["bei"], k["bei"]))] if k.get("bei") else [])
+
     def merkmal_zeilen(self, kriterien, werte, fehlt=None):
         """Merkmale einer Option oder Unterkunft als Zeilen (Standard: docs/alternativen.md)."""
         z = []
@@ -981,6 +988,7 @@ class Handbuch:
             if not v:
                 continue
             zusatz = [v["notiz"]] if v.get("notiz") else []
+            zusatz += [x.lstrip("; ") for x in self.zeit_eigenschaften(k, kriterien)]
             if v.get("geprueft"):
                 zusatz.append(tk("konnektor.merkmal_zeilen.1", w1=datum_de(v['geprueft'])))
             elif v.get("ungeprueft"):
@@ -1355,6 +1363,7 @@ class Handbuch:
                 zeile += tk("konnektor.merkmale.3")
             if k.get("nach_buchung"):
                 zeile += tk("konnektor.merkmale.nach_buchung")
+            zeile += "".join(self.zeit_eigenschaften(k, krit))
             if k.get("hilfe"):
                 zeile += tk("konnektor.ausgabe.merkmal.so_finden", w1=k['hilfe'])
             if k.get("frage"):
@@ -2963,6 +2972,8 @@ MERKMAL_DEFINIEREN = {"name": "merkmal_definieren", "description": "@konnektor.w
                           "veraenderlich": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.veraenderlich"},
                           "nach_buchung": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.nach_buchung"},
                           "lang": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.lang"},
+                          "erinnern": {"type": "boolean", "description": "@konnektor.werkzeug.merkmal_definieren.erinnern"},
+                          "bei": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.bei"},
                           "stufe": {"type": "string", "enum": list(STUFEN), "description": "@konnektor.werkzeug.merkmal_definieren.stufe"},
                           "einheit": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.einheit"},
                           "hilfe": {"type": "string", "description": "@konnektor.werkzeug.merkmal_definieren.hilfe"},

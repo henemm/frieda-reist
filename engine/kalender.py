@@ -21,6 +21,7 @@ import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import routen  # noqa: E402
 import texte  # noqa: E402
 import textform  # noqa: E402
 
@@ -199,6 +200,11 @@ def eintraege(daten, aufgaben=None):
         if (d := _datum(b.get("storno_bis"))):
             aus.append({"sorte": "buchungen", "id": bid, "uid": f"{bid}-storno", "titel": tx("storno_letzter", titel=titel),
                         "tag": d, "bis": d + datetime.timedelta(days=1), "text": _buchung_text(r, bid, sprache).strip()})
+    # Zeitpunkte mit erinnern (#665): je Ding und Merkmal ein Termin wie die ab einer Buchung (denselben Zeitpunkt trägt nur die Buchung)
+    for z in routen.erinnernde_zeitpunkte(r):
+        d = _datum(z["tag"])
+        aus.append({"sorte": "buchungen", "id": z["ding"], "uid": f"{z['ding']}-zeit-{z['merkmal']}", "titel": tx("ab_heute", was=z["name"], titel=z["titel"]),
+                    "tag": d, "bis": d + datetime.timedelta(days=1), "text": texte.datum_uhr(z["wert"], sprache)})
     for a in aufgaben or []:
         if a.get("status") in AG_OFFEN and (d := _datum(a.get("frist"))):
             aus.append({"sorte": "aufgaben", "zustaendig": a.get("zustaendig") or "", "id": a["id"], "uid": f"{a['id']}-frist", "titel": tx("aufgabe_faellig", titel=a.get("titel", a["id"])),

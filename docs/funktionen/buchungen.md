@@ -66,6 +66,8 @@ Jedes buchbare Ding durchläuft dieselben Stufen, und die Seite folgt ihnen:
 | angefragt | dazu die Buchung mit Preis und Zahlung |
 | gebucht | kompakt die **Check-in-Ansicht**: Nummer mit Kopier-Knopf, Check-in, Check-out, vor Ort zu zahlen, eine laufende Frist; Preis, Zahlung, Belege, Stornoregel und Verlauf in den „Einzelheiten zur Buchung“ |
 
+**Ab wann etwas geht** (etwa der Online- oder Komfort-Check-in) steht bei einer Fahrt nicht im Buchungsblock, sondern in ihrem **Ablauf**, der Zeitleiste der Fahrt, mit dem Zusatz „aus der Buchung“ und der Marke „erinnert“ (#665, siehe [Reiseseite](reiseseite.md)). Der Buchungsblock einer Fahrt zeigt nur das Geschäftliche: Nummer, Stand, Preis, Zahlung, Reisende, Tarif, Beleg. Bei Unterkünften und Aufenthalten bleibt die Zeile, wie sie ist.
+
 Nach der Buchung gilt die Buchung: Die Angaben aus der Planung (Preis laut Website, Zimmer) rücken zugeklappt unter „Aus der Planung“. Merkmale, die die Reise als „nach der Buchung sichtbar“ markiert, bleiben oben, etwa der Charakter des Hotels. Stornierte Buchungen stehen zusammen im zugeklappten Block „Storniert“.
 
 Unter **„Zu tun · Zu buchen“** steht jedes buchbare Ding mit Datum und Stand, etwa „gebucht · Frist 13.5.“. Der Stand der Vorbereitung im Überblick zählt „Gebucht x von y“, und die Zeitachse zeigt an jeder Nacht „gebucht“ oder „nicht gebucht“. In der Kennzahl **Übernachtungen** zählt bei gebuchten Unterkünften der Preis der Buchung statt des Angebots.

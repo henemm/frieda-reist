@@ -14,8 +14,13 @@ for (const tag of ["T-01", "T-03"]) {
   tage[tag] = await p.evaluate(() => {
     const bl = document.querySelector('#main .buchung[data-ziel="B-01"]');
     const z = bl && bl.closest(".z.ziel");
+    // Zeitleiste der Fahrt (#665): der Punkt aus der Buchung (Uhrzeit, Tag, Bezeichnung) und der Text der ganzen Leiste
+    const zl = z && z.querySelector(":scope > ol.zeit"), ab = zl && zl.querySelector('li[data-art="buchung"]');
+    const txt = e => e ? e.textContent.replace(/\s+/g, " ").trim() : "";
     return {block: !!bl, text: bl ? [...bl.children].filter(x => x.tagName !== "DETAILS").map(x => x.textContent).join(" | ") : "",
-      kopf: z ? (z.querySelector(":scope > .z.klein") || {}).textContent || "" : ""};
+      kopf: z ? (z.querySelector(":scope > .z.klein") || {}).textContent || "" : "",
+      zeitKopf: txt(z && z.querySelector(":scope > .zeitleiste-kopf")), leiste: txt(zl),
+      ab: ab ? {zeit: txt(ab.querySelector(".leisten-zeit")), tag: txt(ab.querySelector(".leisten-zeit .tag")), name: txt(ab.querySelector(".leisten-name"))} : null};
   });
   await p.close();
 }

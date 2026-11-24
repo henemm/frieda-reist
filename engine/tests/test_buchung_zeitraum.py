@@ -6,6 +6,7 @@ import datetime
 import functools
 import http.server
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -131,7 +132,8 @@ def test_jede_nacht_nur_ihre_buchung(tmp_path):
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 def test_hin_und_rueckfahrt_je_ding(tmp_path):
     """#473, #475 (Stadtwochenende, Beispielwerte): eine Bahnbuchung für Hin- und Rückfahrt mit Angaben je Fahrt. An jeder Fahrt
-    steht die Buchung mit nur ihrem Check-in; der Kopf der Fahrt zeigt Datum und Abfahrt → Ankunft."""
+    steht nur ihr Check-in, seit #665 (AC-7, AC-8) als Punkt „aus der Buchung“ in der Zeitleiste der Fahrt, nicht im Buchungsblock;
+    der Kopf der Fahrt zeigt nur ihr Datum, ohne Abfahrt → Ankunft."""
     bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", tmp_path / "web" / "stadt")
 
     class Handler(http.server.SimpleHTTPRequestHandler):
@@ -150,9 +152,16 @@ def test_hin_und_rueckfahrt_je_ding(tmp_path):
     e = json.loads(aus.stdout.strip().splitlines()[-1])
     assert e["fehler"] == [], e
     hin, rueck = e["tage"]["T-01"], e["tage"]["T-03"]
-    assert hin["block"] and "Komfort-Check-in ab Do 11.3., 09:10" in hin["text"] and "13.3." not in hin["text"], hin
-    assert rueck["block"] and "Komfort-Check-in ab Sa 13.3., 17:40" in rueck["text"] and "11.3." not in rueck["text"], rueck
-    assert "Fr 12.3. · 09:10 → 11:25" in hin["kopf"], hin
+    # je Fahrt das eigene ab, am Vortag, in der Zeitleiste; kein Datum der anderen Fahrt
+    assert hin["ab"] == {"zeit": "09:10Do 11.3.", "tag": "Do 11.3.", "name": hin["ab"]["name"]} and hin["ab"]["name"].startswith("Komfort-Check-in"), hin
+    assert rueck["ab"] == {"zeit": "17:40Sa 13.3.", "tag": "Sa 13.3.", "name": rueck["ab"]["name"]} and rueck["ab"]["name"].startswith("Komfort-Check-in"), rueck
+    assert "13.3." not in hin["leiste"] and "11.3." not in rueck["leiste"], (hin, rueck)
+    # der Buchungsblock zeigt das Geschäftliche, die ab-Zeile nicht mehr
+    for x in (hin, rueck):
+        assert x["block"] and "DB-XYZ789" in x["text"] and "Komfort-Check-in" not in x["text"] and "11.3." not in x["text"] and "13.3." not in x["text"], x
+    # Kopf nur mit Datum, ohne Uhrzeiten; die alte Zeile „Fr 12.3. · 09:10 → 11:25“ gibt es nicht mehr
+    assert hin["zeitKopf"].startswith("Fr 12.3.") and not re.search(r"\d\d:\d\d", hin["zeitKopf"]) and "→" not in hin["kopf"], hin
+    assert rueck["zeitKopf"].startswith("So 14.3.") and not re.search(r"\d\d:\d\d", rueck["zeitKopf"]) and "→" not in rueck["kopf"], rueck
 
 
 def test_je_ding_im_schreibweg_und_waechter(tmp_path):
