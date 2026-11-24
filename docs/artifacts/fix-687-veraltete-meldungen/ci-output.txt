@@ -1,0 +1,9 @@
+CI zu PR #696, Commit 1966d881363d409d59eff28729c67cb3ce078ebc (ubuntu-24.04), Lauf 45463953405. Auszug, Befehl: python -m pytest -q -rs -n auto engine/tests
+
+tests (instanz)  SKIPPED [1] engine/tests/test_wackel_599.py:118: Stand 5f36075 nicht im Checkout
+tests (instanz)  3650 passed, 1 skipped in 1102.96s (0:18:22)
+tests (instanz)  Browser-Prüfung darf nicht übersprungen worden sein: 2 passed, 7 deselected in 5.47s
+tests (leer)     SKIPPED [1] engine/tests/test_wackel_599.py:118: Stand 5f36075 nicht im Checkout
+tests (leer)     3650 passed, 1 skipped in 974.59s (0:16:14)
+tests (leer)     Browser-Prüfung darf nicht übersprungen worden sein: 2 passed, 7 deselected in 5.42s
+gitleaks         pass

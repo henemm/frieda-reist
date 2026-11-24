@@ -24,7 +24,7 @@ Datum: 2026-11-24 18:47
 - [x] **AC-19:** Wirkung in `my_trips` und auf `/konto`. PROVEN: `test_wirkung_im_konnektor_my_trips`, `test_wirkung_auf_mein_konto`, zusätzlich `test_zahl_der_gelesenen_sinkt_im_konnektor`, `test_veraltete_meldung_laesst_sich_nicht_mehr_oeffnen`.
 - [x] **AC-20:** `meldungen.jsonl` bleibt unverändert. PROVEN: `test_filter_nur_beim_lesen` (byte-gleich); der Filter ist reine Listenbildung ohne Schreibzugriff (`engine/rueckmeldungen.py:464`).
 - [x] **AC-21:** Testanfrage nicht unterdrückt. PROVEN: `test_testanfrage_wird_nicht_unterdrueckt`; im Code keine Sonderbehandlung von Adressen.
-- [ ] **AC-22:** Given die Änderung ist fertig / When `engine/.venv/bin/python -m pytest -q -n 3 engine/tests` läuft / Then ist alles grün. NICHT BELEGT, siehe Runde 2: Gesamtlauf unter macOS rot (92 failed, 41 errors, 403 skipped, nur Server- und Betriebs-Testdateien), grüner Lauf nur Teillauf (2596 passed, 302 skipped), CI (Linux) steht aus.
+- [x] **AC-22:** Given die Änderung ist fertig / When `engine/.venv/bin/python -m pytest -q -n 3 engine/tests` läuft / Then ist alles grün. PROVEN durch die Linux-CI auf 1966d88, siehe Runde 3 (der macOS-Gesamtlauf bleibt aus Umgebungsgründen rot, unabhängig von der Änderung).
 
 ## Dialog
 
@@ -80,13 +80,48 @@ Confirmation:
   Evidence: extra konto nur bei Art anfrage_reisen und Konto mit Kennung; der Test liest `konto` aus der Ablage, Mutation I (Feld ignoriert) rot.
   Status: CONFIRMED
 
+### Runde 3
+**Adversary:** Neuer Nachweis zu AC-22 unabhängig geprüft (CI zu PR #696).
+- `gh pr checks 696`: `tests (leer)` pass (18m5s), `tests (instanz)` pass (19m50s), Geheimnisprüfung pass, alle drei Pflichtprüfungen grün.
+- Volles Log des Laufs 45463953405 selbst geprüft: beide Jobs führen `python -m pytest -q -rs -n auto engine/tests` aus (ubuntu); Ergebnis je Job `3650 passed, 1 skipped`, kein `FAILED` im Log. Die Browser-Prüfung (`test_pwa.py -k offline_im_browser`) lief je Job mit 2 passed, nicht übersprungen.
+- Geprüfter Stand: Der Checkout der CI ist die Zusammenführung von 1966d88 in 35e2d89 (Basis des Branches, Elternteil von 93915e8), enthält also die Änderung und sonst nichts Fremdes. Der Vergleich von 1966d88 mit dem Worktree ist für `engine` leer, `engine` hat keine unversionierten oder geänderten Dateien: Die CI hat genau den von mir geprüften Code getestet.
+- Abweichungen: (a) `-n auto` statt `-n 3`: nur die Zahl der Prozesse, dieselben Tests; unerheblich. (b) Ein übersprungener Test je Job, `engine/tests/test_wackel_599.py:118`: `_alter_stand` überspringt, wenn der alte Versionsstand im flachen CI-Checkout (`fetch-depth: 1`) fehlt; das betrifft eine Karten-Messung zu #599, weder Meldungen noch `anmeldung`/`rueckmeldungen`, und ist eine Eigenschaft des Checkouts, nicht der Änderung. Der Wortlaut "alles grün" ist erfüllt (0 failed, 0 errors), nur nicht "ohne einen einzigen Skip".
+- Bewertung: AC-22 PROVEN durch die Linux-CI; die macOS-Rotfälle aus Runde 2 sind Umgebungsfehler (unabhängig von der Änderung, Vergleich in Runde 2) und gehören nicht zur CI.
+
+Finding:
+  ID: F001
+  Severity: MEDIUM
+  Category: spec_violation
+  Code reference: engine/rueckmeldungen.py:464
+  Description: Aus Runde 2: AC-22 nicht belegt. Jetzt behoben: CI-Lauf 45463953405 auf 1966d88 (PR #696), beide Pflichtjobs 3650 passed, 1 skipped, 0 failed.
+  Spec requirement: AC-22 — alles grün
+  Conflict: keiner mehr (Status: GESCHLOSSEN).
+  Remediation: keine.
+
+Confirmation:
+  AC: AC-22
+  Code reference: engine/anmeldung.py:1728
+  Evidence: CI (ubuntu, `-n auto engine/tests`) auf dem Stand 1966d88: tests (leer) und tests (instanz) je 3650 passed, 1 skipped (test_wackel_599.py:118, flacher Checkout); engine im Worktree identisch mit 1966d88.
+  Status: CONFIRMED
+
 ## Herkunft der Vorbedingungen
 
 kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
 
 ## Verdict
-AMBIGUOUS. AC-1 bis AC-21 halten dem Adversary-Test stand, kein Code-Mangel gefunden. AC-22 (grüner Gesamtlauf) ist nicht belegt: macOS-Gesamtlauf rot in neun Server-Testdateien (unabhängig von der Änderung), nur Teillauf grün, CI steht aus. Deshalb kein VERIFIED.
-Tests: gezielter Lauf 265 passed, 0 failed, 0 übersprungen; Zusatzlauf 93 passed.
+VERDICT: VERIFIED — AC-1 bis AC-21 halten dem Adversary-Test stand (sieben Mutationen rot, 265 gezielte Tests grün), kein Code-Mangel gefunden. AC-22 ist durch die Linux-CI auf 1966d88 belegt (3650 passed, 1 skipped je Pflichtjob, 0 failed); der eine Skip (test_wackel_599.py:118) ist eine Eigenschaft des flachen Checkouts. F001 geschlossen.
+Tests: gezielt 265 passed, 0 failed, 0 übersprungen; CI 3650 passed, 0 failed, 1 übersprungen (je Job). Checklist: 22/22.
+
+## Geprüfte Dateien
+
+- sha256:7efe1f19552d78f580c17eb91ef02b7b2ac43d8bfa8115fa2817ffcac107321a  engine/anmeldung.py
+- sha256:112f94cd236864f7f3d5202e468f62abd2d095d0a72d40497d3106ccb269f65f  engine/rueckmeldungen.py
+
+## Prüfbasis
+
+- base: 35e2d890bf82b956fbe78a698e42757e510ec42b
+- blob:84f88a0c39f56a5207cee13c3c0304719f511958  engine/anmeldung.py
+- blob:6677a9f21164b882f9ed608055428aa18f605dea  engine/rueckmeldungen.py
 
 ## Geprüfte Dateien
 
