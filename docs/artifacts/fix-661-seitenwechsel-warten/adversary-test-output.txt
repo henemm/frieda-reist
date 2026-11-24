@@ -1,0 +1,128 @@
+Nachweis des Prüfers (Adversary) fix-661-seitenwechsel-warten
+Umgebung: Chromium (WebKit lokal nicht installiert, Lauf mit Filter "not webkit"), Beispielreise, Playwright über PLAYWRIGHT_MODUL, -n 3.
+
+== 1. Gezielter Lauf (Chromium): test_wackel_599.py, test_seite.py, test_bild_helfer.py, test_protokolle_ohne_pfade.py ==
+======================== 41 passed in 79.04s (0:01:19) =========================
+PASSED engine/tests/test_bild_helfer.py::test_bild_erfolg_im_zweiten_versuch 
+PASSED engine/tests/test_bild_helfer.py::test_bild_gibt_optionen_weiter 
+PASSED engine/tests/test_bild_helfer.py::test_bild_nach_drei_fehlversuchen_false 
+PASSED engine/tests/test_bild_helfer.py::test_bild_ohne_fehler_ein_aufruf 
+PASSED engine/tests/test_bild_helfer.py::test_bilderfehlen_ist_warnung_nicht_rot 
+PASSED engine/tests/test_bild_helfer.py::test_packliste_skript_wartet_auf_knopftext 
+PASSED engine/tests/test_bild_helfer.py::test_stand_skript_wartet_auf_reise_stand_text 
+PASSED engine/tests/test_bild_helfer.py::test_vollseitenbilder_ueber_den_helfer 
+PASSED engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pfade 
+PASSED engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pytest_tmp 
+PASSED engine/tests/test_protokolle_ohne_pfade.py::test_protokolle_ohne_absolute_pfade 
+PASSED engine/tests/test_seite.py::test_alle_ansichten_der_beispielreise[chromium] 
+PASSED engine/tests/test_seite.py::test_alle_ansichten_der_zweiten_beispielreise[chromium] 
+PASSED engine/tests/test_seite.py::test_anmeldeseiten_im_browser[chromium] 
+PASSED engine/tests/test_seite.py::test_anmeldung_auf_der_seite[chromium] 
+PASSED engine/tests/test_seite.py::test_archivierte_reise_mit_wort_und_ohne_zaehler[chromium] 
+PASSED engine/tests/test_seite.py::test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke[chromium] 
+PASSED engine/tests/test_seite.py::test_b2_wissen_orte_vergleich[chromium] 
+PASSED engine/tests/test_seite.py::test_buchung_genau_einmal_vollstaendig[chromium] 
+PASSED engine/tests/test_seite.py::test_buchung_und_anschluss_mit_namen[chromium] 
+PASSED engine/tests/test_seite.py::test_fahrt_an_ihrer_heimat_mit_merkmalen_und_hinweis[chromium] 
+PASSED engine/tests/test_seite.py::test_fahrtag_in_der_reihenfolge_des_tags[chromium] 
+PASSED engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage_im_browser 
+PASSED engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage[chromium] 
+PASSED engine/tests/test_seite.py::test_schriftleiter_ohne_freie_groessen 
+PASSED engine/tests/test_seite.py::test_seite_je_status_und_baustein[chromium] 
+PASSED engine/tests/test_seite.py::test_status_der_reise_auf_der_seite[chromium] 
+PASSED engine/tests/test_seite.py::test_stornierte_buchung_bleibt_in_den_daten 
+PASSED engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[chromium] 
+PASSED engine/tests/test_seite.py::test_stornierte_buchungen_ein_helfer_an_jeder_heimat 
+PASSED engine/tests/test_seite.py::test_wunsch_brett[chromium] 
+PASSED engine/tests/test_seite.py::test_zweite_beispielreise_ohne_wanderung_baut_sauber 
+PASSED engine/tests/test_wackel_599.py::test_echter_fehler_im_wechsel_bleibt_rot[chromium] 
+PASSED engine/tests/test_wackel_599.py::test_gleicher_hash_haengt_nicht[chromium] 
+PASSED engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[chromium] 
+PASSED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[chromium] 
+PASSED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[chromium] 
+PASSED engine/tests/test_wackel_599.py::test_quelltext_wartet_auf_zustand 
+PASSED engine/tests/test_wackel_599.py::test_quelltext_wechsel_ueber_gehe 
+PASSED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium] 
+PASSED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium] 
+
+== 2. Gesamtlauf: pytest -q -n 3 engine/tests, Filter "not webkit" ==
+Ergebnis: 99 failed, 3247 passed, 156 skipped, 41 errors in 661.56s (0:11:01)
+Rote Tests nach Datei (alle in Betriebs- und Server-Skripten, die diese Änderung nicht berühren; Ursache laut Ausgabe: Linux-Werkzeuge
+fehlen auf macOS: "getent: command not found", "shopt: globasciiranges: invalid shell option name", "flock", Benutzer "hans" fehlt):
+  36 FAILED engine/tests/test_nginx.py
+  28 ERROR engine/tests/test_nginx_reise_helfer.py
+  18 FAILED engine/tests/test_betrieb.py
+  16 FAILED engine/tests/test_kartendienst_skript.py
+  13 FAILED engine/tests/test_units.py
+  13 ERROR engine/tests/test_betrieb.py
+   7 FAILED engine/tests/test_seite_ansehen.py
+   3 FAILED engine/tests/test_nginx_helfer.py
+   3 FAILED engine/tests/test_kartendienst.py
+   1 FAILED engine/tests/test_units_helfer.py
+   1 FAILED engine/tests/test_rueckbau_557.py
+   1 FAILED engine/tests/test_nginx_reise_helfer.py
+Kein roter Test in test_wackel_599.py, test_seite.py, test_bild_helfer.py, test_protokolle_ohne_pfade.py.
+
+== 3. Gegenprobe am unveränderten Stand (Basisstand acfc83c, aus dem Repo exportiert, dieselben Dateien, -n 3) ==
+Ergebnis: 99 failed, 530 passed, 101 skipped, 41 errors in 33.50s
+Vergleich der Namen der roten Tests (140 Zeilen je Seite): GLEICH. Die roten Tests sind umgebungsbedingt, nicht von der Änderung.
+
+== 4. Rundgang unter Verzögerung aller Wechsel (Chromium, 180 Ansichten, Abweichungen gegen den eigenen Lauf ohne Verzögerung) ==
+Rundgang wie ausgeliefert (gehe mit hashchange und zwei Bildern):
+  zweiter Lauf ohne Verzögerung: 0 Abweichungen (19,2 s)  -> der Rundgang ist ohne Verzögerung stabil
+  alle Wechsel 40 ms:  0 Abweichungen, fehler [] (30,8 s)
+  alle Wechsel 150 ms: 0 Abweichungen, fehler [] (61,6 s)
+Mutation A_ohne (Hash setzen, nichts abwarten), ohne Verzögerung: 72 Abweichungen (11,6 s)
+Mutation A15 (alter Ablauf, 15 ms Node-Zeit), ohne Verzögerung: 36 Abweichungen (15,3 s)
+Mutation B (nur auf hashchange warten, keine Bilder): 64 Abweichungen bei 40 ms, 60 bei 150 ms
+Mutation C (hashchange und ein Bild): 0 Abweichungen bei 40 ms und 150 ms (ein Bild genügt in Chromium; zwei sind vorsichtiger)
+
+== 5. Gezielte Verzögerung (Tests 1 und 2 des Auftrags), Mutationen von gehe() an Kopien ==
+  Mutation       #V-03 um 200 ms (AC-1)                         #V-01 um 200 ms (AC-2)
+  A_ohne         ROT: Skript stürzt ab (page.evaluate)           ROT: dom["1200#V-01"] erfüllt die Erwartung nicht
+  A15            ROT: Skript stürzt ab (page.evaluate)           ROT: dom["1200#V-01"] erfüllt die Erwartung nicht
+  B (nur Ereignis)  grün (breite 340)                            grün
+  C (ein Bild)      grün (breite 340)                            grün
+  Ausgeliefert   grün (Test im Lauf 1)                           grün (Test im Lauf 1)
+Befund: Tests 1 und 2 erkennen ein gehe() ohne Warten, aber nicht den Verzicht auf die Bilder; dafür steht nur die statische Prüfung
+(Test 5: genau zwei requestAnimationFrame) bereit, sie schlägt bei B und C an.
+
+== 6. Test 3 (echter Fehler bleibt rot): Seite wirft bei #E-02 und zeichnet #V-01 nicht (dieselbe Textersetzung wie im Test) ==
+  Ausgeliefert:  Skript endet nach 12 bis 19 s; Wurf in fehler: ja; V-01 stimmt: nein  -> erkannt
+  A_ohne:        Skript endet; Wurf in fehler: ja; V-01 stimmt: nein
+  C (ein Bild):  Skript endet; Wurf in fehler: ja; V-01 stimmt: nein
+  D (wartet auf geänderten Seiteninhalt, ohne Frist): Frist von 90 s abgelaufen -> der Test (Frist 300 s) würde rot, hängendes Warten wird erkannt
+
+== 7. Randfälle von gehe(p, h) (Chromium, Quelltext von gehe aus seiten_browser.mjs, Beispielreise; Frist je Schritt 5 s) ==
+  Startseite nach Leerhash (kein Hash vorhanden)  fertig, 22 ms, kein hashchange (Adresse blieb gleich)
+  nach V-01                                        fertig, 34 ms, 1 hashchange
+  nach V-01 (gleicher Hash)                        fertig, 33 ms, kein neues Ereignis
+  nach V-01 mit vorangestelltem Gatter (gleiche Adresse)   fertig, 33 ms, kein neues Ereignis
+  Leerhash (von V-01 aus)                          fertig, Adresse endet auf dem Gatter, 1 hashchange
+  Leerhash (gleich)                                fertig, kein neues Ereignis
+  nach offen (Alias, route() benennt per replaceState in zu-tun um)   fertig, Adresse zu-tun
+  nach offen (nochmal, Adresse ist zu-tun)         fertig, 1 hashchange
+  Sonderzeichen (Leerzeichen, ä, ü, Fragezeichen, Und-Zeichen, Gatter)   fertig; Adresse kodiert; gleicher Hash danach: kein neues Ereignis, fertig
+  kaputte Prozent-Kodierung                        route() wirft URIError (pageerror), gehe kehrt trotzdem nach 32 ms zurück
+  V-01 nach dem Wurf                               fertig, Ansicht wieder da
+  Ereignis noch offen (Hash auf E-01 gesetzt, sofort danach gehe auf V-02)   fertig, beide Ereignisse gezählt
+
+== 8. Nachweis #599 nach der Änderung am Feld zeitgeber (nur noch Zeitgeber ab 20 ms) ==
+  Skript vor #599 (Stand 5f36075), Hülle wie ausgeliefert, zeitgeber 700: _leiste_stimmt False (app.zu 488 statt 788) -> weiter rot
+  Skript vor #599, ohne Verzögerung: _leiste_stimmt True
+  Skript wie ausgeliefert, zeitgeber 700: _leiste_stimmt True (app.zu 788)
+  Das Feld zeitgeber wird nur in test_wackel_599.py verwendet; test_leiste_unter_verzoegertem_zeitgeber[chromium] läuft grün (Abschnitt 1).
+
+== 9. AC-7: Laufzeit eines Rundgangs (Chromium, lokal, ohne Verzögerung, inkl. Bau der Beispielreise, je 3 Läufe im Wechsel) ==
+  vorher (Skript am Basisstand): 15,2 / 15,2 / 15,2 s
+  nachher (Skript wie ausgeliefert): 18,5 / 18,5 / 18,5 s     Grenze laut Spec: 30 s, erfüllt
+
+== 10. AC-6: geänderte Dateien gegenüber dem Basisstand acfc83c ==
+  Code: engine/tests/seiten_browser.mjs, engine/tests/verzoegerung.mjs, engine/tests/test_wackel_599.py (dazu Spec, Kontext, Briefing, Nachweise unter docs/)
+  Unverändert: engine/vorlage.html, Engine, betrieb/, test_seite.py, test_bild_helfer.py.
+  Hinweis: Das lokale Zweig-Etikett des Hauptzweigs steht auf be06a8b und ist älter als der Basisstand (der Zweig enthält acfc83c, #672);
+  ein Vergleich damit zeigt fremde Änderungen (vorlage.html, Doku). Maßgeblich ist der Basisstand acfc83c.
+
+== 11. AC-8 ==
+  Lokaler Teil: Gesamtlauf siehe Abschnitt 2 und 3 (nur umgebungsbedingte Rotstände, identisch zum unveränderten Stand).
+  Offen bis nach der Auslieferung: tests (leer), tests (instanz), die Prüfung auf Geheimnisse und die WebKit-Läufe der CI.

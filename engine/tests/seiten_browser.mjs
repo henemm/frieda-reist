@@ -8,6 +8,18 @@
 import fs from "node:fs";
 import {bild} from "./bild.mjs";
 
+// Seitenwechsel: wartet auf das Ereignis, an dem die Vorlage zeichnet (ihr Hörer ist früher angemeldet und läuft davor), und
+// zwei Bilder, nie auf einen Inhalt; ändert sich die Adresse nicht, kommt kein Ereignis (#661, #664).
+async function gehe(p, h) {
+  await p.evaluate(h => new Promise(fertig => {
+    const bilder = () => requestAnimationFrame(() => requestAnimationFrame(() => fertig()));
+    const vor = location.href;
+    addEventListener("hashchange", bilder, {once: true});
+    location.hash = h;
+    if (location.href === vor) { removeEventListener("hashchange", bilder); bilder(); }
+  }), h);
+}
+
 const [, , modul, basis, domDatei] = process.argv;
 const pw = await import(modul);
 const b = await pw[process.env.RH_BROWSER || "chromium"].launch();
@@ -33,8 +45,7 @@ for (const breite of [390, 1200]) {
     return [...r];
   });
   for (const h of routen) {
-    await p.evaluate(h => { location.hash = h; }, h);
-    await p.waitForTimeout(15);
+    await gehe(p, h);
     const html = await p.evaluate(() => {
       const c = document.querySelector("#main").cloneNode(true);
       c.querySelectorAll(".regionen").forEach(x => x.querySelectorAll("[aria-pressed]").forEach(k => k.removeAttribute("aria-pressed")));
@@ -70,8 +81,7 @@ for (const breite of [390, 1200]) {
   }));
   // Wahl-Modul bedienen: erste Stelle mit „Alternativen vergleichen“ öffnen, „nur Unterschiede“ umschalten
   for (const h of routen) {
-    await p.evaluate(h => { location.hash = h; }, h);
-    await p.waitForTimeout(15);
+    await gehe(p, h);
     const knopf = p.locator('#main [data-vgl-auf][aria-expanded="false"]:visible').first();
     if (!await knopf.count()) continue;
     const id = await knopf.getAttribute("data-vgl-auf");
@@ -205,8 +215,7 @@ for (const breite of [320, 700, 900, 1100, 1300]) {
   const routen = await p.evaluate(() => ["", "plan", "etappen", "varianten", "zu-tun", "wuensche", ...(R ? [...R.tage.map(t => t.id), ...R.wahlstellen.map(v => v.id)] : [])]);
   let offen = null;
   for (const h of routen) {
-    await p.evaluate(h => { location.hash = h; }, h);
-    await p.waitForTimeout(15);
+    await gehe(p, h);
     const knopf = p.locator('#main [data-vgl-auf][aria-expanded="false"]:visible').first();
     if (await knopf.count() && !offen) { offen = await knopf.getAttribute("data-vgl-auf"); await knopf.click(); await p.waitForTimeout(100); }
     if (await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) behaelter.ueberstand.push(`${breite}#${h}`);
@@ -222,8 +231,7 @@ for (const breite of [320, 700, 900, 1100, 1300]) {
     }, offen);
     behaelter.spalte.vergleich = m;
     for (const h of routen) {
-      await p.evaluate(h => { location.hash = h; }, h);
-      await p.waitForTimeout(15);
+      await gehe(p, h);
       const k = await p.evaluate(() => { const e = document.querySelector("#main .kz-huelle"); if (!e) return null; const kz = e.querySelector(".kz"), vor = getComputedStyle(kz).gridTemplateColumns.split(" ").length;
         e.style.width = "340px"; return {breiteVor: Math.round(e.parentElement.getBoundingClientRect().width), spaltenVor: vor, spaltenNach: getComputedStyle(kz).gridTemplateColumns.split(" ").length, kacheln: kz.children.length}; });
       if (k) { behaelter.spalte.kennzahlen = k; break; }

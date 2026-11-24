@@ -4,7 +4,8 @@
 // RH_PLAYWRIGHT_ECHT: Pfad des echten Playwright-Moduls.
 // RH_VERZOEGERN: JSON mit Millisekunden, jedes Feld optional:
 //   resizeobserver  Rückrufe jedes ResizeObserver kommen so viel später
-//   zeitgeber       setTimeout der Seite läuft so viel später
+//   zeitgeber       setTimeout der Seite ab 20 ms läuft so viel später; kürzere nicht, denn mit ihnen ahmt Playwrights
+//                   festgestellte Uhr die Bilder (requestAnimationFrame) nach (#661)
 //   resize          resize-Hörer an window und visualViewport laufen so viel später
 //   hashchange      hashchange-Hörer an window laufen so viel später (#661)
 //   hash            hashchange nur beim Wechsel auf diesen Hash verzögern (ohne #)
@@ -22,7 +23,7 @@ function verlangsamen(v) {
       constructor(rueckruf) { super(scharf ? (e, o) => spaeter(() => rueckruf(e, o), v.resizeobserver) : rueckruf); }
     };
   }
-  if (v.zeitgeber) window.setTimeout = (f, t, ...a) => spaeter(f, (Number(t) || 0) + v.zeitgeber, ...a);
+  if (v.zeitgeber) window.setTimeout = (f, t, ...a) => spaeter(f, (Number(t) || 0) + (Number(t) >= 20 ? v.zeitgeber : 0), ...a);
   if (v.resize || v.hashchange) {
     const anmelden = EventTarget.prototype.addEventListener;
     const trifft = e => v.hash == null || decodeURIComponent(new URL(e.newURL).hash.slice(1)) === v.hash;

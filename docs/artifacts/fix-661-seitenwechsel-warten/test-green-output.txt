@@ -1,0 +1,117 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0 -- ~/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: ~/.claude/worktrees/vast-mapping-dusk
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 3/3 workers
+3 workers [38 items]
+
+scheduling tests via LoadScheduling
+
+engine/tests/test_wackel_599.py::test_echter_fehler_im_wechsel_bleibt_rot[chromium]
+engine/tests/test_wackel_599.py::test_quelltext_wartet_auf_zustand
+engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[chromium]
+[gw1] [  2%] PASSED engine/tests/test_wackel_599.py::test_quelltext_wartet_auf_zustand
+engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium]
+[gw0] [  5%] PASSED engine/tests/test_wackel_599.py::test_karte_unter_verzoegertem_resizeobserver[chromium]
+engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[chromium]
+[gw2] [  7%] PASSED engine/tests/test_wackel_599.py::test_echter_fehler_im_wechsel_bleibt_rot[chromium]
+engine/tests/test_wackel_599.py::test_gleicher_hash_haengt_nicht[chromium]
+[gw2] [ 10%] PASSED engine/tests/test_wackel_599.py::test_gleicher_hash_haengt_nicht[chromium]
+engine/tests/test_wackel_599.py::test_quelltext_wechsel_ueber_gehe
+[gw2] [ 13%] PASSED engine/tests/test_wackel_599.py::test_quelltext_wechsel_ueber_gehe
+engine/tests/test_bild_helfer.py::test_bild_ohne_fehler_ein_aufruf
+[gw2] [ 15%] PASSED engine/tests/test_bild_helfer.py::test_bild_ohne_fehler_ein_aufruf
+engine/tests/test_bild_helfer.py::test_bild_erfolg_im_zweiten_versuch
+[gw2] [ 18%] PASSED engine/tests/test_bild_helfer.py::test_bild_erfolg_im_zweiten_versuch
+engine/tests/test_bild_helfer.py::test_bild_nach_drei_fehlversuchen_false
+[gw2] [ 21%] PASSED engine/tests/test_bild_helfer.py::test_bild_nach_drei_fehlversuchen_false
+engine/tests/test_bild_helfer.py::test_bild_gibt_optionen_weiter
+[gw1] [ 23%] PASSED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium]
+engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium]
+[gw2] [ 26%] PASSED engine/tests/test_bild_helfer.py::test_bild_gibt_optionen_weiter
+engine/tests/test_bild_helfer.py::test_stand_skript_wartet_auf_reise_stand_text
+[gw2] [ 28%] PASSED engine/tests/test_bild_helfer.py::test_stand_skript_wartet_auf_reise_stand_text
+engine/tests/test_bild_helfer.py::test_packliste_skript_wartet_auf_knopftext
+[gw2] [ 31%] PASSED engine/tests/test_bild_helfer.py::test_packliste_skript_wartet_auf_knopftext
+engine/tests/test_seite.py::test_alle_ansichten_der_beispielreise[chromium]
+[gw0] [ 34%] PASSED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[chromium]
+engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[chromium]
+[gw2] [ 36%] PASSED engine/tests/test_seite.py::test_alle_ansichten_der_beispielreise[chromium]
+engine/tests/test_seite.py::test_zweite_beispielreise_ohne_wanderung_baut_sauber
+[gw2] [ 39%] PASSED engine/tests/test_seite.py::test_zweite_beispielreise_ohne_wanderung_baut_sauber
+engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage_im_browser
+[gw1] [ 42%] PASSED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium]
+engine/tests/test_bild_helfer.py::test_vollseitenbilder_ueber_den_helfer
+[gw1] [ 44%] PASSED engine/tests/test_bild_helfer.py::test_vollseitenbilder_ueber_den_helfer
+engine/tests/test_bild_helfer.py::test_bilderfehlen_ist_warnung_nicht_rot
+[gw1] [ 47%] PASSED engine/tests/test_bild_helfer.py::test_bilderfehlen_ist_warnung_nicht_rot
+engine/tests/test_seite.py::test_archivierte_reise_mit_wort_und_ohne_zaehler[chromium]
+[gw2] [ 50%] PASSED engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage_im_browser
+engine/tests/test_seite.py::test_seite_je_status_und_baustein[chromium]
+[gw1] [ 52%] PASSED engine/tests/test_seite.py::test_archivierte_reise_mit_wort_und_ohne_zaehler[chromium]
+engine/tests/test_seite.py::test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke[chromium]
+[gw1] [ 55%] PASSED engine/tests/test_seite.py::test_aufenthalt_ohne_ort_an_der_strecke_steht_nach_seiner_strecke[chromium]
+engine/tests/test_seite.py::test_buchung_genau_einmal_vollstaendig[chromium]
+[gw0] [ 57%] PASSED engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[chromium]
+engine/tests/test_seite.py::test_alle_ansichten_der_zweiten_beispielreise[chromium]
+[gw2] [ 60%] PASSED engine/tests/test_seite.py::test_seite_je_status_und_baustein[chromium]
+engine/tests/test_seite.py::test_fahrtag_in_der_reihenfolge_des_tags[chromium]
+[gw2] [ 63%] PASSED engine/tests/test_seite.py::test_fahrtag_in_der_reihenfolge_des_tags[chromium]
+engine/tests/test_seite.py::test_b2_wissen_orte_vergleich[chromium]
+[gw1] [ 65%] PASSED engine/tests/test_seite.py::test_buchung_genau_einmal_vollstaendig[chromium]
+engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[chromium]
+[gw2] [ 68%] PASSED engine/tests/test_seite.py::test_b2_wissen_orte_vergleich[chromium]
+engine/tests/test_seite.py::test_buchung_und_anschluss_mit_namen[chromium]
+[gw1] [ 71%] PASSED engine/tests/test_seite.py::test_stornierte_buchung_eingeklappt_am_ding[chromium]
+engine/tests/test_seite.py::test_stornierte_buchungen_ein_helfer_an_jeder_heimat
+[gw1] [ 73%] PASSED engine/tests/test_seite.py::test_stornierte_buchungen_ein_helfer_an_jeder_heimat
+engine/tests/test_seite.py::test_wunsch_brett[chromium]
+[gw2] [ 76%] PASSED engine/tests/test_seite.py::test_buchung_und_anschluss_mit_namen[chromium]
+engine/tests/test_seite.py::test_stornierte_buchung_bleibt_in_den_daten
+[gw2] [ 78%] PASSED engine/tests/test_seite.py::test_stornierte_buchung_bleibt_in_den_daten
+engine/tests/test_seite.py::test_anmeldeseiten_im_browser[chromium]
+[gw0] [ 81%] PASSED engine/tests/test_seite.py::test_alle_ansichten_der_zweiten_beispielreise[chromium]
+engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage[chromium]
+[gw1] [ 84%] PASSED engine/tests/test_seite.py::test_wunsch_brett[chromium]
+engine/tests/test_seite.py::test_anmeldung_auf_der_seite[chromium]
+[gw2] [ 86%] PASSED engine/tests/test_seite.py::test_anmeldeseiten_im_browser[chromium]
+engine/tests/test_seite.py::test_schriftleiter_ohne_freie_groessen
+[gw2] [ 89%] PASSED engine/tests/test_seite.py::test_schriftleiter_ohne_freie_groessen
+[gw1] [ 92%] PASSED engine/tests/test_seite.py::test_anmeldung_auf_der_seite[chromium]
+engine/tests/test_seite.py::test_status_der_reise_auf_der_seite[chromium]
+[gw1] [ 94%] PASSED engine/tests/test_seite.py::test_status_der_reise_auf_der_seite[chromium]
+[gw0] [ 97%] PASSED engine/tests/test_seite.py::test_neue_reise_aus_der_vorlage[chromium]
+engine/tests/test_seite.py::test_fahrt_an_ihrer_heimat_mit_merkmalen_und_hinweis[chromium]
+[gw0] [100%] PASSED engine/tests/test_seite.py::test_fahrt_an_ihrer_heimat_mit_merkmalen_und_hinweis[chromium]
+
+============================= slowest 8 durations ==============================
+24.34s call     engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_resize[chromium]
+20.44s call     engine/tests/test_wackel_599.py::test_leiste_unter_verzoegertem_zeitgeber[chromium]
+19.94s call     engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium]
+19.79s call     engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium]
+18.58s call     engine/tests/test_wackel_599.py::test_echter_fehler_im_wechsel_bleibt_rot[chromium]
+18.28s call     engine/tests/test_seite.py::test_alle_ansichten_der_beispielreise[chromium]
+12.28s call     engine/tests/test_seite.py::test_alle_ansichten_der_zweiten_beispielreise[chromium]
+11.98s call     engine/tests/test_seite.py::test_seite_je_status_und_baustein[chromium]
+======================== 38 passed in 77.56s (0:01:17) =========================
+
+Abweichende Ansichten vorher/nachher (Chromium, Beispielreise, ohne Verzögerung, 180 Ansichten je Lauf): Maßstab ist das alte Skript
+mit 400 ms statt 15 ms je Wechsel. Nachher gleicht ihm in allen 180 Ansichten, zwei Läufe nachher gleichen sich ebenfalls: keine
+Ansicht ist nachher falsch. Die früher gezählten 33 Abweichungen schwanken je Lauf des alten Skripts; neu klassiert wurden zwei
+frische alte Läufe mit 29 und 36 Abweichungen (die Ansichten des Laufs mit 33 wurden nicht aufgehoben). In allen steht derselbe Tag
+wie nachher, keine zeigt eine andere Ansicht; es fehlt nur der Schritt nach dem nächsten Bild oder Zeitgeber der Vorlage:
+- Knopf „weiterlesen“ noch verborgen (wegKurz, requestAnimationFrame): 23 bzw. 29 Ansichten
+- kurzer Weg-Text noch mit Klasse „kurz“ (dieselbe Stelle, Zweig ohne Knopf): 4 bzw. 5 Ansichten
+- Bausteinseite (390 und 1200 px): Knopf „weiterlesen“ noch verborgen und „Alle zuklappen“ der Packliste (setTimeout) noch leer: je 2
+
+Gegenprobe zu #599 (Chromium, {"zeitgeber": 700}, verzoegerung.mjs verlangsamt nur noch Zeitgeber ab 20 ms): Skript vor #599 (5f36075)
+mit neuer Hülle rot (_leiste_stimmt False, app.zu 488 statt 788; 15,1 s), mit bisheriger Hülle (HEAD) ebenso rot mit denselben
+Werten (194,9 s), ohne Verzögerung grün; neues Skript mit neuer Hülle grün (19,9 s). Zwei Bilder mit festgestellter Uhr: 32 ms statt
+1426 ms. setTimeout 50 ohne festgestellte Uhr (so wird die Leiste gemessen): 762 ms, wie bisher 761 ms.
+
+Laufzeit (AC-7, Chromium, lokal, Beispielreise, ohne Verzögerung): Rundgang allein, je drei Läufe im Wechsel: vorher 14,5 / 14,3 /
+14,3 s, nachher 17,6 / 17,6 / 17,7 s. test_seite.py::test_alle_ansichten_der_beispielreise[chromium] (mit Bau): vorher 15,87 s,
+nachher 18,28 s. test_leiste_unter_verzoegertem_zeitgeber[chromium]: vorher (Skript vor dieser Änderung, Hülle HEAD, Rundgang allein)
+196,6 s, nur mit gehe 349,2 s, mit neuer Hülle 20,44 s. WebKit ist lokal nicht installiert und lief nicht.
