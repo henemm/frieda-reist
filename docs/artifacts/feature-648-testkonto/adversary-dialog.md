@@ -57,7 +57,7 @@ Confirmation:
 Confirmation:
   AC: Expected Behavior (Input, Output, Side effects), AC-10, AC-11
   Code reference: betrieb/pruefsitzung.py:31
-  Evidence: sitzung_ausstellen ist der unveränderte Block aus main (Diff geprüft), Verhalten gleich; Doku in CLAUDE.md und docs/betrieb.md (Abschnitt Abnahmen über den Testzugang) vorhanden; keine absoluten Pfade oder echten Adressen in den neuen Dateien (nur die /srv/-Vorgabe wie in engine/instanz.py); test_betrieb.py unverändert, ALARMSTELLEN unberührt.
+  Evidence: sitzung_ausstellen ist der unveränderte Block aus main (Diff geprüft), Verhalten gleich; Doku in CLAUDE.md und docs/betrieb.md (Abschnitt Abnahmen über den Testzugang) vorhanden; keine absoluten Pfade oder echten Adressen in den neuen Dateien (nur die Vorgabe unter FR_SEITEN wie in engine/instanz.py); test_betrieb.py unverändert, ALARMSTELLEN unberührt.
   Status: CONFIRMED
 
 **Implementierer:** (nicht beteiligt, Kontextisolation)
