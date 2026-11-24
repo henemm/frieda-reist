@@ -2509,7 +2509,7 @@ EMAIL_FELD = {"type": "string", "description": "@konnektor.feld.email_feld"}
 # Profil je Person (#12): Konto-Werkzeuge ohne reise; das Profil gehört dem Konto des Aufrufers, niemand sonst liest es
 PROFIL_ID = {"type": "string", "description": "@konnektor.werkzeug.profil.id"}
 MEIN_PROFIL = {"name": "mein_profil", "description": "@konnektor.werkzeug.mein_profil",
-               "inputSchema": {"type": "object", "properties": {}}}
+               "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}}
 PROFIL_EINTRAG_SETZEN = {"name": "profil_eintrag_setzen", "description": "@konnektor.werkzeug.profil_eintrag_setzen",
                          "inputSchema": {"type": "object", "properties": {
                              "bereich": {"type": "string", "description": "@konnektor.werkzeug.profil_eintrag_setzen.bereich"},
@@ -2793,7 +2793,7 @@ def frieda_antwort(zugang, nid, methode, p, ok):
 
 
 MEINE_REISEN = {"name": "meine_reisen", "description": "@konnektor.werkzeug.meine_reisen",
-                "inputSchema": {"type": "object", "properties": {}}}
+                "inputSchema": {"type": "object", "properties": {}}, "annotations": {"readOnlyHint": True}}
 
 
 def meldungen_fuer(reise, name, d):

@@ -113,6 +113,7 @@ Technischer Ansatz wie in der Analyse (`docs/context/feature-648-testkonto.md`),
 - Die Erlaubnisliste wird nicht von Hand gepflegt: Ein Test vergleicht sie mit der Werkzeugliste des Konnektors. Erlaubt sind genau die Werkzeuge mit `readOnlyHint: true` (englische Namen laut `schnittstelle.py`). Unbekannte oder neue Werkzeuge sind gesperrt, bis der Test und die Liste sie kennen.
 - Abgelehnt wird mit Exit-Code 2 und einem Hinweis auf `frieda-test`. Lesen über den Konnektor des Product Owners bleibt erlaubt. Andere MCP-Server, insbesondere `frieda-test`, sind unberührt (der Hook hängt nur an `mcp__claude_ai_Frieda__.*`).
 - Nur Standardbibliothek.
+- **Nachtrag #670:** Die Erlaubnisliste umfasst auch `my_trips` und `my_profile`; `calendar` bleibt gesperrt, weil es mit `neu=true` den Kalenderlink erneuert, und die Kontaktadresse des Betreibers (`FR_BETREIBER_KONTAKT`) liest `einrichten` auch aus `<FR_DIENST>/konten.env`.
 
 ### 4. Betreiberbefehl `konten.py vormerken <reise>`
 

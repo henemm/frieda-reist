@@ -72,9 +72,10 @@ def einstellungen():
         return {}
 
 
-def _lesen():
-    """Wie einstellungen(), aber Lesefehler (FileNotFoundError, PermissionError, …) gehen an den Aufrufer."""
-    zeilen = _datei().read_text(encoding="utf-8").splitlines()
+def _lesen(datei=None):
+    """Wie einstellungen(), aber Lesefehler (FileNotFoundError, PermissionError, …) gehen an den Aufrufer. Ohne datei die
+    Einstellungsdatei der Instanz, sonst die genannte Datei mit demselben Format (NAME=wert, nur FR_…)."""
+    zeilen = (datei or _datei()).read_text(encoding="utf-8").splitlines()
     werte = {}
     for z in zeilen:
         z = z.strip()
@@ -91,6 +92,20 @@ def _lesen():
 def wert(name, vorgabe=None):
     """Ein Wert aus Umgebung oder Einstellungsdatei (leer zählt als nicht gesetzt)."""
     return os.environ.get(name) or einstellungen().get(name) or vorgabe
+
+
+def konten_wert(name):
+    """Ein einzelner Wert aus Umgebung oder <Dienst>/konten.env (#670), etwa FR_BETREIBER_KONTAKT. Die Datei enthält
+    Geheimnisse (Mailzugang); deshalb liest wert() sie nie, und hier kommt nur der angefragte Name zurück, ohne Cache.
+    Fehlt die Datei oder ist sie unlesbar, ist das Ergebnis None, ohne Ausnahme und ohne Ausgabe."""
+    if not name.startswith("FR_"):
+        return None
+    if os.environ.get(name):
+        return os.environ[name]
+    try:
+        return _lesen(dienst() / "konten.env").get(name) or None
+    except (OSError, UnicodeDecodeError):
+        return None
 
 
 def seiten():

@@ -179,7 +179,9 @@ def einrichten():
     basis = (instanz.wert("FR_BASIS") or adresse).rstrip("/")
     pfad = ablage_pfad()
     k = konten.konto_per_email(email)
-    kontakt = (instanz.wert("FR_BETREIBER_KONTAKT") or "").strip().lower()
+    # Kontaktadresse aus Umgebung, Einstellungsdatei oder <FR_DIENST>/konten.env (#670)
+    kontakt = (instanz.wert("FR_BETREIBER_KONTAKT") or instanz.konten_wert("FR_BETREIBER_KONTAKT")
+               or "").strip().lower()
     if (k and "betreiber" in k.get("rechte", [])) or email == kontakt:
         raise Abbruch(f"{email} is an operator account; the test account must never be one. Nothing set up.")
 

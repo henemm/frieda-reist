@@ -15,8 +15,8 @@ import sys
 PRAEFIX = "mcp__claude_ai_Frieda__"
 
 ERLAUBT = frozenset({
-    "attributes", "feedback_list", "open_questions", "overview", "packing_list", "page_view", "people",
-    "publish_status", "search", "show", "tasks", "variants", "wishes",
+    "attributes", "feedback_list", "my_profile", "my_trips", "open_questions", "overview", "packing_list",
+    "page_view", "people", "publish_status", "search", "show", "tasks", "variants", "wishes",
 })
 
 HINWEIS = ("Gesperrt (#648): Über den Konnektor des Product Owners darf Claude Code nur lesen. "
