@@ -1,0 +1,1043 @@
+Gesamtlauf unter macOS: python -m pytest -q -n 3 --tb=line -rs -rfE engine/tests (Stand: RED-Commit 93915e8 und die Änderung zu #687).
+Ausgabe vollständig; ersetzt sind nur Pfade und Benutzername, gekürzt nur die mitgeschriebene Umgebung (env=).
+NICHT grün: 133 (92 failed, 41 errors), alle in Betriebs- und Servertests; die Fehlerzeilen nennen überwiegend fehlende Linux-Werkzeuge
+(getent, flock, GNU find, rsync, bash 5), nicht jeder Fall wurde einzeln untersucht. Dieselben 133
+sind auf dem Stand 93915e8 ohne die Änderung ebenso rot (Kennungen verglichen, keine Abweichung in beide Richtungen).
+
+bringing up nodes...
+bringing up nodes...
+
+........Essssss..............ssF.ssssssF.ssssssssssssssssss.ssFF...sss.. [  1%]
+...........s.ssssF.s...F..FFssF.F..............ssss..................... [  3%]
+........................................................................ [  5%]
+.......................................ss............................... [  7%]
+........................................................................ [  9%]
+.......................sss.............................................. [ 11%]
+........................................................................ [ 13%]
+.........ss............................................................. [ 15%]
+...........F..ssss.sssssssss......F...Fs...ssss.ssssssssssss............ [ 17%]
+...E...E.ss.E...................E..........E..EEE.EEE.........ssssssssss [ 19%]
+ssssssssssssssssss..............ss.........................s..FFFsFF.... [ 21%]
+...E.................................................................... [ 23%]
+.......ssss.ssssssss.................................................... [ 25%]
+........................................................................ [ 27%]
+.........FFFFFFFFFFFFFFFFFF...F..............................sssssssssss [ 29%]
+sssss................................................................... [ 31%]
+.............................................EEF....................s... [ 33%]
+s..F.................................................................... [ 35%]
+........................................................................ [ 37%]
+.......FFE.EEEEEEEEEEEEEEEEEEEEEEEEE.................................... [ 39%]
+............................................ss.......................... [ 41%]
+................................ss........s........................sss.. [ 43%]
+........................................................ss.......ss..... [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 49%]
+................................ssss....ss.............................. [ 51%]
+........................................................................ [ 53%]
+...............................................................Fssssssss [ 55%]
+sssssssssssssssss.s..ss................................................. [ 57%]
+...............................ssss..................................... [ 59%]
+....................................................ss.sss.............. [ 61%]
+...s..................................................................ss [ 63%]
+...ss................................................................... [ 65%]
+..................................................FF.F.sFFFF.FFFFFFFFFsF [ 67%]
+.FFFFFFFFFFFFFFF.F..FFF...ssssssssssssss................................ [ 69%]
+.....................................ss.sssssssssssssssssssss........... [ 70%]
+..................ssssss.ssss..s.s.s..ssssss.....s.........sssssssssssss [ 72%]
+sssssssss....sssssss..ssssssss..................s....................... [ 74%]
+...sss....................sssssssssss..s......ssssss...............sssss [ 76%]
+sssssssss............................................................... [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 82%]
+..........s.......ssssssssss....ss.ssssss.s.....ssssssss.ss............. [ 84%]
+.............FF.............FF..FFF.FFF................................. [ 86%]
+......................FF.F.............................................. [ 88%]
+.................................F...................................... [ 90%]
+................sssssssssssssss.ssssssss................................ [ 92%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+..................s...........................sssss..................... [ 98%]
+..............ss...................................                      [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein _
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+______ ERROR at setup of test_freischalten_neue_reise_bekommt_link_einmal ______
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+____ ERROR at setup of test_freischalten_wartet_auf_das_neuladen_von_nginx _____
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+_ ERROR at setup of test_freischalten_wartet_bei_429_auf_die_anfragebegrenzung _
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+__ ERROR at setup of test_freischalten_kennt_keine_links_fuer_die_claude_app ___
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+_______ ERROR at setup of test_freischalten_nginx_lehnt_ab_alles_zurueck _______
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+_ ERROR at setup of test_freischalten_seite_nicht_erreichbar_ist_fehler_ohne_link_im_protokoll _
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+__ ERROR at setup of test_freischalten_unerwarteter_abbruch_nennt_die_stelle ___
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+_ ERROR at setup of test_freischalten_ohne_root_rechte_bricht_ab_statt_einen_neuen_link_anzulegen _
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+__ ERROR at setup of test_freischalten_unbekannte_reise_und_fehlende_adresse ___
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+______________ ERROR at setup of test_ausstehende_links_zustellen ______________
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+__________ ERROR at setup of test_neue_reise_aus_dem_konnektor_frieda __________
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+_ ERROR at setup of test_freischalten_erneuert_den_baustein_bei_neuer_vorlage __
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+_____________________ ERROR at setup of test_umgebung_fest _____________________
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_______________________ ERROR at setup of test_lesemodus _______________________
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_______ ERROR at setup of test_erzeugt_ohne_platzhalter_mit_festem_start _______
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+__________________ ERROR at setup of test_eingabe_grammatik[] __________________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___________ ERROR at setup of test_eingabe_grammatik[Beispielreise] ____________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+__________ ERROR at setup of test_eingabe_grammatik[../beispielreise] __________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___________ ERROR at setup of test_eingabe_grammatik[beispiel/reise] ___________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___________ ERROR at setup of test_eingabe_grammatik[beispiel reise] ___________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_________________ ERROR at setup of test_eingabe_grammatik[a] __________________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_ ERROR at setup of test_eingabe_grammatik[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx] _
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_______ ERROR at setup of test_eingabe_grammatik[beispielreise\nzweite] ________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___________ ERROR at setup of test_eingabe_grammatik[-beispielreise] ___________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_________ ERROR at setup of test_eingabe_grammatik[beispiel\x00reise] __________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+________ ERROR at setup of test_eingabe_grammatik[beispielreis\xc3\xa9] ________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___________ ERROR at setup of test_eingabe_grammatik[beispielreise;] ___________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_________ ERROR at setup of test_eingabe_grammatik[beispielreise.conf] _________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv0] ___
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv1] ___
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv2] ___
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+___ ERROR at setup of test_argumente_ausser_den_modi_werden_abgelehnt[argv3] ___
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_____________________ ERROR at setup of test_token_bleibt ______________________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+________ ERROR at setup of test_zwei_reisen_bekommen_verschiedene_token ________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+____________ ERROR at setup of test_von_hand_angelegter_pfad_bleibt ____________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_________ ERROR at setup of test_symlink_statt_baustein_wird_abgelehnt _________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+____________________ ERROR at setup of test_belegte_sperre _____________________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+________________ ERROR at setup of test_rueckweg_und_ausgaenge _________________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+__________ ERROR at setup of test_rueckweg_zurueckschreiben_scheitert __________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+_______________________ ERROR at setup of test_entfernen _______________________
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+=================================== FAILURES ===================================
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:2296: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:2428: AssertionError: id: hans: no such user
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ('', 'betrieb/einrichten.sh: line 28: getent: co...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      ')
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:2794: AssertionError: ('', 'betrieb/einrichten.sh: line 28: getent: co...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ('', 'betrieb/einrichten.sh: line 28: getent: co...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      ')
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:2831: AssertionError: ('', 'betrieb/einrichten.sh: line 28: getent: co...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: Done: <tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw1/test_deploy_ohne_root_rechte_m0/instanz/dist/beispielreise/index.html (17 sections, 4 stages)
+      Warning: start probe skipped (Playwright or node missing, PLAYWRIGHT_MODUL).
+      rsync: --chmod=D755,F644: invalid argument
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['betrieb/deploy.sh', 'bei...robe skipped (Playwright or node missing, PLAYWRIGHT_MODUL).\n', stderr='rsync: --chmod=D755,F644: invalid argument\n').returncode
+engine/tests/test_betrieb.py:2999: AssertionError: Done: <tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw1/test_deploy_ohne_root_rechte_m0/instanz/dist/beispielreise/index.html (17 sections, 4 stages)
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:3112: AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert (1 == 0)
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:3197: AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: []
+    assert False
+     +  where False = any(<generator object test_einrichten_installieren_bricht_bei_ungueltigen_sudoers_ab.<locals>.<genexpr> at 0x109fc25a0>)
+engine/tests/test_betrieb.py:3250: AssertionError: []
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: 
+    assert 'sudo install -m 640 -o root -g reisen <tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw1/test_einrichten_bausteine_lesb0/aus/nginx/probe-zone.conf /etc/nginx/conf.d/' in []
+engine/tests/test_betrieb.py:3275: AssertionError:
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   StopIteration
+engine/tests/test_betrieb.py:3298: StopIteration
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   UnicodeDecodeError: 'utf-8' codec can't decode byte 0x80 in position 21: invalid start byte
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:1086: UnicodeDecodeError: 'utf-8' codec can't decode byte 0x80 in position 21: invalid start byte
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: Done: <tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw0/test_deploy_mit_warnung_im_pla0/instanz/dist/beispielreise/index.html (17 sections, 4 stages)
+      Warning: start probe skipped (Playwright or node missing, PLAYWRIGHT_MODUL).
+      rsync: --chmod=D755,F644: invalid argument
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['betrieb/deploy.sh', 'bei...robe skipped (Playwright or node missing, PLAYWRIGHT_MODUL).\n', stderr='rsync: --chmod=D755,F644: invalid argument\n').returncode
+engine/tests/test_betrieb.py:642: AssertionError: Done: <tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw0/test_deploy_mit_warnung_im_pla0/instanz/dist/beispielreise/index.html (17 sections, 4 stages)
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: Done: <tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw0/test_deploy_prueft_die_wege_zu0/instanz/dist/beispielreise/index.html (17 sections, 4 stages)
+      Warning: start probe skipped (Playwright or node missing, PLAYWRIGHT_MODUL).
+      rsync: --chmod=D755,F644: invalid argument
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['betrieb/deploy.sh', 'bei...robe skipped (Playwright or node missing, PLAYWRIGHT_MODUL).\n', stderr='rsync: --chmod=D755,F644: invalid argument\n').returncode
+engine/tests/test_betrieb.py:719: AssertionError: Done: <tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw0/test_deploy_prueft_die_wege_zu0/instanz/dist/beispielreise/index.html (17 sections, 4 stages)
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 in (0, 2)
+     +  where 1 = CompletedProcess(args=['betrieb/einrichten.sh'],...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:1747: AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw0/test_konnektor_darf_vorgemerkt0/aus/systemd/probe-konnektor.service'
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError: [Errno 2] No such file or directory: '<tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw0/test_konnektor_darf_vorgemerkt0/aus/systemd/probe-konnektor.service'
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 'FR_KN_ADRESSE “https://example.invalid/probe-mcp”' in ''
+     +  where '' = CompletedProcess(args=['betrieb/einrichten.sh'],...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').stdout
+     +    where CompletedProcess(args=['betrieb/einrichten.sh'],...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n') = einrichten(PosixPath('<tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw0/test_einrichten_verlangt_konne0'), FR_KN_ADRESSE='https://example.invalid/probe-mcp')
+engine/tests/test_betrieb.py:1824: AssertionError: assert 'FR_KN_ADRESSE “https://example.invalid/probe-mcp”' in ''
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert (1 == 2)
+     +  where 1 = CompletedProcess(args=['betrieb/einrichten.sh'],...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:1923: AssertionError: assert (1 == 2)
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert (1 == 0)
+     +  where 1 = CompletedProcess(args=['betrieb/einrichten.sh', ...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_betrieb.py:1945: AssertionError: assert (1 == 0)
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_kartendienst.py:530: AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_kartendienst.py:560: AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_kartendienst.py:585: AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ('', 'betrieb/kartendienst.sh: line 74: flock: command not found
+      ERROR: another import is still running.
+      ')
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+engine/tests/test_kartendienst_skript.py:104: AssertionError: ('', 'betrieb/kartendienst.sh: line 74: flock: command not found
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbfefc0>('einspielen')
+engine/tests/test_kartendienst_skript.py:125: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbfc900>('einspielen')
+engine/tests/test_kartendienst_skript.py:125: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbfeb60>('einspielen')
+engine/tests/test_kartendienst_skript.py:125: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbff880>('einspielen')
+engine/tests/test_kartendienst_skript.py:125: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbfeb60>('einspielen')
+engine/tests/test_kartendienst_skript.py:137: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbfefc0>('einspielen')
+engine/tests/test_kartendienst_skript.py:159: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbc0040>('einspielen')
+engine/tests/test_kartendienst_skript.py:159: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n') = <function kd.<locals>.lauf at 0x10cbc0360>('einspielen', umgebung={'FR_SPERREN': '<tmp>/pytest-of-<benutzer>/pytest-1179/popen-gw1/test_aktualisieren_wartet_auf_0/sperren', 'KD_SPERRE_WARTEN': '1'})
+engine/tests/test_kartendienst_skript.py:182: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/kartendienst.sh: line 74: flock: command not found
+      ERROR: another import is still running.
+      
+    assert ('lock of publishing' in 'betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n')
+     +  where 'betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n' = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').stderr
+engine/tests/test_kartendienst_skript.py:205: AssertionError: betrieb/kartendienst.sh: line 74: flock: command not found
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: find: -perm: /6000: illegal mode string
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...en_un0/varlib/probe-kartendienst', '<benutzer>'], returncode=1, stdout='', stderr='find: -perm: /6000: illegal mode string\n').returncode
+engine/tests/test_kartendienst_skript.py:232: AssertionError: find: -perm: /6000: illegal mode string
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: find: -perm: /6000: illegal mode string
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...d_und0/varlib/probe-kartendienst', '<benutzer>'], returncode=1, stdout='', stderr='find: -perm: /6000: illegal mode string\n').returncode
+engine/tests/test_kartendienst_skript.py:251: AssertionError: find: -perm: /6000: illegal mode string
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: find: -perm: /6000: illegal mode string
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...g_fue0/varlib/probe-kartendienst', '<benutzer>'], returncode=1, stdout='', stderr='find: -perm: /6000: illegal mode string\n').returncode
+engine/tests/test_kartendienst_skript.py:265: AssertionError: find: -perm: /6000: illegal mode string
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: find: -perm: /6000: illegal mode string
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...emer_0/varlib/probe-kartendienst', '<benutzer>'], returncode=1, stdout='', stderr='find: -perm: /6000: illegal mode string\n').returncode
+engine/tests/test_kartendienst_skript.py:283: AssertionError: find: -perm: /6000: illegal mode string
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ('', 'betrieb/kartendienst.sh: line 74: flock: command not found
+      ERROR: another import is still running.
+      ')
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendi...st-mapping-dusk/betrieb/kartendienst.sh: line 74: flock: command not found\nERROR: another import is still running.\n').returncode
+engine/tests/test_kartendienst_skript.py:295: AssertionError: ('', 'betrieb/kartendienst.sh: line 74: flock: command not found
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ('', '')
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/kartendienst.sh', 'einspielen'], returncode=1, stdout='', stderr='').returncode
+engine/tests/test_kartendienst_skript.py:336: AssertionError: ('', '')
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx_reise_helfer.py:295: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx_helfer.py:137: AssertionError: id: hans: no such user
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx_helfer.py:630: AssertionError: id: hans: no such user
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx_helfer.py:651: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw0] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_rueckbau_557.py:349: AssertionError: betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ERROR: einrichten.sh --erzeugen failed (1): betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert (1 == 0)
+     +  where 1 = CompletedProcess(args=['betrieb/nginx.py', 'prue...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:190: AssertionError: ERROR: einrichten.sh --erzeugen failed (1): betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ('1.2.3.4;', '')
+    assert (1 == 1 and 'not an address' in '')
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+     +  and   '' = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').stdout
+engine/tests/test_nginx.py:279: AssertionError: ('1.2.3.4;', '')
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ERROR: einrichten.sh --erzeugen failed (1): betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['betrieb/nginx.py', 'anwe...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:352: AssertionError: ERROR: einrichten.sh --erzeugen failed (1): betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ERROR: no path in the block of beispielreise (answer of the helper).
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['betrieb/freischalten.sh'...spielreise'], returncode=1, stdout='ERROR: no path in the block of beispielreise (answer of the helper).\n', stderr='').returncode
+engine/tests/test_nginx.py:560: AssertionError: ERROR: no path in the block of beispielreise (answer of the helper).
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw2] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_nginx.py:26: AssertionError: betrieb/einrichten.sh: line 28: getent: command not found
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: ('', 'betrieb/einrichten.sh: line 28: getent: co...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      ')
+    assert (1 == 0)
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_units.py:33: AssertionError: ('', 'betrieb/einrichten.sh: line 28: getent: co...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einrichten.sh', '--erzeugen'], returncode=1).returncode
+     +    where CompletedProcess(args=['bash', 'betrieb/einrichten.sh', '--erzeugen'], returncode=1) = <function run at 0x106d832e0>(['bash', 'betrieb/einrichten.sh', '--erzeugen'], env={<Umgebung gekürzt>
+     +      where <function run at 0x106d832e0> = subprocess.run
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+engine/tests/test_units.py:44: AssertionError: assert 1 == 0
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+----------------------------- Captured stderr call -----------------------------
+betrieb/einrichten.sh: line 28: getent: command not found
+betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: subprocess.CalledProcessError: Command '['bash', 'betrieb/einrichten.sh', '--erzeugen']' returned non-zero exit status 1.
+[gw1] darwin -- Python 3.12.15 <haupt-checkout>/engine/.venv/bin/python
+E   AssertionError: id: hans: no such user
+      betrieb/einrichten.sh: line 28: getent: command not found
+      betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['bash', 'betrieb/einricht...laude/worktrees/vast-mapping-dusk/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name\n').returncode
+engine/tests/test_units_helfer.py:275: AssertionError: id: hans: no such user
+=========================== short test summary info ============================
+FAILED engine/tests/test_betrieb.py::test_einrichten_aktiviert_path_einheit
+FAILED engine/tests/test_betrieb.py::test_einrichten_erzeugt_nginx_orte_hilfsprogramm_und_nennt_einmalschritt
+FAILED engine/tests/test_betrieb.py::test_einrichten_kartendienst_nur_mit_regionen
+FAILED engine/tests/test_betrieb.py::test_einheitenabgleich_ohne_kartendienst_laerm
+FAILED engine/tests/test_betrieb.py::test_deploy_ohne_root_rechte_merkt_die_neustarts_vor
+FAILED engine/tests/test_betrieb.py::test_einrichten_helfer_und_karte - Asser...
+FAILED engine/tests/test_betrieb.py::test_einrichten_installieren_attrappe - ...
+FAILED engine/tests/test_betrieb.py::test_einrichten_installieren_bricht_bei_ungueltigen_sudoers_ab
+FAILED engine/tests/test_betrieb.py::test_einrichten_bausteine_lesbar_fuer_die_gruppe
+FAILED engine/tests/test_betrieb.py::test_einrichten_bausteine_nur_der_eigenen_instanz
+FAILED engine/tests/test_betrieb.py::test_ungueltiger_instanzname - UnicodeDe...
+FAILED engine/tests/test_betrieb.py::test_deploy_mit_warnung_im_plan_legt_die_seite_ab
+FAILED engine/tests/test_betrieb.py::test_deploy_prueft_die_wege_zum_konnektor_von_aussen
+FAILED engine/tests/test_betrieb.py::test_einrichten_erzeugt_einheiten_ohne_platzhalter
+FAILED engine/tests/test_betrieb.py::test_konnektor_darf_vorgemerkte_neue_reisen_schreiben
+FAILED engine/tests/test_betrieb.py::test_einrichten_verlangt_konnektor_an_der_wurzel
+FAILED engine/tests/test_betrieb.py::test_einrichten_erkennt_belegte_ports_einer_anderen_instanz
+FAILED engine/tests/test_betrieb.py::test_einrichten_installiert_nur_nach_bestaetigung
+FAILED engine/tests/test_kartendienst.py::test_kartendienst_ohne_dienstbenutzer
+FAILED engine/tests/test_kartendienst.py::test_kartendienst_daten_im_zustandsordner
+FAILED engine/tests/test_kartendienst.py::test_kartendienst_unit_bindet_den_zustandsordner_ein
+FAILED engine/tests/test_kartendienst_skript.py::test_einspielen_erfolg_schaltet_um
+FAILED engine/tests/test_kartendienst_skript.py::test_einspielen_mit_rueckweg[download-fehler0]
+FAILED engine/tests/test_kartendienst_skript.py::test_einspielen_mit_rueckweg[vorverarbeitung-fehler1]
+FAILED engine/tests/test_kartendienst_skript.py::test_einspielen_mit_rueckweg[einspielen-fehler2]
+FAILED engine/tests/test_kartendienst_skript.py::test_einspielen_mit_rueckweg[probeabfrage-fehler3]
+FAILED engine/tests/test_kartendienst_skript.py::test_neu_einspielen_bei_geaenderter_liste
+FAILED engine/tests/test_kartendienst_skript.py::test_harter_abbruch_beim_umschalten_wird_zurueckgenommen[einspielen]
+FAILED engine/tests/test_kartendienst_skript.py::test_harter_abbruch_beim_umschalten_wird_zurueckgenommen[aktualisieren]
+FAILED engine/tests/test_kartendienst_skript.py::test_aktualisieren_wartet_auf_die_sperre
+FAILED engine/tests/test_kartendienst_skript.py::test_unlesbare_sperre_des_veroeffentlichens_klare_meldung
+FAILED engine/tests/test_kartendienst_skript.py::test_umzug_verschiebt_daten_und_legt_verweis_an
+FAILED engine/tests/test_kartendienst_skript.py::test_umzug_entfernt_setuid_und_setgid
+FAILED engine/tests/test_kartendienst_skript.py::test_umzug_macht_abdeckung_fuer_den_konnektor_lesbar
+FAILED engine/tests/test_kartendienst_skript.py::test_umzug_laesst_eigentuemer_der_datenbank_unveraendert
+FAILED engine/tests/test_kartendienst_skript.py::test_einspielen_schreibt_abdeckung_lesbar_fuer_alle
+FAILED engine/tests/test_kartendienst_skript.py::test_einspielen_schaltet_hinter_dem_verweis_um
+FAILED engine/tests/test_nginx_reise_helfer.py::test_baustein_mit_gruppe_der_instanz
+FAILED engine/tests/test_nginx_helfer.py::test_ac1_echte_vorlage_aus_einrichten_wird_installiert
+FAILED engine/tests/test_nginx_helfer.py::test_echte_vorlage_mit_drossel - As...
+FAILED engine/tests/test_nginx_helfer.py::test_orte_helfer_installiert_mit_gruppe_der_instanz
+FAILED engine/tests/test_rueckbau_557.py::test_units_ohne_handschritt - Asser...
+FAILED engine/tests/test_nginx.py::test_zonendatei_hat_eigene_zonen_und_die_ausnahme
+FAILED engine/tests/test_nginx.py::test_eigene_adressen_sind_einstellbar - As...
+FAILED engine/tests/test_nginx.py::test_orte_nutzen_die_drei_zonen - Assertio...
+FAILED engine/tests/test_nginx.py::test_abgleich_nicht_eingerichtet_ist_still
+FAILED engine/tests/test_nginx.py::test_abgleich_gleich_endet_mit_0 - Asserti...
+FAILED engine/tests/test_nginx.py::test_abgleich_abweichung_nennt_datei_und_einen_befehl
+FAILED engine/tests/test_nginx.py::test_abgleich_fehlende_einzeldatei_ist_abweichung
+FAILED engine/tests/test_nginx.py::test_anwenden_installiert_prueft_und_laedt_neu
+FAILED engine/tests/test_nginx.py::test_anwenden_rollt_bei_fehlgeschlagenem_nginx_test_zurueck
+FAILED engine/tests/test_nginx.py::test_einrichten_lehnt_ungueltige_eigene_adressen_ab
+FAILED engine/tests/test_nginx.py::test_abgleich_meldet_zone_in_fremder_datei
+FAILED engine/tests/test_nginx.py::test_anwenden_zieht_die_zone_in_einem_lauf_um
+FAILED engine/tests/test_nginx.py::test_anwenden_rollt_auch_die_fremde_datei_zurueck
+FAILED engine/tests/test_nginx.py::test_erste_einrichtung_zieht_die_zone_ebenfalls_um
+FAILED engine/tests/test_nginx.py::test_mehrdeutige_fremde_datei_wird_nicht_angefasst[# Rate-Limit-Zonen f\xfcr Login\nlimit_req_zone $binary_remote_addr zone=login:10m rate=5r/m;\n\n# R\xfcckmeldedienst der Reise-Seiten: zweite Bremse vor dem Dienst,\n# der selbst je Reise drosselt.\nlimit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m;\n\n# Anderer Dienst\nlimit_req_zone $binary_remote_addr zone=mcp_api:10m rate=20r/s;\nlimit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m;\n]
+FAILED engine/tests/test_nginx.py::test_mehrdeutige_fremde_datei_wird_nicht_angefasst[limit_req_zone $binary_remote_addr zone=probe_api:1m rate=30r/m; limit_req_zone $x zone=y:1m rate=1r/s;\n]
+FAILED engine/tests/test_nginx.py::test_reise_zone_traegt_zwei_seitenaufrufe_kurz_hintereinander
+FAILED engine/tests/test_nginx.py::test_installieren_nur_orte_abweichend_ruft_das_hilfsprogramm_mit_dem_soll
+FAILED engine/tests/test_nginx.py::test_installieren_haengt_fr_sudo_vor_das_hilfsprogramm
+FAILED engine/tests/test_nginx.py::test_installieren_ruft_nichts_auf_wenn_mehr_als_die_orte_abweicht[zone]
+FAILED engine/tests/test_nginx.py::test_installieren_ruft_nichts_auf_wenn_mehr_als_die_orte_abweicht[konnektor]
+FAILED engine/tests/test_nginx.py::test_installieren_ruft_nichts_auf_wenn_mehr_als_die_orte_abweicht[orte_fehlt]
+FAILED engine/tests/test_nginx.py::test_installieren_ruft_nichts_auf_wenn_mehr_als_die_orte_abweicht[fremde_zone]
+FAILED engine/tests/test_nginx.py::test_installieren_ohne_hilfsprogramm_endet_mit_5_ohne_sudo
+FAILED engine/tests/test_nginx.py::test_installieren_vorgabe_des_hilfsprogramms
+FAILED engine/tests/test_nginx.py::test_installieren_ausgang_2_des_hilfsprogramms_ist_kein_fehler
+FAILED engine/tests/test_nginx.py::test_installieren_scheiterndes_hilfsprogramm_endet_mit_5_und_nennt_den_ausgang[3]
+FAILED engine/tests/test_nginx.py::test_installieren_scheiterndes_hilfsprogramm_endet_mit_5_und_nennt_den_ausgang[4]
+FAILED engine/tests/test_nginx.py::test_installieren_scheiterndes_hilfsprogramm_endet_mit_5_und_nennt_den_ausgang[5]
+FAILED engine/tests/test_nginx.py::test_installieren_scheiterndes_hilfsprogramm_endet_mit_5_und_nennt_den_ausgang[6]
+FAILED engine/tests/test_nginx.py::test_installieren_scheiterndes_hilfsprogramm_endet_mit_5_und_nennt_den_ausgang[7]
+FAILED engine/tests/test_nginx.py::test_installieren_ohne_abweichung_tut_nichts
+FAILED engine/tests/test_nginx.py::test_reise_baustein_ueber_helfer - Asserti...
+FAILED engine/tests/test_nginx.py::test_pruefen_liest_ohne_sudo_und_ueberspringt_unlesbare_fremde_dateien
+FAILED engine/tests/test_nginx.py::test_anwenden_als_root_fremde_datei_behaelt_den_besitz
+FAILED engine/tests/test_nginx.py::test_anwenden_als_root_ohne_fr_gruppe_bricht_ab
+FAILED engine/tests/test_units.py::test_einrichten_erzeugen_schreibt_die_einheiten_ohne_ausgabe
+FAILED engine/tests/test_units.py::test_einrichten_erzeugen_schreibt_nur_nach_ei_ziel
+FAILED engine/tests/test_units.py::test_pruefen_ausgang_0_3_4 - subprocess.Ca...
+FAILED engine/tests/test_units.py::test_dropin_ordner_ist_eine_gesperrte_abweichung
+FAILED engine/tests/test_units.py::test_installieren_nur_erlaubte_abweichungen_dann_ausgang_0
+FAILED engine/tests/test_units.py::test_installieren_gesperrtes_wird_nicht_uebergeben_und_bleibt_ausgang_4
+FAILED engine/tests/test_units.py::test_installieren_ohne_hilfsprogramm_meldet_ausgang_5
+FAILED engine/tests/test_units.py::test_installieren_hilfsprogramm_ausgang_5_endet_mit_5
+FAILED engine/tests/test_units.py::test_installieren_ohne_abweichung_tut_nichts
+FAILED engine/tests/test_units.py::test_sandbox_nicht_in_erlaubnisliste - sub...
+FAILED engine/tests/test_units.py::test_neue_grenzen_installiert_der_abgleich_ohne_handarbeit
+FAILED engine/tests/test_units.py::test_alter_helfer_nur_normale_meldung - su...
+FAILED engine/tests/test_units.py::test_fehlende_path_einheit_ist_gesperrt - ...
+FAILED engine/tests/test_units_helfer.py::test_einrichten_erzeugt_das_hilfsprogramm_mit_eingesetzten_werten
+ERROR engine/tests/test_betrieb.py::test_freischalten_erneuert_auch_einen_von_hand_benannten_baustein
+ERROR engine/tests/test_betrieb.py::test_freischalten_neue_reise_bekommt_link_einmal
+ERROR engine/tests/test_betrieb.py::test_freischalten_wartet_auf_das_neuladen_von_nginx
+ERROR engine/tests/test_betrieb.py::test_freischalten_wartet_bei_429_auf_die_anfragebegrenzung
+ERROR engine/tests/test_betrieb.py::test_freischalten_kennt_keine_links_fuer_die_claude_app
+ERROR engine/tests/test_betrieb.py::test_freischalten_nginx_lehnt_ab_alles_zurueck
+ERROR engine/tests/test_betrieb.py::test_freischalten_seite_nicht_erreichbar_ist_fehler_ohne_link_im_protokoll
+ERROR engine/tests/test_betrieb.py::test_freischalten_unerwarteter_abbruch_nennt_die_stelle
+ERROR engine/tests/test_betrieb.py::test_freischalten_ohne_root_rechte_bricht_ab_statt_einen_neuen_link_anzulegen
+ERROR engine/tests/test_betrieb.py::test_freischalten_unbekannte_reise_und_fehlende_adresse
+ERROR engine/tests/test_betrieb.py::test_ausstehende_links_zustellen - subpro...
+ERROR engine/tests/test_betrieb.py::test_neue_reise_aus_dem_konnektor_frieda
+ERROR engine/tests/test_betrieb.py::test_freischalten_erneuert_den_baustein_bei_neuer_vorlage
+ERROR engine/tests/test_nginx_reise_helfer.py::test_umgebung_fest - Assertion...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_lesemodus - AssertionErro...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_erzeugt_ohne_platzhalter_mit_festem_start
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[] - Ass...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[Beispielreise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[../beispielreise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispiel/reise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispiel reise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[a] - As...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreise\nzweite]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[-beispielreise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispiel\x00reise]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreis\xc3\xa9]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreise;]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_eingabe_grammatik[beispielreise.conf]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv0]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv1]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv2]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_argumente_ausser_den_modi_werden_abgelehnt[argv3]
+ERROR engine/tests/test_nginx_reise_helfer.py::test_token_bleibt - AssertionE...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_zwei_reisen_bekommen_verschiedene_token
+ERROR engine/tests/test_nginx_reise_helfer.py::test_von_hand_angelegter_pfad_bleibt
+ERROR engine/tests/test_nginx_reise_helfer.py::test_symlink_statt_baustein_wird_abgelehnt
+ERROR engine/tests/test_nginx_reise_helfer.py::test_belegte_sperre - Assertio...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_rueckweg_und_ausgaenge - ...
+ERROR engine/tests/test_nginx_reise_helfer.py::test_rueckweg_zurueckschreiben_scheitert
+ERROR engine/tests/test_nginx_reise_helfer.py::test_entfernen - AssertionErro...
+92 failed, 3115 passed, 403 skipped, 41 errors in 412.79s (0:06:52)

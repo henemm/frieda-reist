@@ -77,6 +77,7 @@ Origin muss Friedas Adresse sein) und der Mitgliedschaft; ohne Sitzung 401, ohne
 zählt nicht (die Regel anmeldung: uebergang ist seit #421 entfallen).
 """
 import datetime
+import functools
 import hashlib
 import json
 import os
@@ -417,6 +418,34 @@ def meldung_anker(m):
     return ""
 
 
+def meldung_adresse(m):
+    """Adresse einer Anfrage ohne Reise aus ihren Teilen (t), ohne Groß- und Kleinschreibung; "" wenn keine lesbar ist."""
+    t = m.get("t")
+    for teil in t if isinstance(t, list) else ():
+        if (isinstance(teil, list) and len(teil) == 2 and teil[0] == f"konto.meldungen.text.{m.get('art')}"
+                and isinstance(teil[1], dict)):
+            email = teil[1].get("email")
+            return email.casefold() if isinstance(email, str) else ""
+    return ""
+
+
+def ohne_reise_gilt(m, lade):
+    """Gilt eine Meldung ohne Reise noch (#687)? Eine neue Reise, solange sie nicht vorgemerkt oder entfernt ist, eine
+    Anfrage, solange sie auf Mein Konto offen steht. Was sich nicht zuordnen lässt, bleibt (bis zum Ablauf).
+    lade: Name einer Funktion aus konten -> ihr Ergebnis, je Aufruf von meldungen_des_kontos höchstens einmal geholt."""
+    art = m.get("art")
+    if art == "neue_reise":
+        return str(m.get("ziel") or "") not in lade("vorgemerkte_reisen")
+    if art not in ("anfrage_reisen", "anfrage_warteliste"):
+        return True
+    kid = m.get("konto")
+    if art == "anfrage_reisen" and kid and isinstance(kid, str):
+        return any(a["konto"] == kid for a in lade("anfragen"))
+    email = meldung_adresse(m)     # Meldung von vor #687 oder Warteliste (die Adresse ist ihr Schlüssel)
+    return not email or any(a["email"].casefold() == email
+                            for a in lade("anfragen" if art == "anfrage_reisen" else "warteliste"))
+
+
 def meldungen_des_kontos(k):
     """Alle Meldungen an ein Konto, die noch gelten (#21, #41): die ohne Reise (Kennung des Kontos, nie sein Name: den
     wählt jede:r frei, auch den eines anderen Kontos) und die jeder Reise, in der
@@ -430,8 +459,9 @@ def meldungen_des_kontos(k):
     meine = {mg["reise"] for mg in konten.mitgliedschaften(k["id"])}
     if o:
         # an genau dieses Konto (Kennung statt Name, #381); gilt auch ohne Seite der Reise
+        lade = functools.cache(lambda name: getattr(konten, name)())     # Mengen nur bei Bedarf, nur für diesen Aufruf (#687)
         aus += [m | {"reise": m.get("ziel") if m.get("art") == "neue_reise" and m.get("ziel") in meine else None}
-                for m in meldungen_aktuell(o, k["id"])]
+                for m in meldungen_aktuell(o, k["id"]) if ohne_reise_gilt(m, lade)]
     for mg in konten.mitgliedschaften(k["id"]):
         z = zustand(mg["reise"]) or {}
         p = next((x for x in z.get("personen") or [] if x.get("schluessel") == mg["schluessel"]), None)

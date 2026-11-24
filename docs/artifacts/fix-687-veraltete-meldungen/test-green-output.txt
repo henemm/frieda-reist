@@ -1,0 +1,228 @@
+Lauf unter macOS, Änderung zu #687 auf 93915e8. Nicht enthalten: test_nginx, test_betrieb, test_nginx_reise_helfer, test_kartendienst_skript, test_units, test_kartendienst, test_nginx_helfer, test_rueckbau_557, test_units_helfer.
+Diese neun Dateien sind auf diesem Rechner auch ohne die Änderung rot; vollständiger, roter Gesamtlauf:
+test-gesamtlauf-macos-rot.txt. Alles grün (AC-22) belegt erst die CI.
+
+bringing up nodes...
+bringing up nodes...
+
+................................................................ssss.... [  2%]
+..............................ss........................................ [  4%]
+........ssssssssssssssssssssssssssss...............ss................... [  7%]
+...s.................................................................... [  9%]
+........................................sss............................. [ 12%]
+........................................................................ [ 14%]
+...........................s.ssss....................................... [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 22%]
+........................................................................ [ 24%]
+.sssssssssssssss........s..........................ss................... [ 27%]
+................s........................................ss............. [ 29%]
+...ss................................................................... [ 32%]
+....................................................ss......ss.......... [ 34%]
+...................................................ssss.ssssssss........ [ 37%]
+.........................ssssssssssssssss....................ss......... [ 39%]
+........................................................................ [ 42%]
+...............ss........s.........................sss.................. [ 44%]
+........................................................................ [ 47%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+........ssss............................................................ [ 62%]
+........................................................................ [ 64%]
+....................ss.sss.............................................. [ 67%]
+..................................ss.....ss......sssssssssssssssss..ssss [ 69%]
+ss.sssss...ssss.ssss...s.........ssssssssssssssssssssss...sssssss....sss [ 72%]
+sssss....................................................ssssssssss...ss [ 74%]
+ssss.s.....ssssssss.ss.s..........................sss................... [ 77%]
+sssssssssss..s.....ssssss.........ssssssssssssss........................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 84%]
+....................................s...........ss...........ssss....... [ 86%]
+........................................................................ [ 89%]
+..........................sssssssssssssss.ss..............ssssss........ [ 91%]
+........................................................................ [ 94%]
+.................ssssss................................................. [ 96%]
+...........ss........................................................... [ 99%]
+...........ss.ssss                                                       [100%]
+=========================== short test summary info ============================
+SKIPPED [2] engine/tests/test_altformen_rest_215.py:205: Playwright fehlt
+SKIPPED [1] engine/tests/test_altformen_rest_215.py:216: Playwright fehlt
+SKIPPED [1] engine/tests/test_altformen_rest_215.py:223: Playwright fehlt
+SKIPPED [1] engine/tests/test_buchung_zeitraum.py:91: Playwright fehlt
+SKIPPED [1] engine/tests/test_buchung_zeitraum.py:131: Playwright fehlt
+SKIPPED [1] engine/tests/test_ding_lesetext.py:147: Playwright fehlt
+SKIPPED [1] engine/tests/test_eine_seitenordnung.py:168: Playwright fehlt
+SKIPPED [4] engine/tests/test_eine_seitenordnung.py:183: Playwright fehlt
+SKIPPED [4] engine/tests/test_eine_seitenordnung.py:205: Playwright fehlt
+SKIPPED [2] engine/tests/test_eine_seitenordnung.py:214: Playwright fehlt
+SKIPPED [1] engine/tests/test_eine_seitenordnung.py:228: Playwright fehlt
+SKIPPED [12] engine/tests/test_eine_seitenordnung.py:240: Playwright fehlt
+SKIPPED [1] engine/tests/test_eine_seitenordnung.py:256: Playwright fehlt
+SKIPPED [1] engine/tests/test_eine_seitenordnung.py:265: Playwright fehlt
+SKIPPED [1] engine/tests/test_eine_seitenordnung.py:276: Playwright fehlt
+SKIPPED [2] engine/tests/test_bilder.py:772: Playwright fehlt
+SKIPPED [1] engine/tests/test_elternbezug.py:150: Playwright fehlt
+SKIPPED [1] engine/tests/test_art_uebersicht.py:82: Playwright fehlt
+SKIPPED [2] engine/tests/test_b2_ansichten.py:53: Playwright fehlt
+SKIPPED [1] engine/tests/test_bilder_eigen.py:1329: flock fehlt
+SKIPPED [4] engine/tests/test_bilder_eigen.py:1359: Playwright fehlt
+SKIPPED [1] engine/tests/test_nginx_baustein_loeschen_527.py:107: flock fehlt
+SKIPPED [1] engine/tests/test_nginx_baustein_loeschen_527.py:121: flock fehlt
+SKIPPED [1] engine/tests/test_nginx_baustein_loeschen_527.py:135: flock fehlt
+SKIPPED [4] engine/tests/test_nginx_baustein_loeschen_527.py:150: flock fehlt
+SKIPPED [1] engine/tests/test_nginx_baustein_loeschen_527.py:169: flock fehlt
+SKIPPED [5] engine/tests/test_nginx_baustein_loeschen_527.py:181: flock fehlt
+SKIPPED [1] engine/tests/test_nginx_baustein_loeschen_527.py:192: flock fehlt
+SKIPPED [1] engine/tests/test_nginx_baustein_loeschen_527.py:204: flock fehlt
+SKIPPED [1] engine/tests/test_etappe_als_art.py:169: Playwright fehlt
+SKIPPED [2] engine/tests/test_bilder_konto.py:299: Playwright fehlt
+SKIPPED [1] engine/tests/test_heimat_unterkunft.py:39: Playwright fehlt
+SKIPPED [2] engine/tests/test_option_aufenthalte.py:90: Playwright fehlt
+SKIPPED [1] engine/tests/test_infoseite.py:171: Playwright fehlt
+SKIPPED [1] engine/tests/test_infoseite.py:208: Playwright fehlt
+SKIPPED [2] engine/tests/test_option_orte.py:317: Playwright fehlt
+SKIPPED [1] engine/tests/test_ort_im_ort.py:64: Playwright fehlt
+SKIPPED [1] engine/tests/test_ort_im_ort.py:85: Playwright fehlt
+SKIPPED [4] engine/tests/test_karte_legende.py:65: Playwright fehlt
+SKIPPED [2] engine/tests/test_karte_popup_310.py:63: Playwright fehlt
+SKIPPED [2] engine/tests/test_karte_seite.py:71: Playwright fehlt
+SKIPPED [2] engine/tests/test_karte_seite.py:94: Playwright fehlt
+SKIPPED [2] engine/tests/test_karte_seite.py:105: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:57: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:65: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:76: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:87: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:95: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:106: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:115: Playwright fehlt
+SKIPPED [2] engine/tests/test_klappen_zugeklappt.py:130: Playwright fehlt
+SKIPPED [2] engine/tests/test_fahrzeit_herkunft.py:198: Playwright fehlt
+SKIPPED [2] engine/tests/test_packliste.py:586: Playwright fehlt
+SKIPPED [1] engine/tests/test_packliste.py:731: Playwright fehlt
+SKIPPED [1] engine/tests/test_plan_rubriken_276.py:59: Playwright fehlt
+SKIPPED [1] engine/tests/test_plan_rubriken_276.py:72: Playwright fehlt
+SKIPPED [1] engine/tests/test_playwright_tmp_628.py:26: flock fehlt
+SKIPPED [2] engine/tests/test_reiseueberblick.py:51: Playwright fehlt
+SKIPPED [1] engine/tests/test_reiseueberblick.py:99: Playwright fehlt
+SKIPPED [1] engine/tests/test_reiseueberblick.py:108: Playwright fehlt
+SKIPPED [2] engine/tests/test_rundgang_544.py:23: Playwright fehlt
+SKIPPED [2] engine/tests/test_rundgang_546.py:43: Playwright fehlt
+SKIPPED [1] engine/tests/test_rundgang_546.py:61: Playwright fehlt
+SKIPPED [2] engine/tests/test_pwa.py:101: Playwright fehlt
+SKIPPED [2] engine/tests/test_pwa.py:204: Playwright fehlt
+SKIPPED [1] engine/tests/test_seite.py:196: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:251: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:274: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:287: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:306: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:337: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:353: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:397: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:439: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:520: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:581: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:643: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:697: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:711: Playwright fehlt
+SKIPPED [10] engine/tests/test_seite_ansehen.py:30: Playwright oder node fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:64: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:73: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:84: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:97: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:115: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:128: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:138: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:148: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:174: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:182: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_bilder.py:191: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_sprachen.py:82: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_sprachen.py:106: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_sprachen.py:124: Playwright fehlt
+SKIPPED [1] engine/tests/test_seite_sprachen.py:171: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_sprachen.py:236: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_sprachen.py:255: Playwright fehlt
+SKIPPED [1] engine/tests/test_seite_sprachen.py:276: Playwright fehlt
+SKIPPED [1] engine/tests/test_seite_sprachen.py:296: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite_startet.py:45: Playwright fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:176: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:297: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:308: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:323: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:335: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:346: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:360: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:376: flock fehlt
+SKIPPED [2] engine/tests/test_software_weg_454.py:388: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:448: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:469: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:484: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:495: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:514: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:543: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:561: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:663: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:689: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:710: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:771: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:783: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:809: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:819: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:829: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:868: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:882: flock fehlt
+SKIPPED [1] engine/tests/test_software_weg_454.py:909: flock fehlt
+SKIPPED [1] engine/tests/test_speicher_stufe5.py:40: flock fehlt
+SKIPPED [1] engine/tests/test_speicher_stufe5.py:55: flock fehlt
+SKIPPED [1] engine/tests/test_speicher_stufe5.py:74: flock fehlt
+SKIPPED [6] engine/tests/test_startfehler_meldung_387.py:69: Playwright fehlt
+SKIPPED [2] engine/tests/test_startfehler_meldung_387.py:84: Playwright fehlt
+SKIPPED [1] engine/tests/test_startfehler_meldung_387.py:91: Playwright fehlt
+SKIPPED [2] engine/tests/test_startfehler_meldung_387.py:107: Playwright fehlt
+SKIPPED [1] engine/tests/test_startfehler_meldung_387.py:140: Playwright fehlt
+SKIPPED [1] engine/tests/test_startprobe.py:34: Playwright fehlt
+SKIPPED [1] engine/tests/test_startprobe.py:39: Playwright fehlt
+SKIPPED [1] engine/tests/test_startprobe.py:49: Playwright fehlt
+SKIPPED [1] engine/tests/test_startprobe.py:54: Playwright fehlt
+SKIPPED [1] engine/tests/test_startprobe.py:83: Playwright fehlt
+SKIPPED [1] engine/tests/test_startprobe.py:90: Playwright fehlt
+SKIPPED [1] engine/tests/test_tag_ausserhalb_247.py:26: Playwright fehlt
+SKIPPED [4] engine/tests/test_tagesplan.py:76: Playwright fehlt
+SKIPPED [2] engine/tests/test_tagesplan.py:118: Playwright fehlt
+SKIPPED [1] engine/tests/test_tagesplan.py:157: Playwright fehlt
+SKIPPED [2] engine/tests/test_tagesseite.py:55: Playwright fehlt
+SKIPPED [1] engine/tests/test_tagesseite.py:129: Playwright fehlt
+SKIPPED [2] engine/tests/test_tagesseite.py:155: Playwright fehlt
+SKIPPED [1] engine/tests/test_tagesseite.py:166: Playwright fehlt
+SKIPPED [1] engine/tests/test_textform.py:214: Playwright fehlt
+SKIPPED [2] engine/tests/test_textform.py:306: Playwright fehlt
+SKIPPED [1] engine/tests/test_rueckmeldung_kontext_449.py:195: Playwright fehlt
+SKIPPED [1] engine/tests/test_rueckmeldung_kontext_449.py:207: Playwright fehlt
+SKIPPED [1] engine/tests/test_rueckmeldung_kontext_449.py:217: Playwright fehlt
+SKIPPED [1] engine/tests/test_rueckmeldung_kontext_449.py:225: Playwright fehlt
+SKIPPED [1] engine/tests/test_vorgemerkte_durchlauf_529.py:84: flock fehlt
+SKIPPED [1] engine/tests/test_vorgemerkte_durchlauf_529.py:95: flock fehlt
+SKIPPED [1] engine/tests/test_vorgemerkte_durchlauf_529.py:107: flock fehlt
+SKIPPED [1] engine/tests/test_vorgemerkte_durchlauf_529.py:120: flock fehlt
+SKIPPED [1] engine/tests/test_vorgemerkte_durchlauf_529.py:133: flock fehlt
+SKIPPED [1] engine/tests/test_vorgemerkte_durchlauf_529.py:148: flock fehlt
+SKIPPED [1] engine/tests/test_vorgemerkte_durchlauf_529.py:160: flock fehlt
+SKIPPED [2] engine/tests/test_wackel_599.py:126: Playwright fehlt
+SKIPPED [2] engine/tests/test_wackel_599.py:135: Playwright fehlt
+SKIPPED [2] engine/tests/test_wackel_599.py:144: Playwright fehlt
+SKIPPED [1] engine/tests/test_wackel_599.py:152: Playwright fehlt
+SKIPPED [1] engine/tests/test_wackel_599.py:163: Playwright fehlt
+SKIPPED [2] engine/tests/test_wackel_599.py:195: Playwright fehlt
+SKIPPED [2] engine/tests/test_wackel_599.py:206: Playwright fehlt
+SKIPPED [2] engine/tests/test_wackel_599.py:214: Playwright fehlt
+SKIPPED [2] engine/tests/test_wackel_599.py:229: Playwright fehlt
+SKIPPED [4] engine/tests/test_wartepunkt_geladen.py:58: Playwright fehlt
+SKIPPED [2] engine/tests/test_wartepunkt_geladen.py:68: Playwright fehlt
+SKIPPED [1] engine/tests/test_zu_tun_314.py:61: Playwright fehlt
+SKIPPED [1] engine/tests/test_zu_tun_314.py:70: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:33: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:122: Playwright fehlt
+SKIPPED [2] engine/tests/test_seite.py:146: Playwright fehlt
+2596 passed, 302 skipped in 425.53s (0:07:05)

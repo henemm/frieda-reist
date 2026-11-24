@@ -77,7 +77,7 @@ Claude schlägt jede Angabe nach. Stimmt sie, bekommt sie ein neues Prüfdatum u
 - **Frieda meldet nur.** Wächter und Erinnerer rechnen, sie schlagen nichts nach und ändern nichts. Nachgeschlagen wird im Gespräch mit Claude ([ADR-0001](../adr/0001-kern.md)).
 - **Niemand wechselt den Status automatisch.** Frieda erinnert, eine Organisator:in stellt um.
 - **Nur mit Baustein und im richtigen Status:** Fristen, Zahlungen und Prüfungen meldet der Wächter nur bei eingeschaltetem Baustein `waechter` und im Status „fest“ oder „unterwegs“. Der Statushinweis gilt für jede Reise mit Tagen.
-- **Keine Flut:** Jede Meldung kommt einmal; Überfälliges höchstens alle 7 Tage. Höchstens 15 Prüfungen je Lauf, die ältesten zuerst. Meldungen verschwinden nach 14 Tagen oder wenn erledigt ist, worum es ging; Konflikte bleiben.
+- **Keine Flut:** Jede Meldung kommt einmal; Überfälliges höchstens alle 7 Tage. Höchstens 15 Prüfungen je Lauf, die ältesten zuerst. Meldungen verschwinden nach 14 Tagen oder wenn erledigt ist, worum es ging; Konflikte bleiben. Die Meldung zu einer neuen Reise verschwindet auch, wenn die Reise gelöscht wird (und kommt mit dem Zurückholen wieder), eine Anfrage an die Betreiber, sobald sie entschieden ist oder es sie nicht mehr gibt.
 - **Kalender nur mit Entschiedenem:** Im Kalender steht, was gewählt ist und ein Datum hat, mit Uhrzeiten, wo es welche gibt. Ein neuer Abo-Link macht den alten ungültig. Das Abo zählt nur Reisen, in denen du Mitglied bist.
 - **Vorlesen zählt nicht als gelesen:** Nennt Claude eine Meldung, bleibt sie auf der Seite ungelesen, bis du sie dort oder auf Mein Konto als gelesen markierst.
 

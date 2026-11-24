@@ -142,6 +142,8 @@ darf; sie lädt zur Nutzung des Dienstes ein, nicht zu einer Reise.
    eingetragen, bestätigt, freigegeben oder schon ein Konto ist.
 2. Eine Mail bringt den Link `/warteliste/bestaetigen/<wort>` (7 Tage, einmal, nur als SHA-256 gespeichert). Der Link zeigt
    nur einen Knopf; erst der Knopfdruck bestätigt. Danach sehen die Betreiber den Eintrag und bekommen eine Meldung.
+   Sie verschwindet bei allen Betreibern, sobald der Eintrag freigegeben oder weg ist, ebenso die Meldung zur Bitte „Reisen
+   anlegen“, sobald sie entschieden oder ihr Konto weg ist (#687).
 3. Der Betreiber gibt frei (`konten.py freigeben <email>` oder Knopf auf Mein Konto). Die Mail „Du bist dabei“ geht in der
    Sprache des Eintrags; das Recht `reise_anlegen` gilt sofort, wenn die Adresse schon ein Konto hat, sonst beim ersten
    Anmelden. Eine zweite Freigabe ändert nichts. Scheitert die Mail, bleibt der Eintrag wartend und der Fehler wird

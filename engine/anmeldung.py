@@ -1723,4 +1723,6 @@ def betreiber_melden(k, art="anfrage_reisen", text=None, teile=None):
         rm.meldung_anlegen(rm.ordner_neu(anlegen=True), namen, art, "reise", text or
                            texte.t(texte.VORGABE_REISE, "konto.betreiber.meldung", name=k["name"], email=k["email"]),
                            teile=teile or ([("konto.meldungen.text.anfrage_reisen", {"name": k["name"], "email": k["email"]})]
-                                           if k else None))
+                                           if k else None),
+                           # Kennung des bittenden Kontos: Die Meldung gilt, solange seine Bitte offen ist (#687)
+                           extra={"konto": k["id"]} if art == "anfrage_reisen" and k and k.get("id") else None)
