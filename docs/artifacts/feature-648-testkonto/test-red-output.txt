@@ -1,0 +1,670 @@
+bringing up nodes...
+bringing up nodes...
+
+FFF.FFFFFFFFFFF.FFFFFFF.FFFFFF                                           [100%]
+=================================== FAILURES ===================================
+____________ test_bruecke_liefert_die_werkzeugliste_des_konnektors _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x7544854594f0>
+
+    def test_bruecke_liefert_die_werkzeugliste_des_konnektors(zugang):
+>       assert einrichten().returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten()
+
+engine/tests/test_testzugang.py:154: AssertionError
+_________________ test_einrichten_legt_testkonto_und_ablage_an _________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x77f7e33c8560>
+
+    def test_einrichten_legt_testkonto_und_ablage_an(zugang):
+        p = einrichten()
+>       assert p.returncode == 0, p.stderr
+E       AssertionError: engine/.venv/bin/python: can't open file 'betrieb/testzugang.py': [Errno 2] No such file or directory
+E         
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+
+engine/tests/test_testzugang.py:102: AssertionError
+________ test_einrichten_zweimal_ersetzt_und_widerruft_den_alten_zugang ________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x778b1acbc7d0>
+
+    def test_einrichten_zweimal_ersetzt_und_widerruft_den_alten_zugang(zugang):
+>       assert einrichten().returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten()
+
+engine/tests/test_testzugang.py:124: AssertionError
+___________________ test_einrichten_ohne_testkonto_bricht_ab ___________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x77f7e326a750>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77f7e326a8d0>
+
+    def test_einrichten_ohne_testkonto_bricht_ab(zugang, monkeypatch):
+        monkeypatch.delenv("FR_TESTKONTO")
+        p = einrichten()
+        assert p.returncode != 0
+>       assert "FR_TESTKONTO" in p.stdout + p.stderr
+E       assert 'FR_TESTKONTO' in ('' + "engine/.venv/bin/python: can't open file '<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n")
+E        +  where '' = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").stdout
+E        +  and   "engine/.venv/bin/python: can't open file '<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n" = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").stderr
+
+engine/tests/test_testzugang.py:119: AssertionError
+__________________ test_bruecke_ruft_werkzeuge_als_testkonto ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x754486b74e90>
+
+    def test_bruecke_ruft_werkzeuge_als_testkonto(zugang):
+>       assert einrichten().returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten()
+
+engine/tests/test_testzugang.py:168: AssertionError
+___________________ test_bruecke_erneuert_abgelaufenes_token ___________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x778b1ab82900>
+
+    def test_bruecke_erneuert_abgelaufenes_token(zugang):
+>       assert einrichten().returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten()
+
+engine/tests/test_testzugang.py:179: AssertionError
+____________ test_bruecke_bricht_ab_bei_token_eines_anderen_kontos _____________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x77f7e3269640>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x77f7e3245ca0>
+
+    def test_bruecke_bricht_ab_bei_token_eines_anderen_kontos(zugang, monkeypatch):
+>       assert einrichten({"FR_TESTKONTO": ANDERS}).returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten({'FR_TESTKONTO': 'anders-test@beispiel.invalid'})
+
+engine/tests/test_testzugang.py:237: AssertionError
+__________________ test_bruecke_nutzt_nur_standardbibliothek ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_bruecke_nutzt_nur_standardbibliothek():
+        """Die Brücke läuft mit dem python3 des Systems; nur `einrichten` darf (wie pruefsitzung.py) die Engine laden."""
+>       fremd = _fremde_importe(ast.parse(SKRIPT.read_text(encoding="utf-8")))
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_testzugang.py:273: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('betrieb/testzugang.py')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'betrieb/testzugang.py'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+___________________ test_mcp_json_ohne_adresse_und_geheimnis ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_mcp_json_ohne_adresse_und_geheimnis():
+>       m = json.loads((WURZEL / ".mcp.json").read_text(encoding="utf-8"))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_testzugang.py:280: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('.mcp.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '.mcp.json'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_________________ test_settings_bindet_bruecke_und_sperre_ein __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_settings_bindet_bruecke_und_sperre_ein():
+>       s = json.loads((WURZEL / ".claude" / "settings.json").read_text(encoding="utf-8"))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_testzugang.py:291: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('.claude/settings.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '.claude/settings.json'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+______________ test_einstellungen_beispiel_nennt_die_instanzwerte ______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_einstellungen_beispiel_nennt_die_instanzwerte():
+        text = (WURZEL / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8")
+>       assert "FR_TESTKONTO=" in text and "FR_TESTZUGANG=" in text
+E       AssertionError: assert ('FR_TESTKONTO=' in '# Einstellungen einer Instanz (docs/betrieb.md). Kopie nach <FR_DIENST>/instanz/einstellungen.env und anpassen.\n# Fo...rsetzt die Vorgabe und gehört in <FR_DIENST>/konten.env. (leer)\n#FR_PUSH_DIENSTE=push.example.org,.push.example.net\n')
+
+engine/tests/test_testzugang.py:300: AssertionError
+______________ test_erlaubnisliste_entspricht_den_lesewerkzeugen _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_erlaubnisliste_entspricht_den_lesewerkzeugen():
+        w = werkzeuge_des_konnektors()
+        lesen = {n for n, x in w.items() if nur_lesen(x)}
+        assert lesen, "der Konnektor zeigt keine Lesewerkzeuge?"
+>       assert set(hook_modul().ERLAUBT) == lesen
+                   ^^^^^^^^^^^^
+
+engine/tests/test_frieda_sperre.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_frieda_sperre.py:55: in hook_modul
+    spec.loader.exec_module(m)
+<frozen importlib._bootstrap_external>:991: in exec_module
+    ???
+<frozen importlib._bootstrap_external>:1128: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_frozen_importlib_external.SourceFileLoader object at 0x754485493ef0>
+path = '.claude/hooks/frieda_sperre.py'
+
+>   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '.claude/hooks/frieda_sperre.py'
+
+<frozen importlib._bootstrap_external>:1186: FileNotFoundError
+___________ test_hook_entscheidet_fuer_jedes_werkzeug_des_konnektors ___________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_hook_entscheidet_fuer_jedes_werkzeug_des_konnektors():
+        for name, w in sorted(werkzeuge_des_konnektors().items()):
+            rc, err = fragen(PRAEFIX + name)
+            if nur_lesen(w):
+                assert rc == 0, (name, err)
+            else:
+                assert rc == 2, name
+>               assert "frieda-test" in err, name
+E               AssertionError: attribute_define
+E               assert 'frieda-test' in "engine/.venv/bin/python: can't open file '<repo>/.claude/hooks/frieda_sperre.py': [Errno 2] No such file or directory\n"
+
+engine/tests/test_frieda_sperre.py:83: AssertionError
+___________________ test_unbekanntes_werkzeug_wird_abgelehnt ___________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_unbekanntes_werkzeug_wird_abgelehnt():
+        rc, err = fragen(PRAEFIX + "neu_erfunden")
+        assert rc == 2
+>       assert "frieda-test" in err
+E       assert 'frieda-test' in "engine/.venv/bin/python: can't open file '<repo>/.claude/hooks/frieda_sperre.py': [Errno 2] No such file or directory\n"
+
+engine/tests/test_frieda_sperre.py:91: AssertionError
+_____________ test_andere_server_und_werkzeuge_bleiben_unberuehrt ______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_andere_server_und_werkzeuge_bleiben_unberuehrt():
+        for name in ("mcp__frieda-test__item_create", "mcp__frieda-test__trip_create", "Bash", "Read",
+                     "mcp__claude_ai_Gmail__search_threads"):
+            rc, err = fragen(name)
+>           assert rc == 0, (name, err)
+E           AssertionError: ('mcp__frieda-test__item_create', "engine/.venv/bi...<repo>/.claude/hooks/frieda_sperre.py': [Errno 2] No such file or directory
+E             ")
+E           assert 2 == 0
+
+engine/tests/test_frieda_sperre.py:105: AssertionError
+____________________ test_hook_nutzt_nur_standardbibliothek ____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_hook_nutzt_nur_standardbibliothek():
+>       baum = ast.parse(HOOK.read_text(encoding="utf-8"))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_frieda_sperre.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('.claude/hooks/frieda_sperre.py')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '.claude/hooks/frieda_sperre.py'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+____________ test_vormerken_merkt_die_reise_mit_normaler_frist_vor _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+capsys = <_pytest.capture.CaptureFixture object at 0x754485489e50>
+
+    def test_vormerken_merkt_die_reise_mit_normaler_frist_vor(speicher, capsys):
+>       assert konten.main(["vormerken", "beispielreise"]) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = <function main at 0x7544868a6fc0>(['vormerken', 'beispielreise'])
+E        +    where <function main at 0x7544868a6fc0> = konten.main
+
+engine/tests/test_konten_vormerken.py:25: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).
+
+Jedes Konto hat eine feste, unsichtbare Kennung (K-…), die sich nie ändert; darauf verweisen Mitgliedschaften und
+Verlauf. Die E-Mail-Adresse ist der Anmeldename: eindeutig (höchstens ein Konto je Adresse, ohne Unterschied von Groß-
+und Kleinschreibung) und änderbar, aber nur mit einem Code an die neue Adresse und nur, wenn sie frei ist.
+
+Angemeldet wird ohne Passwort: Wer seine Adresse eingibt, bekommt einen sechsstelligen Code per Mail (10 Minuten
+gültig, einmalig, höchstens 5 Versuche). Das erste Anmelden legt das Konto an (freie Anmeldung). Ohne Einladung hat ein
+Konto keine Reisen; Reisen anlegen darf es erst, wenn der Betreiber es freischaltet (es kann darum bitten).
+
+Einladungen gelten für eine Reise und einen Personen-Schlüssel. Hat die eingeladene Adresse schon ein Konto, gilt die
+Einladung sofort; sonst beim ersten Anmelden mit dieser Adresse. Der Link aus der Einladungsmail ist selbst ein
+Nachweis: Wer ihn öffnet, darf sich dort auch mit einer anderen Adresse anmelden und bekommt die Rolle.
+Die Rollen selbst stehen weiter in reise.yaml und einladungen.json; dieses Modul verknüpft nur Konto und Person.
+
+Geheimnisse (Codes, Sitzungen, Einladungen) liegen nur als SHA-256 in der Datenbank. Antworten verraten nie, ob eine
+Adresse ein Konto hat. Begrenzung: je Adresse 3 Codes in 15 Minuten, je IP 10 in der Stunde.
+
+Ablage: <FR_KONTEN, sonst Seiten>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
+Mail: FR_SMTP_HOST, FR_SMTP_PORT (587), FR_SMTP_USER, FR_SMTP_PASS, FR_ABSENDER; Links mit FR_BASIS.
+      FR_MAIL_DATEI schreibt Mails stattdessen als JSON-Zeilen in eine Datei (Tests, Probebetrieb).
+
+Aufrufe:
+  python3 engine/konten.py liste                               alle Konten mit Reisen und Rechten
+  python3 engine/konten.py anfragen                            offene Bitten „Reisen anlegen“
+  python3 engine/konten.py freischalten <email> [--nein]       Reisen anlegen erlauben (oder Bitte ablehnen)
+  python3 engine/konten.py warteliste                          bestätigte Einträge der Warteliste, Zahl der unbestätigten
+  python3 engine/konten.py freigeben <email>                   Eintrag freigeben: Mail „Du bist dabei“, Recht Reisen anlegen
+  python3 engine/konten.py betreiber <email>                   Betreiber-Recht geben (sieht Anfragen, schaltet frei)
+  python3 engine/konten.py sperren|entsperren <email>          sperren meldet alle Geräte ab
+  python3 engine/konten.py loeschen <email>                    Konto und Adresse löschen
+  python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
+  python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
+  python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
+  python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
+  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Repo der Instanz
+  python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
+  python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
+
+__________________ test_vormerken_nutzt_die_frist_der_instanz __________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x754485308290>
+
+    def test_vormerken_nutzt_die_frist_der_instanz(speicher, monkeypatch):
+        monkeypatch.setenv("FR_LOESCHFRIST_TAGE", "21")
+>       assert konten.main(["vormerken", "stadtwochenende"]) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = <function main at 0x7544868a6fc0>(['vormerken', 'stadtwochenende'])
+E        +    where <function main at 0x7544868a6fc0> = konten.main
+
+engine/tests/test_konten_vormerken.py:36: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).
+
+Jedes Konto hat eine feste, unsichtbare Kennung (K-…), die sich nie ändert; darauf verweisen Mitgliedschaften und
+Verlauf. Die E-Mail-Adresse ist der Anmeldename: eindeutig (höchstens ein Konto je Adresse, ohne Unterschied von Groß-
+und Kleinschreibung) und änderbar, aber nur mit einem Code an die neue Adresse und nur, wenn sie frei ist.
+
+Angemeldet wird ohne Passwort: Wer seine Adresse eingibt, bekommt einen sechsstelligen Code per Mail (10 Minuten
+gültig, einmalig, höchstens 5 Versuche). Das erste Anmelden legt das Konto an (freie Anmeldung). Ohne Einladung hat ein
+Konto keine Reisen; Reisen anlegen darf es erst, wenn der Betreiber es freischaltet (es kann darum bitten).
+
+Einladungen gelten für eine Reise und einen Personen-Schlüssel. Hat die eingeladene Adresse schon ein Konto, gilt die
+Einladung sofort; sonst beim ersten Anmelden mit dieser Adresse. Der Link aus der Einladungsmail ist selbst ein
+Nachweis: Wer ihn öffnet, darf sich dort auch mit einer anderen Adresse anmelden und bekommt die Rolle.
+Die Rollen selbst stehen weiter in reise.yaml und einladungen.json; dieses Modul verknüpft nur Konto und Person.
+
+Geheimnisse (Codes, Sitzungen, Einladungen) liegen nur als SHA-256 in der Datenbank. Antworten verraten nie, ob eine
+Adresse ein Konto hat. Begrenzung: je Adresse 3 Codes in 15 Minuten, je IP 10 in der Stunde.
+
+Ablage: <FR_KONTEN, sonst Seiten>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
+Mail: FR_SMTP_HOST, FR_SMTP_PORT (587), FR_SMTP_USER, FR_SMTP_PASS, FR_ABSENDER; Links mit FR_BASIS.
+      FR_MAIL_DATEI schreibt Mails stattdessen als JSON-Zeilen in eine Datei (Tests, Probebetrieb).
+
+Aufrufe:
+  python3 engine/konten.py liste                               alle Konten mit Reisen und Rechten
+  python3 engine/konten.py anfragen                            offene Bitten „Reisen anlegen“
+  python3 engine/konten.py freischalten <email> [--nein]       Reisen anlegen erlauben (oder Bitte ablehnen)
+  python3 engine/konten.py warteliste                          bestätigte Einträge der Warteliste, Zahl der unbestätigten
+  python3 engine/konten.py freigeben <email>                   Eintrag freigeben: Mail „Du bist dabei“, Recht Reisen anlegen
+  python3 engine/konten.py betreiber <email>                   Betreiber-Recht geben (sieht Anfragen, schaltet frei)
+  python3 engine/konten.py sperren|entsperren <email>          sperren meldet alle Geräte ab
+  python3 engine/konten.py loeschen <email>                    Konto und Adresse löschen
+  python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
+  python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
+  python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
+  python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
+  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Repo der Instanz
+  python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
+  python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
+
+____________ test_vorgemerkte_reise_fehlt_in_den_reisen_des_kontos _____________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+
+    def test_vorgemerkte_reise_fehlt_in_den_reisen_des_kontos(speicher):
+        """Die Reise verschwindet sofort überall: auch aus aktiver Liste und Archiv (my_trips), die über reise_vorgemerkt
+        filtern."""
+        import reisespeicher as rs
+        assert "beispielreise" in rs.reisen()
+>       assert konten.main(["vormerken", "beispielreise"]) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = <function main at 0x7544868a6fc0>(['vormerken', 'beispielreise'])
+E        +    where <function main at 0x7544868a6fc0> = konten.main
+
+engine/tests/test_konten_vormerken.py:46: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).
+
+Jedes Konto hat eine feste, unsichtbare Kennung (K-…), die sich nie ändert; darauf verweisen Mitgliedschaften und
+Verlauf. Die E-Mail-Adresse ist der Anmeldename: eindeutig (höchstens ein Konto je Adresse, ohne Unterschied von Groß-
+und Kleinschreibung) und änderbar, aber nur mit einem Code an die neue Adresse und nur, wenn sie frei ist.
+
+Angemeldet wird ohne Passwort: Wer seine Adresse eingibt, bekommt einen sechsstelligen Code per Mail (10 Minuten
+gültig, einmalig, höchstens 5 Versuche). Das erste Anmelden legt das Konto an (freie Anmeldung). Ohne Einladung hat ein
+Konto keine Reisen; Reisen anlegen darf es erst, wenn der Betreiber es freischaltet (es kann darum bitten).
+
+Einladungen gelten für eine Reise und einen Personen-Schlüssel. Hat die eingeladene Adresse schon ein Konto, gilt die
+Einladung sofort; sonst beim ersten Anmelden mit dieser Adresse. Der Link aus der Einladungsmail ist selbst ein
+Nachweis: Wer ihn öffnet, darf sich dort auch mit einer anderen Adresse anmelden und bekommt die Rolle.
+Die Rollen selbst stehen weiter in reise.yaml und einladungen.json; dieses Modul verknüpft nur Konto und Person.
+
+Geheimnisse (Codes, Sitzungen, Einladungen) liegen nur als SHA-256 in der Datenbank. Antworten verraten nie, ob eine
+Adresse ein Konto hat. Begrenzung: je Adresse 3 Codes in 15 Minuten, je IP 10 in der Stunde.
+
+Ablage: <FR_KONTEN, sonst Seiten>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
+Mail: FR_SMTP_HOST, FR_SMTP_PORT (587), FR_SMTP_USER, FR_SMTP_PASS, FR_ABSENDER; Links mit FR_BASIS.
+      FR_MAIL_DATEI schreibt Mails stattdessen als JSON-Zeilen in eine Datei (Tests, Probebetrieb).
+
+Aufrufe:
+  python3 engine/konten.py liste                               alle Konten mit Reisen und Rechten
+  python3 engine/konten.py anfragen                            offene Bitten „Reisen anlegen“
+  python3 engine/konten.py freischalten <email> [--nein]       Reisen anlegen erlauben (oder Bitte ablehnen)
+  python3 engine/konten.py warteliste                          bestätigte Einträge der Warteliste, Zahl der unbestätigten
+  python3 engine/konten.py freigeben <email>                   Eintrag freigeben: Mail „Du bist dabei“, Recht Reisen anlegen
+  python3 engine/konten.py betreiber <email>                   Betreiber-Recht geben (sieht Anfragen, schaltet frei)
+  python3 engine/konten.py sperren|entsperren <email>          sperren meldet alle Geräte ab
+  python3 engine/konten.py loeschen <email>                    Konto und Adresse löschen
+  python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
+  python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
+  python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
+  python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
+  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Repo der Instanz
+  python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
+  python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
+
+_________________ test_bruecke_erneuert_bei_401_mitten_im_lauf _________________
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x778b1ab772c0>
+
+    def test_bruecke_erneuert_bei_401_mitten_im_lauf(zugang):
+        """Läuft das Access-Token ab, während die Brücke läuft, antwortet der Dienst mit 401; die Brücke erneuert und
+        wiederholt die Anfrage, statt den Fehler an Claude Code weiterzugeben."""
+>       assert einrichten().returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten()
+
+engine/tests/test_testzugang.py:198: AssertionError
+__________ test_bruecke_bricht_ab_wenn_das_testkonto_betreiber_wurde ___________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x77f7e8a703b0>
+
+    def test_bruecke_bricht_ab_wenn_das_testkonto_betreiber_wurde(zugang):
+>       assert einrichten().returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten()
+
+engine/tests/test_testzugang.py:245: AssertionError
+______________ test_vormerken_verweigert_schon_vorgemerkte_reise _______________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7544854d0b90>
+
+    def test_vormerken_verweigert_schon_vorgemerkte_reise(speicher, monkeypatch):
+>       assert konten.main(["vormerken", "beispielreise"]) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = <function main at 0x7544868a6fc0>(['vormerken', 'beispielreise'])
+E        +    where <function main at 0x7544868a6fc0> = konten.main
+
+engine/tests/test_konten_vormerken.py:66: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).
+
+Jedes Konto hat eine feste, unsichtbare Kennung (K-…), die sich nie ändert; darauf verweisen Mitgliedschaften und
+Verlauf. Die E-Mail-Adresse ist der Anmeldename: eindeutig (höchstens ein Konto je Adresse, ohne Unterschied von Groß-
+und Kleinschreibung) und änderbar, aber nur mit einem Code an die neue Adresse und nur, wenn sie frei ist.
+
+Angemeldet wird ohne Passwort: Wer seine Adresse eingibt, bekommt einen sechsstelligen Code per Mail (10 Minuten
+gültig, einmalig, höchstens 5 Versuche). Das erste Anmelden legt das Konto an (freie Anmeldung). Ohne Einladung hat ein
+Konto keine Reisen; Reisen anlegen darf es erst, wenn der Betreiber es freischaltet (es kann darum bitten).
+
+Einladungen gelten für eine Reise und einen Personen-Schlüssel. Hat die eingeladene Adresse schon ein Konto, gilt die
+Einladung sofort; sonst beim ersten Anmelden mit dieser Adresse. Der Link aus der Einladungsmail ist selbst ein
+Nachweis: Wer ihn öffnet, darf sich dort auch mit einer anderen Adresse anmelden und bekommt die Rolle.
+Die Rollen selbst stehen weiter in reise.yaml und einladungen.json; dieses Modul verknüpft nur Konto und Person.
+
+Geheimnisse (Codes, Sitzungen, Einladungen) liegen nur als SHA-256 in der Datenbank. Antworten verraten nie, ob eine
+Adresse ein Konto hat. Begrenzung: je Adresse 3 Codes in 15 Minuten, je IP 10 in der Stunde.
+
+Ablage: <FR_KONTEN, sonst Seiten>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
+Mail: FR_SMTP_HOST, FR_SMTP_PORT (587), FR_SMTP_USER, FR_SMTP_PASS, FR_ABSENDER; Links mit FR_BASIS.
+      FR_MAIL_DATEI schreibt Mails stattdessen als JSON-Zeilen in eine Datei (Tests, Probebetrieb).
+
+Aufrufe:
+  python3 engine/konten.py liste                               alle Konten mit Reisen und Rechten
+  python3 engine/konten.py anfragen                            offene Bitten „Reisen anlegen“
+  python3 engine/konten.py freischalten <email> [--nein]       Reisen anlegen erlauben (oder Bitte ablehnen)
+  python3 engine/konten.py warteliste                          bestätigte Einträge der Warteliste, Zahl der unbestätigten
+  python3 engine/konten.py freigeben <email>                   Eintrag freigeben: Mail „Du bist dabei“, Recht Reisen anlegen
+  python3 engine/konten.py betreiber <email>                   Betreiber-Recht geben (sieht Anfragen, schaltet frei)
+  python3 engine/konten.py sperren|entsperren <email>          sperren meldet alle Geräte ab
+  python3 engine/konten.py loeschen <email>                    Konto und Adresse löschen
+  python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
+  python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
+  python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
+  python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
+  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Repo der Instanz
+  python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
+  python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
+
+____________________ test_vormerken_ohne_reise_zeigt_hilfe _____________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+capsys = <_pytest.capture.CaptureFixture object at 0x7544854b0cb0>
+
+    def test_vormerken_ohne_reise_zeigt_hilfe(speicher, capsys):
+        assert konten.main(["vormerken"]) != 0
+>       assert "vormerken <reise>" in capsys.readouterr().out
+E       AssertionError: assert 'vormerken <reise>' in 'Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat eine feste, unsic...konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n'
+E        +  where 'Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat eine feste, unsic...konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n' = CaptureResult(out='Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat... entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n', err='').out
+E        +    where CaptureResult(out='Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat... entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n', err='') = readouterr()
+E        +      where readouterr = <_pytest.capture.CaptureFixture object at 0x7544854b0cb0>.readouterr
+
+engine/tests/test_konten_vormerken.py:75: AssertionError
+________________________ test_hilfetext_nennt_vormerken ________________________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+    def test_hilfetext_nennt_vormerken():
+        p = subprocess.run([sys.executable, str(ENGINE / "konten.py")], capture_output=True, text=True, timeout=60)
+>       assert "vormerken <reise>" in p.stdout
+E       AssertionError: assert 'vormerken <reise>' in 'Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat eine feste, unsic...konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n'
+E        +  where 'Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat eine feste, unsic...konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n' = CompletedProcess(args=['engine/.venv/bin/python', ...tfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n', stderr='').stdout
+
+engine/tests/test_konten_vormerken.py:80: AssertionError
+_________ test_waechter_entfernt_die_vorgemerkte_reise_nach_der_frist __________
+[gw2] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75448548aae0>
+
+    def test_waechter_entfernt_die_vorgemerkte_reise_nach_der_frist(speicher, monkeypatch):
+        import waechter as wa
+>       assert konten.main(["vormerken", "beispielreise"]) == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = <function main at 0x7544868a6fc0>(['vormerken', 'beispielreise'])
+E        +    where <function main at 0x7544868a6fc0> = konten.main
+
+engine/tests/test_konten_vormerken.py:87: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).
+
+Jedes Konto hat eine feste, unsichtbare Kennung (K-…), die sich nie ändert; darauf verweisen Mitgliedschaften und
+Verlauf. Die E-Mail-Adresse ist der Anmeldename: eindeutig (höchstens ein Konto je Adresse, ohne Unterschied von Groß-
+und Kleinschreibung) und änderbar, aber nur mit einem Code an die neue Adresse und nur, wenn sie frei ist.
+
+Angemeldet wird ohne Passwort: Wer seine Adresse eingibt, bekommt einen sechsstelligen Code per Mail (10 Minuten
+gültig, einmalig, höchstens 5 Versuche). Das erste Anmelden legt das Konto an (freie Anmeldung). Ohne Einladung hat ein
+Konto keine Reisen; Reisen anlegen darf es erst, wenn der Betreiber es freischaltet (es kann darum bitten).
+
+Einladungen gelten für eine Reise und einen Personen-Schlüssel. Hat die eingeladene Adresse schon ein Konto, gilt die
+Einladung sofort; sonst beim ersten Anmelden mit dieser Adresse. Der Link aus der Einladungsmail ist selbst ein
+Nachweis: Wer ihn öffnet, darf sich dort auch mit einer anderen Adresse anmelden und bekommt die Rolle.
+Die Rollen selbst stehen weiter in reise.yaml und einladungen.json; dieses Modul verknüpft nur Konto und Person.
+
+Geheimnisse (Codes, Sitzungen, Einladungen) liegen nur als SHA-256 in der Datenbank. Antworten verraten nie, ob eine
+Adresse ein Konto hat. Begrenzung: je Adresse 3 Codes in 15 Minuten, je IP 10 in der Stunde.
+
+Ablage: <FR_KONTEN, sonst Seiten>/_konten/konten.db (SQLite, WAL), nur für den Betreiber lesbar.
+Mail: FR_SMTP_HOST, FR_SMTP_PORT (587), FR_SMTP_USER, FR_SMTP_PASS, FR_ABSENDER; Links mit FR_BASIS.
+      FR_MAIL_DATEI schreibt Mails stattdessen als JSON-Zeilen in eine Datei (Tests, Probebetrieb).
+
+Aufrufe:
+  python3 engine/konten.py liste                               alle Konten mit Reisen und Rechten
+  python3 engine/konten.py anfragen                            offene Bitten „Reisen anlegen“
+  python3 engine/konten.py freischalten <email> [--nein]       Reisen anlegen erlauben (oder Bitte ablehnen)
+  python3 engine/konten.py warteliste                          bestätigte Einträge der Warteliste, Zahl der unbestätigten
+  python3 engine/konten.py freigeben <email>                   Eintrag freigeben: Mail „Du bist dabei“, Recht Reisen anlegen
+  python3 engine/konten.py betreiber <email>                   Betreiber-Recht geben (sieht Anfragen, schaltet frei)
+  python3 engine/konten.py sperren|entsperren <email>          sperren meldet alle Geräte ab
+  python3 engine/konten.py loeschen <email>                    Konto und Adresse löschen
+  python3 engine/konten.py zusammenfuehren <von> <nach>        zwei Konten eines Menschen vereinen
+  python3 engine/konten.py einladen <reise> <schluessel> <email> <rolle> <Name> <von>
+  python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
+  python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
+  python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Repo der Instanz
+  python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
+  python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
+
+_______ test_zwei_bruecken_erneuern_ohne_die_token_familie_zu_widerrufen _______
+[gw1] linux -- Python 3.12.3 engine/.venv/bin/python
+
+zugang = <test_regeln.Umgebung object at 0x778b1a8f3c50>
+
+    def test_zwei_bruecken_erneuern_ohne_die_token_familie_zu_widerrufen(zugang):
+>       assert einrichten().returncode == 0
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n").returncode
+E        +    where CompletedProcess(args=['engine/.venv/bin/python', ...<repo>/betrieb/testzugang.py': [Errno 2] No such file or directory\n") = einrichten()
+
+engine/tests/test_testzugang.py:215: AssertionError
+__________________ test_vormerken_verweigert_unbekannte_reise __________________
+[gw0] linux -- Python 3.12.3 engine/.venv/bin/python
+
+speicher = <module 'reisespeicher' from 'engine/reisespeicher.py'>
+capsys = <_pytest.capture.CaptureFixture object at 0x77f7e343fb30>
+
+    def test_vormerken_verweigert_unbekannte_reise(speicher, capsys):
+        assert konten.main(["vormerken", "gibt-es-nicht"]) != 0
+        assert konten.loeschungen() == []
+        assert not konten.reise_vorgemerkt("gibt-es-nicht")
+>       assert "gibt-es-nicht" in capsys.readouterr().out
+E       AssertionError: assert 'gibt-es-nicht' in 'Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat eine feste, unsic...konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n'
+E        +  where 'Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat eine feste, unsic...konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n' = CaptureResult(out='Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat... entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n', err='').out
+E        +    where CaptureResult(out='Konten: Menschen an ihrer E-Mail-Adresse erkennen (Paket J, Issues #43 und #45).\n\nJedes Konto hat... entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine\n\n', err='') = readouterr()
+E        +      where readouterr = <_pytest.capture.CaptureFixture object at 0x77f7e343fb30>.readouterr
+
+engine/tests/test_konten_vormerken.py:57: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_testzugang.py::test_bruecke_liefert_die_werkzeugliste_des_konnektors
+FAILED engine/tests/test_testzugang.py::test_einrichten_legt_testkonto_und_ablage_an
+FAILED engine/tests/test_testzugang.py::test_einrichten_zweimal_ersetzt_und_widerruft_den_alten_zugang
+FAILED engine/tests/test_testzugang.py::test_einrichten_ohne_testkonto_bricht_ab
+FAILED engine/tests/test_testzugang.py::test_bruecke_ruft_werkzeuge_als_testkonto
+FAILED engine/tests/test_testzugang.py::test_bruecke_erneuert_abgelaufenes_token
+FAILED engine/tests/test_testzugang.py::test_bruecke_bricht_ab_bei_token_eines_anderen_kontos
+FAILED engine/tests/test_testzugang.py::test_bruecke_nutzt_nur_standardbibliothek
+FAILED engine/tests/test_testzugang.py::test_mcp_json_ohne_adresse_und_geheimnis
+FAILED engine/tests/test_testzugang.py::test_settings_bindet_bruecke_und_sperre_ein
+FAILED engine/tests/test_testzugang.py::test_einstellungen_beispiel_nennt_die_instanzwerte
+FAILED engine/tests/test_frieda_sperre.py::test_erlaubnisliste_entspricht_den_lesewerkzeugen
+FAILED engine/tests/test_frieda_sperre.py::test_hook_entscheidet_fuer_jedes_werkzeug_des_konnektors
+FAILED engine/tests/test_frieda_sperre.py::test_unbekanntes_werkzeug_wird_abgelehnt
+FAILED engine/tests/test_frieda_sperre.py::test_andere_server_und_werkzeuge_bleiben_unberuehrt
+FAILED engine/tests/test_frieda_sperre.py::test_hook_nutzt_nur_standardbibliothek
+FAILED engine/tests/test_konten_vormerken.py::test_vormerken_merkt_die_reise_mit_normaler_frist_vor
+FAILED engine/tests/test_konten_vormerken.py::test_vormerken_nutzt_die_frist_der_instanz
+FAILED engine/tests/test_konten_vormerken.py::test_vorgemerkte_reise_fehlt_in_den_reisen_des_kontos
+FAILED engine/tests/test_testzugang.py::test_bruecke_erneuert_bei_401_mitten_im_lauf
+FAILED engine/tests/test_testzugang.py::test_bruecke_bricht_ab_wenn_das_testkonto_betreiber_wurde
+FAILED engine/tests/test_konten_vormerken.py::test_vormerken_verweigert_schon_vorgemerkte_reise
+FAILED engine/tests/test_konten_vormerken.py::test_vormerken_ohne_reise_zeigt_hilfe
+FAILED engine/tests/test_konten_vormerken.py::test_hilfetext_nennt_vormerken
+FAILED engine/tests/test_konten_vormerken.py::test_waechter_entfernt_die_vorgemerkte_reise_nach_der_frist
+FAILED engine/tests/test_testzugang.py::test_zwei_bruecken_erneuern_ohne_die_token_familie_zu_widerrufen
+FAILED engine/tests/test_konten_vormerken.py::test_vormerken_verweigert_unbekannte_reise
+27 failed, 3 passed in 7.92s
