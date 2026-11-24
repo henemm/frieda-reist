@@ -603,6 +603,7 @@ def test_meldung_aus_teilen_in_der_sprache_des_kontos(welt):
     assert "Your new trip “Beispielreise” has been created (status idea). Invitations sent by email to 2 people." in t
     k = konten.konto_per_email(KARL)
     konten.recht_setzen(k["id"], "betreiber")
+    assert konten.reisen_anlegen_anfragen(k["id"]) == "offen"      # die Meldung gilt, solange die Bitte offen ist (#687)
     anmeldung.betreiber_melden(k)
     [m] = [x for x in rm.meldungen(o, k["id"]) if x["art"] == "anfrage_reisen"]
     assert m["t"] == [["konto.meldungen.text.anfrage_reisen", {"name": "Karl", "email": KARL}]]
@@ -632,6 +633,7 @@ def test_meldung_ohne_reise_folgt_nicht_dem_namen(welt):
     # auch den Namen eines Betreibers anzunehmen bringt dessen Meldungen nicht
     konten.recht_setzen(konten.konto_per_email(KARL)["id"], "betreiber")
     import anmeldung
+    assert konten.reisen_anlegen_anfragen(konten.konto_per_email(MO)["id"]) == "offen"
     anmeldung.betreiber_melden(konten.konto_per_email(MO))
     assert rm.meldungen_des_kontos(konten.konto_per_email(MO)) == []
     assert [m["art"] for m in rm.meldungen_des_kontos(konten.konto_per_email(KARL))].count("anfrage_reisen") == 1

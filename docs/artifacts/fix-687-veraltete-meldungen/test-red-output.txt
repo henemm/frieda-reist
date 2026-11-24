@@ -1,0 +1,211 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFF                                               [100%]
+=================================== FAILURES ===================================
+___________________ test_neue_reise_vorgemerkt_verschwindet ____________________
+engine/tests/test_meldungen_veraltet.py:92: in test_neue_reise_vorgemerkt_verschwindet
+    assert sichtbar("k-karl") == set()
+E   AssertionError: assert {'M-20261124-171816-cc66'} == set()
+E     
+E     Extra items in the left set:
+E     'M-20261124-171816-cc66'
+E     Use -v to get more diff
+____________________ test_neue_reise_entfernt_verschwindet _____________________
+engine/tests/test_meldungen_veraltet.py:101: in test_neue_reise_entfernt_verschwindet
+    assert konten.loeschprotokoll() == [REISE] and sichtbar("k-karl") == set()
+E   AssertionError: assert (['stadtwochenende'] == ['stadtwochenende']
+E     
+E     Use -v to get more diff and {'M-20261124-171816-7085'} == set()
+E     
+E     Extra items in the left set:
+E     'M-20261124-171816-7085'
+E     Use -v to get more diff)
+________________ test_neue_reise_zurueckgeholt_erscheint_wieder ________________
+engine/tests/test_meldungen_veraltet.py:109: in test_neue_reise_zurueckgeholt_erscheint_wieder
+    assert sichtbar("k-karl") == set()
+E   AssertionError: assert {'M-20261124-171816-3b1f'} == set()
+E     
+E     Extra items in the left set:
+E     'M-20261124-171816-3b1f'
+E     Use -v to get more diff
+__________________ test_neue_reise_ohne_mitgliedschaft_bleibt __________________
+engine/tests/test_meldungen_veraltet.py:120: in test_neue_reise_ohne_mitgliedschaft_bleibt
+    assert weg not in sichtbar("k-karl")
+E   AssertionError: assert 'M-20261124-171816-71c7' not in {'M-20261124-171816-71c7', 'M-20261124-171816-ebaa'}
+E    +  where {'M-20261124-171816-71c7', 'M-20261124-171816-ebaa'} = sichtbar('k-karl')
+____________________ test_bitte_freigeschaltet_verschwindet ____________________
+engine/tests/test_meldungen_veraltet.py:129: in test_bitte_freigeschaltet_verschwindet
+    assert arten() == []
+E   AssertionError: assert ['anfrage_reisen'] == []
+E     
+E     Left contains one more item: 'anfrage_reisen'
+E     Use -v to get more diff
+______________________ test_bitte_abgelehnt_verschwindet _______________________
+engine/tests/test_meldungen_veraltet.py:136: in test_bitte_abgelehnt_verschwindet
+    assert arten() == []
+E   AssertionError: assert ['anfrage_reisen'] == []
+E     
+E     Left contains one more item: 'anfrage_reisen'
+E     Use -v to get more diff
+___________________ test_bitte_konto_geloescht_verschwindet ____________________
+engine/tests/test_meldungen_veraltet.py:143: in test_bitte_konto_geloescht_verschwindet
+    assert konten.anfragen() == [] and arten() == []
+E   AssertionError: assert ([] == []
+E     
+E     Use -v to get more diff and ['anfrage_reisen'] == []
+E     
+E     Left contains one more item: 'anfrage_reisen'
+E     Use -v to get more diff)
+_______________ test_bitte_konten_zusammengefuehrt_verschwindet ________________
+engine/tests/test_meldungen_veraltet.py:150: in test_bitte_konten_zusammengefuehrt_verschwindet
+    assert konten.anfragen() == [] and arten() == []
+E   AssertionError: assert ([] == []
+E     
+E     Use -v to get more diff and ['anfrage_reisen'] == []
+E     
+E     Left contains one more item: 'anfrage_reisen'
+E     Use -v to get more diff)
+______________________ test_offene_bitte_bleibt_sichtbar _______________________
+engine/tests/test_meldungen_veraltet.py:158: in test_offene_bitte_bleibt_sichtbar
+    [m] = rm.meldungen_des_kontos(konten.konto("k-ida"))
+    ^^^
+E   ValueError: too many values to unpack (expected 1)
+______________ test_adresse_geaendert_bitte_mit_feld_konto_bleibt ______________
+engine/tests/test_meldungen_veraltet.py:165: in test_adresse_geaendert_bitte_mit_feld_konto_bleibt
+    assert roh.get("konto") == "k-karl"
+E   AssertionError: assert None == 'k-karl'
+E    +  where None = <built-in method get of dict object at 0x107831cc0>('konto')
+E    +    where <built-in method get of dict object at 0x107831cc0> = {'id': 'M-20261124-171816-6e03', 'erstellt': '2026-11-24T17:18:16+00:00', 'an': ['k-ida', 'k-tom'], 'art': 'anfrage_reisen', ...}.get
+______________ test_mehrere_betreiber_entscheidung_gilt_fuer_alle ______________
+engine/tests/test_meldungen_veraltet.py:181: in test_mehrere_betreiber_entscheidung_gilt_fuer_alle
+    assert arten("k-ida") == arten("k-tom") == []
+E   AssertionError: assert ['anfrage_reisen'] == []
+E     
+E     Left contains one more item: 'anfrage_reisen'
+E     Use -v to get more diff
+___________________ test_testanfrage_wird_nicht_unterdrueckt ___________________
+engine/tests/test_meldungen_veraltet.py:191: in test_testanfrage_wird_nicht_unterdrueckt
+    assert arten() == ["anfrage_warteliste"]
+E   AssertionError: assert ['anfrage_rei...e_warteliste'] == ['anfrage_warteliste']
+E     
+E     At index 0 diff: 'anfrage_reisen' != 'anfrage_warteliste'
+E     Left contains one more item: 'anfrage_warteliste'
+E     Use -v to get more diff
+______________ test_wartelisten_eintrag_freigegeben_verschwindet _______________
+engine/tests/test_meldungen_veraltet.py:202: in test_wartelisten_eintrag_freigegeben_verschwindet
+    assert arten() == []
+E   AssertionError: assert ['anfrage_warteliste'] == []
+E     
+E     Left contains one more item: 'anfrage_warteliste'
+E     Use -v to get more diff
+_______________ test_wartelisten_eintrag_geloescht_verschwindet ________________
+engine/tests/test_meldungen_veraltet.py:210: in test_wartelisten_eintrag_geloescht_verschwindet
+    assert konten.warteliste() == [] and arten() == []
+E   AssertionError: assert ([] == []
+E     
+E     Use -v to get more diff and ['anfrage_warteliste'] == []
+E     
+E     Left contains one more item: 'anfrage_warteliste'
+E     Use -v to get more diff)
+_______________ test_offener_wartelisten_eintrag_bleibt_sichtbar _______________
+engine/tests/test_meldungen_veraltet.py:217: in test_offener_wartelisten_eintrag_bleibt_sichtbar
+    [m] = rm.meldungen_des_kontos(konten.konto("k-ida"))
+    ^^^
+E   ValueError: too many values to unpack (expected 1)
+________________ test_altmeldung_ohne_feld_konto_ueber_adresse _________________
+engine/tests/test_meldungen_veraltet.py:228: in test_altmeldung_ohne_feld_konto_ueber_adresse
+    assert sichtbar() == set()
+E   AssertionError: assert {'M-20261124-171816-c028'} == set()
+E     
+E     Extra items in the left set:
+E     'M-20261124-171816-c028'
+E     Use -v to get more diff
+__________________ test_nicht_zuzuordnende_altmeldung_bleibt ___________________
+engine/tests/test_meldungen_veraltet.py:238: in test_nicht_zuzuordnende_altmeldung_bleibt
+    assert zugeordnet not in sichtbar() and sichtbar() == bleiben
+E   AssertionError: assert ('M-20261124-171816-0e37' not in {'M-20261124-171816-0e37', 'M-20261124-171816-1086', 'M-20261124-171816-ef8e'})
+E    +  where {'M-20261124-171816-0e37', 'M-20261124-171816-1086', 'M-20261124-171816-ef8e'} = sichtbar()
+________________________ test_unlesbares_t_wirft_nicht _________________________
+engine/tests/test_meldungen_veraltet.py:254: in test_unlesbares_t_wirft_nicht
+    assert zugeordnet not in sichtbar()
+E   AssertionError: assert 'M-20261124-171816-6db4' not in {'M-20261124-171816-0d25', 'M-20261124-171816-11f2', 'M-20261124-171816-1a47', 'M-20261124-171816-25db', 'M-20261124-171816-2724', 'M-20261124-171816-48a2', ...}
+E    +  where {'M-20261124-171816-0d25', 'M-20261124-171816-11f2', 'M-20261124-171816-1a47', 'M-20261124-171816-25db', 'M-20261124-171816-2724', 'M-20261124-171816-48a2', ...} = sichtbar()
+______________________ test_unlesbares_konto_wirft_nicht _______________________
+engine/tests/test_meldungen_veraltet.py:264: in test_unlesbares_konto_wirft_nicht
+    assert weg not in sichtbar()
+E   AssertionError: assert 'M-20261124-171816-0dba' not in {'M-20261124-171816-08da', 'M-20261124-171816-0dba', 'M-20261124-171816-2cf2', 'M-20261124-171816-4b40', 'M-20261124-171816-64eb', 'M-20261124-171816-9190', ...}
+E    +  where {'M-20261124-171816-08da', 'M-20261124-171816-0dba', 'M-20261124-171816-2cf2', 'M-20261124-171816-4b40', 'M-20261124-171816-64eb', 'M-20261124-171816-9190', ...} = sichtbar()
+________________________ test_andere_arten_unveraendert ________________________
+engine/tests/test_meldungen_veraltet.py:275: in test_andere_arten_unveraendert
+    assert weg not in sichtbar()
+E   AssertionError: assert 'M-20261124-171816-7cc0' not in {'M-20261124-171816-614d', 'M-20261124-171816-7cc0', 'M-20261124-171816-8b74', 'M-20261124-171816-a52c', 'M-20261124-171816-db81'}
+E    +  where {'M-20261124-171816-614d', 'M-20261124-171816-7cc0', 'M-20261124-171816-8b74', 'M-20261124-171816-a52c', 'M-20261124-171816-db81'} = sichtbar()
+__________________________ test_filter_nur_beim_lesen __________________________
+engine/tests/test_meldungen_veraltet.py:287: in test_filter_nur_beim_lesen
+    assert sichtbar() == set()
+E   AssertionError: assert {'M-20261124-...-171816-ebf2'} == set()
+E     
+E     Extra items in the left set:
+E     'M-20261124-171816-ebf2'
+E     'M-20261124-171816-3c0c'
+E     'M-20261124-171816-b6c2'
+E     Use -v to get more diff
+_______________ test_mengen_hoechstens_einmal_und_nur_bei_bedarf _______________
+engine/tests/test_meldungen_veraltet.py:309: in test_mengen_hoechstens_einmal_und_nur_bei_bedarf
+    assert zaehler == dict.fromkeys(zaehler, 1)
+E   AssertionError: assert {'vorgemerkte...arteliste': 0} == {'vorgemerkte...arteliste': 1}
+E     
+E     Differing items:
+E     {'warteliste': 0} != {'warteliste': 1}
+E     {'anfragen': 0} != {'anfragen': 1}
+E     {'vorgemerkte_reisen': 0} != {'vorgemerkte_reisen': 1}
+E     Use -v to get more diff
+______________________ test_wirkung_im_konnektor_my_trips ______________________
+engine/tests/test_meldungen_veraltet.py:362: in test_wirkung_im_konnektor_my_trips
+    assert [x for x in VERALTET if satz(*x) in t] == []
+E   AssertionError: assert [('anfrage_re...Alte Runde'})] == []
+E     
+E     Left contains 3 more items, first extra item: ('anfrage_reisen', {'name': 'Karl', 'email': 'karl@beispiel.invalid'})
+E     Use -v to get more diff
+__________________ test_zahl_der_gelesenen_sinkt_im_konnektor __________________
+engine/tests/test_meldungen_veraltet.py:373: in test_zahl_der_gelesenen_sinkt_im_konnektor
+    assert zahl(3)
+E   assert False
+E    +  where False = <function test_zahl_der_gelesenen_sinkt_im_konnektor.<locals>.zahl at 0x1078c1b20>(3)
+_________________________ test_wirkung_auf_mein_konto __________________________
+engine/tests/test_meldungen_veraltet.py:389: in test_wirkung_auf_mein_konto
+    assert [x for x in VERALTET if steht(t, *x)] == []
+E   AssertionError: assert [('anfrage_re...Alte Runde'})] == []
+E     
+E     Left contains 3 more items, first extra item: ('anfrage_reisen', {'name': 'Karl', 'email': 'karl@beispiel.invalid'})
+E     Use -v to get more diff
+____________ test_veraltete_meldung_laesst_sich_nicht_mehr_oeffnen _____________
+engine/tests/test_meldungen_veraltet.py:395: in test_veraltete_meldung_laesst_sich_nicht_mehr_oeffnen
+    assert abruf(f"{lagen.kurl}/konto?meldung={mid}", cookie=lagen.ida_keks)[0] == 404
+E   assert 303 == 404
+=========================== short test summary info ============================
+FAILED engine/tests/test_meldungen_veraltet.py::test_neue_reise_vorgemerkt_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_neue_reise_entfernt_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_neue_reise_zurueckgeholt_erscheint_wieder
+FAILED engine/tests/test_meldungen_veraltet.py::test_neue_reise_ohne_mitgliedschaft_bleibt
+FAILED engine/tests/test_meldungen_veraltet.py::test_bitte_freigeschaltet_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_bitte_abgelehnt_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_bitte_konto_geloescht_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_bitte_konten_zusammengefuehrt_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_offene_bitte_bleibt_sichtbar
+FAILED engine/tests/test_meldungen_veraltet.py::test_adresse_geaendert_bitte_mit_feld_konto_bleibt
+FAILED engine/tests/test_meldungen_veraltet.py::test_mehrere_betreiber_entscheidung_gilt_fuer_alle
+FAILED engine/tests/test_meldungen_veraltet.py::test_testanfrage_wird_nicht_unterdrueckt
+FAILED engine/tests/test_meldungen_veraltet.py::test_wartelisten_eintrag_freigegeben_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_wartelisten_eintrag_geloescht_verschwindet
+FAILED engine/tests/test_meldungen_veraltet.py::test_offener_wartelisten_eintrag_bleibt_sichtbar
+FAILED engine/tests/test_meldungen_veraltet.py::test_altmeldung_ohne_feld_konto_ueber_adresse
+FAILED engine/tests/test_meldungen_veraltet.py::test_nicht_zuzuordnende_altmeldung_bleibt
+FAILED engine/tests/test_meldungen_veraltet.py::test_unlesbares_t_wirft_nicht
+FAILED engine/tests/test_meldungen_veraltet.py::test_unlesbares_konto_wirft_nicht
+FAILED engine/tests/test_meldungen_veraltet.py::test_andere_arten_unveraendert
+FAILED engine/tests/test_meldungen_veraltet.py::test_filter_nur_beim_lesen - ...
+FAILED engine/tests/test_meldungen_veraltet.py::test_mengen_hoechstens_einmal_und_nur_bei_bedarf
+FAILED engine/tests/test_meldungen_veraltet.py::test_wirkung_im_konnektor_my_trips
+FAILED engine/tests/test_meldungen_veraltet.py::test_zahl_der_gelesenen_sinkt_im_konnektor
+FAILED engine/tests/test_meldungen_veraltet.py::test_wirkung_auf_mein_konto
+FAILED engine/tests/test_meldungen_veraltet.py::test_veraltete_meldung_laesst_sich_nicht_mehr_oeffnen
+26 failed in 6.43s
