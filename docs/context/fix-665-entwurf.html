@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entwurf Zeitleiste einer Fahrt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: ruhig, sachlich, wie die Reiseseite von Frieda selbst
+   IDEA: die Karte einer Fahrt, so wie sie später auf der Seite steht, vorher und nachher nebeneinander
+   PICTURE: die neue Zeitleiste selbst, groß, mit Punkten auf einer Linie
+   COLOUR and TYPE: Farben und Schrift der Reiseseite (Source Sans 3, Grün als Akzent)
+   LAYOUT: zwei Spalten vorher/nachher, unter 760px untereinander */
+:root{color-scheme:light dark;
+--bg:light-dark(#f8f8f5,#151816);--fg:light-dark(#1d2420,#eceee9);--mut:light-dark(#5b645e,#a5aca6);--card:light-dark(#fff,#1d211e);
+--line:light-dark(#e4e5df,#2c312d);--acc:light-dark(#1f7a57,#6fd0a5);--acc2:light-dark(#e3f1ea,#1f3329);--warn:light-dark(#9a5b00,#f0c46a);--warnbg:light-dark(#fbeed6,#3a3017);--blau:light-dark(#1f3b57,#7fa9d6)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.55 "Source Sans 3",-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,4vw,56px) max(5vw,16px);max-width:1180px;margin:0 auto}
+h1{font-size:clamp(30px,4.5vw,44px);line-height:1.08;margin:0 0 10px;text-wrap:balance}
+h2{font-size:24px;margin:40px 0 6px}
+.lead{max-width:44rem;color:var(--mut);margin:0}
+.hinweis{font-size:14px;color:var(--mut);margin-top:8px}
+.paar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:24px;margin-top:16px;align-items:start}
+@media(max-width:760px){.paar{grid-template-columns:minmax(0,1fr)}}
+.spalte>h3{font-size:14px;font-weight:600;color:var(--mut);margin:0 0 8px}
+.karte{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.neu .karte{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc2)}
+.titelzeile{font-weight:700;font-size:19px;display:flex;justify-content:space-between;gap:8px}
+.kenn{font-weight:400;font-size:13px;color:var(--mut)}
+.klein{font-size:14px;color:var(--mut)}
+.buchung{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.buchung .kopf{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-weight:600}
+.chip{display:inline-block;border-radius:99px;padding:1px 10px;font-size:13px;font-weight:600}
+.chip.plan{background:var(--acc);color:var(--bg)}
+.z{margin-top:4px}.z b{font-weight:600}
+.alt-ab{font-size:18px;font-weight:700;margin-top:6px}
+details{margin-top:8px;font-size:15px}summary{cursor:pointer;color:var(--acc);font-weight:600;min-height:32px}
+/* neuer Baustein: Zeitleiste */
+ol.zl{list-style:none;margin:14px 0 4px;padding:0}
+ol.zl>li{display:grid;grid-template-columns:22px 4.2em minmax(0,1fr);column-gap:10px;position:relative;padding-bottom:12px}
+ol.zl>li::before{content:"";position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--line)}
+ol.zl>li:first-child::before{top:12px}ol.zl>li:last-child::before{bottom:calc(100% - 12px)}ol.zl>li:last-child{padding-bottom:0}
+.p{width:12px;height:12px;border-radius:50%;margin:7px 4px 0;background:var(--card);border:3px solid var(--mut);z-index:1}
+.t{font-variant-numeric:tabular-nums;font-weight:600;padding-top:1px;white-space:nowrap}
+.was{padding-top:1px}
+.tag{display:block;font-weight:600}
+li.gross .p{width:16px;height:16px;margin:6px 2px 0;border-color:var(--blau);background:var(--blau)}
+li.gross .was{font-weight:700}
+.datum{font-weight:600;font-variant-numeric:tabular-nums;margin-top:6px}
+.glocke{display:inline-block;margin-left:6px;font-size:12px;font-weight:600;color:var(--warn);background:var(--warnbg);border-radius:99px;padding:0 8px;vertical-align:2px}
+.zusatz{display:block;font-size:14px;font-weight:400;color:var(--mut)}
+dl.mk{margin:12px 0 0;font-size:15px}dl.mk>div{display:grid;grid-template-columns:9rem minmax(0,1fr);border-top:1px solid var(--line);padding:5px 0}
+dl.mk dt{color:var(--mut)}dl.mk dd{margin:0}
+.fragen{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 20px 14px;margin-top:16px;max-width:52rem}
+.fragen li{margin:10px 0}
+.regel{max-width:52rem}.regel li{margin:6px 0}
+</style>
+</head>
+<body>
+<main class="band">
+<h1>Entwurf: Fahrten als Zeitleiste</h1>
+<p class="lead">So soll eine Fahrt auf der Reiseseite künftig aussehen: alle Zeitpunkte in zeitlicher Reihenfolge, Abfahrt und Ankunft groß. Zur Buchung gehört nur noch das Geschäftliche. Gilt für jede Fahrt, nicht nur für Flüge.</p>
+<p class="hinweis">Alle Angaben sind erfundene Beispiele.</p>
+
+<h2>Beispiel 1: ein Flug</h2>
+<p class="lead">Die Reise hat an ihrer Art „Flug“ Zeitpunkte für Online-Check-in, Gepäckabgabe und Boarding angelegt; der Online-Check-in ist als „erinnert“ markiert.</p>
+<div class="paar">
+ <div class="spalte"><h3>Heute</h3>
+  <div class="karte">
+   <div class="titelzeile"><span>✈ Flug Heimatstadt → Inselstadt</span><span class="kenn">E-03</span></div>
+   <div class="klein">Flug · Fr 12.3. · ab 07:05 → an 09:40</div>
+   <dl class="mk"><div><dt>Flugnummer</dt><dd>XY 123</dd></div><div><dt>Online-Check-in</dt><dd>Mi 10.3., 07:05</dd></div><div><dt>Gepäckabgabe</dt><dd>06:05</dd></div><div><dt>Boarding</dt><dd>06:35</dd></div><div><dt>Terminal</dt><dd>Terminal 1, Schalter 20–28</dd></div></dl>
+   <div class="buchung">
+    <div class="kopf">Buchung <span class="chip plan">gebucht</span><span class="chip plan">bezahlt</span></div>
+    <div class="z"><b>Nummer:</b> QWE4RT</div>
+    <div class="alt-ab">Online-Check-in ab Mi 10.3.2027, 07:05</div>
+    <details><summary>Einzelheiten der Buchung</summary><div class="z"><b>Preis:</b> 184 € für zwei</div><div class="z"><b>Reisende:</b> Ida (Koffer 20 kg), Karl</div></details>
+   </div>
+  </div>
+ </div>
+ <div class="spalte neu"><h3>Neu</h3>
+  <div class="karte">
+   <div class="titelzeile"><span>✈ Flug Heimatstadt → Inselstadt</span><span class="kenn">E-03</span></div>
+   <div class="datum">Fr 12.3.2027</div>
+   <ol class="zl" aria-label="Ablauf">
+    <li><span class="p"></span><span class="t">07:05<span class="tag">Mi 10.3.</span></span><span class="was">Online-Check-in ab<span class="glocke">erinnert</span></span></li>
+    <li><span class="p"></span><span class="t">06:05</span><span class="was">Gepäckabgabe bis<span class="zusatz">Terminal 1, Schalter 20–28</span></span></li>
+    <li><span class="p"></span><span class="t">06:35</span><span class="was">Boarding</span></li>
+    <li class="gross"><span class="p"></span><span class="t">07:05</span><span class="was">Abflug Heimatstadt</span></li>
+    <li class="gross"><span class="p"></span><span class="t">09:40</span><span class="was">Ankunft Inselstadt</span></li>
+   </ol>
+   <dl class="mk"><div><dt>Flugnummer</dt><dd>XY 123</dd></div></dl>
+   <div class="buchung">
+    <div class="kopf">Buchung <span class="chip plan">gebucht</span><span class="chip plan">bezahlt</span></div>
+    <div class="z"><b>Nummer:</b> QWE4RT</div>
+    <details><summary>Einzelheiten der Buchung</summary><div class="z"><b>Preis:</b> 184 € für zwei</div><div class="z"><b>Reisende:</b> Ida (Koffer 20 kg), Karl</div><div class="z"><b>Tarif:</b> Basic mit Aufgabegepäck</div></details>
+   </div>
+  </div>
+ </div>
+</div>
+
+<h2>Beispiel 2: eine Bahnfahrt (Stadtwochenende)</h2>
+<p class="lead">Keine eigenen Zeitpunkte an der Fahrt, nur der Komfort-Check-in aus der Buchung. Er wandert in die Zeitleiste der Fahrt und erinnert weiter wie bisher.</p>
+<div class="paar">
+ <div class="spalte"><h3>Heute</h3>
+  <div class="karte">
+   <div class="titelzeile"><span>🚆 Regionalzug Heimatstadt → Beispielstadt</span><span class="kenn">E-01</span></div>
+   <div class="klein">Bahn · Do 11.3. · ab 09:10 → an 11:25</div>
+   <div class="buchung">
+    <div class="kopf">Buchung <span class="chip plan">gebucht</span><span class="chip plan">bezahlt</span></div>
+    <div class="z"><b>Nummer:</b> DB-XYZ789</div>
+    <div class="alt-ab">Komfort-Check-in ab Do 11.3.2027, 09:10</div>
+   </div>
+  </div>
+ </div>
+ <div class="spalte neu"><h3>Neu</h3>
+  <div class="karte">
+   <div class="titelzeile"><span>🚆 Regionalzug Heimatstadt → Beispielstadt</span><span class="kenn">E-01</span></div>
+   <div class="datum">Do 11.3.2027</div>
+   <ol class="zl" aria-label="Ablauf">
+    <li><span class="p"></span><span class="t">09:10</span><span class="was">Komfort-Check-in ab<span class="glocke">erinnert</span><span class="zusatz">aus der Buchung</span></span></li>
+    <li class="gross"><span class="p"></span><span class="t">09:10</span><span class="was">Abfahrt Heimatstadt</span></li>
+    <li class="gross"><span class="p"></span><span class="t">11:25</span><span class="was">Ankunft Beispielstadt</span></li>
+   </ol>
+   <div class="buchung">
+    <div class="kopf">Buchung <span class="chip plan">gebucht</span><span class="chip plan">bezahlt</span></div>
+    <div class="z"><b>Nummer:</b> DB-XYZ789</div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<h2>Regeln dahinter</h2>
+<ul class="regel">
+ <li>Die Zeitleiste erscheint, sobald eine Fahrt mindestens einen Zeitpunkt außer Abfahrt und Ankunft hat; sonst bleibt es bei der kurzen Zeile „ab 09:10 → an 11:25“.</li>
+ <li>Reihenfolge nach Datum und Uhrzeit. Eine Uhrzeit ohne Datum gilt am Tag der Fahrt; ein anderer Tag steht klein unter der Uhrzeit.</li>
+ <li>Bei gleicher Uhrzeit steht ein Zeitpunkt vor der Abfahrt vor ihr und nach der Ankunft hinter ihr.</li>
+ <li>Was erinnern soll, legt die Reise an ihrer Art fest (Schalter „erinnert“). Frieda erinnert dann daran genau wie heute an „ab“ der Buchung: per Nachricht ab dem Tag des Zeitpunkts und im Kalender.</li>
+ <li>Die Erinnerung braucht ein Datum. Ein Zeitpunkt ohne Datum wird gezeigt, erinnert aber nicht.</li>
+ <li>Bestehende Reisen bleiben, wie sie sind: „ab“ an der Buchung gilt weiter und erinnert weiter, es steht nur an der Fahrt statt an der Buchung.</li>
+</ul>
+
+<h2>Zur Freigabe</h2>
+<ol class="fragen">
+ <li><b>Gestaltung:</b> alle Zeiten und Daten in einer Schriftgröße; Abfahrt und Ankunft heben sich durch fetten Namen und gefüllten Punkt ab. Die Art („Flug“) steht nur noch als Symbol im Titel, darunter das Datum in derselben Größe. Ein abweichender Tag steht direkt bei der Uhrzeit.</li>
+ <li><b>„Ab“ der Buchung</b> (Online- oder Komfort-Check-in) wandert aus dem Buchungsblock in die Zeitleiste der Fahrt.</li>
+ <li><b>Terminal</b> steht direkt beim Punkt, zu dem es gehört (hier die Gepäckabgabe). Die Reise legt an ihrer Art fest, bei welchem Zeitpunkt ein Merkmal steht; das kommt mit in diesen Schritt.</li>
+ <li><b>Vorlage für die Art „Flug“</b> mit Online-Check-in, Gepäckabgabe, Boarding und Terminal (ohne Werte) kommt im zweiten Schritt.</li>
+ <li><b>Bausteine:</b> Die Zeitleiste wird ein Baustein der Seite (Molekül nach Atomic Design) aus vorhandenen Teilen: Punkt und Linie der Halteleiste, Uhrzeit, Marke „erinnert“. Sie steht in der Bausteinsammlung und auf der Bausteinseite und gilt für jede Fahrt.</li>
+</ol>
+</main>
+</body>
+</html>

@@ -1,0 +1,2122 @@
+bringing up nodes...
+bringing up nodes...
+
+.FFFFFFFFFFF.FF..FFFFFFFFF.FFFFFFFFFF..FF..                              [100%]
+=================================== FAILURES ===================================
+_________________ test_erinnern_an_zeitpunkt_wird_uebernommen __________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw2/test_erinnern_an_zeitpunkt_wir0')
+
+    def test_erinnern_an_zeitpunkt_wird_uebernommen(tmp_path):
+        """Test 3/AC-2: erinnern: true an einem Zeitpunkt-Merkmal steht mit der Definition in den Seitendaten."""
+        q = abwandeln(kopie(tmp_path), definitionen={ERINNERND: DEF_ERINNERND}, werte={"E-01": {ERINNERND: "2027-03-11T08:00"}})
+>       d = bau(q, tmp_path)
+            ^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:153: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:91: in bau
+    return bauen.bauen(q, tmp_path / name / q.name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bauen.py:1960: in bauen
+    daten = b.daten()
+            ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <bauen.Bauer object at 0x7abb11679d90>
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+    
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
+    
+        # Plan
+        text = self.lesen(p_rel)
+        vor, teile = zerlege(text, 2)
+        vor = "\n".join(z for z in vor.splitlines() if not z.startswith("# "))
+        plan_kopf = self.html(vor, self.reise_dir / p_rel) if vor.strip() else ""
+        benutzt[p_rel] = set()
+        tab_cfg = c.get("tabellen", {})
+        tab_benutzt = set()
+        for titel, nr, body in teile:
+            wo = f"{p_rel}:{nr}"
+            if titel in tab_cfg:
+                tab_benutzt.add(titel)
+                sid, typ, art = tab_cfg[titel]
+                abschnitte.append(self.tabellen_abschnitt(sid, typ, art, titel, body, p_rel, wo))
+                continue
+            if self.ignoriert(p_rel, titel):
+                continue
+            eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
+            if not eintrag:
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
+                continue
+            abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
+        for titel in tab_cfg:
+            if titel not in tab_benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
+    
+        # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
+        for rel in c.get("abschnitte", {}):
+            if rel in (d_rel, u_rel, p_rel):
+                continue
+            vor, teile = zerlege(self.lesen(rel), 2)
+            benutzt[rel] = set()
+            # Text vor dem ersten ## (z. B. Zusammenfassung unter der Hauptüberschrift) geht nicht
+            # stillschweigend verloren: in reise.json unter "#" eine ID geben oder in "ignorieren" "#".
+            h1 = next((z[2:].strip() for z in vor.splitlines() if z.startswith("# ")), "")
+            vor = trenner_entfernen("\n".join(z for z in vor.splitlines() if not z.startswith("# ")))
+            if vor.strip() and not self.ignoriert(rel, "#"):
+                eintrag = self.cfg["abschnitte"][rel].get("#")
+                if eintrag:
+                    benutzt[rel].add("#")
+                    abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
+                else:
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                if self.ignoriert(rel, titel):
+                    continue
+                eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
+                if not eintrag:
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
+                    continue
+                abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
+    
+        orte_inhalt = self.orte_lesen(abschnitte)
+    
+        fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
+    
+        # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
+        for rel, karte in c.get("abschnitte", {}).items():
+            if rel not in benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
+                continue
+            for titel in karte:
+                if titel not in benutzt[rel]:
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
+    
+        # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
+        route = None
+        r_cfg = c.get("routen")
+        if r_cfg:
+            r_rel = r_cfg["datei"]
+            try:
+                roh = yaml.safe_load(self.lesen(r_rel)) or {}
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
+                roh = {}
+            status = {z["id"]: z["status"] for z in fragen["zeilen"]}
+            if "entscheider" in roh:
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
+                arten = None
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
+            for oid, wo in orte_inhalt.items():
+                if route and oid not in route["orte"]:
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
+            if route:
+                self.karte_bauen(r_cfg, route, lesetexte)
+                self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
+            if route:
+                for art in ("tagesplan", "unterkuenfte"):
+                    if art not in r_cfg:
+                        continue
+                    sid, titel = r_cfg[art]
+                    a = next((x for x in abschnitte if x["id"] == sid), None)
+                    if a is None:
+                        self.id_anlegen(sid, f"reise.json routen.{art}")
+                        a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
+                        abschnitte.insert(0, a)
+                    a["route_ansicht"] = art
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
+    
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
+    
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+    
+        # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
+        if c.get("orte_wissen"):
+            self.orte_wissen(c["orte_wissen"], abschnitte)
+    
+        # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
+    
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
+        if self.fehler:
+>           raise BauFehler(list(dict.fromkeys(self.fehler)))
+E           bauen.BauFehler: plan/routen.yaml: arten.yaml bahn: Merkmal freischalten: unbekannte Felder erinnern.
+
+engine/bauen.py:875: BauFehler
+______ test_bei_wird_geprueft[bahn-definitionen0-pruefung.routen.bei_typ] ______
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw5/test_bei_wird_geprueft_bahn_de0')
+art = 'bahn'
+definitionen = {'x': {'name': 'Ab', 'typ': 'zeitpunkt', 'bei': 'abfahrt'}}
+schluessel = 'pruefung.routen.bei_typ'
+
+    @pytest.mark.parametrize("art, definitionen, schluessel", [
+        ("bahn", {"x": {"name": "Ab", "typ": "zeitpunkt", "bei": "abfahrt"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Uhr", "typ": "uhrzeit", "bei": "ankunft"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "gibt_es_nicht"}}, "pruefung.routen.bei_ziel"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "dauer"}}, "pruefung.routen.bei_ziel"),           # Ziel vom Typ text
+        ("gastzimmer", {"x": {"name": "Tür", "bei": "abfahrt"}}, "pruefung.routen.bei_ziel"),      # keine Bewegung
+        ("bahn", {"x": {"name": "Gleis", "bei": ""}}, "pruefung.routen.bei"),
+        ("bahn", {"x": {"name": "Gleis", "bei": 5}}, "pruefung.routen.bei"),
+    ])
+    def test_bei_wird_geprueft(tmp_path, art, definitionen, schluessel):
+        """Test 16, AC-10: bei nicht an Zeitpunkt/Uhrzeit, nur auf ein vorhandenes Zeitpunkt-Merkmal derselben Art oder auf
+        abfahrt/ankunft einer Bewegung, nur als nichtleerer Text. Die Ablehnung des Ziels nennt die gültigen Ziele."""
+        q = abwandeln(kopie(tmp_path), art=art, definitionen=definitionen)
+>       text = bau_fehler(q, tmp_path, schluessel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder bei.'
+schluessel = 'pruefung.routen.bei_typ', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.bei_typ fehlt im Katalog
+E       assert 'pruefung.routen.bei_typ' != 'pruefung.routen.bei_typ'
+
+engine/tests/conftest.py:118: AssertionError
+_ test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch[definition1-pruefung.routen.erinnern_typ] _
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw3/test_erinnern_nur_an_zeitpunkt0')
+definition = {'name': 'Uhr', 'typ': 'uhrzeit', 'erinnern': True}
+schluessel = 'pruefung.routen.erinnern_typ'
+
+    @pytest.mark.parametrize("definition, schluessel", [
+        ({"name": "Hinweis", "typ": "text", "erinnern": True}, "pruefung.routen.erinnern_typ"),
+        ({"name": "Uhr", "typ": "uhrzeit", "erinnern": True}, "pruefung.routen.erinnern_typ"),
+        ({"name": "Ab", "typ": "zeitpunkt", "erinnern": "ja"}, "pruefung.routen.erinnern"),
+    ])
+    def test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch(tmp_path, definition, schluessel):
+        """Test 3: erinnern an einem anderen Typ oder mit einem anderen Wert als true/false lehnt die Prüfung der Art ab."""
+        q = abwandeln(kopie(tmp_path), definitionen={"x": definition})
+>       bau_fehler(q, tmp_path, schluessel)
+
+engine/tests/test_zeitleiste_bewegung.py:165: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder erinnern.'
+schluessel = 'pruefung.routen.erinnern_typ', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.erinnern_typ fehlt im Katalog
+E       assert 'pruefung.routen.erinnern_typ' != 'pruefung.routen.erinnern_typ'
+
+engine/tests/conftest.py:118: AssertionError
+_____ test_text_lage_rolle_nennt_zeitpunkt_nicht_mehr_als_rollenpflichtig ______
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+    def test_text_lage_rolle_nennt_zeitpunkt_nicht_mehr_als_rollenpflichtig():
+        """Der Fehlertext lage_rolle gilt nur noch für uhrzeit; ein Zeitpunkt braucht keine Rolle mehr."""
+        for sprache in ("de", "en"):
+            t = texte.t(sprache, "pruefung.routen.lage_rolle", wo="E-01", k="x", typ="uhrzeit")
+>           assert "zeitpunkt" not in t.replace("{typ}", ""), (sprache, t)
+E           AssertionError: ('de', 'E-01: Das Merkmal x vom Typ uhrzeit braucht eine Rolle (uhrzeit: beginn oder ende, zeitpunkt: abfahrt oder ankunft, link: buchung).')
+E           assert 'zeitpunkt' not in 'E-01: Das M...k: buchung).'
+E             
+E             'zeitpunkt' is contained here:
+E               der ende, zeitpunkt: abfahrt oder ankunft, link: buchung).
+E             ?           +++++++++
+
+engine/tests/test_zeitleiste_bewegung.py:145: AssertionError
+_ test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch[definition0-pruefung.routen.erinnern_typ] _
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw2/test_erinnern_nur_an_zeitpunkt0')
+definition = {'name': 'Hinweis', 'typ': 'text', 'erinnern': True}
+schluessel = 'pruefung.routen.erinnern_typ'
+
+    @pytest.mark.parametrize("definition, schluessel", [
+        ({"name": "Hinweis", "typ": "text", "erinnern": True}, "pruefung.routen.erinnern_typ"),
+        ({"name": "Uhr", "typ": "uhrzeit", "erinnern": True}, "pruefung.routen.erinnern_typ"),
+        ({"name": "Ab", "typ": "zeitpunkt", "erinnern": "ja"}, "pruefung.routen.erinnern"),
+    ])
+    def test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch(tmp_path, definition, schluessel):
+        """Test 3: erinnern an einem anderen Typ oder mit einem anderen Wert als true/false lehnt die Prüfung der Art ab."""
+        q = abwandeln(kopie(tmp_path), definitionen={"x": definition})
+>       bau_fehler(q, tmp_path, schluessel)
+
+engine/tests/test_zeitleiste_bewegung.py:165: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder erinnern.'
+schluessel = 'pruefung.routen.erinnern_typ', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.erinnern_typ fehlt im Katalog
+E       assert 'pruefung.routen.erinnern_typ' != 'pruefung.routen.erinnern_typ'
+
+engine/tests/conftest.py:118: AssertionError
+_____ test_bei_wird_geprueft[bahn-definitionen3-pruefung.routen.bei_ziel] ______
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw2/test_bei_wird_geprueft_bahn_de0')
+art = 'bahn', definitionen = {'x': {'name': 'Gleis', 'bei': 'dauer'}}
+schluessel = 'pruefung.routen.bei_ziel'
+
+    @pytest.mark.parametrize("art, definitionen, schluessel", [
+        ("bahn", {"x": {"name": "Ab", "typ": "zeitpunkt", "bei": "abfahrt"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Uhr", "typ": "uhrzeit", "bei": "ankunft"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "gibt_es_nicht"}}, "pruefung.routen.bei_ziel"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "dauer"}}, "pruefung.routen.bei_ziel"),           # Ziel vom Typ text
+        ("gastzimmer", {"x": {"name": "Tür", "bei": "abfahrt"}}, "pruefung.routen.bei_ziel"),      # keine Bewegung
+        ("bahn", {"x": {"name": "Gleis", "bei": ""}}, "pruefung.routen.bei"),
+        ("bahn", {"x": {"name": "Gleis", "bei": 5}}, "pruefung.routen.bei"),
+    ])
+    def test_bei_wird_geprueft(tmp_path, art, definitionen, schluessel):
+        """Test 16, AC-10: bei nicht an Zeitpunkt/Uhrzeit, nur auf ein vorhandenes Zeitpunkt-Merkmal derselben Art oder auf
+        abfahrt/ankunft einer Bewegung, nur als nichtleerer Text. Die Ablehnung des Ziels nennt die gültigen Ziele."""
+        q = abwandeln(kopie(tmp_path), art=art, definitionen=definitionen)
+>       text = bau_fehler(q, tmp_path, schluessel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder bei.'
+schluessel = 'pruefung.routen.bei_ziel', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.bei_ziel fehlt im Katalog
+E       assert 'pruefung.routen.bei_ziel' != 'pruefung.routen.bei_ziel'
+
+engine/tests/conftest.py:118: AssertionError
+_ test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch[definition2-pruefung.routen.erinnern] _
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw3/test_erinnern_nur_an_zeitpunkt1')
+definition = {'name': 'Ab', 'typ': 'zeitpunkt', 'erinnern': 'ja'}
+schluessel = 'pruefung.routen.erinnern'
+
+    @pytest.mark.parametrize("definition, schluessel", [
+        ({"name": "Hinweis", "typ": "text", "erinnern": True}, "pruefung.routen.erinnern_typ"),
+        ({"name": "Uhr", "typ": "uhrzeit", "erinnern": True}, "pruefung.routen.erinnern_typ"),
+        ({"name": "Ab", "typ": "zeitpunkt", "erinnern": "ja"}, "pruefung.routen.erinnern"),
+    ])
+    def test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch(tmp_path, definition, schluessel):
+        """Test 3: erinnern an einem anderen Typ oder mit einem anderen Wert als true/false lehnt die Prüfung der Art ab."""
+        q = abwandeln(kopie(tmp_path), definitionen={"x": definition})
+>       bau_fehler(q, tmp_path, schluessel)
+
+engine/tests/test_zeitleiste_bewegung.py:165: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder erinnern.'
+schluessel = 'pruefung.routen.erinnern', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.erinnern fehlt im Katalog
+E       assert 'pruefung.routen.erinnern' != 'pruefung.routen.erinnern'
+
+engine/tests/conftest.py:118: AssertionError
+______ test_bei_wird_geprueft[bahn-definitionen1-pruefung.routen.bei_typ] ______
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw5/test_bei_wird_geprueft_bahn_de1')
+art = 'bahn'
+definitionen = {'x': {'name': 'Uhr', 'typ': 'uhrzeit', 'bei': 'ankunft'}}
+schluessel = 'pruefung.routen.bei_typ'
+
+    @pytest.mark.parametrize("art, definitionen, schluessel", [
+        ("bahn", {"x": {"name": "Ab", "typ": "zeitpunkt", "bei": "abfahrt"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Uhr", "typ": "uhrzeit", "bei": "ankunft"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "gibt_es_nicht"}}, "pruefung.routen.bei_ziel"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "dauer"}}, "pruefung.routen.bei_ziel"),           # Ziel vom Typ text
+        ("gastzimmer", {"x": {"name": "Tür", "bei": "abfahrt"}}, "pruefung.routen.bei_ziel"),      # keine Bewegung
+        ("bahn", {"x": {"name": "Gleis", "bei": ""}}, "pruefung.routen.bei"),
+        ("bahn", {"x": {"name": "Gleis", "bei": 5}}, "pruefung.routen.bei"),
+    ])
+    def test_bei_wird_geprueft(tmp_path, art, definitionen, schluessel):
+        """Test 16, AC-10: bei nicht an Zeitpunkt/Uhrzeit, nur auf ein vorhandenes Zeitpunkt-Merkmal derselben Art oder auf
+        abfahrt/ankunft einer Bewegung, nur als nichtleerer Text. Die Ablehnung des Ziels nennt die gültigen Ziele."""
+        q = abwandeln(kopie(tmp_path), art=art, definitionen=definitionen)
+>       text = bau_fehler(q, tmp_path, schluessel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder bei.'
+schluessel = 'pruefung.routen.bei_typ', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.bei_typ fehlt im Katalog
+E       assert 'pruefung.routen.bei_typ' != 'pruefung.routen.bei_typ'
+
+engine/tests/conftest.py:118: AssertionError
+__________ test_zeitpunkt_ohne_rolle_bleibt_merkmal_und_wird_geprueft __________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw0/test_zeitpunkt_ohne_rolle_blei0')
+
+    def test_zeitpunkt_ohne_rolle_bleibt_merkmal_und_wird_geprueft(tmp_path):
+        """Test 1, AC-1: ein Zeitpunkt-Merkmal ohne Rolle (mit Datum und nur Uhrzeit) ist gültig und bleibt Merkmal; die Rollen
+        abfahrt und ankunft falten weiter; ein ungültiger Wert bleibt ein Fehler."""
+        # mit Typ am Wert (wie abfahrt und ankunft), ohne Definition an der Art: heute pruefung.routen.lage_rolle
+        zp = lambda w: {"typ": "zeitpunkt", "wert": w, "quelle": Q}   # noqa: E731
+        q = abwandeln(kopie(tmp_path), werte={"E-01": {"boarding": zp("2027-03-12T08:55")}, "E-02": {"boarding": zp("17:25")}})
+>       d = bau(q, tmp_path)
+            ^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:123: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:91: in bau
+    return bauen.bauen(q, tmp_path / name / q.name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bauen.py:1960: in bauen
+    daten = b.daten()
+            ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <bauen.Bauer object at 0x7b3b1b66e5a0>
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+    
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
+    
+        # Plan
+        text = self.lesen(p_rel)
+        vor, teile = zerlege(text, 2)
+        vor = "\n".join(z for z in vor.splitlines() if not z.startswith("# "))
+        plan_kopf = self.html(vor, self.reise_dir / p_rel) if vor.strip() else ""
+        benutzt[p_rel] = set()
+        tab_cfg = c.get("tabellen", {})
+        tab_benutzt = set()
+        for titel, nr, body in teile:
+            wo = f"{p_rel}:{nr}"
+            if titel in tab_cfg:
+                tab_benutzt.add(titel)
+                sid, typ, art = tab_cfg[titel]
+                abschnitte.append(self.tabellen_abschnitt(sid, typ, art, titel, body, p_rel, wo))
+                continue
+            if self.ignoriert(p_rel, titel):
+                continue
+            eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
+            if not eintrag:
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
+                continue
+            abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
+        for titel in tab_cfg:
+            if titel not in tab_benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
+    
+        # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
+        for rel in c.get("abschnitte", {}):
+            if rel in (d_rel, u_rel, p_rel):
+                continue
+            vor, teile = zerlege(self.lesen(rel), 2)
+            benutzt[rel] = set()
+            # Text vor dem ersten ## (z. B. Zusammenfassung unter der Hauptüberschrift) geht nicht
+            # stillschweigend verloren: in reise.json unter "#" eine ID geben oder in "ignorieren" "#".
+            h1 = next((z[2:].strip() for z in vor.splitlines() if z.startswith("# ")), "")
+            vor = trenner_entfernen("\n".join(z for z in vor.splitlines() if not z.startswith("# ")))
+            if vor.strip() and not self.ignoriert(rel, "#"):
+                eintrag = self.cfg["abschnitte"][rel].get("#")
+                if eintrag:
+                    benutzt[rel].add("#")
+                    abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
+                else:
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                if self.ignoriert(rel, titel):
+                    continue
+                eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
+                if not eintrag:
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
+                    continue
+                abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
+    
+        orte_inhalt = self.orte_lesen(abschnitte)
+    
+        fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
+    
+        # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
+        for rel, karte in c.get("abschnitte", {}).items():
+            if rel not in benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
+                continue
+            for titel in karte:
+                if titel not in benutzt[rel]:
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
+    
+        # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
+        route = None
+        r_cfg = c.get("routen")
+        if r_cfg:
+            r_rel = r_cfg["datei"]
+            try:
+                roh = yaml.safe_load(self.lesen(r_rel)) or {}
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
+                roh = {}
+            status = {z["id"]: z["status"] for z in fragen["zeilen"]}
+            if "entscheider" in roh:
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
+                arten = None
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
+            for oid, wo in orte_inhalt.items():
+                if route and oid not in route["orte"]:
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
+            if route:
+                self.karte_bauen(r_cfg, route, lesetexte)
+                self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
+            if route:
+                for art in ("tagesplan", "unterkuenfte"):
+                    if art not in r_cfg:
+                        continue
+                    sid, titel = r_cfg[art]
+                    a = next((x for x in abschnitte if x["id"] == sid), None)
+                    if a is None:
+                        self.id_anlegen(sid, f"reise.json routen.{art}")
+                        a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
+                        abschnitte.insert(0, a)
+                    a["route_ansicht"] = art
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
+    
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
+    
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+    
+        # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
+        if c.get("orte_wissen"):
+            self.orte_wissen(c["orte_wissen"], abschnitte)
+    
+        # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
+    
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
+        if self.fehler:
+>           raise BauFehler(list(dict.fromkeys(self.fehler)))
+E           bauen.BauFehler: plan/routen.yaml: Strecke E-01: Das Merkmal boarding vom Typ zeitpunkt braucht eine Rolle (uhrzeit: beginn oder ende, zeitpunkt: abfahrt oder ankunft, link: buchung).
+E           plan/routen.yaml: Strecke E-02: Das Merkmal boarding vom Typ zeitpunkt braucht eine Rolle (uhrzeit: beginn oder ende, zeitpunkt: abfahrt oder ankunft, link: buchung).
+
+engine/bauen.py:875: BauFehler
+_____ test_bei_wird_geprueft[bahn-definitionen2-pruefung.routen.bei_ziel] ______
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw1/test_bei_wird_geprueft_bahn_de0')
+art = 'bahn', definitionen = {'x': {'name': 'Gleis', 'bei': 'gibt_es_nicht'}}
+schluessel = 'pruefung.routen.bei_ziel'
+
+    @pytest.mark.parametrize("art, definitionen, schluessel", [
+        ("bahn", {"x": {"name": "Ab", "typ": "zeitpunkt", "bei": "abfahrt"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Uhr", "typ": "uhrzeit", "bei": "ankunft"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "gibt_es_nicht"}}, "pruefung.routen.bei_ziel"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "dauer"}}, "pruefung.routen.bei_ziel"),           # Ziel vom Typ text
+        ("gastzimmer", {"x": {"name": "Tür", "bei": "abfahrt"}}, "pruefung.routen.bei_ziel"),      # keine Bewegung
+        ("bahn", {"x": {"name": "Gleis", "bei": ""}}, "pruefung.routen.bei"),
+        ("bahn", {"x": {"name": "Gleis", "bei": 5}}, "pruefung.routen.bei"),
+    ])
+    def test_bei_wird_geprueft(tmp_path, art, definitionen, schluessel):
+        """Test 16, AC-10: bei nicht an Zeitpunkt/Uhrzeit, nur auf ein vorhandenes Zeitpunkt-Merkmal derselben Art oder auf
+        abfahrt/ankunft einer Bewegung, nur als nichtleerer Text. Die Ablehnung des Ziels nennt die gültigen Ziele."""
+        q = abwandeln(kopie(tmp_path), art=art, definitionen=definitionen)
+>       text = bau_fehler(q, tmp_path, schluessel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder bei.'
+schluessel = 'pruefung.routen.bei_ziel', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.bei_ziel fehlt im Katalog
+E       assert 'pruefung.routen.bei_ziel' != 'pruefung.routen.bei_ziel'
+
+engine/tests/conftest.py:118: AssertionError
+________ test_bei_wird_geprueft[bahn-definitionen5-pruefung.routen.bei] ________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw3/test_bei_wird_geprueft_bahn_de0')
+art = 'bahn', definitionen = {'x': {'name': 'Gleis', 'bei': ''}}
+schluessel = 'pruefung.routen.bei'
+
+    @pytest.mark.parametrize("art, definitionen, schluessel", [
+        ("bahn", {"x": {"name": "Ab", "typ": "zeitpunkt", "bei": "abfahrt"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Uhr", "typ": "uhrzeit", "bei": "ankunft"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "gibt_es_nicht"}}, "pruefung.routen.bei_ziel"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "dauer"}}, "pruefung.routen.bei_ziel"),           # Ziel vom Typ text
+        ("gastzimmer", {"x": {"name": "Tür", "bei": "abfahrt"}}, "pruefung.routen.bei_ziel"),      # keine Bewegung
+        ("bahn", {"x": {"name": "Gleis", "bei": ""}}, "pruefung.routen.bei"),
+        ("bahn", {"x": {"name": "Gleis", "bei": 5}}, "pruefung.routen.bei"),
+    ])
+    def test_bei_wird_geprueft(tmp_path, art, definitionen, schluessel):
+        """Test 16, AC-10: bei nicht an Zeitpunkt/Uhrzeit, nur auf ein vorhandenes Zeitpunkt-Merkmal derselben Art oder auf
+        abfahrt/ankunft einer Bewegung, nur als nichtleerer Text. Die Ablehnung des Ziels nennt die gültigen Ziele."""
+        q = abwandeln(kopie(tmp_path), art=art, definitionen=definitionen)
+>       text = bau_fehler(q, tmp_path, schluessel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder bei.'
+schluessel = 'pruefung.routen.bei', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.bei fehlt im Katalog
+E       assert 'pruefung.routen.bei' != 'pruefung.routen.bei'
+
+engine/tests/conftest.py:118: AssertionError
+________ test_bei_wird_geprueft[bahn-definitionen6-pruefung.routen.bei] ________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw1/test_bei_wird_geprueft_bahn_de1')
+art = 'bahn', definitionen = {'x': {'name': 'Gleis', 'bei': 5}}
+schluessel = 'pruefung.routen.bei'
+
+    @pytest.mark.parametrize("art, definitionen, schluessel", [
+        ("bahn", {"x": {"name": "Ab", "typ": "zeitpunkt", "bei": "abfahrt"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Uhr", "typ": "uhrzeit", "bei": "ankunft"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "gibt_es_nicht"}}, "pruefung.routen.bei_ziel"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "dauer"}}, "pruefung.routen.bei_ziel"),           # Ziel vom Typ text
+        ("gastzimmer", {"x": {"name": "Tür", "bei": "abfahrt"}}, "pruefung.routen.bei_ziel"),      # keine Bewegung
+        ("bahn", {"x": {"name": "Gleis", "bei": ""}}, "pruefung.routen.bei"),
+        ("bahn", {"x": {"name": "Gleis", "bei": 5}}, "pruefung.routen.bei"),
+    ])
+    def test_bei_wird_geprueft(tmp_path, art, definitionen, schluessel):
+        """Test 16, AC-10: bei nicht an Zeitpunkt/Uhrzeit, nur auf ein vorhandenes Zeitpunkt-Merkmal derselben Art oder auf
+        abfahrt/ankunft einer Bewegung, nur als nichtleerer Text. Die Ablehnung des Ziels nennt die gültigen Ziele."""
+        q = abwandeln(kopie(tmp_path), art=art, definitionen=definitionen)
+>       text = bau_fehler(q, tmp_path, schluessel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml bahn: Merkmal x: unbekannte Felder bei.'
+schluessel = 'pruefung.routen.bei', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.bei fehlt im Katalog
+E       assert 'pruefung.routen.bei' != 'pruefung.routen.bei'
+
+engine/tests/conftest.py:118: AssertionError
+__ test_bei_wird_geprueft[gastzimmer-definitionen4-pruefung.routen.bei_ziel] ___
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw5/test_bei_wird_geprueft_gastzim0')
+art = 'gastzimmer', definitionen = {'x': {'name': 'Tür', 'bei': 'abfahrt'}}
+schluessel = 'pruefung.routen.bei_ziel'
+
+    @pytest.mark.parametrize("art, definitionen, schluessel", [
+        ("bahn", {"x": {"name": "Ab", "typ": "zeitpunkt", "bei": "abfahrt"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Uhr", "typ": "uhrzeit", "bei": "ankunft"}}, "pruefung.routen.bei_typ"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "gibt_es_nicht"}}, "pruefung.routen.bei_ziel"),
+        ("bahn", {"x": {"name": "Gleis", "bei": "dauer"}}, "pruefung.routen.bei_ziel"),           # Ziel vom Typ text
+        ("gastzimmer", {"x": {"name": "Tür", "bei": "abfahrt"}}, "pruefung.routen.bei_ziel"),      # keine Bewegung
+        ("bahn", {"x": {"name": "Gleis", "bei": ""}}, "pruefung.routen.bei"),
+        ("bahn", {"x": {"name": "Gleis", "bei": 5}}, "pruefung.routen.bei"),
+    ])
+    def test_bei_wird_geprueft(tmp_path, art, definitionen, schluessel):
+        """Test 16, AC-10: bei nicht an Zeitpunkt/Uhrzeit, nur auf ein vorhandenes Zeitpunkt-Merkmal derselben Art oder auf
+        abfahrt/ankunft einer Bewegung, nur als nichtleerer Text. Die Ablehnung des Ziels nennt die gültigen Ziele."""
+        q = abwandeln(kopie(tmp_path), art=art, definitionen=definitionen)
+>       text = bau_fehler(q, tmp_path, schluessel)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:220: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:97: in bau_fehler
+    assert meldet(e.value.args[0], schluessel), e.value.args[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'plan/routen.yaml: arten.yaml gastzimmer: Merkmal x: unbekannte Felder bei.'
+schluessel = 'pruefung.routen.bei_ziel', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel pruefung.routen.bei_ziel fehlt im Katalog
+E       assert 'pruefung.routen.bei_ziel' != 'pruefung.routen.bei_ziel'
+
+engine/tests/conftest.py:118: AssertionError
+_________ test_beispielreise_stadtwochenende_traegt_die_neuen_merkmale _________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+    def test_beispielreise_stadtwochenende_traegt_die_neuen_merkmale():
+        """Beispielreisen (Spec): die Art bahn hat den erinnernden Zeitpunkt und das Gleis bei der Abfahrt, als Beispielwerte."""
+        a = yaml_lesen(BEISPIELE / "stadtwochenende" / "plan" / "arten.yaml")["arten"]["bahn"]["merkmale"]
+>       assert a[ERINNERND]["typ"] == "zeitpunkt" and a[ERINNERND]["erinnern"] is True
+               ^^^^^^^^^^^^
+E       KeyError: 'freischalten'
+
+engine/tests/test_zeitleiste_bewegung.py:389: KeyError
+_____________ test_waechter_erinnert_einmal_am_tag_des_zeitpunkts ______________
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw5/test_waechter_erinnert_einmal_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7e1ce64348c0>
+
+    def test_waechter_erinnert_einmal_am_tag_des_zeitpunkts(tmp_path, monkeypatch):
+        """Test 5, AC-3: ein erinnernder Zeitpunkt mit Datum meldet sich einmal, sobald sein Tag da ist, an die Organisator:innen,
+        mit eigenem Schlüssel; nicht vorher und nicht noch einmal."""
+        stadt_fest(tmp_path, monkeypatch, {"E-01": "2027-03-11T08:00"})
+        assert zeit_meldungen(D(2027, 3, 10)) == []
+        ms = zeit_meldungen(D(2027, 3, 11))
+>       assert [m["schluessel"] for m in ms] == [f"zeit:E-01:{ERINNERND}:2027-03-11T08:00"], ms
+E       AssertionError: []
+E       assert [] == ['zeit:E-01:f...-03-11T08:00']
+E         
+E         Right contains one more item: 'zeit:E-01:freischalten:2027-03-11T08:00'
+E         Use -v to get more diff
+
+engine/tests/test_zeitleiste_bewegung.py:342: AssertionError
+________________ test_kalender_termin_je_erinnerndem_zeitpunkt _________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw0/test_kalender_termin_je_erinne0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b3b185c4320>
+
+    def test_kalender_termin_je_erinnerndem_zeitpunkt(tmp_path, monkeypatch):
+        """Test 8, AC-3: ein Termin je erinnerndem Zeitpunkt mit Datum, UID <Ding>-zeit-<Merkmal>; die UIDs der Buchungstermine
+        bleiben."""
+        d = stadt_fest(tmp_path, monkeypatch, {"E-01": "2027-03-11T08:00"})
+        es = [e for e in kalender.eintraege(d) if e["uid"] == f"E-01-zeit-{ERINNERND}"]
+>       assert len(es) == 1 and es[0]["sorte"] == "buchungen" and es[0]["tag"] == D(2027, 3, 11), es
+E       AssertionError: []
+E       assert (0 == 1)
+E        +  where 0 = len([])
+
+engine/tests/test_zeitleiste_bewegung.py:378: AssertionError
+________________ test_bei_ohne_punkt_bleibt_in_der_merkmalliste ________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw1/test_bei_ohne_punkt_bleibt_in_0')
+
+    def test_bei_ohne_punkt_bleibt_in_der_merkmalliste(tmp_path):
+        """Test 19, AC-11: ein Merkmal bei einem Zeitpunkt, der an diesem Ding keinen Wert hat, steht an keinem Punkt."""
+        q = abwandeln(kopie(tmp_path), definitionen={"wo": {"name": "Wo freischalten", "typ": "text", "bei": ERINNERND}},
+                      werte={"E-01": {"wo": "App des Betreibers (Beispielwert)"}, "E-02": {"wo": "Automat (Beispielwert)", ERINNERND: None}})
+>       d = bau(q, tmp_path)
+            ^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:430: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:91: in bau
+    return bauen.bauen(q, tmp_path / name / q.name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bauen.py:1960: in bauen
+    daten = b.daten()
+            ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <bauen.Bauer object at 0x7f3d85b920c0>
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+    
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
+    
+        # Plan
+        text = self.lesen(p_rel)
+        vor, teile = zerlege(text, 2)
+        vor = "\n".join(z for z in vor.splitlines() if not z.startswith("# "))
+        plan_kopf = self.html(vor, self.reise_dir / p_rel) if vor.strip() else ""
+        benutzt[p_rel] = set()
+        tab_cfg = c.get("tabellen", {})
+        tab_benutzt = set()
+        for titel, nr, body in teile:
+            wo = f"{p_rel}:{nr}"
+            if titel in tab_cfg:
+                tab_benutzt.add(titel)
+                sid, typ, art = tab_cfg[titel]
+                abschnitte.append(self.tabellen_abschnitt(sid, typ, art, titel, body, p_rel, wo))
+                continue
+            if self.ignoriert(p_rel, titel):
+                continue
+            eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
+            if not eintrag:
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
+                continue
+            abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
+        for titel in tab_cfg:
+            if titel not in tab_benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
+    
+        # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
+        for rel in c.get("abschnitte", {}):
+            if rel in (d_rel, u_rel, p_rel):
+                continue
+            vor, teile = zerlege(self.lesen(rel), 2)
+            benutzt[rel] = set()
+            # Text vor dem ersten ## (z. B. Zusammenfassung unter der Hauptüberschrift) geht nicht
+            # stillschweigend verloren: in reise.json unter "#" eine ID geben oder in "ignorieren" "#".
+            h1 = next((z[2:].strip() for z in vor.splitlines() if z.startswith("# ")), "")
+            vor = trenner_entfernen("\n".join(z for z in vor.splitlines() if not z.startswith("# ")))
+            if vor.strip() and not self.ignoriert(rel, "#"):
+                eintrag = self.cfg["abschnitte"][rel].get("#")
+                if eintrag:
+                    benutzt[rel].add("#")
+                    abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
+                else:
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                if self.ignoriert(rel, titel):
+                    continue
+                eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
+                if not eintrag:
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
+                    continue
+                abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
+    
+        orte_inhalt = self.orte_lesen(abschnitte)
+    
+        fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
+    
+        # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
+        for rel, karte in c.get("abschnitte", {}).items():
+            if rel not in benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
+                continue
+            for titel in karte:
+                if titel not in benutzt[rel]:
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
+    
+        # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
+        route = None
+        r_cfg = c.get("routen")
+        if r_cfg:
+            r_rel = r_cfg["datei"]
+            try:
+                roh = yaml.safe_load(self.lesen(r_rel)) or {}
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
+                roh = {}
+            status = {z["id"]: z["status"] for z in fragen["zeilen"]}
+            if "entscheider" in roh:
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
+                arten = None
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
+            for oid, wo in orte_inhalt.items():
+                if route and oid not in route["orte"]:
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
+            if route:
+                self.karte_bauen(r_cfg, route, lesetexte)
+                self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
+            if route:
+                for art in ("tagesplan", "unterkuenfte"):
+                    if art not in r_cfg:
+                        continue
+                    sid, titel = r_cfg[art]
+                    a = next((x for x in abschnitte if x["id"] == sid), None)
+                    if a is None:
+                        self.id_anlegen(sid, f"reise.json routen.{art}")
+                        a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
+                        abschnitte.insert(0, a)
+                    a["route_ansicht"] = art
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
+    
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
+    
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+    
+        # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
+        if c.get("orte_wissen"):
+            self.orte_wissen(c["orte_wissen"], abschnitte)
+    
+        # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
+    
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
+        if self.fehler:
+>           raise BauFehler(list(dict.fromkeys(self.fehler)))
+E           bauen.BauFehler: plan/routen.yaml: arten.yaml bahn: Merkmal wo: unbekannte Felder bei.
+
+engine/bauen.py:875: BauFehler
+_________________________ test_erinnern_im_schreibweg __________________________
+[gw4] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw4/test_erinnern_im_schreibweg0/bau'), PosixPath('/tmp/pytest-of-<benutzer>...hreibweg0/arbeit'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw4/test_erinnern_im_schreibweg0/veroeffentlicht'))
+
+    def test_erinnern_im_schreibweg(repo):
+        """Test 3, 4, AC-2: attribute_define legt erinnern an einem Zeitpunkt an, schaltet es ab; dasselbe noch einmal ändert
+        nichts (Ablehnung .12); an einem Text-Merkmal und beim Ändern des Typs eines erinnernden Merkmals Ablehnung."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "bahn", "bezeichnung": "Online-Check-in",
+                                                                                 "typ": "zeitpunkt", "erinnern": True}})
+>       assert meldet(a["text"], "schreiben.antwort.merkmal.erinnern_an"), a["text"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:175: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Merkmal „Online-Check-in“ (online_check_in) an der Art Bahn angelegt: Typ zeitpunkt, Stufe gut zu wissen (empfohlen).'
+schluessel = 'schreiben.antwort.merkmal.erinnern_an', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel schreiben.antwort.merkmal.erinnern_an fehlt im Katalog
+E       assert 'schreiben.antwort.merkmal.erinnern_an' != 'schreiben.antwort.merkmal.erinnern_an'
+
+engine/tests/conftest.py:118: AssertionError
+______________________ test_zeitleiste_in_den_seitendaten ______________________
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw5/test_zeitleiste_in_den_seitend0')
+
+    def test_zeitleiste_in_den_seitendaten(tmp_path):
+        """Test 9, AC-5: E-01 des Stadtwochenendes: Merkmal (Vortag), Buchungs-ab, Abfahrt, Ankunft; E-02: Merkmal ohne Datum am
+        Tag der Fahrt, bei gleicher Zeit die Buchungs-ab vor der Abfahrt. Jeder Punkt mit Uhrzeit, Datum, erinnert und bei."""
+        d = bau(kopie(tmp_path), tmp_path)
+>       assert leiste(d, "E-01") == [("merkmal", ERINNERND), ("buchung", None), ("abfahrt", None), ("ankunft", None)]
+E       AssertionError: assert [] == [('merkmal', ...kunft', None)]
+E         
+E         Right contains 4 more items, first extra item: ('merkmal', 'freischalten')
+E         Use -v to get more diff
+
+engine/tests/test_zeitleiste_bewegung.py:402: AssertionError
+_____________________ test_neue_texte_in_jeder_sprache[de] _____________________
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+sprache = 'de'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_neue_texte_in_jeder_sprache(sprache):
+        """Test 13 (ADR-0006): alle neuen Schlüssel stehen in jeder Sprache (die Pseudo-Sprache leitet test_texte ab)."""
+        fehlt = [k for k in NEUE_TEXTE if texte.t(sprache, k) == k]
+>       assert not fehlt, fehlt
+E       AssertionError: ['seite.zeitleiste.name', 'seite.zeitleiste.abfahrt', 'seite.zeitleiste.ankunft', 'seite.zeitleiste.erinnert', 'seite.zeitleiste.aus_buchung', 'pruefung.routen.erinnern', ...]
+E       assert not ['seite.zeitleiste.name', 'seite.zeitleiste.abfahrt', 'seite.zeitleiste.ankunft', 'seite.zeitleiste.erinnert', 'seite.zeitleiste.aus_buchung', 'pruefung.routen.erinnern', ...]
+
+engine/tests/test_zeitleiste_bewegung.py:460: AssertionError
+______________ test_bei_auf_rolle_und_auf_zeitpunkt_weiter_unten _______________
+[gw4] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw4/test_bei_auf_rolle_und_auf_zei0')
+
+    def test_bei_auf_rolle_und_auf_zeitpunkt_weiter_unten(tmp_path):
+        """Test 15, AC-10: bei: abfahrt und bei: <Schlüssel eines Zeitpunkt-Merkmals> (das weiter unten steht) werden übernommen."""
+        q = abwandeln(kopie(tmp_path), definitionen={
+            GLEIS: DEF_GLEIS, "hinweis_karte": {"name": "Wo freischalten", "typ": "text", "bei": ERINNERND}, ERINNERND: DEF_ERINNERND})
+>       d = bau(q, tmp_path)
+            ^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:91: in bau
+    return bauen.bauen(q, tmp_path / name / q.name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bauen.py:1960: in bauen
+    daten = b.daten()
+            ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <bauen.Bauer object at 0x7ad7e23ceba0>
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+    
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
+    
+        # Plan
+        text = self.lesen(p_rel)
+        vor, teile = zerlege(text, 2)
+        vor = "\n".join(z for z in vor.splitlines() if not z.startswith("# "))
+        plan_kopf = self.html(vor, self.reise_dir / p_rel) if vor.strip() else ""
+        benutzt[p_rel] = set()
+        tab_cfg = c.get("tabellen", {})
+        tab_benutzt = set()
+        for titel, nr, body in teile:
+            wo = f"{p_rel}:{nr}"
+            if titel in tab_cfg:
+                tab_benutzt.add(titel)
+                sid, typ, art = tab_cfg[titel]
+                abschnitte.append(self.tabellen_abschnitt(sid, typ, art, titel, body, p_rel, wo))
+                continue
+            if self.ignoriert(p_rel, titel):
+                continue
+            eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
+            if not eintrag:
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
+                continue
+            abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
+        for titel in tab_cfg:
+            if titel not in tab_benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
+    
+        # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
+        for rel in c.get("abschnitte", {}):
+            if rel in (d_rel, u_rel, p_rel):
+                continue
+            vor, teile = zerlege(self.lesen(rel), 2)
+            benutzt[rel] = set()
+            # Text vor dem ersten ## (z. B. Zusammenfassung unter der Hauptüberschrift) geht nicht
+            # stillschweigend verloren: in reise.json unter "#" eine ID geben oder in "ignorieren" "#".
+            h1 = next((z[2:].strip() for z in vor.splitlines() if z.startswith("# ")), "")
+            vor = trenner_entfernen("\n".join(z for z in vor.splitlines() if not z.startswith("# ")))
+            if vor.strip() and not self.ignoriert(rel, "#"):
+                eintrag = self.cfg["abschnitte"][rel].get("#")
+                if eintrag:
+                    benutzt[rel].add("#")
+                    abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
+                else:
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                if self.ignoriert(rel, titel):
+                    continue
+                eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
+                if not eintrag:
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
+                    continue
+                abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
+    
+        orte_inhalt = self.orte_lesen(abschnitte)
+    
+        fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
+    
+        # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
+        for rel, karte in c.get("abschnitte", {}).items():
+            if rel not in benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
+                continue
+            for titel in karte:
+                if titel not in benutzt[rel]:
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
+    
+        # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
+        route = None
+        r_cfg = c.get("routen")
+        if r_cfg:
+            r_rel = r_cfg["datei"]
+            try:
+                roh = yaml.safe_load(self.lesen(r_rel)) or {}
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
+                roh = {}
+            status = {z["id"]: z["status"] for z in fragen["zeilen"]}
+            if "entscheider" in roh:
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
+                arten = None
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
+            for oid, wo in orte_inhalt.items():
+                if route and oid not in route["orte"]:
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
+            if route:
+                self.karte_bauen(r_cfg, route, lesetexte)
+                self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
+            if route:
+                for art in ("tagesplan", "unterkuenfte"):
+                    if art not in r_cfg:
+                        continue
+                    sid, titel = r_cfg[art]
+                    a = next((x for x in abschnitte if x["id"] == sid), None)
+                    if a is None:
+                        self.id_anlegen(sid, f"reise.json routen.{art}")
+                        a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
+                        abschnitte.insert(0, a)
+                    a["route_ansicht"] = art
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
+    
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
+    
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+    
+        # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
+        if c.get("orte_wissen"):
+            self.orte_wissen(c["orte_wissen"], abschnitte)
+    
+        # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
+    
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
+        if self.fehler:
+>           raise BauFehler(list(dict.fromkeys(self.fehler)))
+E           bauen.BauFehler: plan/routen.yaml: arten.yaml bahn: Merkmal gleis: unbekannte Felder bei.
+E           plan/routen.yaml: arten.yaml bahn: Merkmal hinweis_karte: unbekannte Felder bei.
+E           plan/routen.yaml: arten.yaml bahn: Merkmal freischalten: unbekannte Felder erinnern.
+
+engine/bauen.py:875: BauFehler
+_____________________ test_merkmale_zeigt_erinnern_und_bei _____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+dienst = ('http://127.0.0.1:45123', PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw3/test_merkmale_zeigt_erinnern_u0/ablage'))
+
+    def test_merkmale_zeigt_erinnern_und_bei(dienst):
+        """Test 4, 17, AC-2, AC-10: attributes (merkmale) nennt am Merkmal „erinnert“ und „steht bei <Name des Ziels>“."""
+        basis, _ = dienst
+        t, f = werkzeug(basis, ALT_ORGANISATOR, "merkmale", art="bahn")
+        assert not f, t
+        zeile = lambda k: next(z for z in t.splitlines() if z.startswith(f"- {k} "))   # noqa: E731
+>       assert meldet(zeile("online_check_in"), "konnektor.merkmale.erinnern"), t
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:301: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = '- online_check_in – Online-Check-in: zeitpunkt; gut zu wissen (empfohlen): ohne Wert keine Mahnung'
+schluessel = 'konnektor.merkmale.erinnern', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel konnektor.merkmale.erinnern fehlt im Katalog
+E       assert 'konnektor.merkmale.erinnern' != 'konnektor.merkmale.erinnern'
+
+engine/tests/conftest.py:118: AssertionError
+____________________ test_atome_der_leiste_und_ihre_nutzung ____________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+    def test_atome_der_leiste_und_ihre_nutzung():
+        """Test 21, AC-12: die Atome der Leiste und das Molekül zeitLeiste stehen im Kopfkommentar, sind Funktionen der Vorlage,
+        stehen in docs/design.md; zeitLeiste und halteLeiste rufen dieselben Atome; Punkt und Linie haben je einen Stil; GRUNDFORMEN
+        nennt zeitLeiste bei der Bewegung."""
+        from test_design import DESIGN, VORLAGE, _funktion, _grundformen_code, bausteine
+        b = bausteine()
+>       assert {"leistenPunkt", "leistenZeit", "leistenMarke", "leistenZusatz"} <= set(b["Atome"]), b["Atome"]
+E       AssertionError: ['T', 'zahlText', 'symbol', 'chip', 'langtext', 'merkmalWert', ...]
+E       assert {'leistenMark...eistenZusatz'} <= {'T', 'bildEl...tumKurz', ...}
+E         
+E         Extra items in the left set:
+E         'leistenMarke'
+E         'leistenZusatz'
+E         'leistenZeit'
+E         'leistenPunkt'
+
+engine/tests/test_zeitleiste_bewegung.py:471: AssertionError
+________________ test_ohne_weitere_zeitpunkte_keine_zeitleiste _________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw0/test_ohne_weitere_zeitpunkte_k0')
+
+    def test_ohne_weitere_zeitpunkte_keine_zeitleiste(tmp_path):
+        """Test 10, AC-9 (Gegenprobe Wanderung, #619): die Bahnstrecke der Beispielreise mit Abfahrt und Ankunft allein hat keine
+        Zeitleiste; ebenso ein Merkmal mit bei allein."""
+        d = bau(kopie(tmp_path, "beispielreise"), tmp_path)
+        assert not [sid for sid, s in d["route"]["strecken"].items() if s.get("zeitleiste")]
+        q = abwandeln(kopie(tmp_path / "b"), definitionen={GLEIS: DEF_GLEIS}, entfernen=(ERINNERND,),
+                      werte={"E-01": {ERINNERND: None, GLEIS: "4 (Beispielwert)"}, "E-02": {ERINNERND: None}}, buchung={"B-01": None})
+>       d = bau(q, tmp_path / "b")
+            ^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:422: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/tests/test_zeitleiste_bewegung.py:91: in bau
+    return bauen.bauen(q, tmp_path / name / q.name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/bauen.py:1960: in bauen
+    daten = b.daten()
+            ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <bauen.Bauer object at 0x7b3b187212e0>
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+    
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
+    
+        # Plan
+        text = self.lesen(p_rel)
+        vor, teile = zerlege(text, 2)
+        vor = "\n".join(z for z in vor.splitlines() if not z.startswith("# "))
+        plan_kopf = self.html(vor, self.reise_dir / p_rel) if vor.strip() else ""
+        benutzt[p_rel] = set()
+        tab_cfg = c.get("tabellen", {})
+        tab_benutzt = set()
+        for titel, nr, body in teile:
+            wo = f"{p_rel}:{nr}"
+            if titel in tab_cfg:
+                tab_benutzt.add(titel)
+                sid, typ, art = tab_cfg[titel]
+                abschnitte.append(self.tabellen_abschnitt(sid, typ, art, titel, body, p_rel, wo))
+                continue
+            if self.ignoriert(p_rel, titel):
+                continue
+            eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
+            if not eintrag:
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
+                continue
+            abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
+        for titel in tab_cfg:
+            if titel not in tab_benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
+    
+        # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
+        for rel in c.get("abschnitte", {}):
+            if rel in (d_rel, u_rel, p_rel):
+                continue
+            vor, teile = zerlege(self.lesen(rel), 2)
+            benutzt[rel] = set()
+            # Text vor dem ersten ## (z. B. Zusammenfassung unter der Hauptüberschrift) geht nicht
+            # stillschweigend verloren: in reise.json unter "#" eine ID geben oder in "ignorieren" "#".
+            h1 = next((z[2:].strip() for z in vor.splitlines() if z.startswith("# ")), "")
+            vor = trenner_entfernen("\n".join(z for z in vor.splitlines() if not z.startswith("# ")))
+            if vor.strip() and not self.ignoriert(rel, "#"):
+                eintrag = self.cfg["abschnitte"][rel].get("#")
+                if eintrag:
+                    benutzt[rel].add("#")
+                    abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
+                else:
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                if self.ignoriert(rel, titel):
+                    continue
+                eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
+                if not eintrag:
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
+                    continue
+                abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
+    
+        orte_inhalt = self.orte_lesen(abschnitte)
+    
+        fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
+    
+        # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
+        for rel, karte in c.get("abschnitte", {}).items():
+            if rel not in benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
+                continue
+            for titel in karte:
+                if titel not in benutzt[rel]:
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
+    
+        # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
+        route = None
+        r_cfg = c.get("routen")
+        if r_cfg:
+            r_rel = r_cfg["datei"]
+            try:
+                roh = yaml.safe_load(self.lesen(r_rel)) or {}
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
+                roh = {}
+            status = {z["id"]: z["status"] for z in fragen["zeilen"]}
+            if "entscheider" in roh:
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
+                arten = None
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
+            for oid, wo in orte_inhalt.items():
+                if route and oid not in route["orte"]:
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
+            if route:
+                self.karte_bauen(r_cfg, route, lesetexte)
+                self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
+            if route:
+                for art in ("tagesplan", "unterkuenfte"):
+                    if art not in r_cfg:
+                        continue
+                    sid, titel = r_cfg[art]
+                    a = next((x for x in abschnitte if x["id"] == sid), None)
+                    if a is None:
+                        self.id_anlegen(sid, f"reise.json routen.{art}")
+                        a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
+                        abschnitte.insert(0, a)
+                    a["route_ansicht"] = art
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
+    
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
+    
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+    
+        # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
+        if c.get("orte_wissen"):
+            self.orte_wissen(c["orte_wissen"], abschnitte)
+    
+        # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
+    
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
+        if self.fehler:
+>           raise BauFehler(list(dict.fromkeys(self.fehler)))
+E           bauen.BauFehler: plan/routen.yaml: arten.yaml bahn: Merkmal gleis: unbekannte Felder bei.
+
+engine/bauen.py:875: BauFehler
+_____________________ test_neue_texte_in_jeder_sprache[en] _____________________
+[gw0] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+sprache = 'en'
+
+    @pytest.mark.parametrize("sprache", ["de", "en"])
+    def test_neue_texte_in_jeder_sprache(sprache):
+        """Test 13 (ADR-0006): alle neuen Schlüssel stehen in jeder Sprache (die Pseudo-Sprache leitet test_texte ab)."""
+        fehlt = [k for k in NEUE_TEXTE if texte.t(sprache, k) == k]
+>       assert not fehlt, fehlt
+E       AssertionError: ['seite.zeitleiste.name', 'seite.zeitleiste.abfahrt', 'seite.zeitleiste.ankunft', 'seite.zeitleiste.erinnert', 'seite.zeitleiste.aus_buchung', 'pruefung.routen.erinnern', ...]
+E       assert not ['seite.zeitleiste.name', 'seite.zeitleiste.abfahrt', 'seite.zeitleiste.ankunft', 'seite.zeitleiste.erinnert', 'seite.zeitleiste.aus_buchung', 'pruefung.routen.erinnern', ...]
+
+engine/tests/test_zeitleiste_bewegung.py:460: AssertionError
+____________________________ test_bei_im_schreibweg ____________________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+repo = (PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw2/test_bei_im_schreibweg0/bau'), PosixPath('/tmp/pytest-of-<benutzer>/pyte...im_schreibweg0/arbeit'), PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw2/test_bei_im_schreibweg0/veroeffentlicht'))
+
+    def test_bei_im_schreibweg(repo):
+        """Test 16, 17, AC-10: attribute_define setzt bei, ein leerer Text entfernt es; unbekanntes Ziel, bei an einem Zeitpunkt
+        und das Ändern des Typs eines Ziels, auf das ein anderes Merkmal zeigt, werden abgelehnt."""
+        _, origin, _, _ = repo
+        s = schreiber(repo)
+        s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "bahn", "bezeichnung": "Sitzplatz frei ab", "typ": "zeitpunkt"}})
+        s.vorbereiten()
+        a = s.schreiben("beispielreise", "merkmal_definieren", {**IDA, "args": {"art": "bahn", "bezeichnung": "Gleis", "bei": "abfahrt"}})
+>       assert meldet(a["text"], "schreiben.antwort.merkmal.bei"), a["text"]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_zeitleiste_bewegung.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+ausgabe = 'Merkmal „Gleis“ (gleis) an der Art Bahn angelegt: Typ text, Stufe gut zu wissen (empfohlen).'
+schluessel = 'schreiben.antwort.merkmal.bei', sprache = 'de'
+
+    def meldet(ausgabe, schluessel, /, sprache="de"):
+        """Enthält die Ausgabe den Text zu diesem Schlüssel? Die festen Teile der Vorlage müssen alle vorkommen, die
+        Platzhalter ({datum} …) dürfen beliebig gefüllt sein; HTML-Maskierung zählt mit. Bei einer Liste genügt ein Eintrag."""
+        import html
+        import re
+        if isinstance(ausgabe, (list, tuple, set)):
+            return any(meldet(a, schluessel, sprache) for a in ausgabe)
+        ausgabe = str(ausgabe)
+        vorlage = _katalog().t(sprache, schluessel)
+>       assert vorlage != schluessel, f"Schlüssel {schluessel} fehlt im Katalog"
+E       AssertionError: Schlüssel schreiben.antwort.merkmal.bei fehlt im Katalog
+E       assert 'schreiben.antwort.merkmal.bei' != 'schreiben.antwort.merkmal.bei'
+
+engine/tests/conftest.py:118: AssertionError
+_______________________ test_schema_und_englische_namen ________________________
+[gw2] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+    def test_schema_und_englische_namen():
+        """Test 4, 17: attribute_define nimmt erinnern (englisch remind) und bei (englisch at); bei heißt an den Buchungswerkzeugen
+        weiter booked_with, und die deutsche Eingabe bei gilt an beiden."""
+        props = kn.MERKMAL_DEFINIEREN["inputSchema"]["properties"]
+>       assert props["erinnern"]["type"] == "boolean" and props["bei"]["type"] == "string"
+               ^^^^^^^^^^^^^^^^^
+E       KeyError: 'erinnern'
+
+engine/tests/test_zeitleiste_bewegung.py:267: KeyError
+__________________ test_seite_bei_und_nach_buchung[chromium] ___________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw1/test_seite_bei_und_nach_buchun0')
+browser = 'chromium'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_seite_bei_und_nach_buchung(tmp_path, browser):
+        """Test 18, 20, AC-11: ein Merkmal bei einem Zeitpunkt-Merkmal steht unter diesem Punkt; gebucht steht ein bei-Merkmal ohne
+        nach_buchung nur in „Aus der Planung“, ungebucht in der Zeitleiste."""
+        werte = {"E-01": {"wo": "App des Betreibers (Beispielwert)", "wagen": "Wagen 5 (Beispielwert)"}}
+        defs = {"wo": {"name": "Wo freischalten", "typ": "text", "bei": ERINNERND, "nach_buchung": True},
+                "wagen": {"name": "Wagen", "typ": "text", "bei": "abfahrt"}}
+        gebucht = abwandeln(kopie(tmp_path / "g"), definitionen=defs, werte=werte)
+>       bauen.bauen(gebucht, tmp_path / "sg" / "stadtwochenende")
+
+engine/tests/test_zeitleiste_bewegung.py:556: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bauen.py:1960: in bauen
+    daten = b.daten()
+            ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <bauen.Bauer object at 0x7f3d7e90e690>
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+    
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
+    
+        # Plan
+        text = self.lesen(p_rel)
+        vor, teile = zerlege(text, 2)
+        vor = "\n".join(z for z in vor.splitlines() if not z.startswith("# "))
+        plan_kopf = self.html(vor, self.reise_dir / p_rel) if vor.strip() else ""
+        benutzt[p_rel] = set()
+        tab_cfg = c.get("tabellen", {})
+        tab_benutzt = set()
+        for titel, nr, body in teile:
+            wo = f"{p_rel}:{nr}"
+            if titel in tab_cfg:
+                tab_benutzt.add(titel)
+                sid, typ, art = tab_cfg[titel]
+                abschnitte.append(self.tabellen_abschnitt(sid, typ, art, titel, body, p_rel, wo))
+                continue
+            if self.ignoriert(p_rel, titel):
+                continue
+            eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
+            if not eintrag:
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
+                continue
+            abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
+        for titel in tab_cfg:
+            if titel not in tab_benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
+    
+        # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
+        for rel in c.get("abschnitte", {}):
+            if rel in (d_rel, u_rel, p_rel):
+                continue
+            vor, teile = zerlege(self.lesen(rel), 2)
+            benutzt[rel] = set()
+            # Text vor dem ersten ## (z. B. Zusammenfassung unter der Hauptüberschrift) geht nicht
+            # stillschweigend verloren: in reise.json unter "#" eine ID geben oder in "ignorieren" "#".
+            h1 = next((z[2:].strip() for z in vor.splitlines() if z.startswith("# ")), "")
+            vor = trenner_entfernen("\n".join(z for z in vor.splitlines() if not z.startswith("# ")))
+            if vor.strip() and not self.ignoriert(rel, "#"):
+                eintrag = self.cfg["abschnitte"][rel].get("#")
+                if eintrag:
+                    benutzt[rel].add("#")
+                    abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
+                else:
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                if self.ignoriert(rel, titel):
+                    continue
+                eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
+                if not eintrag:
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
+                    continue
+                abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
+    
+        orte_inhalt = self.orte_lesen(abschnitte)
+    
+        fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
+    
+        # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
+        for rel, karte in c.get("abschnitte", {}).items():
+            if rel not in benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
+                continue
+            for titel in karte:
+                if titel not in benutzt[rel]:
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
+    
+        # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
+        route = None
+        r_cfg = c.get("routen")
+        if r_cfg:
+            r_rel = r_cfg["datei"]
+            try:
+                roh = yaml.safe_load(self.lesen(r_rel)) or {}
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
+                roh = {}
+            status = {z["id"]: z["status"] for z in fragen["zeilen"]}
+            if "entscheider" in roh:
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
+                arten = None
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
+            for oid, wo in orte_inhalt.items():
+                if route and oid not in route["orte"]:
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
+            if route:
+                self.karte_bauen(r_cfg, route, lesetexte)
+                self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
+            if route:
+                for art in ("tagesplan", "unterkuenfte"):
+                    if art not in r_cfg:
+                        continue
+                    sid, titel = r_cfg[art]
+                    a = next((x for x in abschnitte if x["id"] == sid), None)
+                    if a is None:
+                        self.id_anlegen(sid, f"reise.json routen.{art}")
+                        a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
+                        abschnitte.insert(0, a)
+                    a["route_ansicht"] = art
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
+    
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
+    
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+    
+        # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
+        if c.get("orte_wissen"):
+            self.orte_wissen(c["orte_wissen"], abschnitte)
+    
+        # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
+    
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
+        if self.fehler:
+>           raise BauFehler(list(dict.fromkeys(self.fehler)))
+E           bauen.BauFehler: plan/routen.yaml: arten.yaml bahn: Merkmal wo: unbekannte Felder bei.
+E           plan/routen.yaml: arten.yaml bahn: Merkmal wagen: unbekannte Felder bei.
+
+engine/bauen.py:875: BauFehler
+___________________ test_verschiedene_zeiten_erinnern_beide ____________________
+[gw3] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw3/test_verschiedene_zeiten_erinn0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7b93c576ecc0>
+
+    def test_verschiedene_zeiten_erinnern_beide(tmp_path, monkeypatch):
+        """Test 7: bei verschiedener Uhrzeit melden sich Merkmal und Buchung je einmal."""
+        stadt_fest(tmp_path, monkeypatch, {"E-01": "2027-03-11T08:00"})
+        alle = [m["schluessel"] for m in wa.lauf_reise("stadtwochenende", D(2027, 3, 11))["meldungen"]]
+>       assert f"zeit:E-01:{ERINNERND}:2027-03-11T08:00" in alle and "ab:B-01:E-01:2027-03-11T09:10" in alle, alle
+E       AssertionError: ['ab:B-01:E-01:2027-03-11T09:10', 'pruefung:A-01:geoeffnet:Geöffnet am Reisedatum', 'pruefung:A-02:eintritt:Eintritt', 'pruefung:A-02:geoeffnet:Geöffnet am Reisedatum']
+E       assert ('zeit:E-01:freischalten:2027-03-11T08:00' in ['ab:B-01:E-01:2027-03-11T09:10', 'pruefung:A-01:geoeffnet:Geöffnet am Reisedatum', 'pruefung:A-02:eintritt:Eintritt', 'pruefung:A-02:geoeffnet:Geöffnet am Reisedatum'])
+
+engine/tests/test_zeitleiste_bewegung.py:370: AssertionError
+___________________ test_seite_bei_und_nach_buchung[webkit] ____________________
+[gw1] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw1/test_seite_bei_und_nach_buchun1')
+browser = 'webkit'
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    def test_seite_bei_und_nach_buchung(tmp_path, browser):
+        """Test 18, 20, AC-11: ein Merkmal bei einem Zeitpunkt-Merkmal steht unter diesem Punkt; gebucht steht ein bei-Merkmal ohne
+        nach_buchung nur in „Aus der Planung“, ungebucht in der Zeitleiste."""
+        werte = {"E-01": {"wo": "App des Betreibers (Beispielwert)", "wagen": "Wagen 5 (Beispielwert)"}}
+        defs = {"wo": {"name": "Wo freischalten", "typ": "text", "bei": ERINNERND, "nach_buchung": True},
+                "wagen": {"name": "Wagen", "typ": "text", "bei": "abfahrt"}}
+        gebucht = abwandeln(kopie(tmp_path / "g"), definitionen=defs, werte=werte)
+>       bauen.bauen(gebucht, tmp_path / "sg" / "stadtwochenende")
+
+engine/tests/test_zeitleiste_bewegung.py:556: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+engine/bauen.py:1960: in bauen
+    daten = b.daten()
+            ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <bauen.Bauer object at 0x7f3d7f111bb0>
+
+    def daten(self):
+        c = self.cfg
+        self.ebenen_pruefen()
+        abschnitte = []
+        benutzt = {}
+        d_rel, u_rel, p_rel = c.get("etappen_dossier"), c.get("unterkuenfte_dossier"), c.get("plan")
+    
+        # Etappen-Dossier (Lesetext der Strecken) und Wissensabschnitte, Unterkünfte-Dossier
+        lesetexte = self.dossier_lesen(abschnitte, benutzt)
+    
+        # Plan
+        text = self.lesen(p_rel)
+        vor, teile = zerlege(text, 2)
+        vor = "\n".join(z for z in vor.splitlines() if not z.startswith("# "))
+        plan_kopf = self.html(vor, self.reise_dir / p_rel) if vor.strip() else ""
+        benutzt[p_rel] = set()
+        tab_cfg = c.get("tabellen", {})
+        tab_benutzt = set()
+        for titel, nr, body in teile:
+            wo = f"{p_rel}:{nr}"
+            if titel in tab_cfg:
+                tab_benutzt.add(titel)
+                sid, typ, art = tab_cfg[titel]
+                abschnitte.append(self.tabellen_abschnitt(sid, typ, art, titel, body, p_rel, wo))
+                continue
+            if self.ignoriert(p_rel, titel):
+                continue
+            eintrag = self.finde_abschnitt(p_rel, titel, nr, benutzt[p_rel])
+            if not eintrag:
+                self.fehler.append(texte.satz("pruefung.bauen.12", wo=wo, titel=titel))
+                continue
+            abschnitte.append(self.wissen(eintrag, titel, body, p_rel, wo))
+        for titel in tab_cfg:
+            if titel not in tab_benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.13", titel=titel, p_rel=p_rel))
+    
+        # Weitere Dateien, die nur Abschnitte mit IDs enthalten (z. B. Recherche, Planungsstand)
+        for rel in c.get("abschnitte", {}):
+            if rel in (d_rel, u_rel, p_rel):
+                continue
+            vor, teile = zerlege(self.lesen(rel), 2)
+            benutzt[rel] = set()
+            # Text vor dem ersten ## (z. B. Zusammenfassung unter der Hauptüberschrift) geht nicht
+            # stillschweigend verloren: in reise.json unter "#" eine ID geben oder in "ignorieren" "#".
+            h1 = next((z[2:].strip() for z in vor.splitlines() if z.startswith("# ")), "")
+            vor = trenner_entfernen("\n".join(z for z in vor.splitlines() if not z.startswith("# ")))
+            if vor.strip() and not self.ignoriert(rel, "#"):
+                eintrag = self.cfg["abschnitte"][rel].get("#")
+                if eintrag:
+                    benutzt[rel].add("#")
+                    abschnitte.append(self.wissen(eintrag, h1 or rel, vor, rel, f"{rel}:1"))
+                else:
+                    self.fehler.append(texte.satz("pruefung.bauen.14", rel=rel))
+            for titel, nr, body in teile:
+                wo = f"{rel}:{nr}"
+                if self.ignoriert(rel, titel):
+                    continue
+                eintrag = self.finde_abschnitt(rel, titel, nr, benutzt[rel])
+                if not eintrag:
+                    self.fehler.append(texte.satz("pruefung.bauen.15", wo=wo, titel=titel))
+                    continue
+                abschnitte.append(self.wissen(eintrag, titel, body, rel, wo))
+    
+        orte_inhalt = self.orte_lesen(abschnitte)
+    
+        fragen = self.fragen(c["fragen"]) if c.get("fragen") else {"spalten": [], "zeilen": []}
+    
+        # Rückwärts-Prüfung: Einträge in reise.json ohne Überschrift
+        for rel, karte in c.get("abschnitte", {}).items():
+            if rel not in benutzt:
+                self.fehler.append(texte.satz("pruefung.bauen.18", rel=rel))
+                continue
+            for titel in karte:
+                if titel not in benutzt[rel]:
+                    self.fehler.append(texte.satz("pruefung.bauen.19", titel=titel, rel=rel))
+    
+        # Routenmodell (Tage, Strecken, Unterkünfte, Wahlstellen)
+        route = None
+        r_cfg = c.get("routen")
+        if r_cfg:
+            r_rel = r_cfg["datei"]
+            try:
+                roh = yaml.safe_load(self.lesen(r_rel)) or {}
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.20", r_rel=r_rel, e=e))
+                roh = {}
+            status = {z["id"]: z["status"] for z in fragen["zeilen"]}
+            if "entscheider" in roh:
+                self.fehler.append(texte.satz("pruefung.bauen.21", r_rel=r_rel))
+            organisator = [p["name"] for p in self.eck["personen"] if p["rolle"] == "organisator"]
+            # Arten und Merkmale der Reise (docs/ontologie.md): plan/arten.yaml neben routen.yaml
+            a_rel = str(Path(r_rel).with_name("arten.yaml"))
+            try:
+                arten = yaml.safe_load(self.lesen(a_rel)) if (self.reise_dir / a_rel).exists() else None
+            except yaml.YAMLError as e:
+                self.fehler.append(texte.satz("pruefung.bauen.22", a_rel=a_rel, e=e))
+                arten = None
+            routen = Routen(roh, set(lesetexte), status, self.fehler, self.id_anlegen, r_rel, arten=arten,
+                            entscheider=organisator,
+                            wissen={i for i in self.ids if i.startswith("W-")}, sprache=self.eck["sprache"])
+            route = routen.bauen()
+            verhalten_anwenden(route, self.eck["verhalten"], self.eck["sprache"])
+            self._art_kategorien = kategorien_aus_arten(route) if route else {}
+            for oid, wo in orte_inhalt.items():
+                if route and oid not in route["orte"]:
+                    self.fehler.append(texte.satz("pruefung.bauen.23", wo=wo, oid=oid))
+            if route:
+                self.karte_bauen(r_cfg, route, lesetexte)
+                self.lage_ergaenzen(route)
+                self.dinge_lesetext(route, r_rel)
+                self.zeit_anzeigen(route)
+            if route:
+                for art in ("tagesplan", "unterkuenfte"):
+                    if art not in r_cfg:
+                        continue
+                    sid, titel = r_cfg[art]
+                    a = next((x for x in abschnitte if x["id"] == sid), None)
+                    if a is None:
+                        self.id_anlegen(sid, f"reise.json routen.{art}")
+                        a = {"id": sid, "typ": "plan", "titel": titel, "intro": "", "bloecke": []}
+                        abschnitte.insert(0, a)
+                    a["route_ansicht"] = art
+        # Lesetext ohne Strecke wird gemeldet; scheitert schon das Routenmodell, steht dessen Meldung (keine Folgemeldungen)
+        if route or not r_cfg:
+            self.strecken_lesetext(lesetexte, route)
+        if route:
+            self.orte_lesetext_pruefen(abschnitte, route)
+    
+        # Packliste (ADR-0010): plan/packliste.yaml neben routen.yaml; ihre Gegenstände hängen über an: an Dingen der Route
+        packliste = None
+        if route:
+            packliste = self.packliste_bauen(routen, str(Path(r_cfg["datei"]).parent / "packliste.yaml"))
+    
+        # Claudes Vorschläge zu Wünschen (Wunsch-Brett, Paket G): plan/wuensche.yaml neben routen.yaml
+        wunsch_vorschlaege = {}
+        if route and (self.reise_dir / Path(r_cfg["datei"]).parent / "wuensche.yaml").exists():
+            wunsch_vorschlaege = self.wunsch_vorschlaege(str(Path(r_cfg["datei"]).parent / "wuensche.yaml"), route)
+    
+        # Orte und Wissen in beide Richtungen verknüpfen (reise.json orte_wissen -> YAML; 25.10.2026)
+        if c.get("orte_wissen"):
+            self.orte_wissen(c["orte_wissen"], abschnitte)
+    
+        # Karten in der Recherche: Orte je Block auf regionalen Offline-Karten (reise.json wissen_punkte; Issue #64)
+        wissen_karte = self.wissen_karte(c.get("wissen_punkte"), abschnitte, route) if c.get("wissen_punkte") or (route and kartenpunkte_aus_dingen(route)[1]) else None
+    
+        self.uebersichten_anhaengen(c.get("uebersichten"), abschnitte, route)
+        kategorien = self.kategorien_laden()   # auch ohne Punkte prüfen, damit ein Fehler in der Datei nicht schlummert
+        if c.get("eckdaten") and not any(a["id"] == c["eckdaten"] for a in abschnitte):
+            self.fehler.append(texte.satz("pruefung.bauen.eckdaten_fehlt", sid=c["eckdaten"]))
+        bilder = self.bilder_daten()
+        bilder_entfernt = self.bilder_entfernt_daten()
+        if self.fehler:
+>           raise BauFehler(list(dict.fromkeys(self.fehler)))
+E           bauen.BauFehler: plan/routen.yaml: arten.yaml bahn: Merkmal wo: unbekannte Felder bei.
+E           plan/routen.yaml: arten.yaml bahn: Merkmal wagen: unbekannte Felder bei.
+
+engine/bauen.py:875: BauFehler
+________________ test_seite_zeigt_die_zeitleiste[360-chromium] _________________
+[gw4] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw4/test_seite_zeigt_die_zeitleist0')
+browser = 'chromium', breite = 360
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("breite", [360, 1200])
+    def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
+        """Test 11, 18, AC-5 bis AC-8, AC-11: Stadtwochenende E-01 und E-02 an ihrer Heimat."""
+        q = kopie(tmp_path)
+        seiten = tmp_path / "seiten"
+        bauen.bauen(q, seiten / "stadtwochenende")
+        dinge = ansehen(seiten, "stadtwochenende", ["E-01", "E-02"], browser, breite)
+        for did, e in dinge.items():
+>           assert e["anzahl"] == 1, (did, e)
+E           AssertionError: ('E-01', {'anzahl': 0, 'punkte': [], 'schrift': '17px', 'kopf': None, ...})
+E           assert 0 == 1
+
+engine/tests/test_zeitleiste_bewegung.py:518: AssertionError
+_________________ test_seite_zeigt_die_zeitleiste[360-webkit] __________________
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw5/test_seite_zeigt_die_zeitleist0')
+browser = 'webkit', breite = 360
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("breite", [360, 1200])
+    def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
+        """Test 11, 18, AC-5 bis AC-8, AC-11: Stadtwochenende E-01 und E-02 an ihrer Heimat."""
+        q = kopie(tmp_path)
+        seiten = tmp_path / "seiten"
+        bauen.bauen(q, seiten / "stadtwochenende")
+        dinge = ansehen(seiten, "stadtwochenende", ["E-01", "E-02"], browser, breite)
+        for did, e in dinge.items():
+>           assert e["anzahl"] == 1, (did, e)
+E           AssertionError: ('E-01', {'anzahl': 0, 'punkte': [], 'schrift': '17px', 'kopf': None, ...})
+E           assert 0 == 1
+
+engine/tests/test_zeitleiste_bewegung.py:518: AssertionError
+________________ test_seite_zeigt_die_zeitleiste[1200-chromium] ________________
+[gw5] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw5/test_seite_zeigt_die_zeitleist1')
+browser = 'chromium', breite = 1200
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("breite", [360, 1200])
+    def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
+        """Test 11, 18, AC-5 bis AC-8, AC-11: Stadtwochenende E-01 und E-02 an ihrer Heimat."""
+        q = kopie(tmp_path)
+        seiten = tmp_path / "seiten"
+        bauen.bauen(q, seiten / "stadtwochenende")
+        dinge = ansehen(seiten, "stadtwochenende", ["E-01", "E-02"], browser, breite)
+        for did, e in dinge.items():
+>           assert e["anzahl"] == 1, (did, e)
+E           AssertionError: ('E-01', {'anzahl': 0, 'punkte': [], 'schrift': '18.0625px', 'kopf': None, ...})
+E           assert 0 == 1
+
+engine/tests/test_zeitleiste_bewegung.py:518: AssertionError
+_________________ test_seite_zeigt_die_zeitleiste[1200-webkit] _________________
+[gw4] linux -- Python 3.12.3 ~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3202/popen-gw4/test_seite_zeigt_die_zeitleist1')
+browser = 'webkit', breite = 1200
+
+    @OHNE_BROWSER
+    @pytest.mark.parametrize("browser", ["chromium", "webkit"])
+    @pytest.mark.parametrize("breite", [360, 1200])
+    def test_seite_zeigt_die_zeitleiste(tmp_path, browser, breite):
+        """Test 11, 18, AC-5 bis AC-8, AC-11: Stadtwochenende E-01 und E-02 an ihrer Heimat."""
+        q = kopie(tmp_path)
+        seiten = tmp_path / "seiten"
+        bauen.bauen(q, seiten / "stadtwochenende")
+        dinge = ansehen(seiten, "stadtwochenende", ["E-01", "E-02"], browser, breite)
+        for did, e in dinge.items():
+>           assert e["anzahl"] == 1, (did, e)
+E           AssertionError: ('E-01', {'anzahl': 0, 'punkte': [], 'schrift': '18.0625px', 'kopf': None, ...})
+E           assert 0 == 1
+
+engine/tests/test_zeitleiste_bewegung.py:518: AssertionError
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_uhrzeit_ohne_rolle_und_zweite_abfahrt_bleiben_fehler[merkmal1-pruefung.routen.lage_doppelt]
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_uhrzeit_ohne_rolle_und_zweite_abfahrt_bleiben_fehler[merkmal0-pruefung.routen.lage_rolle]
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_ohne_datum_keine_erinnerung_und_kein_termin
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_keine_doppelte_erinnerung_bei_gleichem_zeitpunkt_wie_die_buchung
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_kein_formatwechsel
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_seite_gegenprobe_ohne_zeitleiste_und_unterkunft[chromium]
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_seite_gegenprobe_ohne_zeitleiste_und_unterkunft[webkit]
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_halteleiste_sieht_aus_wie_vorher[webkit]
+PASSED engine/tests/test_zeitleiste_bewegung.py::test_halteleiste_sieht_aus_wie_vorher[chromium]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_erinnern_an_zeitpunkt_wird_uebernommen
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_wird_geprueft[bahn-definitionen0-pruefung.routen.bei_typ]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch[definition1-pruefung.routen.erinnern_typ]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_text_lage_rolle_nennt_zeitpunkt_nicht_mehr_als_rollenpflichtig
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch[definition0-pruefung.routen.erinnern_typ]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_wird_geprueft[bahn-definitionen3-pruefung.routen.bei_ziel]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_erinnern_nur_an_zeitpunkt_und_nur_wahr_oder_falsch[definition2-pruefung.routen.erinnern]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_wird_geprueft[bahn-definitionen1-pruefung.routen.bei_typ]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_zeitpunkt_ohne_rolle_bleibt_merkmal_und_wird_geprueft
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_wird_geprueft[bahn-definitionen2-pruefung.routen.bei_ziel]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_wird_geprueft[bahn-definitionen5-pruefung.routen.bei]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_wird_geprueft[bahn-definitionen6-pruefung.routen.bei]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_wird_geprueft[gastzimmer-definitionen4-pruefung.routen.bei_ziel]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_beispielreise_stadtwochenende_traegt_die_neuen_merkmale
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_waechter_erinnert_einmal_am_tag_des_zeitpunkts
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_kalender_termin_je_erinnerndem_zeitpunkt
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_ohne_punkt_bleibt_in_der_merkmalliste
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_erinnern_im_schreibweg
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_zeitleiste_in_den_seitendaten
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_neue_texte_in_jeder_sprache[de]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_auf_rolle_und_auf_zeitpunkt_weiter_unten
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_merkmale_zeigt_erinnern_und_bei
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_atome_der_leiste_und_ihre_nutzung
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_ohne_weitere_zeitpunkte_keine_zeitleiste
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_neue_texte_in_jeder_sprache[en]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_bei_im_schreibweg - Ass...
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_schema_und_englische_namen
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_seite_bei_und_nach_buchung[chromium]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_verschiedene_zeiten_erinnern_beide
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_seite_bei_und_nach_buchung[webkit]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_seite_zeigt_die_zeitleiste[360-chromium]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_seite_zeigt_die_zeitleiste[360-webkit]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_seite_zeigt_die_zeitleiste[1200-chromium]
+FAILED engine/tests/test_zeitleiste_bewegung.py::test_seite_zeigt_die_zeitleiste[1200-webkit]
+34 failed, 9 passed in 13.01s
