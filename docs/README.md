@@ -11,7 +11,7 @@ Frieda hält eine Reise als geprüfte Wahrheit, die Reisenden planen sie im Gesp
 | wissen willst, was Frieda ist | [README](../README.md) und [Der Kern (ADR-0001)](adr/0001-kern.md) |
 | sehen willst, was Frieda kann | [Funktionen](funktionen/README.md) |
 | die Beispielreise auf dem eigenen Rechner bauen willst | [README, „Ausprobieren“](../README.md#ausprobieren) und [Beispielreisen](../beispiel/README.md) |
-| Frieda in der Claude-App nutzen willst | [Planen im Gespräch](funktionen/gespraech.md) und [Konto](funktionen/konto.md) |
+| Frieda in der Claude-App nutzen willst | [Planen im Gespräch](funktionen/gespraech.md), [Gute Gespräche mit Frieda](funktionen/gute-gespraeche.md) und [Konto](funktionen/konto.md) |
 | Frieda auf einem eigenen Server betreiben willst | [Selbst betreiben](funktionen/selbst-betreiben.md), dann [Betrieb einer Instanz](betrieb.md) |
 | an der Software mitarbeiten willst | [Arbeitsregeln](../CLAUDE.md), [Architektur-Entscheidungen](adr/README.md), [Design und Bausteine](design.md) |
 
@@ -21,6 +21,7 @@ Eine Seite je Bereich, jeweils mit Beispielen, Rechten, Regeln und Grenzen. Übe
 
 - [Die Reise als geprüfte Wahrheit](funktionen/reisemodell.md)
 - [Planen im Gespräch](funktionen/gespraech.md)
+- [Gute Gespräche mit Frieda](funktionen/gute-gespraeche.md): Abläufe mit Beispielsätzen
 - [Reiseseite](funktionen/reiseseite.md)
 - [Alternativen und Entscheidungen](funktionen/alternativen.md)
 - [Buchungen und Belege](funktionen/buchungen.md)

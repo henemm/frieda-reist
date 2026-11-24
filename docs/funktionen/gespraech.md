@@ -94,6 +94,7 @@ Claude bekommt beim Verbinden deine Rolle, den Status der Reise und deine Grenze
 
 ## Siehe auch
 
+- [Gute Gespräche mit Frieda](gute-gespraeche.md): typische Abläufe mit Beispielsätzen
 - [Reisemodell](reisemodell.md), [Alternativen und Entscheidungen](alternativen.md), [Buchungen](buchungen.md), [Zusammenarbeit](zusammenarbeit.md)
 - [Reiseseite](reiseseite.md), [Konto und Anmeldung](konto.md), [Sprachen](sprachen.md)
 - Referenz: [Konnektor](../konnektor.md), [Einrichten in der Claude-App](../konnektor.md#in-der-claude-app-eintragen), [Konten](../konten.md), [ADR-0001: Der Kern](../adr/0001-kern.md)

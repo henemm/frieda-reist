@@ -14,6 +14,7 @@ Frieda arbeitet an drei Orten:
 |---|---|---|---|
 | **Die Reise als geprüfte Wahrheit** | Tage, Orte, Unterkünfte, Aufenthalte, Strecken mit festen Kennungen; Arten und Merkmale je Reise; jede Angabe mit Herkunft und Prüfdatum; nichts wird gelöscht, alles hat einen Verlauf | überall | [Reisemodell](reisemodell.md) |
 | **Planen im Gespräch** | die Reise in der Claude-App lesen, recherchieren lassen, eintragen; prüfen, ob eine Änderung schon auf der Seite ist; die Seite als Bild ansehen | Gespräch | [Planen im Gespräch](gespraech.md) |
+| **Gute Gespräche** | typische Abläufe mit Beispielsätzen: Unterkünfte vergleichen, entscheiden, Buchung mit Beleg, Rückmeldungen einarbeiten, vor der Abreise durchgehen | Gespräch | [Gute Gespräche mit Frieda](gute-gespraeche.md) |
 | **Reiseseite** | Reiseüberblick mit Zeitachse, Tagesseiten, Ortsseiten, Wissen, „Zu tun“, Suche; offline, als App auf dem Home-Bildschirm | Reiseseite | [Reiseseite](reiseseite.md) |
 | **Alternativen und Entscheidungen** | Wahlstellen mit Optionen an jeder Stelle, benannte Pläne mit Summen, Vergleich nach Merkmalen, Entscheidungen mit Person, Datum und Grund, Konflikte werden zur offenen Frage | Gespräch, Reiseseite | [Alternativen](alternativen.md) |
 | **Buchungen und Belege** | Buchungen mit Nummer, Frist, Stornoregel und Zahlstand; Belege anhängen und freigeben; Check-in-Ansicht; Kosten der Übernachtungen | Gespräch, Reiseseite | [Buchungen](buchungen.md) |
