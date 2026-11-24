@@ -1,6 +1,7 @@
 """Automatische Karte aus dem Plan (Epic #225): Karte ohne plan/karte.yaml, Kartenstatus, Legende aus der Art, Ansichten,
 Aufenthalte ohne Tag, GPX an der Strecke, Grundkarte nach Fläche. Grundlage ist die erfundene Beispielreise."""
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -20,6 +21,17 @@ LAGEN = {"O-01": [51.040, 13.732], "O-02": [50.9585, 14.0325], "O-03": [50.979, 
 
 def punkt(lage):
     return {"wert": lage, "quelle": "Beispielwert (Test)"}
+
+
+def bausteine_setzen(r, bausteine):
+    """Setzt die Bausteine in reise.yaml der kopierten Reise r auf die Liste bausteine (#685). Ersetzt die Zeile
+    „bausteine: [...]“ gleich welchen Inhalts und scheitert laut, wenn es nicht genau eine gibt; ein fester Ersatztext
+    griff nach jeder Änderung an der Beispielreise still ins Leere."""
+    y = r / "reise.yaml"
+    neu, n = re.subn(r"^bausteine: \[[^\]\n]*\]$", f"bausteine: [{', '.join(bausteine)}]", y.read_text(encoding="utf-8"),
+                     flags=re.MULTILINE)
+    assert n == 1, f"reise.yaml braucht genau eine Zeile „bausteine: [...]“, gefunden: {n}"
+    y.write_text(neu, encoding="utf-8")
 
 
 @pytest.fixture
@@ -76,10 +88,20 @@ def test_nur_ein_punkt_keine_karte_mit_grund(reise, tmp_path):
 
 def test_ohne_baustein_karte_keine_automatische_karte(reise, tmp_path):
     routen(reise, mit_lagen)
-    y = reise / "reise.yaml"
-    y.write_text(y.read_text(encoding="utf-8").replace("bausteine: [varianten, karte,", "bausteine: [varianten,"), encoding="utf-8")
+    bausteine_setzen(reise, [b for b in yaml.safe_load((reise / "reise.yaml").read_text(encoding="utf-8"))["bausteine"] if b != "karte"])
     d, _ = daten(reise, tmp_path)
     assert d["route"]["karte"] is None and d["route"]["karte_status"]["grund"] == "baustein_aus"
+
+
+def test_bausteine_setzen_greift_oder_scheitert_laut(reise):
+    """#685: Die Testhilfe setzt genau die gewünschten Bausteine, unabhängig vom Stand der Beispielreise, und bricht ab,
+    statt still nichts zu tun, wenn reise.yaml keine Zeile „bausteine: [...]“ hat."""
+    bausteine_setzen(reise, ["karte", "fragen"])
+    assert yaml.safe_load((reise / "reise.yaml").read_text(encoding="utf-8"))["bausteine"] == ["karte", "fragen"]
+    y = reise / "reise.yaml"
+    y.write_text("\n".join(z for z in y.read_text(encoding="utf-8").splitlines() if not z.startswith("bausteine:")), encoding="utf-8")
+    with pytest.raises(AssertionError):
+        bausteine_setzen(reise, ["karte"])
 
 
 def test_fehlerhafte_kartendaten_lassen_den_bau_nicht_scheitern(tmp_path):

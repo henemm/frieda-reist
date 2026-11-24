@@ -16,11 +16,11 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
-from test_karte_auto import mit_lagen, punkt  # noqa: E402
+from test_karte_auto import bausteine_setzen, mit_lagen, punkt  # noqa: E402
 from test_tagesseite import PLAYWRIGHT, WURZEL, plan_fest  # noqa: E402
 
 
-def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckmeldungen, fragen, aufgaben]", fall=None):
+def seite(tmp_path, browser, fest=False, bausteine=("karte", "rueckmeldungen", "fragen", "aufgaben"), fall=None):
     quelle = tmp_path / "quelle"
     shutil.copytree(WURZEL / "beispiel/reisen/beispielreise", quelle)
     if fest:
@@ -29,9 +29,7 @@ def seite(tmp_path, browser, fest=False, bausteine="[karte, tagesseiten, rueckme
     del cfg["routen"]["karte"]
     (quelle / "reise.json").write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
     (quelle / "plan" / "karte.yaml").unlink()
-    y = quelle / "reise.yaml"
-    y.write_text(y.read_text(encoding="utf-8").replace("bausteine: [varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche]",
-                                                       f"bausteine: {bausteine}"), encoding="utf-8")
+    bausteine_setzen(quelle, bausteine)
     r = quelle / "plan" / "routen.yaml"
     d = yaml.safe_load(r.read_text(encoding="utf-8"))
     mit_lagen(d)
@@ -96,7 +94,7 @@ def test_karte_unter_reise_ohne_varianten_mit_ansichten_und_ohne_tag(tmp_path, b
 @ohne_browser
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_tageskarte_am_tag_mit_strecke(tmp_path, browser):
-    for breite, a in seite(tmp_path, browser, fest=True, bausteine="[varianten, karte, tagesseiten, fragen]").items():
+    for breite, a in seite(tmp_path, browser, fest=True, bausteine=("varianten", "karte", "fragen")).items():
         assert a["reiter"][0] == "Reise" and a["kartenboxen"] == 1, a
         # Tag 2 hat Strecken: ein Ausschnitt mit den Punkten des Tags (Pension Burgblick, Gasthof als Alternative, Burg)
         assert a["tag2"] == {"karten": 1, "gefuellt": 2, "umriss": 1, "schematisch": True}, a["tag2"]
@@ -109,7 +107,7 @@ def test_tageskarte_am_tag_mit_strecke(tmp_path, browser):
 def test_zwei_plaene_erscheinen_auf_der_automatischen_karte_in_zwei_farben(tmp_path, browser):
     """K16 (#234): Mit Baustein Varianten und zwei offenen Plänen zeichnet die automatische Karte auf dem Reiter „Varianten“ die Strecken in den Planfarben
     der Pläne (Plan A = a, Plan B = b); Strecken beider Pläne einmal neutral. Die Beispielwerte kommen aus der Beispielreise."""
-    for breite, a in seite(tmp_path, browser, bausteine="[varianten, karte, tagesseiten, fragen]", fall="plaene").items():
+    for breite, a in seite(tmp_path, browser, bausteine=("varianten", "karte", "fragen"), fall="plaene").items():
         assert a["auto"], "die Karte muss die automatische sein (ohne plan/karte.yaml)"
         assert {"Plan A", "Plan B"} <= set(a["planLegende"]), a["planLegende"]
         assert {"rh-plan-a", "rh-plan-b"} <= set(a["planKlassen"]), a["planKlassen"]

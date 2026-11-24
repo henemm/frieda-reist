@@ -16,7 +16,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
-from test_karte_auto import mit_lagen, punkt  # noqa: E402
+from test_karte_auto import bausteine_setzen, mit_lagen, punkt  # noqa: E402
 from test_tagesseite import PLAYWRIGHT, WURZEL  # noqa: E402
 
 
@@ -27,9 +27,7 @@ def _seite(tmp_path, browser):
     del cfg["routen"]["karte"]
     (quelle / "reise.json").write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
     (quelle / "plan" / "karte.yaml").unlink()
-    y = quelle / "reise.yaml"
-    y.write_text(y.read_text(encoding="utf-8").replace("bausteine: [varianten, karte, tagesseiten, rueckmeldungen, fragen, aufgaben, wuensche]",
-                                                       "bausteine: [karte, tagesseiten, rueckmeldungen, fragen, aufgaben]"), encoding="utf-8")
+    bausteine_setzen(quelle, ["karte", "rueckmeldungen", "fragen", "aufgaben"])
     r = quelle / "plan" / "routen.yaml"
     d = yaml.safe_load(r.read_text(encoding="utf-8"))
     mit_lagen(d)
