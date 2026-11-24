@@ -3891,6 +3891,8 @@ TEXTE = {
     "seite.bild.grossansicht": "Großansicht: {name}",
     "seite.bild.vorheriges": "Vorheriges Bild",
     "seite.bild.naechstes": "Nächstes Bild",
+    "seite.bild.zoomen": "Zoomen",
+    "seite.bild.ladefehler": "Das Bild lässt sich gerade nicht laden.",
     "seite.bild.zaehler": "{ding} · {i} / {n}",
     "seite.bild.commons": "Commons-Seite",
     "inhalt.schreiben.bilder_kopf": "Bilder dieser Reise (BI-…): Herkunft, Lizenz, Zuordnung und Fassungen (medien/bilder/).\nGepflegt im Gespräch im AI-Client (bild_hinzufuegen, bild_aendern); zurückgezogene Bilder bleiben erhalten. Eigene Fotos lassen sich endgültig entfernen (bild_entfernen); ihr Eintrag bleibt als „Foto entfernt“ im Verlauf.",

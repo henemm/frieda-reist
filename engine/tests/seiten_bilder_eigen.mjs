@@ -65,27 +65,31 @@ if (art === "seite") {
   async function warten(liste, bedingung, ms = 5000) {
     for (let i = 0; i < ms / 100 && !liste.some(bedingung); i++) await leise(100);
   }
+  // Großansicht (PhotoSwipe, #676) öffnen und warten, bis der Übergang vorbei ist; „Foto entfernen“ schließt sie und fragt dann
+  const grossAuf = async (p, kopf) => {
+    await p.waitForFunction(() => !document.getElementById("gross"), null, {timeout: 3000}).catch(() => {});
+    await kopf.click();
+    await p.waitForSelector("#gross.pswp--open", {timeout: 5000}).catch(() => {});
+    await p.waitForTimeout(500);
+  };
+  const frage = p => p.waitForSelector("dialog.blatt[open]", {timeout: 3000}).catch(() => {});
   async function loeschen(p, gesendet) {
     const d = {knopf: false};
     const kopf = p.locator("#main .bild.kopf").first();
     if (!(await kopf.count())) return d;
-    await kopf.click();
-    await p.waitForSelector("#gross[open]", {timeout: 5000}).catch(() => {});
+    await grossAuf(p, kopf);
     d.knopf = (await knopf(p, T.entfernen, "#gross").count()) > 0;
     if (!d.knopf) return d;
     await knopf(p, T.entfernen, "#gross").first().click();
-    await p.waitForTimeout(400);
+    await frage(p);
     d.dialog = {titel: await sichtbarerText(p, T.titel), zusage: await sichtbarerText(p, T.zusage),
                 knoepfe: [(await knopf(p, T.behalten).count()) > 0, (await knopf(p, T.ja).count()) > 0]};
     if (d.dialog.knoepfe[0]) await knopf(p, T.behalten).first().click();
     await p.waitForTimeout(500);
     d.nachBehalten = gesendet.filter(x => x.methode === "DELETE");
-    if ((await knopf(p, T.entfernen, "#gross").count()) === 0) {   // Großansicht wieder öffnen, falls sie zu ist
-      await kopf.click().catch(() => {});
-      await p.waitForSelector("#gross[open]", {timeout: 5000}).catch(() => {});
-    }
+    if ((await knopf(p, T.entfernen, "#gross").count()) === 0) await grossAuf(p, kopf).catch(() => {});   // Großansicht wieder öffnen
     await knopf(p, T.entfernen, "#gross").first().click().catch(() => {});
-    await p.waitForTimeout(400);
+    await frage(p);
     await knopf(p, T.ja).first().click().catch(() => {});
     await warten(gesendet, x => x.methode === "DELETE");
     d.nachEntfernen = gesendet.filter(x => x.methode === "DELETE");

@@ -146,22 +146,37 @@ def test_jedes_bild_genau_einmal_verpackt(ergebnis):
 
 
 def test_grossansicht_zaehler_tasten_fokus_und_wischen(ergebnis):
-    """AC-2: Großansicht modal mit „Ding · i / n“, Pfeiltasten wechseln, Escape schließt mit Fokusrückgabe, Wischen waagerecht
-    wechselt, nach unten schließt; vor dem ersten Öffnen gibt es kein #gross."""
+    """AC-2 (#676 PhotoSwipe): Großansicht modal mit „Ding · i / n“ (auch als Name des Dialogs), Bildunterschrift und Nennung mit
+    Lizenz-Link, Knöpfe mit Texten aus dem Katalog; Pfeiltasten wechseln, Zoomen ändert den Maßstab, Escape schließt mit
+    Fokusrückgabe, Wischen waagerecht wechselt, nach unten schließt; Grund wie die Seite; vor dem ersten Öffnen weder #gross
+    noch die Bibliothek."""
     e, _ = ergebnis
-    assert e["aus"]["grossVorher"] is False
+    assert e["aus"]["grossVorher"] is False and e["aus"]["bibliothekVorher"] is False
     g = e["aus"]["gross"]
     assert g, "keine Gruppe mit 3 Bildern an einem Ort"
     n = g["n"]
-    assert g["auf"] and g["auf"]["offen"] and g["auf"]["modal"], g["auf"]
-    assert re.search(rf"· 1 / {n}\b", g["auf"]["text"]) and g["auf"]["src"].endswith(g["gross"][0]), g["auf"]
-    assert g["auf"]["hintergrund"].replace(" ", "") in ("rgba(8,10,9,0.94)",), g["auf"]["hintergrund"]
+    a = g["auf"]
+    assert a["offen"] and a["modal"], a
+    assert re.search(rf"· 1 / {n}\b", a["text"]) and a["label"] == a["text"] and a["src"].endswith(g["gross"][0]), a
+    assert a["unten"].strip() and a["lizenzLink"], a
+    assert {"Schließen", "Zoomen", "Vorheriges Bild", "Nächstes Bild"} <= set(a["titel"]), a["titel"]
+    assert a["hintergrund"] == a["seitenGrund"], (a["hintergrund"], a["seitenGrund"])
     assert re.search(rf"· 2 / {n}\b", g["rechts"]["text"]) and g["rechts"]["src"].endswith(g["gross"][1]), g["rechts"]
     assert re.search(rf"· 1 / {n}\b", g["links"]["text"]), g["links"]
+    assert g["zoom"]["vorher"] and g["zoom"]["nachher"] > g["zoom"]["vorher"], g["zoom"]
     assert not g["zu"]["offen"] and g["zu"]["fokusZurueck"], g["zu"]
     assert g["wischWaagerecht"]["offen"] and re.search(rf"· 2 / {n}\b", g["wischWaagerecht"]["text"]), g["wischWaagerecht"]
     assert not g["wischUnten"]["offen"], g["wischUnten"]
-    assert g["auf"]["pfeile"] and all(d != "none" for d in g["auf"]["pfeile"]), g["auf"]["pfeile"]
+    assert a["pfeile"] and all(d != "none" for d in a["pfeile"]), a["pfeile"]
+    assert not a["inline"]
+
+
+def test_grossansicht_oeffnet_aus_dem_vorschaubild(ergebnis):
+    """#676: das Bild wächst aus dem angetippten Vorschaubild der Bildreihe (erste Breite nahe der Vorschau, dann viel größer)."""
+    e, _ = ergebnis
+    u = e["aus"]["gross"]["uebergang"]
+    b = [x for x in u["breiten"] if x > 0]
+    assert b and b[0] <= u["vorschau"] * 2 and max(b) > u["vorschau"] * 5, u
 
 
 def test_handy_360_ohne_ueberbreite_und_ohne_pfeile(ergebnis):

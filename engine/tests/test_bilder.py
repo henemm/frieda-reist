@@ -1141,7 +1141,8 @@ def test_p2_beispielbilder_frei_mit_third_party_titelbild_und_gruppe():
 # ---------- P2: Texte und Bausteine (AC-7) ----------
 
 NEUE_TEXTE = ("seite.bild.anzahl", "seite.bild.schliessen", "seite.bild.grossansicht", "seite.bild.vorheriges",
-              "seite.bild.naechstes", "seite.bild.zaehler", "pruefung.bauen.bilder_offline")
+              "seite.bild.naechstes", "seite.bild.zaehler", "pruefung.bauen.bilder_offline",
+              "seite.bild.zoomen", "seite.bild.ladefehler")   # PhotoSwipe, #676
 
 
 def test_p2_neue_texte_in_allen_sprachen():
@@ -1168,3 +1169,30 @@ def test_p2_bausteine_an_allen_vier_stellen():
     assert "--radius-gross" not in VORLAGE
     assert "Großansicht" in DESIGN
     assert not re.search(r"alle Bilder werden[^.]*vorab", (WURZEL / "engine" / "sw.vorlage.js").read_text(encoding="utf-8"))
+
+
+# ---------- Großansicht mit PhotoSwipe (#676) ----------
+
+def test_photoswipe_nur_mit_bildern_neben_der_seite_und_vorab_gespeichert(tmp_path):
+    """#676: ES-Modul und Stile von PhotoSwipe liegen nur bei Reisen mit Bildern neben der Seite und stehen in der Liste des
+    Service Workers (ohne Netz); das Stadtwochenende (ohne Bilder) trägt sie nicht. Lizenz in engine/vendor und THIRD_PARTY.md."""
+    dateien = set(bauen.VENDOR_GALERIE.values())
+    assert any(d.endswith(".esm.min.js") for d in dateien) and any(d.endswith(".css") for d in dateien)
+    bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", tmp_path / "beispiel")
+    bauen.bauen(WURZEL / "beispiel/reisen/stadtwochenende", tmp_path / "stadt")
+    sw = (tmp_path / "beispiel" / "sw.js").read_text(encoding="utf-8")
+    for d in dateien:
+        assert (tmp_path / "beispiel" / d).read_bytes() == (WURZEL / "engine/vendor" / d).read_bytes(), d
+        assert f'"{d}"' in sw, d
+        assert not (tmp_path / "stadt" / d).exists() and f'"{d}"' not in (tmp_path / "stadt" / "sw.js").read_text(encoding="utf-8"), d
+    vorlage = (WURZEL / "engine/vorlage.html").read_text(encoding="utf-8")
+    assert all(f'"{d}"' in vorlage for d in dateien), "GALERIE_JS/GALERIE_CSS in vorlage.html passen nicht zu VENDOR_GALERIE"
+    assert (WURZEL / "engine/vendor/photoswipe-LICENSE").read_text(encoding="utf-8").startswith("The MIT License")
+    assert re.search(r"\| PhotoSwipe \| 5\.4\.4 \| MIT \|", (WURZEL / "THIRD_PARTY.md").read_text(encoding="utf-8"))
+
+
+def test_photoswipe_ohne_altes_dialogfeld():
+    """#676: die eigene Großansicht ist weg (kein <dialog id=gross>, keine .pfeil-Knöpfe), die Seite lädt das Modul dynamisch."""
+    vorlage = (WURZEL / "engine/vorlage.html").read_text(encoding="utf-8")
+    assert 'el("dialog", {id: "gross"' not in vorlage and "#gross .pfeil" not in vorlage
+    assert 'import("./" + GALERIE_JS)' in vorlage

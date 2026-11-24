@@ -952,25 +952,40 @@ details.pack-klapper>summary .pack-summe{margin:0 0 0 auto}
 .pack-fortschritt{font-size:var(--t-klein);font-weight:400;color:var(--mut)}
 .pico details.pack-weg{margin:14px 0 0;max-width:var(--lese)}
 .pico details.pack-weg>summary{color:var(--mut);font-size:var(--t-klein);padding-block:12px}
-/* ---------- Organismus Großansicht (#gross, #455): dunkler Grund, oben Zähler und Schließen, Mitte Pfeile und Bild, unten
-   Bildunterschrift und Nennung; Abstände mit safe-area. Außerhalb von .pico (eigene Knöpfe). Über dem Bild nimmt die Seite
-   die Geste ganz (touch-action: none), sonst bräche der Browser das Wischen nach unten als Rollen ab. */
-#gross{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;box-sizing:border-box;
-  padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
-  background:rgba(8,10,9,.94);color:#eceee9;font-family:var(--font-text);touch-action:pan-y;container:gross / inline-size}
-#gross[open]{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px}
-#gross::backdrop{background:transparent}
-#gross .gross-oben{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:var(--t-klein)}
-#gross .gross-mitte{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;min-height:0;touch-action:none}
-#gross .gross-mitte img{grid-column:2;grid-row:1;width:100%;height:100%;min-height:0;object-fit:contain;border-radius:0;user-select:none;-webkit-user-drag:none}
-#gross button{background:transparent;color:inherit;border:1px solid rgba(236,238,233,.35);border-radius:var(--r-pille);padding:6px 14px;font:inherit;cursor:pointer}
-#gross button:focus-visible{outline:2px solid #eceee9;outline-offset:2px}
-#gross .pfeil{width:var(--knopf);height:var(--knopf);padding:0;font-size:var(--t-titel);line-height:1}
-#gross .pfeil.allein{visibility:hidden}
-#gross .gross-unten{display:flex;flex-direction:column;gap:2px;align-items:center;text-align:center;font-size:var(--t-klein)}
-#gross .nennung,#gross .nennung a{font-size:var(--t-etikett);color:#c3c8c2}
-/* Bis 560 px Breite der Seite keine Pfeile (Inhalt 540 px nach 2 × 10 px Rand): am Handy wischt man */
-@container gross (max-width:540px){#gross .pfeil{display:none}}
+/* ---------- Organismus Großansicht (#gross, #676; vorher eigener Dialog #455): PhotoSwipe 5 (MIT, engine/vendor) im Gesicht der
+   Seite. Grund ist --bg (hell am Tag, dunkel nachts), Symbole in --fg; oben links der Zähler „Ding · i / n“, rechts Zoomen und
+   Schließen; Pfeile als runde Flächen (--card, --schatten), bis 560 px Breite ausgeblendet (am Handy wischt man); unten
+   Bildunterschrift, Nennung und „Foto entfernen“. Die Ids schlagen die Stile der Bibliothek, die erst beim Öffnen nachladen.
+   Bewegung: Öffnen aus dem Vorschaubild; bei reduzierter Bewegung schaltet PhotoSwipe Übergänge selbst ab. */
+#gross{--pswp-bg:var(--bg);--pswp-placeholder-bg:var(--card);--pswp-icon-color:var(--fg);--pswp-icon-color-secondary:var(--bg);
+  --pswp-icon-stroke-color:var(--bg);--pswp-icon-stroke-width:1.5px;--pswp-error-text-color:var(--fg);
+  --pswp-preloader-color:color-mix(in srgb,var(--fg) 20%,transparent);--pswp-preloader-color-secondary:var(--acc);font-family:var(--font-text);color:var(--fg);
+  container:gross / inline-size}
+#gross .pswp__top-bar{height:calc(56px + env(safe-area-inset-top));padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);box-sizing:border-box;align-items:center;
+  background:linear-gradient(var(--bg),color-mix(in srgb,var(--bg) 0%,transparent))}
+#gross .pswp__img{border-radius:0}
+#gross .pswp__button{width:var(--knopf);height:var(--knopf);border-radius:var(--r-pille);display:grid;place-items:center}
+#gross .pswp__button .pswp__icn{position:static}
+#gross .pswp__button:focus-visible,#gross .gross-unten :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+#gross .zaehler{margin-right:auto;padding:0 16px;font-size:var(--t-klein);font-weight:600;color:var(--fg);pointer-events:none;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#gross .pswp__button--arrow{width:var(--knopf);height:var(--knopf);margin-top:calc(var(--knopf) / -2);background:var(--card);box-shadow:var(--schatten)}
+#gross .pswp__button--arrow .pswp__icn{width:32px;height:32px;margin:0;transform:none}
+#gross .pswp__button--arrow--prev{left:max(14px,env(safe-area-inset-left))}
+#gross .pswp__button--arrow--next{right:max(14px,env(safe-area-inset-right))}
+#gross .pswp__button--arrow--next .pswp__icn{transform:scale(-1,1)}
+#gross .gross-unten{position:absolute;left:0;right:0;bottom:0;z-index:10;display:flex;flex-direction:column;gap:2px;align-items:center;text-align:center;
+  padding:18px max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));font-size:var(--t-klein);
+  background:linear-gradient(color-mix(in srgb,var(--bg) 0%,transparent),var(--bg) 18px);transition:opacity var(--pswp-transition-duration,333ms) ease}
+#gross .gross-unten:empty{display:none}
+#gross .gross-unten>*{max-width:var(--lese)}
+#gross .bildtext{color:var(--fg)}
+#gross .nennung,#gross .nennung a{font-size:var(--t-etikett);color:var(--mut)}
+#gross .nennung a{text-decoration:underline;text-underline-offset:2px}
+#gross button.entfernen{margin-top:6px;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:var(--r-pille);padding:8px 16px;
+  min-height:40px;font:600 var(--t-klein)/1.2 var(--font-text);cursor:pointer}
+#gross:not(.pswp--ui-visible) .gross-unten{opacity:0;pointer-events:none}
+@container gross (max-width:560px){#gross .pswp__button--arrow{display:none}}
 /* ==================== 6 Vorlagen: Teile der Ansichten ==================== */
 .zurueck{display:inline-block;margin:0 0 8px;padding:6px 0;text-decoration:none;font-weight:600}
 a.weiter{display:inline-block;margin-top:8px;font-weight:600;color:var(--acc);text-decoration:none}
@@ -1663,55 +1678,86 @@ function bildEntfernenFragen(bild, muster = false) {   // muster: Bausteinseite,
   });
   return b.d;
 }
-// Organismus Großansicht (V17): modaler Dialog, erst beim ersten Öffnen erzeugt (Reisen ohne Bilder tragen ihn nie, AC-12).
-// Gruppe = Bilder desselben Dings; Pfeiltasten und Wischen wechseln, Escape und Wischen nach unten schließen, der Fokus geht
-// danach an den Auslöser zurück (WebKit gibt ihn nicht verlässlich selbst zurück)
-let GROSS = null;
+// Organismus Großansicht (#676, vorher eigener Dialog V17/#455): PhotoSwipe 5 (MIT, engine/vendor/photoswipe-LICENSE). ES-Modul
+// und Stile liegen nur in Reisen mit Bildern neben der Seite und laden erst beim ersten Öffnen (der Service Worker hat sie vorab).
+// Gruppe = Bilder desselben Dings; öffnet aus dem angetippten Bild heraus, zoomt (Doppeltipp, Finger, Mausrad, Knopf), Pfeiltasten
+// und Wischen wechseln, Escape und Wischen nach unten schließen, der Fokus geht danach an den Auslöser zurück (WebKit gibt ihn
+// nicht verlässlich selbst zurück). „Foto entfernen“ schließt die Großansicht und fragt dann (bildEntfernenFragen).
+const GALERIE_JS = "photoswipe-5.4.4.esm.min.js", GALERIE_CSS = "photoswipe-5.4.4.css";
+let GALERIE = null, GROSS = null;
+function galerieLaden() {
+  return GALERIE ||= Promise.all([import("./" + GALERIE_JS), new Promise((ok, nein) => {
+    const l = document.createElement("link");
+    Object.assign(l, {rel: "stylesheet", href: GALERIE_CSS, onload: ok, onerror: nein});
+    document.head.append(l);
+  })]).then(([m]) => m.default, x => { GALERIE = null; throw x; });
+}
+// Maße der großen Fassung (bauen.py gibt breite/hoehe mit); fehlen sie, das Seitenverhältnis des Vorschaubilds
+function bildMasse(b, knopf) {
+  if (b.breite > 0 && b.hoehe > 0) return [b.breite, b.hoehe];
+  const i = knopf && knopf.querySelector("img");
+  return i && i.naturalWidth ? [1600, Math.round(1600 * i.naturalHeight / i.naturalWidth)] : [1600, 1200];
+}
 function grossAnsicht(gruppe, i, ausloeser) {
-  if (!GROSS) GROSS = (() => {
-    const zaehler = el("span", {class: "zaehler", id: "gross-zaehler"}), img = el("img", {alt: ""});
-    const knopf = (klasse, text, label) => el("button", {type: "button", class: klasse, "aria-label": label}, text);
-    const zu = knopf("schliessen", T("seite.bild.schliessen") + " ✕", null);
-    const zurueck = knopf("pfeil", "‹", T("seite.bild.vorheriges")), vor = knopf("pfeil", "›", T("seite.bild.naechstes"));
-    const text = el("div", {class: "bildtext"}), nennung = el("div", {}), entfernen = el("div", {});
-    const weg = knopf("entfernen", T("seite.bild.entfernen"), null);   // nur eigene Fotos, für Besitzer und Organisator:innen (#582)
-    weg.addEventListener("click", () => bildEntfernenFragen(g.gruppe[g.i]));
-    const d = el("dialog", {id: "gross", "aria-labelledby": "gross-zaehler"},
-      el("div", {class: "gross-oben"}, zaehler, " ", zu), el("div", {class: "gross-mitte"}, zurueck, img, vor), el("div", {class: "gross-unten"}, text, nennung, entfernen));
-    const g = {d};
-    g.zeigen = () => {
-      const b = g.gruppe[g.i];
-      zaehler.textContent = T("seite.bild.zaehler", {ding: bildDing(b.zu), i: g.i + 1, n: g.gruppe.length});
-      img.src = b.gross;
-      img.alt = b.alt || "";
-      text.textContent = b.bildunterschrift || "";
-      nennung.replaceChildren(...[bildNennung(b)].filter(Boolean));
-      entfernen.replaceChildren(...(darfFotoEntfernen(b) ? [weg] : []));
-      for (const p of [zurueck, vor]) p.classList.toggle("allein", g.gruppe.length < 2);
-    };
-    const wechseln = s => { g.i = (g.i + s + g.gruppe.length) % g.gruppe.length; g.zeigen(); };
-    zu.addEventListener("click", () => d.close());
-    zurueck.addEventListener("click", () => wechseln(-1));
-    vor.addEventListener("click", () => wechseln(1));
-    d.addEventListener("keydown", e => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); wechseln(e.key === "ArrowLeft" ? -1 : 1); } });
-    d.addEventListener("close", () => { if (g.ausloeser && g.ausloeser.isConnected) g.ausloeser.focus(); });
-    let start = null;
-    d.addEventListener("pointerdown", e => { start = e.target.closest("button") ? null : {x: e.clientX, y: e.clientY}; });
-    d.addEventListener("pointercancel", () => { start = null; });
-    d.addEventListener("pointerup", e => {
-      if (!start) return;
-      const dx = e.clientX - start.x, dy = e.clientY - start.y;
-      start = null;
-      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) wechseln(dx < 0 ? 1 : -1);
-      else if (dy > 80 && dy > Math.abs(dx)) d.close();
+  if (GROSS || !gruppe.length) return Promise.resolve(GROSS);
+  return galerieLaden().then(PhotoSwipe => {
+    if (GROSS) return GROSS;
+    // Vorschaubild je Bild: das angetippte, sonst das sichtbare auf der Seite (Übergang beim Öffnen und Schließen)
+    const vorschau = b => (ausloeser && ausloeser.dataset && ausloeser.dataset.bild === b.id) ? ausloeser
+      : [...document.querySelectorAll("#main [data-bild]")].find(k => k.dataset.bild === b.id && k.getClientRects().length) || null;
+    const daten = gruppe.map(b => {
+      const k = vorschau(b), [width, height] = bildMasse(b, k), v = k && k.querySelector("img");
+      return {src: b.gross, msrc: v && v.complete && v.naturalWidth ? v.currentSrc : undefined, width, height, alt: b.alt || "",
+        element: k, thumbCropped: true, bild: b};
     });
-    document.body.append(d);
-    return g;
-  })();
-  Object.assign(GROSS, {gruppe, i, ausloeser});
-  GROSS.zeigen();
-  if (!GROSS.d.open) GROSS.d.showModal();
-  return GROSS.d;
+    const pswp = new PhotoSwipe({dataSource: daten, index: i, bgOpacity: 1, counter: false, wheelToZoom: true, returnFocus: false,
+      closeTitle: T("seite.bild.schliessen"), zoomTitle: T("seite.bild.zoomen"), arrowPrevTitle: T("seite.bild.vorheriges"),
+      arrowNextTitle: T("seite.bild.naechstes"), errorMsg: T("seite.bild.ladefehler"),
+      paddingFn: f => ({top: 56, bottom: 92, left: f.x > 560 ? 76 : 0, right: f.x > 560 ? 76 : 0})});   // Pfeile ab 560 px
+    let danach = null;
+    pswp.on("uiRegister", () => {
+      pswp.ui.registerElement({name: "zaehler", order: 5, isButton: false, appendTo: "bar", className: "zaehler",
+        onInit: z => {
+          z.id = "gross-zaehler";
+          pswp.on("change", () => { const b = pswp.currSlide.data.bild;
+            z.textContent = T("seite.bild.zaehler", {ding: bildDing(b.zu), i: pswp.currIndex + 1, n: pswp.getNumItems()}); });
+        }});
+      pswp.ui.registerElement({name: "unterschrift", order: 9, isButton: false, appendTo: "root", className: "gross-unten pswp__hide-on-close",
+        onInit: u => {
+          u.setAttribute("aria-live", "polite");
+          pswp.on("change", () => {
+            const b = pswp.currSlide.data.bild, teile = [];
+            if (b.bildunterschrift) teile.push(el("div", {class: "bildtext"}, b.bildunterschrift));
+            const n = bildNennung(b);
+            if (n) teile.push(el("div", {}, n));
+            if (darfFotoEntfernen(b)) {   // nur eigene Fotos, für Besitzer und Organisator:innen (#582)
+              const weg = el("button", {type: "button", class: "entfernen"}, T("seite.bild.entfernen"));
+              weg.addEventListener("click", () => { danach = () => bildEntfernenFragen(b); pswp.destroy(); });   // ohne Übergang: die Frage kommt sofort
+              teile.push(weg);
+            }
+            u.replaceChildren(...teile);
+          });
+        }});
+    });
+    pswp.on("destroy", () => {
+      GROSS = null;
+      if (ausloeser && ausloeser.isConnected) ausloeser.focus({preventScroll: true});
+      if (danach) setTimeout(danach);   // erst wenn PhotoSwipe seine Fokusfalle abgebaut hat
+    });
+    GROSS = pswp;
+    pswp.init();
+    pswp.element.id = "gross";
+    pswp.element.setAttribute("aria-modal", "true");
+    pswp.element.setAttribute("aria-labelledby", "gross-zaehler");
+    // Fokus in die Großansicht (Bildschirmleser, Tab bleibt drin); nach dem Übergang, sonst ruckelt das Öffnen
+    pswp.on("openingAnimationEnd", () => { if (pswp.element && !pswp.element.contains(document.activeElement)) pswp.element.focus({preventScroll: true}); });
+    return pswp;
+  }, () => {   // ohne Netz und ohne Speicher: kurzer Hinweis oben statt Großansicht
+    const h = el("div", {class: "hinweis glas", role: "status"}, T("seite.bild.ladefehler"));
+    document.querySelector(".meldungen").append(h);
+    setTimeout(() => h.remove(), 5000);
+    return null;
+  });
 }
 document.addEventListener("click", e => {
   const k = e.target.closest("[data-bild]");
@@ -4960,7 +5006,7 @@ function ansichtBausteine(m) {
     teil("Atom", "Mini", "44 × 44 px in einer Zeile, die selbst ein Link ist (Tagesliste, Nacht außerhalb der Heimat der Unterkunft).", miniEl(b0));
     teil("Molekül", "Bildreihe", "Die weiteren Bilder eines Dings, 72 × 54, mit der Zahl aller Bilder.", galerieEl(bsGruppe));
     teil("Molekül", "Kopfbild", "Erstes Bild eines Dings an seiner Heimat (Ort, Etappe, Tag, Unterkunft an der ersten Nacht) mit Nennung und Bildreihe.", kopfBild(b0.zu));
-    teil("Organismus", "Großansicht", "Dunkler Dialog mit „Ding · i / n“, Pfeilen (bis 560 px ausgeblendet), Wischen, Escape; der Fokus kehrt zum Auslöser zurück.", auf);
+    teil("Organismus", "Großansicht", "PhotoSwipe 5 im Gesicht der Seite (Grund --bg, hell und dunkel): öffnet aus dem Vorschaubild, „Ding · i / n“, Zoomen (Doppeltipp, Finger, Mausrad), Pfeile (bis 560 px ausgeblendet), Wischen, Escape; unten Bildunterschrift, Nennung und „Foto entfernen“; der Fokus kehrt zum Auslöser zurück.", auf);
   } else teil("Atom", "Bild", "Diese Reise hat keine Bilder; Bild, Nennung, Mini, Bildreihe, Kopfbild und Großansicht erscheinen nur mit Bildern.");
   // Eigene Fotos (#582): Blatt und Zusage als Muster; ihre Knöpfe schließen hier nur, gesendet wird nichts
   const bsHoch = el("button", {type: "button", class: "klein"}, "Blatt „Hochladen“ öffnen"), bsWeg = el("button", {type: "button", class: "klein"}, "Zusage „Foto entfernen?“ öffnen");

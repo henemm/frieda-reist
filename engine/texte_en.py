@@ -3889,6 +3889,8 @@ TEXTE = {
     "seite.bild.grossansicht": "Full view: {name}",
     "seite.bild.vorheriges": "Previous image",
     "seite.bild.naechstes": "Next image",
+    "seite.bild.zoomen": "Zoom",
+    "seite.bild.ladefehler": "The image cannot be loaded right now.",
     "seite.bild.zaehler": "{ding} · {i} / {n}",
     "seite.bild.commons": "Commons page",
     "inhalt.schreiben.bilder_kopf": "Images of this trip (BI-…): origin, licence, assignment and versions (medien/bilder/).\nMaintained in conversation in the AI client (bild_hinzufuegen, bild_aendern); withdrawn images are kept. Own photos can be removed for good (bild_entfernen); their entry stays in the history as “Photo removed”.",

@@ -34,8 +34,9 @@ for (const x of bilder) (gruppen[x.zu] = gruppen[x.zu] || []).push(x);
 aus.gruppen = Object.fromEntries(Object.entries(gruppen).map(([k, g]) => [k, g.map(x => x.id)]));
 const datei = s => (s || "").split("/").pop();
 
-// Vor dem ersten Öffnen gibt es keine Großansicht
+// Vor dem ersten Öffnen gibt es keine Großansicht, und die Bibliothek ist nicht geladen
 aus.grossVorher = await p.evaluate(() => !!document.getElementById("gross"));
+aus.bibliothekVorher = await p.evaluate(() => performance.getEntriesByType("resource").some(e => /photoswipe/.test(e.name)));
 
 // Reise: Titelbild vor dem Reisekopf, Mini in der Tagesliste nur bei Tagen mit Kopfbild
 await gehe(p, basis + "#plan");
@@ -112,47 +113,84 @@ const verpackung = q => q.evaluate(() => ({
 aus.verpackung = {[wissenText]: await verpackung(p)};
 for (const t of tage) { await gehe(p, basis + "#" + t.id); aus.verpackung[t.id] = await verpackung(p); }
 
-// Großansicht an einer Gruppe mit mindestens 3 Bildern
+// Großansicht (PhotoSwipe, #676) an einer Gruppe mit mindestens 3 Bildern: Zähler, Tasten, Fokus, Wischen, Zoomen, Übergang
 const gross = Object.entries(gruppen).find(([zu, g]) => zu.startsWith("O-") && g.length >= 3);
 aus.gross = null;
+const offen = q => q.waitForFunction(() => { const d = document.getElementById("gross");
+  // nach dem Übergang (333 ms) liegt der Fokus in der Großansicht
+  return d && d.classList.contains("pswp--ui-visible") && !d.querySelector(".pswp__preloader--active") && d.contains(document.activeElement);
+}, null, {timeout: 5000}).then(() => q.waitForTimeout(150)).catch(() => {});
+const geschlossen = q => q.waitForFunction(() => !document.getElementById("gross"), null, {timeout: 5000}).catch(() => {});
 if (gross) {
   const [zu, g] = gross;
   await gehe(p, basis + "#" + zu);
   const knopf = p.locator("#main .bild.kopf").first();
   await knopf.evaluate(k => { window.__ausloeser = k; });
+  // Übergang aus dem Vorschaubild (#676): ein kleines Bild der Bildreihe; kurz nach dem Klick liegt das große Bild noch etwa auf
+  // ihm und wächst dann
+  const klein = p.locator("#main .galerie .bild").first();
+  await klein.evaluate(k => { window.__klein = k; });
+  await klein.click();
+  await p.waitForSelector("#gross", {timeout: 5000}).catch(() => {});
+  const uebergang = await p.evaluate(async () => {
+    const k = window.__klein.getBoundingClientRect(), breiten = [];
+    for (let i = 0; i < 40; i++) {
+      const sichtbar = [...document.querySelectorAll("#gross img.pswp__img")].map(z => z.getBoundingClientRect())
+        .filter(r => r.width > 0 && r.left >= -5 && r.right <= innerWidth + 5);
+      breiten.push(sichtbar.length ? Math.round(Math.max(...sichtbar.map(r => r.width))) : 0);
+      await new Promise(r => requestAnimationFrame(r));
+    }
+    return {vorschau: Math.round(k.width), breiten};
+  });
+  await offen(p);
+  await p.keyboard.press("Escape"); await geschlossen(p);
   await knopf.click();
-  await p.waitForSelector("#gross[open]", {timeout: 5000}).catch(() => {});
+  await offen(p);
   const stand = () => p.evaluate(() => {
     const d = document.getElementById("gross");
-    if (!d) return null;
-    const img = d.querySelector("img");
-    return {offen: d.open, modal: d.matches(":modal"), text: d.textContent.replace(/\s+/g, " "), src: img ? img.getAttribute("src") || "" : "",
-      inline: /\son[a-z]+=/i.test(d.outerHTML), pfeile: [...d.querySelectorAll(".pfeil")].map(x => getComputedStyle(x).display),
-      fokusZurueck: document.activeElement === window.__ausloeser, hintergrund: getComputedStyle(d).backgroundColor};
+    if (!d) return {offen: false, fokusZurueck: document.activeElement === window.__ausloeser};
+    const img = d.querySelector(".pswp__item[aria-hidden=false] img.pswp__img:not(.pswp__img--placeholder)")
+      || [...d.querySelectorAll("img.pswp__img:not(.pswp__img--placeholder)")].find(i => { const r = i.getBoundingClientRect(); return r.left >= -5 && r.left < innerWidth / 2; });
+    const unten = d.querySelector(".gross-unten");
+    return {offen: true, modal: d.getAttribute("role") === "dialog" && d.getAttribute("aria-modal") === "true" && d.contains(document.activeElement),
+      label: (document.getElementById(d.getAttribute("aria-labelledby") || "-") || {}).textContent || "",
+      text: (d.querySelector(".zaehler") || {}).textContent || "", src: img ? img.getAttribute("src") || "" : "",
+      unten: unten ? unten.textContent.replace(/\s+/g, " ") : "", lizenzLink: !!(unten && unten.querySelector(".nennung a[href]")),
+      inline: /\son[a-z]+=/i.test(d.outerHTML), pfeile: [...d.querySelectorAll(".pswp__button--arrow")].map(x => getComputedStyle(x).display),
+      titel: [...d.querySelectorAll(".pswp__button")].map(x => x.getAttribute("aria-label") || x.title || ""),
+      hintergrund: getComputedStyle(d.querySelector(".pswp__bg")).backgroundColor, seitenGrund: getComputedStyle(document.body).backgroundColor,
+      // Zoom: Breite des Bildes im aktuellen Fach (das Fach, das gerade links bündig im Bild steht)
+      zoom: (() => { const f = [...d.querySelectorAll(".pswp__item")].find(x => Math.abs(x.getBoundingClientRect().left) < 5);
+        const i = f && f.querySelector("img.pswp__img:not(.pswp__img--placeholder)"); return i ? Math.round(i.getBoundingClientRect().width) : 0; })()};
   });
-  const s = {gruppe: zu, n: g.length, gross: g.map(x => datei(x.gross))};
+  const s = {gruppe: zu, n: g.length, gross: g.map(x => datei(x.gross)), uebergang};
   s.auf = await stand();
-  await p.keyboard.press("ArrowRight"); await p.waitForTimeout(150);
+  await p.keyboard.press("ArrowRight"); await p.waitForTimeout(500);
   s.rechts = await stand();
-  await p.keyboard.press("ArrowLeft"); await p.waitForTimeout(150);
+  await p.keyboard.press("ArrowLeft"); await p.waitForTimeout(500);
   s.links = await stand();
-  await p.keyboard.press("Escape"); await p.waitForTimeout(200);
+  // Zoomen: Knopf „Zoomen“ ändert den Maßstab, noch einmal zurück
+  const vorher = s.links.zoom;
+  await p.locator("#gross .pswp__button--zoom").click().catch(() => {}); await p.waitForTimeout(600);
+  s.zoom = {vorher, nachher: (await stand()).zoom};
+  await p.locator("#gross .pswp__button--zoom").click().catch(() => {}); await p.waitForTimeout(600);
+  await p.keyboard.press("Escape"); await geschlossen(p);
   s.zu = await stand();
-  // Wischen (Pointer-Events, wie ein Finger): waagerecht nach links -> nächstes Bild, nach unten -> schließt
-  const wische = (dx, dy) => p.evaluate(([dx, dy]) => {
-    const d = document.getElementById("gross"), z = d.querySelector("img") || d;
-    const r = z.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
-    const e = (typ, x, y) => z.dispatchEvent(new PointerEvent(typ, {clientX: x, clientY: y, pointerId: 7, pointerType: "touch", isPrimary: true, bubbles: true, cancelable: true}));
-    e("pointerdown", x, y);
-    for (let i = 1; i <= 5; i++) e("pointermove", x + dx * i / 5, y + dy * i / 5);
-    e("pointerup", x + dx, y + dy);
-  }, [dx, dy]);
+  // Wischen mit der Maus (PhotoSwipe nimmt Pointer-Events): waagerecht nach links -> nächstes Bild, nach unten -> schließt
+  const wische = async (dx, dy) => {
+    const r = await p.evaluate(() => { const r = document.querySelector("#gross .pswp__scroll-wrap").getBoundingClientRect();
+      return {x: r.left + r.width / 2, y: r.top + r.height / 2}; });
+    await p.mouse.move(r.x, r.y); await p.mouse.down();
+    for (let i = 1; i <= 8; i++) { await p.mouse.move(r.x + dx * i / 8, r.y + dy * i / 8); await p.waitForTimeout(16); }
+    await p.mouse.up();
+  };
+  await geschlossen(p);
   await knopf.click();
-  await p.waitForSelector("#gross[open]", {timeout: 5000}).catch(() => {});
+  await offen(p);
   if (await p.evaluate(() => !!document.getElementById("gross"))) {
-    await wische(-160, 0); await p.waitForTimeout(200);
+    await wische(-300, 0); await p.waitForTimeout(700);
     s.wischWaagerecht = await stand();
-    await wische(0, 220); await p.waitForTimeout(250);
+    await wische(0, 300); await geschlossen(p);
     s.wischUnten = await stand();
   }
   aus.gross = s;
@@ -170,9 +208,9 @@ for (const ziel of ["#plan", "#wissen", wissenText, ...Object.keys(gruppen).filt
 if (gross) {
   await gehe(h, basis + "#" + gross[0]);
   await h.locator("#main .bild.kopf").first().click();
-  await h.waitForSelector("#gross[open]", {timeout: 5000}).catch(() => {});
+  await offen(h);
   aus.handy.pfeile = await h.evaluate(() => { const d = document.getElementById("gross");
-    return d ? [...d.querySelectorAll(".pfeil")].map(x => getComputedStyle(x).display) : null; });
+    return d ? [...d.querySelectorAll(".pswp__button--arrow")].map(x => getComputedStyle(x).display) : null; });
 }
 await ctx2.close();
 
@@ -182,7 +220,7 @@ aus.stadt = {};
 for (const ziel of ["", "#plan", "#wissen"]) {
   await gehe(s, basisStadt + ziel);
   aus.stadt[ziel || "start"] = await s.evaluate(() => document.querySelectorAll(
-    "#main .bild, #main .mini, #main .galerie, #gross, [data-bild], img[src*='medien/bilder/']").length);
+    "#main .bild, #main .mini, #main .galerie, #gross, [data-bild], img[src*='medien/bilder/'], link[href*=photoswipe]").length);
 }
 await ctx3.close();
 await b.close();

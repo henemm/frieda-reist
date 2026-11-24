@@ -1603,11 +1603,12 @@ class Bauer:
         }, ensure_ascii=False, indent=1), encoding="utf-8")
         # Fremdbibliotheken aus engine/vendor (lokal statt CDN: offline und keine Anfragen vom geheimen Pfad)
         mit_karte = bool(self.grundkarte or self.grundkarten)
-        vendor = {**VENDOR, **(VENDOR_GRUNDKARTE if mit_karte else {})}
+        mit_bildern = any(r.startswith(bildliste.ORDNER + "/") for r in self.bilder.values())
+        vendor = {**VENDOR, **(VENDOR_GRUNDKARTE if mit_karte else {}), **(VENDOR_GALERIE if mit_bildern else {})}
         for quelle, name in vendor.items():
             shutil.copyfile(Path(__file__).parent / "vendor" / quelle, ziel / name)
-        for name in VENDOR_GRUNDKARTE.values():
-            if not mit_karte and (ziel / name).exists():
+        for name in [*VENDOR_GRUNDKARTE.values(), *VENDOR_GALERIE.values()]:
+            if name not in vendor.values() and (ziel / name).exists():
                 (ziel / name).unlink()
         for g in ICON_GROESSEN:
             (icon_aus_motiv(motiv, g) if motiv else icon_zeichnen(kurz, g)).save(ziel / f"icon-{g}.png", optimize=True)
@@ -1662,6 +1663,9 @@ VENDOR = {"pico-2.1.1.conditional.jade.min.css": "pico-2.1.1.min.css",   # Pico 
           **{f"fonts/source-sans-3-{z}-wght-normal.woff2": f"source-sans-3-{z}-wght-normal.woff2" for z in ("latin", "latin-ext")}}
 # Offline-Grundkarte: protomaps-leaflet zeichnet die PMTiles-Vektorkarte in Leaflet (BSD-3), nur wenn eine Grundkarte da ist
 VENDOR_GRUNDKARTE = {"protomaps-leaflet-5.1.0.js": "protomaps-leaflet-5.1.0.js"}
+# Großansicht der Bilder: PhotoSwipe 5 (MIT), ES-Modul und Stile; nur in Reisen mit Bildern, die Seite lädt beides erst beim
+# ersten Öffnen eines Bildes (#676). Die Namen stehen auch in vorlage.html (GALERIE_JS, GALERIE_CSS).
+VENDOR_GALERIE = {"photoswipe-5.4.4.esm.min.js": "photoswipe-5.4.4.esm.min.js", "photoswipe-5.4.4.css": "photoswipe-5.4.4.css"}
 # Symbole: Lucide (ISC, lucide.dev), lokal in engine/vendor; beim Bauen als <symbol> in die Seite (Issue #25)
 LUCIDE = "lucide-1.55.0"
 # Kategorien der Kartenpunkte (docs/ontologie.md „Kartenpunkte“, ADR-0001, Issue O-7): Welche es gibt, sagt allein die Reise in
