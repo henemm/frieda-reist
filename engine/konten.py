@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS reise_loeschung (
 CREATE TABLE IF NOT EXISTS loeschprotokoll (reise TEXT PRIMARY KEY, datum TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS bild_loeschungen (
   reise TEXT NOT NULL, bild TEXT NOT NULL, datum TEXT NOT NULL, pruefsummen TEXT NOT NULL DEFAULT '',
-  bestaetigt INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (reise, bild));
+  bestaetigt INTEGER NOT NULL DEFAULT 1, vorgemerkt REAL NOT NULL DEFAULT 0, PRIMARY KEY (reise, bild));
 CREATE TABLE IF NOT EXISTS hochladelinks (
   hash TEXT PRIMARY KEY, reise TEXT NOT NULL, person TEXT NOT NULL, konto TEXT NOT NULL, ziel TEXT NOT NULL DEFAULT '',
   rest INTEGER NOT NULL, ablauf REAL NOT NULL, erstellt REAL NOT NULL);
@@ -1288,8 +1288,13 @@ TOKEN_MUSTER = re.compile(r"^[A-Za-z0-9_-]{20,100}\Z")
 
 # Spalten, die ältere Datenbanken nachträglich bekommen (db()): pruefsummen bindet einen Eintrag an das Foto (sha256 der
 # Fassungen in allen Versionen beim Entfernen, durch Komma getrennt; leer bei Zeilen von vorher), bestaetigt ist 0, solange
-# der Vorgang von bild_entfernen noch nicht festgeschrieben ist (Vormerkung vor dem Vorgang, #582).
-BILD_LOESCHUNG_SPALTEN = ("pruefsummen TEXT NOT NULL DEFAULT ''", "bestaetigt INTEGER NOT NULL DEFAULT 1")
+# der Vorgang von bild_entfernen noch nicht festgeschrieben ist (Vormerkung vor dem Vorgang, #582), vorgemerkt ist der
+# Zeitpunkt der Vormerkung (Sekunden wie _jetzt; 0 bei Zeilen von vor #649, sie gelten damit als älter als jede Frist).
+BILD_LOESCHUNG_SPALTEN = ("pruefsummen TEXT NOT NULL DEFAULT ''", "bestaetigt INTEGER NOT NULL DEFAULT 1",
+                          "vorgemerkt REAL NOT NULL DEFAULT 0")
+# Erst nach dieser Frist (Sekunden) verwirft der Wächter eine Vormerkung ohne festgeschriebenen Vorgang (#649); weit über der
+# Dauer eines Schreibvorgangs, damit ein Lauf mitten im Vorgang die junge Vormerkung nicht wegnimmt.
+BILD_VORMERKUNG_FRIST = 3600
 
 
 def _bild_kennung_pruefen(reise, bid):
@@ -1300,17 +1305,21 @@ def _bild_kennung_pruefen(reise, bid):
 def bild_loeschung_vormerken(reise, bid, pruefsummen=()):
     """Vor dem Vorgang von bild_entfernen (#582): Eintrag ins Löschprotokoll, noch unbestätigt, mit den Prüfsummen der
     Fassungen (Bindung an genau dieses Foto). Steht das Bild schon bestätigt im Protokoll, bleibt es bestätigt; die
-    Prüfsummen kommen dazu. -> True, wenn die Zeile neu ist (nur dann nimmt bild_loeschung_verwerfen sie wieder weg)."""
+    Prüfsummen kommen dazu. Der Zeitpunkt der Vormerkung (vorgemerkt) wird gesetzt und bei einer schon bestehenden
+    unbestätigten Zeile aufgefrischt, damit sie nicht das Alter einer liegengebliebenen erbt (#649). -> True, wenn die Zeile
+    neu ist (nur dann nimmt bild_loeschung_verwerfen sie wieder weg)."""
     _bild_kennung_pruefen(reise, bid)
     with closing(db()) as v, v:
         v.execute("BEGIN IMMEDIATE")
         alt = v.execute("SELECT pruefsummen FROM bild_loeschungen WHERE reise = ? AND bild = ?", (reise, bid)).fetchone()
         summen = ",".join(sorted(set(filter(None, (alt[0] if alt else "").split(","))) | set(pruefsummen)))
         if alt:
-            v.execute("UPDATE bild_loeschungen SET pruefsummen = ? WHERE reise = ? AND bild = ?", (summen, reise, bid))
+            v.execute("UPDATE bild_loeschungen SET pruefsummen = ?, "
+                      "vorgemerkt = CASE WHEN bestaetigt = 0 THEN ? ELSE vorgemerkt END WHERE reise = ? AND bild = ?",
+                      (summen, _jetzt(), reise, bid))
             return False
-        v.execute("INSERT INTO bild_loeschungen (reise, bild, datum, pruefsummen, bestaetigt) VALUES (?, ?, ?, ?, 0)",
-                  (reise, bid, _datum()[:10], summen))
+        v.execute("INSERT INTO bild_loeschungen (reise, bild, datum, pruefsummen, bestaetigt, vorgemerkt) "
+                  "VALUES (?, ?, ?, ?, 0, ?)", (reise, bid, _datum()[:10], summen, _jetzt()))
         return True
 
 
@@ -1327,11 +1336,17 @@ def bild_loeschung_bestaetigen(reise, bid, pruefsummen=()):
                   (reise, bid, _datum()[:10], summen))
 
 
-def bild_loeschung_verwerfen(reise, bid):
-    """Der Vorgang von bild_entfernen ist gescheitert: die eigene Vormerkung wieder weg (nur unbestätigte Zeilen)."""
+def bild_loeschung_verwerfen(reise, bid, nur_aelter_als=None):
+    """Der Vorgang von bild_entfernen ist gescheitert: die eigene Vormerkung wieder weg (nur unbestätigte Zeilen). Mit
+    nur_aelter_als (Sekunden, Wächter #649) nur, wenn die Vormerkung mindestens so alt ist; die Prüfung steckt in der
+    Bedingung des DELETE, damit eine inzwischen aufgefrischte Vormerkung nicht verloren geht."""
     _bild_kennung_pruefen(reise, bid)
     with closing(db()) as v, v:
-        v.execute("DELETE FROM bild_loeschungen WHERE reise = ? AND bild = ? AND bestaetigt = 0", (reise, bid))
+        if nur_aelter_als is None:
+            v.execute("DELETE FROM bild_loeschungen WHERE reise = ? AND bild = ? AND bestaetigt = 0", (reise, bid))
+        else:
+            v.execute("DELETE FROM bild_loeschungen WHERE reise = ? AND bild = ? AND bestaetigt = 0 AND vorgemerkt <= ?",
+                      (reise, bid, _jetzt() - nur_aelter_als))
 
 
 def bild_loeschung_protokollieren(reise, bid, wer=None, pruefsummen=()):
@@ -1342,13 +1357,14 @@ def bild_loeschung_protokollieren(reise, bid, wer=None, pruefsummen=()):
 
 def bild_loeschungen():
     """Alle Zeilen des Löschprotokolls -> [{"reise", "bild", "datum", "pruefsummen" (Menge, leer bei alten Zeilen),
-    "bestaetigt" (bool)}], sortiert (ohne Datenbank: leer, legt keine an)."""
+    "bestaetigt" (bool), "vorgemerkt" (Sekunden, 0 bei Zeilen von vor #649)}], sortiert (ohne Datenbank: leer, legt keine an)."""
     if not pfad().exists():
         return []
     with closing(db()) as v:
         return [{"reise": z[0], "bild": z[1], "datum": z[2], "pruefsummen": set(filter(None, (z[3] or "").split(","))),
-                 "bestaetigt": bool(z[4])}
-                for z in v.execute("SELECT reise, bild, datum, pruefsummen, bestaetigt FROM bild_loeschungen ORDER BY reise, bild")]
+                 "bestaetigt": bool(z[4]), "vorgemerkt": z[5]}
+                for z in v.execute("SELECT reise, bild, datum, pruefsummen, bestaetigt, vorgemerkt FROM bild_loeschungen "
+                                   "ORDER BY reise, bild")]
 
 
 def bild_loeschprotokoll(mit_datum=False):

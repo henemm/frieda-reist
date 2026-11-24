@@ -547,8 +547,9 @@ def _bildloeschung_nachholen(z):
     """Eine Zeile des Löschprotokolls (konten.bild_loeschungen) -> (Eintrag zurückgesetzt, Fassungen geleert).
 
     Eine Vormerkung (bestaetigt 0: vor dem Vorgang von bild_entfernen geschrieben, danach nicht bestätigt) gilt nur, wenn der
-    Eintrag im neuesten Stand entfernt ist; dann wird sie bestätigt. Sonst ist der Vorgang nie festgeschrieben worden, und die
-    Vormerkung fällt weg, ohne dass etwas geändert wird. Gehandelt wird nur am selben Foto (_dasselbe_foto); geleert werden
+    Eintrag im neuesten Stand entfernt ist; dann wird sie bestätigt, auch wenn sie jung ist. Sonst ist der Vorgang (noch) nicht
+    festgeschrieben, und die Vormerkung fällt weg, ohne dass etwas geändert wird, aber erst, wenn sie älter als
+    konten.BILD_VORMERKUNG_FRIST ist (#649); eine junge bleibt stehen und wird im nächsten Lauf neu bewertet. Gehandelt wird nur am selben Foto (_dasselbe_foto); geleert werden
     die Fassungen nur, wenn jede ihrer Prüfsummen zum Foto gehört (Zeilen mit Prüfsummen) oder, bei Zeilen von vorher, kein
     anderes Bild die ID trägt."""
     import bilder
@@ -558,7 +559,7 @@ def _bildloeschung_nachholen(z):
     roh, liste, b = _bild_eintrag(reise, bid)
     if not z["bestaetigt"]:
         if not bilder.entfernt(b):
-            konten.bild_loeschung_verwerfen(reise, bid)
+            konten.bild_loeschung_verwerfen(reise, bid, nur_aelter_als=konten.BILD_VORMERKUNG_FRIST)
             return False, False
         konten.bild_loeschung_bestaetigen(reise, bid)
     fremd = b is not None and not bilder.entfernt(b) and not _dasselbe_foto(reise, bid, b, summen)
