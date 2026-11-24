@@ -1,0 +1,10 @@
+$ engine/.venv/bin/python -m pytest -q -n 3 engine/tests/test_testzugang.py engine/tests/test_frieda_sperre.py engine/tests/test_konten_vormerken.py engine/tests/test_betrieb.py engine/tests/test_protokolle_ohne_pfade.py
+217 passed in 52.67s
+
+Gesamtsuite (Nachweis des Implementierers, test-green-output.txt): 3579 passed in 1156.99s (0:19:16)
+
+Handproben Hook: leere Eingabe, "x", "{}", tool_name=5 -> Exit 2; Frieda my_trips -> 2; Frieda show -> 0;
+Reise-Konnektor (Reise_gr221, item_update) -> 0; frieda-test trip_create -> 0.
+Handproben Brücke: kaputte Ablage -> "Test access unreadable (JSONDecodeError)", Exit 1, kein Geheimnis;
+Instanz nicht erreichbar -> Traceback ConnectionRefusedError (ohne Token), Exit 1.
+Handproben vormerken: ohne Argument -> Hilfetext, Exit 1; "../x" -> "Trip or person invalid".

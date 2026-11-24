@@ -28,6 +28,22 @@ import rueckmeldungen as rm  # noqa: E402
 GERAET = "Prüfsitzung"
 
 
+def sitzung_ausstellen(email, name, geraet, sekunden):
+    """Kurze Sitzung für das Konto zu email (gemeinsam mit betrieb/testzugang.py, #648). Fehlt das Konto, entsteht es
+    ohne Rechte; ältere Sitzungen desselben Geräts werden gelöscht. -> (konto_id, sitzungs_token)"""
+    with closing(konten.db()) as v, v:
+        z = v.execute("SELECT id FROM konten WHERE email = ?", (email,)).fetchone()
+        kid = z["id"] if z else "K-" + secrets.token_hex(8)
+        if not z:
+            v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES (?,?,?,?)",
+                      (kid, email, name, konten._datum()))
+        v.execute("DELETE FROM sitzungen WHERE konto = ? AND geraet = ?", (kid, geraet))
+        token = konten._sitzung_anlegen(v, kid, geraet)
+        v.execute("UPDATE sitzungen SET ablauf = ? WHERE konto = ? AND geraet = ?",
+                  (konten._jetzt() + sekunden, kid, geraet))
+    return kid, token
+
+
 def main():
     a = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     a.add_argument("datei", help="Ausgabe: Playwright-storageState (JSON)")
@@ -38,16 +54,7 @@ def main():
     if not host:
         sys.exit("FR_KN_ADRESSE fehlt (Adresse der Seiten, z. B. https://frieda.example.org).")
     email = konten.adresse(f"pruefung@{host}")
-    with closing(konten.db()) as v, v:
-        z = v.execute("SELECT id FROM konten WHERE email = ?", (email,)).fetchone()
-        kid = z["id"] if z else "K-" + secrets.token_hex(8)
-        if not z:
-            v.execute("INSERT INTO konten (id, email, name, angelegt) VALUES (?,?,?,?)",
-                      (kid, email, "Prüfung", konten._datum()))
-        v.execute("DELETE FROM sitzungen WHERE konto = ? AND geraet = ?", (kid, GERAET))
-        token = konten._sitzung_anlegen(v, kid, GERAET)
-        v.execute("UPDATE sitzungen SET ablauf = ? WHERE konto = ? AND geraet = ?",
-                  (konten._jetzt() + arg.stunden * 3600, kid, GERAET))
+    _, token = sitzung_ausstellen(email, "Prüfung", GERAET, arg.stunden * 3600)
     zustand = {"cookies": [{"name": rm.COOKIE, "value": token, "domain": host, "path": "/", "httpOnly": True,
                             "secure": True, "sameSite": "Lax", "expires": int(konten._jetzt() + arg.stunden * 3600)}],
                "origins": []}

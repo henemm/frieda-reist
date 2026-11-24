@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "frieda-test": {
+      "command": "python3",
+      "args": ["betrieb/testzugang.py", "dienst"]
+    }
+  }
+}

@@ -35,6 +35,8 @@ Aufrufe:
   python3 engine/konten.py sichern                             sauberer Schnappschuss nach <Konten>/sicherung/ (#72)
   python3 engine/konten.py meldungen [--alle]                  offene Meldungen an den Betreiber (#530), mit --alle auch erledigte
   python3 engine/konten.py meldung-erledigt <nr> <issue>       Meldung abhaken: Verweis auf das Issue im privaten Repo der Instanz
+  python3 engine/konten.py vormerken <reise>                   Reise zum Löschen vormerken (#648): normale Schonfrist, Vormerkender
+                                                               ist der Betreiber; nur Reisen im Reisespeicher, nicht schon vorgemerkte
   python3 engine/konten.py vorgemerkt                          Reisen in der Schonfrist und entfernte Reisen (#381), je Zeile eine
   python3 engine/konten.py entfernt                            nur endgültig entfernte Reisen (Löschprotokoll, #527), je Zeile eine
 """
@@ -1854,9 +1856,26 @@ def _per_email(e):
     return k
 
 
+def vormerken(reise):
+    """Betreiberbefehl (#648): Reise ohne Sitzung zum Löschen vormerken, Vormerkender ist der Betreiber (Konto leer).
+    Die Schonfrist der Instanz gilt unverändert. Nur Reisen im Reisespeicher; schon vorgemerkte verweigert
+    loeschung_vormerken (KontoFehler). -> Exit-Code"""
+    if not REISE_MUSTER.match(reise or ""):
+        raise KontoFehler("konto.fehler.reise_person_ungueltig")
+    import reisespeicher
+    if reise not in reisespeicher.reisen(mit_vorgemerkten=True):
+        print(f"ERROR: trip not in the trip store: {reise}")
+        return 2
+    z = loeschung_vormerken(reise, None)
+    print(f"marked for deletion: {reise}, removed after {_datum(z['frist'])}")
+    return 0
+
+
 def main(a):
     try:
-        if a[:1] == ["liste"]:
+        if a[:1] == ["vormerken"] and len(a) == 2:
+            return vormerken(a[1])
+        elif a[:1] == ["liste"]:
             liste()
         elif a[:1] == ["anfragen"]:
             for z in anfragen():

@@ -156,6 +156,8 @@ def test_bruecke_liefert_die_werkzeugliste_des_konnektors(zugang):
     assert rc == 0, err
     assert [a["id"] for a in antworten] == [1, 2]          # die Benachrichtigung bleibt ohne Antwort
     assert antworten[0]["result"]["serverInfo"]["name"] == "frieda"
+    # Die Zustimmungsprüfung des Helfers erwartet die deutsche Seite; die Kontosprache ist nicht Gegenstand von #648.
+    konten.sprache_setzen(konten.konto_per_email(TEST)["id"], "de")
     t, _ = verbinden(zugang, TEST)
     s, _, direkt = mcp(zugang, t["access_token"], "tools/list")
     assert s == 200

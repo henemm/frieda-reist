@@ -1,0 +1,16 @@
+{
+  "enabledMcpjsonServers": ["frieda-test"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__claude_ai_Frieda__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/frieda_sperre.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

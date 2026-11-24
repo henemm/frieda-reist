@@ -100,3 +100,10 @@ Siehe Entscheidung oben. Reihenfolge: (1) Postfach (Infra) und `FR_TESTKONTO`, (
 - [ ] Freigabe der Löschliste (5 Testreisen) durch den Product Owner – Produktentscheidung, per AskUserQuestion vor dem Löschen.
 - [ ] Lesen über den Konnektor des Product Owners bleibt erlaubt (technische Entscheidung: ja, Schreiben gesperrt).
 - [x] Liegen die beiden älteren archivierten Testreisen im Reisespeicher? Ja (Spec, Abschnitt 5); kein Sonderweg für Altreisen.
+
+## Hinweise aus der RED-Phase (2026-11-24)
+
+- **Kontoprüfung der Brücke:** `my_profile` liefert nur Profileinträge, nicht die Kontoadresse. Die Brücke liest die Adresse aus der Antwort auf `initialize` (die Anleitung nennt das angemeldete Konto); ein Betreiberkonto erkennt sie an `request_decide` in `tools/list`. Beides ohne Änderung an `konnektor.py`.
+- **Lesewerkzeuge ohne `readOnlyHint`:** `my_trips`, `my_profile` und `calendar` tragen keinen `readOnlyHint` und bleiben daher am Konnektor des Product Owners gesperrt (Regel „genau `readOnlyHint: true`“). Die Liste der Kandidaten für Schritt 5.1 entsteht deshalb aus `konten.py liste` auf dem Server (Mitgliedschaften des Kontos, aktiv und Archiv), nicht aus `my_trips`.
+- **Ablage:** enthält neben `client_id` und `refresh_token` auch das aktuelle Access-Token mit Ablauf, damit eine zweite Brücke nach der Erneuerung durch die erste das neue Paar unter der Sperre übernimmt, statt selbst einzulösen (Test 5).
+- **Tests:** `engine/tests/test_testzugang.py`, `engine/tests/test_frieda_sperre.py`, `engine/tests/test_konten_vormerken.py`; zusätzlich zu den Tests 1 bis 14: Einrichten ohne `FR_TESTKONTO`, zweites Einrichten widerruft den alten Zugang, Erneuern bei 401 mitten im Lauf, Testkonto nachträglich Betreiber, Instanzwerte in `einstellungen.beispiel`, Frist aus `FR_LOESCHFRIST_TAGE`.

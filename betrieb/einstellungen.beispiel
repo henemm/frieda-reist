@@ -162,3 +162,9 @@ FR_ADRESSE=https://reisen.example.org
 # für einen Browser, dessen Push-Dienst nicht in der Vorgabe steht (konten.PUSH_DIENSTE: Chrome und Verwandte, Firefox,
 # Safari, Edge); der Wert ersetzt die Vorgabe und gehört in <FR_DIENST>/konten.env. (leer)
 #FR_PUSH_DIENSTE=push.example.org,.push.example.net
+
+# Testzugang frieda-test für Abnahmen über den Konnektor (#648, betrieb/testzugang.py): Adresse des Testkontos (eigenes
+# Postfach, nie ein Betreiber; bekommt nur das Recht Reisen anlegen) und Ablage von Client-Kennung und Tokens (außerhalb
+# des Repos, Rechte 600, geschrieben von `testzugang.py einrichten`). (leer: kein Testzugang; <FR_DIENST>/instanz/testzugang.json)
+#FR_TESTKONTO=frieda-test@example.org
+#FR_TESTZUGANG=/srv/beispiel/_dienst/instanz/testzugang.json
