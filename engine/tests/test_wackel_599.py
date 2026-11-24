@@ -2,6 +2,7 @@
 die Seite reagiert hat, statt auf feste Zeiten. Nachgewiesen unter künstlicher Verzögerung (verzoegerung.mjs stellt eine
 belastete Maschine nach): ResizeObserver, Zeitgeber und resize-Ereignisse der Seite kommen später. Ein echter Fehler bleibt rot.
 Grundlage: Beispielreise und die Seite aus test_karte_popup_310.py (erfundene Koordinaten, Beispielwerte)."""
+import contextlib
 import functools
 import http.server
 import json
@@ -18,6 +19,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bauen  # noqa: E402
 import test_karte_popup_310 as t310  # noqa: E402
+from conftest import meldet  # noqa: E402
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
 
 HIER = Path(__file__).resolve().parent
@@ -45,10 +47,14 @@ def _karte(tmp_path, browser, monkeypatch, verzoegern, skript=None):
     return t310._seite(tmp_path, browser)
 
 
-def _leiste(tmp_path, browser, verzoegern, skript=None):
-    """Rundgang aus test_seite.py mit verzögerter Seite; zurück kommen nur die Höhen der Leiste (App und Browser)."""
+@contextlib.contextmanager
+def _server(tmp_path, seite_aendern=None):
+    """Baut die Beispielreise in tmp_path und stellt sie bereit; seite_aendern ändert vorher die gebaute Seite (nur diese Kopie)."""
     ziel = tmp_path / "web" / "beispiel"
     bauen.bauen(WURZEL / "beispiel/reisen/beispielreise", ziel)
+    if seite_aendern:
+        seite = ziel / "index.html"
+        seite.write_text(seite_aendern(seite.read_text(encoding="utf-8")), encoding="utf-8")
 
     class Handler(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *a):
@@ -57,15 +63,40 @@ def _leiste(tmp_path, browser, verzoegern, skript=None):
     s = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path / "web")))
     threading.Thread(target=s.serve_forever, daemon=True).start()
     try:
-        aus = subprocess.run(["node", str(skript or HIER / "seiten_browser.mjs"), str(VERZOEGERUNG),
-                              f"http://127.0.0.1:{s.server_address[1]}/beispiel/"],
-                             capture_output=True, text=True, timeout=600,
-                             env={**os.environ, "RH_BROWSER": browser, "RH_PLAYWRIGHT_ECHT": str(PLAYWRIGHT),
-                                  "RH_VERZOEGERN": json.dumps(verzoegern)})
+        yield f"http://127.0.0.1:{s.server_address[1]}/beispiel/"
     finally:
         s.shutdown()
+
+
+def _rundgang(tmp_path, browser, verzoegern, skript=None, seite_aendern=None, frist=600):
+    """Rundgang aus test_seite.py mit verzögerter Seite; zurück kommen seine Ausgabe und die gespeicherten Ansichten."""
+    with _server(tmp_path, seite_aendern) as basis:
+        aus = subprocess.run(["node", str(skript or HIER / "seiten_browser.mjs"), str(VERZOEGERUNG), basis, str(tmp_path / "dom.json")],
+                             capture_output=True, text=True, timeout=frist,
+                             env={**os.environ, "RH_BROWSER": browser, "RH_PLAYWRIGHT_ECHT": str(PLAYWRIGHT),
+                                  "RH_VERZOEGERN": json.dumps(verzoegern)})
     assert aus.returncode == 0, aus.stderr[-2000:]
-    return json.loads(aus.stdout.strip().splitlines()[-1])["leiste"]
+    return json.loads(aus.stdout.strip().splitlines()[-1]), json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
+
+
+def _leiste(tmp_path, browser, verzoegern, skript=None):
+    """Nur die Höhen der Leiste (App und Browser) aus dem Rundgang."""
+    return _rundgang(tmp_path, browser, verzoegern, skript)[0]["leiste"]
+
+
+def _v01_stimmt(v01):
+    """Dieselben Erwartungen wie test_seite.py::test_alle_ansichten_der_beispielreise an die Ansicht der Wahlstelle V-01."""
+    return bool(meldet(v01, "seite.vergleich.setzt_voraus_label") and meldet(v01, "seite.vergleich.schliesst_aus_label")
+                and "(im Plan)" in v01
+                and re.search(r'class="(mk-w )?mk-luecke"[^>]*>Lücke am Anfang: Altendorf → Bad Schandau<', v01))
+
+
+def _gehe_quelle():
+    """Der Helfer gehe(p, h) aus dem Rundgang, wie er dort steht."""
+    m = re.search(r"^(?:async function gehe\(p, h\)|const gehe = async \(p, h\) =>) \{(.|\n)*?^\};?$",
+                  (HIER / "seiten_browser.mjs").read_text(encoding="utf-8"), re.M)
+    assert m, "gehe(p, h) fehlt in seiten_browser.mjs"
+    return m.group(0)
 
 
 def _leiste_stimmt(leiste):
@@ -159,3 +190,78 @@ def test_quelltext_wartet_auf_zustand():
     nach_blur = leiste.split(".blur()", 1)[1].split("m.zu =", 1)[0]
     assert "waitForTimeout" not in nach_blur, nach_blur
     assert "setTimeout" in nach_blur, nach_blur
+
+
+@browsertest
+@BROWSER
+def test_rundgang_unter_verzoegertem_wechsel_auf_v03(tmp_path, browser):
+    """#661, AC-1: Der Wechsel auf V-03 (letzte Route vor dem Vergleich bei 1300 px) kommt 200 ms später an; der Rundgang stürzt
+    nicht ab und misst den Vergleich in der schmalen Spalte."""
+    aus, _ = _rundgang(tmp_path, browser, {"hashchange": 200, "hash": "V-03"})
+    assert aus["fehler"] == []
+    vergleich = aus["behaelter"]["spalte"]["vergleich"]
+    assert vergleich["karten"] > 0 and vergleich["breite"] == 340, vergleich
+
+
+@browsertest
+@BROWSER
+def test_rundgang_unter_verzoegertem_wechsel_auf_v01(tmp_path, browser):
+    """#664, AC-2: Der Wechsel auf V-01 kommt 200 ms später an; gespeichert wird trotzdem V-01, nicht der vorige Tag."""
+    _, dom = _rundgang(tmp_path, browser, {"hashchange": 200, "hash": "V-01"})
+    assert _v01_stimmt(dom["1200#V-01"]), dom["1200#V-01"][:300]
+
+
+@browsertest
+@BROWSER
+def test_echter_fehler_im_wechsel_bleibt_rot(tmp_path, browser):
+    """AC-3: Die Seite wirft beim Wechsel auf E-02 und zeichnet V-01 nicht; das Warten verdeckt beides nicht und hängt nicht."""
+    def kaputt(html):
+        neu, n = re.subn(r'(addEventListener\("hashchange", \(\) => \{.*?)\broute\(\);',
+                         r'\1if (location.hash === "#E-02") throw new Error("Wurf 661"); if (location.hash !== "#V-01") route();', html)
+        assert n == 1, n
+        return bauen.skripte_festlegen(neu)   # die Sicherheitsregel der Seite für das geänderte Skript neu festlegen
+
+    aus, dom = _rundgang(tmp_path, browser, {}, seite_aendern=kaputt, frist=300)
+    assert any("Wurf 661" in f for f in aus["fehler"]), aus["fehler"]
+    assert not _v01_stimmt(dom["1200#V-01"])
+
+
+@browsertest
+@BROWSER
+def test_gleicher_hash_haengt_nicht(tmp_path, browser):
+    """AC-4: Wechsel ohne Änderung der Adresse (Startseite auf "", zweimal derselbe Hash) lösen kein hashchange aus; gehe kehrt
+    trotzdem zurück, und die Seite zeigt die Ansicht."""
+    skript = tmp_path / "gleich.mjs"
+    skript.write_text("""const [, , modul, basis, browser] = process.argv;
+const b = await (await import(modul))[browser].launch();
+""" + _gehe_quelle() + """
+const p = await (await b.newContext({serviceWorkers: "block"})).newPage();
+await p.goto(basis);
+await p.waitForSelector("#titel:not(:empty)");
+const aus = [];
+for (const h of ["", "V-01", "V-01"]) {
+  let uhr;
+  const fertig = await Promise.race([gehe(p, h).then(() => true), new Promise(r => { uhr = setTimeout(() => r(false), 5000); })]);
+  clearTimeout(uhr);
+  aus.push({fertig, html: await p.evaluate(() => document.querySelector("#main").outerHTML)});
+}
+await b.close();
+console.log(JSON.stringify(aus));
+""", encoding="utf-8")
+    with _server(tmp_path) as basis:
+        aus = subprocess.run(["node", str(skript), str(PLAYWRIGHT), basis, browser], capture_output=True, text=True, timeout=120)
+    assert aus.returncode == 0, aus.stderr[-2000:]
+    start, erst, zweit = json.loads(aus.stdout.strip().splitlines()[-1])
+    assert start["fertig"] and erst["fertig"] and zweit["fertig"]
+    assert _v01_stimmt(erst["html"]) and _v01_stimmt(zweit["html"]) and not _v01_stimmt(start["html"])
+
+
+def test_quelltext_wechsel_ueber_gehe():
+    """AC-5 (statisch): Nur gehe setzt location.hash; nach einem Wechsel wartet der Rundgang nicht mehr fest 15 ms."""
+    q = (HIER / "seiten_browser.mjs").read_text(encoding="utf-8")
+    gehe = _gehe_quelle()
+    assert "location.hash =" in gehe and "location.hash =" not in q.replace(gehe, "")
+    assert "waitForTimeout(15)" not in q
+    assert "hashchange" in gehe and gehe.index("hashchange") < gehe.index("location.hash =")
+    assert gehe.count("requestAnimationFrame") == 2
+    assert len(re.findall(r"await gehe\(p, h\)", q)) == 4

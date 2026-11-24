@@ -1,0 +1,75 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0 -- ~/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: ~/.claude/worktrees/vast-mapping-dusk
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 3/3 workers
+3 workers [5 items]
+
+scheduling tests via LoadScheduling
+
+engine/tests/test_wackel_599.py::test_echter_fehler_im_wechsel_bleibt_rot[chromium] 
+engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium] 
+engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium] 
+[gw0] [ 20%] FAILED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium] 
+engine/tests/test_wackel_599.py::test_gleicher_hash_haengt_nicht[chromium] 
+[gw0] [ 40%] FAILED engine/tests/test_wackel_599.py::test_gleicher_hash_haengt_nicht[chromium] 
+[gw2] [ 60%] PASSED engine/tests/test_wackel_599.py::test_echter_fehler_im_wechsel_bleibt_rot[chromium] 
+[gw1] [ 80%] FAILED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium] 
+engine/tests/test_wackel_599.py::test_quelltext_wechsel_ueber_gehe 
+[gw1] [100%] FAILED engine/tests/test_wackel_599.py::test_quelltext_wechsel_ueber_gehe 
+
+=================================== FAILURES ===================================
+__________ test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium] __________
+[gw0] darwin -- Python 3.12.15 ~/engine/.venv/bin/python
+engine/tests/test_wackel_599.py:200: in test_rundgang_unter_verzoegertem_wechsel_auf_v03
+    aus, _ = _rundgang(tmp_path, browser, {"hashchange": 200, "hash": "V-03"})
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/tests/test_wackel_599.py:78: in _rundgang
+    assert aus.returncode == 0, aus.stderr[-2000:]
+E   AssertionError: node:internal/modules/run_main:111
+E         triggerUncaughtException(
+E         ^
+E     
+E     page.evaluate: TypeError: Cannot read properties of null (reading 'parentElement')
+E         at eval (eval at evaluate (:302:30), <anonymous>:4:11)
+E         at UtilityScript.evaluate (<anonymous>:304:16)
+E         at UtilityScript.<anonymous> (<anonymous>:1:44)
+E         at engine/tests/seiten_browser.mjs:215:23
+E     
+E     Node.js v26.10.0
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['node', 'engine/tests/seiten_browser.mjs', 'engine/tests/verzoegerung.mjs', 'http://127.0.0.1:64691/beispiel/', '<temp>/pytest-of-<benutzer>/pytest-653/popen-gw0/test_rundgang_unter_verzoegert0/dom.json'], returncode=1, stdout='', stderr="node:internal/modules/run_main:111\n    triggerUncaughtException(\n    ^\n\npage.evaluate: TypeError: Cannot read properties of null (reading 'parentElement')\n    at eval (eval at evaluate (:302:30), <anonymous>:4:11)\n    at UtilityScript.evaluate (<anonymous>:304:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at engine/tests/seiten_browser.mjs:215:23\n\nNode.js v26.10.0\n").returncode
+__________________ test_gleicher_hash_haengt_nicht[chromium] ___________________
+[gw0] darwin -- Python 3.12.15 ~/engine/.venv/bin/python
+engine/tests/test_wackel_599.py:237: in test_gleicher_hash_haengt_nicht
+    """ + _gehe_quelle() + """
+          ^^^^^^^^^^^^^^
+engine/tests/test_wackel_599.py:98: in _gehe_quelle
+    assert m, "gehe(p, h) fehlt in seiten_browser.mjs"
+E   AssertionError: gehe(p, h) fehlt in seiten_browser.mjs
+E   assert None
+__________ test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium] __________
+[gw1] darwin -- Python 3.12.15 ~/engine/.venv/bin/python
+engine/tests/test_wackel_599.py:211: in test_rundgang_unter_verzoegertem_wechsel_auf_v01
+    assert _v01_stimmt(dom["1200#V-01"]), dom["1200#V-01"][:300]
+E   AssertionError: <main id="main" class="pico"><a class="zurueck" href="#varianten">← Varianten</a><h2 class="ziel k tagkopf" id="T-03" data-ziel="T-03"><span class="tagnr" aria-hidden="true">3</span><span class="tagtext"><span class="tagdatum">Tag 3 · Sa 15.5.</span><span class="tagtitel">Hohnstein → Brand → Altendo
+E   assert False
+E    +  where False = _v01_stimmt('<main id="main" class="pico"><a class="zurueck" href="#varianten">← Varianten</a><h2 class="ziel k tagkopf" id="T-03" data-ziel="T-03"><span class="tagnr" aria-hidden="true">3</span><span class="tagtext"><span class="tagdatum">Tag 3 · Sa 15.5.</span><span class="tagtitel">Hohnstein → Brand → Altendorf</span></span><span class="zid-box"><button type="button" class="zid" data-rm="T-03" title="Anmerken" aria-label="Anmerken zu T-03"><svg class="sym zid-blase" aria-hidden="true"><use href="#i-rueckmeldungen"></use></svg></button></span></h2><div class="chips"><a class="chip ag-leise" href="#P-A">Plan A</a><a class="chip ag-leise" href="#P-B">Plan B</a></div><div class="tagseite"><div class="tag-oben"><div class="karte ziel flaeche"><div class="chips"><span class="chip plan">Abendessen in Altendorf, Tisch um 19 Uhr reserviert (Beispiel)</span></div><div class="wv"><div class="wv-ort start"><span class="wv-punkt" aria-hidden="true"></span><span class="wv-name"><span class="wv-etikett">Start</span>Hohnstein</span></div><div class="wv-strecke"><div class="z"><div class="titelzeile"><span><svg class="sym etikett-sym" aria-hidden="true"><use href="#i-wandern"></use></svg> <a href="#E-02">...s</th></tr></thead><tbody><tr><td data-spalte="Name"><a class="kp" href="#E-02" data-p="E-02:7">Wanderherberge Altendorf</a></td><td data-spalte="Typ">Herberge</td><td data-spalte="Ort"><a class="kp" href="#E-02" data-p="E-02:6">Altendorf</a></td><td data-spalte="Preis/Hinweis">35 € pro Person, Frühstück gegen Aufpreis (Beispielwert)</td></tr></tbody></table></div></div></div></div></section><section class="ebene ebene-orte"><div class="ebene-kopf"><h3>Ort des Tages</h3></div><div class="ortzeile vorschau"><div class="titelzeile"><a href="#O-04"><svg class="sym etikett-sym" aria-hidden="true"><use href="#i-ort"></use></svg>Altendorf →</a><span class="zid-box"><button type="button" class="zid" data-rm="O-04" title="Anmerken" aria-label="Anmerken zu O-04"><svg class="sym zid-blase" aria-hidden="true"><use href="#i-rueckmeldungen"></use></svg></button></span></div><div class="ortzeile-text">Ankommen. Dorf auf der Hochfläche über Bad Schandau, Ziel des zweiten Wandertags. Für den Abend ist ein Tisch reserviert (siehe Termine). Versorgung. Wenig Auswahl im Ort; …</div></div></section></div><div class="blaettern"><a href="#T-02">← Tag 2</a><a href="#T-05">Tag 4 →</a></div></div></main>')
+______________________ test_quelltext_wechsel_ueber_gehe _______________________
+[gw1] darwin -- Python 3.12.15 ~/engine/.venv/bin/python
+engine/tests/test_wackel_599.py:262: in test_quelltext_wechsel_ueber_gehe
+    gehe = _gehe_quelle()
+           ^^^^^^^^^^^^^^
+engine/tests/test_wackel_599.py:98: in _gehe_quelle
+    assert m, "gehe(p, h) fehlt in seiten_browser.mjs"
+E   AssertionError: gehe(p, h) fehlt in seiten_browser.mjs
+E   assert None
+=========================== short test summary info ============================
+FAILED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v03[chromium]
+FAILED engine/tests/test_wackel_599.py::test_gleicher_hash_haengt_nicht[chromium]
+FAILED engine/tests/test_wackel_599.py::test_rundgang_unter_verzoegertem_wechsel_auf_v01[chromium]
+FAILED engine/tests/test_wackel_599.py::test_quelltext_wechsel_ueber_gehe - A...
+========================= 4 failed, 1 passed in 16.73s =========================

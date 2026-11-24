@@ -6,6 +6,8 @@
 //   resizeobserver  Rückrufe jedes ResizeObserver kommen so viel später
 //   zeitgeber       setTimeout der Seite läuft so viel später
 //   resize          resize-Hörer an window und visualViewport laufen so viel später
+//   hashchange      hashchange-Hörer an window laufen so viel später (#661)
+//   hash            hashchange nur beim Wechsel auf diesen Hash verzögern (ohne #)
 //   ab              CSS-Selektor: ResizeObserver erst verzögern, die nach einem Klick auf ein solches Element entstehen
 const echt = await import(process.env.RH_PLAYWRIGHT_ECHT);
 const v = JSON.parse(process.env.RH_VERZOEGERN || "{}");
@@ -21,15 +23,17 @@ function verlangsamen(v) {
     };
   }
   if (v.zeitgeber) window.setTimeout = (f, t, ...a) => spaeter(f, (Number(t) || 0) + v.zeitgeber, ...a);
-  if (v.resize) {
+  if (v.resize || v.hashchange) {
     const anmelden = EventTarget.prototype.addEventListener;
+    const trifft = e => v.hash == null || decodeURIComponent(new URL(e.newURL).hash.slice(1)) === v.hash;
     EventTarget.prototype.addEventListener = function (typ, hoerer, opt) {
-      if (typ === "resize" && hoerer && (this === window || this === window.visualViewport)) {
-        const f = typeof hoerer === "function" ? hoerer : e => hoerer.handleEvent(e);
-        const ziel = this;
-        return anmelden.call(this, typ, e => { spaeter(() => f.call(ziel, e), v.resize); }, opt);
-      }
-      return anmelden.call(this, typ, hoerer, opt);
+      let warten = null;
+      if (v.resize && typ === "resize" && (this === window || this === window.visualViewport)) warten = () => v.resize;
+      if (v.hashchange && typ === "hashchange" && this === window) warten = e => (trifft(e) ? v.hashchange : 0);
+      if (!warten || !hoerer) return anmelden.call(this, typ, hoerer, opt);
+      const f = typeof hoerer === "function" ? hoerer : e => hoerer.handleEvent(e);
+      const ziel = this;
+      return anmelden.call(this, typ, e => { const ms = warten(e); if (ms) spaeter(() => f.call(ziel, e), ms); else f.call(ziel, e); }, opt);
     };
   }
 }
