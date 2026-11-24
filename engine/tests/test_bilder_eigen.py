@@ -162,7 +162,15 @@ def png_bombe(breite, hoehe, mit_daten=True):
 def ohne_metadaten(webp):
     from PIL import Image
     assert webp[:4] == b"RIFF" and webp[8:12] == b"WEBP", webp[:16]
-    for marke in (b"EXIF", b"Exif", b"XMP ", KAMERA, XMP):
+    # Abschnitte des RIFF-Containers prüfen, nicht die Bytes: in komprimierten Bilddaten kommen vier Bytes wie
+    # b"XMP " gelegentlich zufällig vor (#678); die langen Suchmarken der Testfotos bleiben als Bytesuche.
+    abschnitte, pos = [], 12
+    while pos + 8 <= len(webp):
+        name, laenge = webp[pos:pos + 4], struct.unpack("<I", webp[pos + 4:pos + 8])[0]
+        abschnitte.append(name)
+        pos += 8 + laenge + (laenge & 1)
+    assert not {b"EXIF", b"XMP "} & set(abschnitte), abschnitte
+    for marke in (KAMERA, XMP):
         assert marke not in webp, marke
     with Image.open(io.BytesIO(webp)) as im:
         assert "exif" not in im.info and "xmp" not in im.info
