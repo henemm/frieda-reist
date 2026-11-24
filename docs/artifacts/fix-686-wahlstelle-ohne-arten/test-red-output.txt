@@ -1,0 +1,232 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.7.0 -- ~/frieda-reisen/frieda/engine/.venv/bin/python
+rootdir: ~/frieda-reist
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collecting ... collected 21 items
+
+engine/tests/test_plan_ohne_arten_686.py::test_wahlstelle_ohne_arten_wird_abgelehnt FAILED [  4%]
+engine/tests/test_plan_ohne_arten_686.py::test_wahlstelle_ohne_arten_laesst_den_speicher_unveraendert FAILED [  9%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[day_create] FAILED [ 14%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[fixed_date_set] FAILED [ 19%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[item_create] FAILED [ 23%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[start_end_set] FAILED [ 28%]
+engine/tests/test_plan_ohne_arten_686.py::test_ablehnung_in_allen_sprachen FAILED [ 33%]
+engine/tests/test_plan_ohne_arten_686.py::test_arten_uebernehmen_traegt_vorhandenen_plan_ein FAILED [ 38%]
+engine/tests/test_plan_ohne_arten_686.py::test_art_definieren_traegt_plan_ein FAILED [ 42%]
+engine/tests/test_plan_ohne_arten_686.py::test_arten_ohne_plan_legen_keinen_plan_an PASSED [ 47%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_nach_erstem_werkzeug_sofort_sichtbar PASSED [ 52%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_mit_arten_tragen_plan_ein[day_create] PASSED [ 57%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_mit_arten_tragen_plan_ein[fixed_date_set] PASSED [ 61%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_mit_arten_tragen_plan_ein[item_create] PASSED [ 66%]
+engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_mit_arten_tragen_plan_ein[start_end_set] PASSED [ 71%]
+engine/tests/test_plan_ohne_arten_686.py::test_nachziehen_heilt_altlast FAILED [ 76%]
+engine/tests/test_plan_ohne_arten_686.py::test_nachziehen_meldet_bei_gesunder_reise_nichts PASSED [ 80%]
+engine/tests/test_plan_ohne_arten_686.py::test_nachziehen_speicher_beim_veroeffentlichen_heilt_altlast FAILED [ 85%]
+engine/tests/test_plan_ohne_arten_686.py::test_roh_schreiben_ohne_arten_erlaubt FAILED [ 90%]
+engine/tests/test_plan_ohne_arten_686.py::test_beispielreisen_unveraendert[beispielreise-wer0] PASSED [ 95%]
+engine/tests/test_plan_ohne_arten_686.py::test_beispielreisen_unveraendert[stadtwochenende-wer1] PASSED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_wahlstelle_ohne_arten_wird_abgelehnt ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_wahlstelle_ohne_arten_wir0')
+
+    def test_wahlstelle_ohne_arten_wird_abgelehnt(tmp_path):
+        """AC-1: choice_create in einer Reise ohne Arten meldet keinen Erfolg, sondern lehnt mit dem Weg über die Arten ab."""
+        r = frische_reise(tmp_path)
+>       with pytest.raises(schreiben.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_plan_ohne_arten_686.py:76: Failed
+_________ test_wahlstelle_ohne_arten_laesst_den_speicher_unveraendert __________
+
+speicher = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/engine/reise...8/test_wahlstelle_ohne_arten_lae0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7e140b9e6660>)
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7e140bb8ae40>
+
+    def test_wahlstelle_ohne_arten_laesst_den_speicher_unveraendert(speicher, monkeypatch):
+        """AC-1 über den Schreibweg des Dienstes: die frisch angelegte Reise bekommt keine neue Fassung, und die im selben Vorgang
+        schon angelegte offene Frage verschwindet mit der Arbeitskopie."""
+        from test_schreiben_speicher import _auftrag
+        reise = "skiwoche-allgaeu-2027"
+        monkeypatch.setenv("FR_SPEICHERREISEN", f"beispielreise,stadtwochenende,{reise}")
+        wer = {"person": "ida", "name": "Ida", "rolle": "organisator"}
+        code, a = schreib(speicher, reise, "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator",
+                                                             "args": {"auftrag": _auftrag(reise)}})
+        assert code == 200 and a["ok"], a
+        bausteine = yaml.safe_load(als_text(speicher.rs.aktueller_stand(reise)["reise.yaml"])).get("bausteine") or []
+        code, a = schreib(speicher, reise, "einstellung_setzen", {**wer, "args": {"bausteine": [*bausteine, "varianten"]}})
+        assert code == 200 and a["ok"], a
+        vorher = zustand(speicher, reise)
+        code, a = schreib(speicher, reise, "wahlstelle_anlegen", {**wer, "args": WAHLSTELLE})
+>       assert code == 422 and a["ok"] is False and a.get("fehler_code") == SCHLUESSEL, (code, a)
+E       AssertionError: (200, {'ok': True, 'text': 'Choice V-01 “Hütte für die zweite Nacht” (planning) created with V-01.a „Obere Hütte“, V-01.b „Untere Hütte“, all proposed. Organisers can decide. With the open question F-02.', 'commit': '5', 'stand': {'gesichert': 3, 'veroeffentlicht': None}, ...})
+E       assert (200 == 422)
+
+engine/tests/test_plan_ohne_arten_686.py:101: AssertionError
+----------------------------- Captured stderr call -----------------------------
+Done reise_anlegen 200 in 0.4 s
+Done einstellung_setzen 200 in 0.4 s
+Done wahlstelle_anlegen 200 in 0.4 s
+_________ test_plan_werkzeuge_ohne_arten_werden_abgelehnt[day_create] __________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_plan_werkzeuge_ohne_arten0')
+werkzeug = 'day_create'
+
+    @pytest.mark.parametrize("werkzeug", sorted(PLAN_WERKZEUGE))
+    def test_plan_werkzeuge_ohne_arten_werden_abgelehnt(tmp_path, werkzeug):
+        """AC-2: item_create, start_end_set, day_create, fixed_date_set lehnen in einer Reise ohne Arten mit demselben Text ab."""
+        r = frische_reise(tmp_path)
+        name, args = PLAN_WERKZEUGE[werkzeug]
+>       with pytest.raises(schreiben.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_plan_ohne_arten_686.py:113: Failed
+_______ test_plan_werkzeuge_ohne_arten_werden_abgelehnt[fixed_date_set] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_plan_werkzeuge_ohne_arten1')
+werkzeug = 'fixed_date_set'
+
+    @pytest.mark.parametrize("werkzeug", sorted(PLAN_WERKZEUGE))
+    def test_plan_werkzeuge_ohne_arten_werden_abgelehnt(tmp_path, werkzeug):
+        """AC-2: item_create, start_end_set, day_create, fixed_date_set lehnen in einer Reise ohne Arten mit demselben Text ab."""
+        r = frische_reise(tmp_path)
+        name, args = PLAN_WERKZEUGE[werkzeug]
+>       with pytest.raises(schreiben.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_plan_ohne_arten_686.py:113: Failed
+_________ test_plan_werkzeuge_ohne_arten_werden_abgelehnt[item_create] _________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_plan_werkzeuge_ohne_arten2')
+werkzeug = 'item_create'
+
+    @pytest.mark.parametrize("werkzeug", sorted(PLAN_WERKZEUGE))
+    def test_plan_werkzeuge_ohne_arten_werden_abgelehnt(tmp_path, werkzeug):
+        """AC-2: item_create, start_end_set, day_create, fixed_date_set lehnen in einer Reise ohne Arten mit demselben Text ab."""
+        r = frische_reise(tmp_path)
+        name, args = PLAN_WERKZEUGE[werkzeug]
+>       with pytest.raises(schreiben.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_plan_ohne_arten_686.py:113: Failed
+________ test_plan_werkzeuge_ohne_arten_werden_abgelehnt[start_end_set] ________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_plan_werkzeuge_ohne_arten3')
+werkzeug = 'start_end_set'
+
+    @pytest.mark.parametrize("werkzeug", sorted(PLAN_WERKZEUGE))
+    def test_plan_werkzeuge_ohne_arten_werden_abgelehnt(tmp_path, werkzeug):
+        """AC-2: item_create, start_end_set, day_create, fixed_date_set lehnen in einer Reise ohne Arten mit demselben Text ab."""
+        r = frische_reise(tmp_path)
+        name, args = PLAN_WERKZEUGE[werkzeug]
+>       with pytest.raises(schreiben.Ablehnung) as e:
+E       Failed: DID NOT RAISE Ablehnung
+
+engine/tests/test_plan_ohne_arten_686.py:113: Failed
+_______________________ test_ablehnung_in_allen_sprachen _______________________
+
+    def test_ablehnung_in_allen_sprachen():
+        """AC-3: Der Text steht in jeder Sprachdatei und nennt den Weg über die Arten (kinds_adopt, kind_define)."""
+        for k in texte._dateien():
+            modul = texte.sprache(k)
+>           assert SCHLUESSEL in modul.TEXTE, k
+E           AssertionError: de
+E           assert 'schreiben.plan.ohne_arten' in {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in der Reise den Bezug (an) prüfen.', 'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...}
+E            +  where {'seite.kreis.hinweis': '„{titel}“ verweist im Kreis oder zu tief auf andere Dinge und hat hier keinen Platz. Bitte in der Reise den Bezug (an) prüfen.', 'seite.status.vorgeschlagen': 'vorgeschlagen', 'seite.status.favorisiert': 'favorisiert', 'seite.status.gewaehlt': 'gewählt', ...} = <module 'texte_de' from '~/frieda-reist/engine/texte_de.py'>.TEXTE
+
+engine/tests/test_plan_ohne_arten_686.py:125: AssertionError
+______________ test_arten_uebernehmen_traegt_vorhandenen_plan_ein ______________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_arten_uebernehmen_traegt_0')
+
+    def test_arten_uebernehmen_traegt_vorhandenen_plan_ein(tmp_path):
+        """AC-4: kinds_adopt (Vorlagen) trägt einen schon liegenden Plan sofort in reise.json ein; choice_create gelingt danach."""
+        r = geruest_ohne_eintrag(tmp_path)
+        schreiben.WERKZEUGE["arten_uebernehmen"](r, IDA, {"vorlage": True})
+>       assert plan_eingetragen(r), reise_json(r).get("routen")
+E       AssertionError: None
+E       assert False
+E        +  where False = plan_eingetragen(PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_arten_uebernehmen_traegt_0/reisen/skiurlaub-im-tal-2027'))
+
+engine/tests/test_plan_ohne_arten_686.py:144: AssertionError
+_____________________ test_art_definieren_traegt_plan_ein ______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_art_definieren_traegt_pla0')
+
+    def test_art_definieren_traegt_plan_ein(tmp_path):
+        """AC-4: kind_define trägt einen schon liegenden Plan sofort in reise.json ein."""
+        r = geruest_ohne_eintrag(tmp_path)
+        schreiben.WERKZEUGE["art_definieren"](r, IDA, dict(ART))
+>       assert plan_eingetragen(r), reise_json(r).get("routen")
+E       AssertionError: None
+E       assert False
+E        +  where False = plan_eingetragen(PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_art_definieren_traegt_pla0/reisen/skiurlaub-im-tal-2027'))
+
+engine/tests/test_plan_ohne_arten_686.py:153: AssertionError
+________________________ test_nachziehen_heilt_altlast _________________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_nachziehen_heilt_altlast0')
+
+    def test_nachziehen_heilt_altlast(tmp_path):
+        """AC-6: Reise mit Arten und Plan, aber ohne Eintrag: nachziehen trägt ihn ein und meldet es; ein zweiter Lauf meldet dazu
+        nichts mehr; die Vorschau schreibt nichts, meldet es aber."""
+        vorschau = altlast(beispiel_kopie(tmp_path / "a"))
+        vorher = (vorschau / "reise.json").read_bytes()
+>       assert meldungen_routen(neu.nachziehen(vorschau, schreiben=False, betrieb=False))
+E       AssertionError: assert []
+E        +  where [] = meldungen_routen([])
+E        +    where [] = <function nachziehen at 0x7e140bf5eca0>(PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_nachziehen_heilt_altlast0/a/beispielreise'), schreiben=False, betrieb=False)
+E        +      where <function nachziehen at 0x7e140bf5eca0> = neu.nachziehen
+
+engine/tests/test_plan_ohne_arten_686.py:199: AssertionError
+_________ test_nachziehen_speicher_beim_veroeffentlichen_heilt_altlast _________
+
+speicher = namespace(rs=<module 'reisespeicher' from '~/frieda-reist/engine/reise...8/test_nachziehen_speicher_beim_0/veroeffentlicht'), schreiber=<function speicher.<locals>.<lambda> at 0x7e140ba40400>)
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_nachziehen_speicher_beim_0')
+
+    def test_nachziehen_speicher_beim_veroeffentlichen_heilt_altlast(speicher, tmp_path):
+        """AC-6: Dieselbe Altlast im Reisespeicher wird beim Veröffentlichen (nachziehen-speicher) geheilt, ohne Handschritt."""
+        r = altlast(beispiel_kopie(tmp_path / "quelle"))
+        speicher.rs.importieren(r, "altlast-686", wer="Ida", grund="Beispiel")
+        code, zeilen = neu.nachziehen_speicher("altlast-686", tmp_path / "bau")
+        assert code == 0, zeilen
+        cfg = json.loads(als_text(speicher.rs.aktueller_stand("altlast-686")["reise.json"]))
+>       assert (cfg.get("routen") or {}).get("datei") == "plan/routen.yaml", zeilen
+E       AssertionError: ['nichts umzustellen']
+E       assert None == 'plan/routen.yaml'
+E        +  where None = <built-in method get of dict object at 0x7e140ad59200>('datei')
+E        +    where <built-in method get of dict object at 0x7e140ad59200> = (None or {}).get
+E        +      where None = <built-in method get of dict object at 0x7e140ad55940>('routen')
+E        +        where <built-in method get of dict object at 0x7e140ad55940> = {'plan': 'plan/plan.md', 'fragen': 'offene-fragen.md', 'etappen_dossier': 'inhalt/etappen.md', 'unterkuenfte_dossier': 'inhalt/unterkuenfte.md', ...}.get
+
+engine/tests/test_plan_ohne_arten_686.py:227: AssertionError
+____________________ test_roh_schreiben_ohne_arten_erlaubt _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3148/test_roh_schreiben_ohne_arten_0')
+
+    def test_roh_schreiben_ohne_arten_erlaubt(tmp_path):
+        """AC-7: Gerüst (plan_sicherstellen), die rohe Funktion und nachziehen schreiben in einer Reise ohne Arten ohne Ablehnung."""
+        r = frische_reise(tmp_path)
+        schreiben.plan_sicherstellen(r)
+        roh = schreiben.routen_laden(r)
+        roh["route"] = []
+>       schreiben.routen_datei_schreiben(r, roh)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'schreiben' has no attribute 'routen_datei_schreiben'
+
+engine/tests/test_plan_ohne_arten_686.py:238: AttributeError
+=========================== short test summary info ============================
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_wahlstelle_ohne_arten_wird_abgelehnt
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_wahlstelle_ohne_arten_laesst_den_speicher_unveraendert
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[day_create]
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[fixed_date_set]
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[item_create]
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_plan_werkzeuge_ohne_arten_werden_abgelehnt[start_end_set]
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_ablehnung_in_allen_sprachen
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_arten_uebernehmen_traegt_vorhandenen_plan_ein
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_art_definieren_traegt_plan_ein
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_nachziehen_heilt_altlast
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_nachziehen_speicher_beim_veroeffentlichen_heilt_altlast
+FAILED engine/tests/test_plan_ohne_arten_686.py::test_roh_schreiben_ohne_arten_erlaubt
+========================= 12 failed, 9 passed in 3.73s =========================
