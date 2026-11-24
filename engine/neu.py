@@ -352,7 +352,7 @@ def umbrechen(reise_dir, schreiben=False):
         if schreiben:   # wie der Schreibweg: Lesetext als Block, alles andere in Anführungszeichen
             knoten[k] = LiteralScalarString(neu_ + "\n") if feld == "lesetext" else sb.skalar(k, neu_)
     if schreiben and aus:
-        sb.routen_speichern(reise_dir, roh)
+        sb.routen_datei_schreiben(reise_dir, roh)
     return aus
 
 
@@ -1059,6 +1059,21 @@ def hat_rollen(arten, rollen):
     return False
 
 
+def plan_eintragen_nachziehen(reise_dir, schreiben=True):
+    """#686: Eine Reise mit Arten und plan/routen.yaml, aber ohne routen in reise.json (Altlast, als die Plan-Werkzeuge ohne
+    Arten still schrieben) bekommt den Eintrag (schreiben.plan_sicherstellen); die Vorschau meldet nur. -> Meldungen."""
+    import schreiben as sb
+    reise_dir = Path(reise_dir)
+    rj = reise_dir / "reise.json"
+    if not (rj.exists() and (reise_dir / "plan" / "routen.yaml").exists() and sb.arten_laden(reise_dir)):
+        return []
+    if lies_json(rj).get("routen"):
+        return []
+    if schreiben:
+        sb.plan_sicherstellen(reise_dir)
+    return [texte.t(sprache_von(reise_dir), "pruefung.neu.nachziehen.plan_eintragen")]
+
+
 def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
     """Nur Schlüssel, keine Inhalte: Unterkunft und Nacht typ: → art:; Wahlstelle bereich: → art:, art: planung|unterwegs →
     wann:; Strecke ohne art: bekommt die in strecken_arten genannte ({E-15: kombiniert}), sonst wird sie gemeldet; das
@@ -1135,8 +1150,9 @@ def nachziehen(reise_dir, strecken_arten=None, schreiben=True, betrieb=True):
     fahrzeit_nachziehen(reise_dir, roh, meldungen)   # #508: die Zeit einer Fahrt heißt fahrzeit, nicht gehzeit
     dossier_fertig = etappen_nachziehen(reise_dir, roh, schreiben, meldungen)   # #269: Titel und Kennzahlen an die Strecken
     if schreiben and roh is not None:
-        sb.routen_speichern(reise_dir, roh)
+        sb.routen_datei_schreiben(reise_dir, roh)
     dossier_fertig()   # Dossier und reise.json erst nach routen.yaml
+    meldungen += plan_eintragen_nachziehen(reise_dir, schreiben)   # #686, vor arten_speichern, das ihn sonst still einträgt
 
     # arten.yaml: rolle kosten am Merkmal preis (Typ geld) der Aufenthalts-Arten, nur am Altstand ohne jede Rolle (#584)
     if (reise_dir / "plan" / "arten.yaml").exists():

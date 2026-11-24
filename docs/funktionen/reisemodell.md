@@ -112,6 +112,7 @@ Jedes Ding steht vollständig an genau einer Stelle, seiner Heimat, und überall
 
 - Frieda prüft die **Form**, nicht den Inhalt: bekannte Merkmale, erlaubte Werte, Herkunft, Prüfdatum, feste Kennungen. Ob „Frühstück“ für ein Refugi sinnvoll ist, entscheidet die Reise.
 - Frieda enthält keine eigene KI. Recherchieren, Abwägen und Formulieren geschieht im Gespräch; Frieda prüft die Regeln und schreibt sofort.
+- **Erst Arten, dann der Plan:** Orte, Unterkünfte, Strecken, Tage, Termine, Wahlstellen und Pläne brauchen zuerst Arten. Hat eine Reise noch keine, lehnt Frieda solche Einträge ab, statt etwas zu speichern, das nirgends zu sehen wäre, und schlägt vor, Arten aus einer Vorlage zu übernehmen oder eine eigene Art festzulegen. Sobald die Reise Arten hat, ist ihr Plan auf der Seite sichtbar.
 - Die Grundform einer Art lässt sich nicht ändern; dafür legt man eine neue Art an. Der interne Schlüssel einer Art oder eines Merkmals bleibt, nur der Name ändert sich.
 - Ein Hinweis beim Eintragen (etwa eine neue Warnung zum Plan) verhindert nichts: Der Eintrag gilt, Frieda nennt den Hinweis.
 - Was geschrieben werden darf, hängt vom Status der Reise ab: In der Nachlese (Status „danach“) sind Plan, Dinge und Werte schreibgeschützt, Wissen geht noch; im Archiv wird nur noch gelesen ([Lebenszyklus](lebenszyklus.md)).

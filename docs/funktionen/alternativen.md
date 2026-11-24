@@ -85,6 +85,7 @@ Frieda selbst schlägt vor, prüft und kann eine Option mit Begründung favorisi
 - Der Kalender zeigt nur Entschiedenes; Tage und Nächte unter einer offenen Wahlstelle der Planung fehlen dort.
 - Ab Status „fest“ ist jede offene Wahlstelle der Planung eine Mahnung im Überblick des Gesprächs. In der Nachlese und im Archiv gibt es keine neuen Optionen und keine Entscheidungen mehr.
 - Die Werkzeuge für Alternativen und Entscheidungen gibt es nur, wenn der Baustein `varianten` eingeschaltet ist.
+- Wahlstellen und Optionen gehören zum Plan und brauchen deshalb zuerst Arten. Hat die Reise noch keine, lehnt Frieda ab und nennt den Weg dorthin ([Reisemodell](reisemodell.md)).
 
 ## Siehe auch
 

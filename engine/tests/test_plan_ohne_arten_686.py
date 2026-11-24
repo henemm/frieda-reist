@@ -100,7 +100,8 @@ def test_wahlstelle_ohne_arten_laesst_den_speicher_unveraendert(speicher, monkey
     code, a = schreib(speicher, reise, "wahlstelle_anlegen", {**wer, "args": WAHLSTELLE})
     assert code == 422 and a["ok"] is False and a.get("fehler_code") == SCHLUESSEL, (code, a)
     assert zustand(speicher, reise) == vorher
-    assert "| F-" not in als_text(speicher.rs.aktueller_stand(reise).get("offene-fragen.md"))
+    # die Vorlage bringt schon ihre eigene Frage F-01 mit; es darf nur keine Frage zur abgelehnten Wahlstelle dazukommen
+    assert WAHLSTELLE["titel"] not in als_text(speicher.rs.aktueller_stand(reise).get("offene-fragen.md"))
 
 
 # ---------- AC-2: übrige Plan-Werkzeuge ohne Arten ----------

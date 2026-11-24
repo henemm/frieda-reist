@@ -353,6 +353,8 @@ def arten_speichern(reise_dir, arten, wer):
     sp = sprache_von(reise_dir)   # Kopf und Herkunft stehen in der Sprache der Reise
     herkunft = texte.t(sp, "inhalt.schreiben.gepflegt", datum=datetime.date.today().isoformat(), wer=wer["name"])
     p.write_text(arten_text(arten, herkunft, sp), encoding="utf-8")
+    if (Path(reise_dir) / "plan" / "routen.yaml").exists():
+        plan_sicherstellen(reise_dir)   # #686: ein schon liegender Plan wird mit den Arten sofort eingetragen und sichtbar
 
 
 def lesetext_gliederung(roh):
@@ -926,7 +928,7 @@ def plan_sicherstellen(reise_dir):
     Arten hat: Ein Plan ohne Arten baut nicht (docs/ontologie.md). Vorhandenes bleibt unberührt."""
     reise_dir = Path(reise_dir)
     if not (reise_dir / "plan" / "routen.yaml").exists():
-        routen_speichern(reise_dir, routen_geruest(reise_dir))
+        routen_datei_schreiben(reise_dir, routen_geruest(reise_dir))
     rj = reise_dir / "reise.json"
     if rj.exists() and arten_laden(reise_dir):
         try:
@@ -959,18 +961,29 @@ def routen_laden(reise_dir):
         raise Ablehnung("schreiben.routen_laden.2", __name__=type(e).__name__)
 
 
-def routen_speichern(reise_dir, roh):
+def routen_datei_schreiben(reise_dir, roh):
+    """Rohes Schreiben von plan/routen.yaml (Normalform), ohne Prüfung der Arten und ohne Eintrag in reise.json: für das
+    Gerüst, die Normalform und die Umstellungen in neu.py. Die Werkzeuge schreiben über routen_speichern."""
     import io
     out = io.StringIO()
     yaml_rund().dump(roh, out)
     (Path(reise_dir) / "plan" / "routen.yaml").write_text(out.getvalue(), encoding="utf-8")
 
 
+def routen_speichern(reise_dir, roh):
+    """Die eine geprüfte Schreibstelle des Plans im Schreibweg (#686): Ohne Arten baut der Plan nicht und wäre unsichtbar,
+    deshalb Ablehnung mit dem Weg über die Arten; mit Arten steht der Plan danach in reise.json (plan_sicherstellen)."""
+    if not arten_laden(reise_dir):
+        raise Ablehnung("schreiben.plan.ohne_arten")
+    routen_datei_schreiben(reise_dir, roh)
+    plan_sicherstellen(reise_dir)
+
+
 def routen_normalisieren(reise_dir):
     """Datei einmal rund schreiben (Normalform des Schreibwegs) -> True, wenn sich der Text geändert hat."""
     p = Path(reise_dir) / "plan" / "routen.yaml"
     alt = p.read_text(encoding="utf-8")
-    routen_speichern(reise_dir, routen_laden(reise_dir))
+    routen_datei_schreiben(reise_dir, routen_laden(reise_dir))
     return p.read_text(encoding="utf-8") != alt
 
 

@@ -1194,12 +1194,13 @@ def test_neue_reise_bekommt_beim_ersten_eintrag_einen_plan(repo):
                                         "personen": {"ida": {"name": "Ida", "rolle": "organisator"}}, "wer": "Ida", "notiz": ""}}}
     s.schreiben("kurztrip-2027", "reise_anlegen", {"person": None, "name": "Ida", "rolle": "organisator", "args": {"auftrag": anfrage}})
     s.vorbereiten()
+    # erst Arten, dann der Plan (#686): ohne Arten lehnt der Schreibweg jeden Eintrag in den Plan ab
+    s.schreiben("kurztrip-2027", "art_definieren", {**IDA, "args": {"art": "bus", "bezeichnung": "Bus", "grundform": "bewegung"}})
+    s.vorbereiten()
     a = s.schreiben("kurztrip-2027", "ding_anlegen", {**IDA, "args": {"was": "ort", "titel": "Dresden", "quelle": "Karte", "ausserhalb": True}})
     assert "O-01" in a["text"], a["text"]
     s.vorbereiten()
     s.schreiben("kurztrip-2027", "ding_anlegen", {**IDA, "args": {"was": "ort", "titel": "Prag", "quelle": "Karte"}})
-    s.vorbereiten()
-    s.schreiben("kurztrip-2027", "art_definieren", {**IDA, "args": {"art": "bus", "bezeichnung": "Bus", "grundform": "bewegung"}})
     s.vorbereiten()
     a = s.schreiben("kurztrip-2027", "ding_anlegen", {**IDA, "args": {"was": "strecke", "titel": "Bus Dresden → Prag", "von": "O-01",
                                                                        "nach": "O-02", "art": "bus", "ab": "08:00", "an": "10:30", "quelle": "Fahrplan"}})
