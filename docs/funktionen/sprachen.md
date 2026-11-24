@@ -17,8 +17,8 @@ Drei Dinge sind getrennt:
 
 | Was | gilt für | ändern |
 |---|---|---|
-| Sprache der Reise | Startsprache der Seite, Kalender, Meldungen des Wächters, alles, was Frieda in die Reise schreibt (Verlauf, Herkunftszeilen), Einladungen an Adressen ohne Konto | beim Anlegen, später im Gespräch (nur Organisator:innen, mit Grund) |
-| Sprache des Kontos | Frieda im Gespräch (Anleitung, Antworten, Fehler), Mein Konto, Mails an dich, die Hülle der Reiseseite, wenn du angemeldet bist | Mein Konto oder im Gespräch |
+| Sprache der Reise | Startsprache der Seite, Einträge im Kalender, Wortlaut der Meldungen des Wächters, alles, was Frieda in die Reise schreibt (Verlauf, Herkunftszeilen), Einladungen an Adressen ohne Konto | beim Anlegen, später im Gespräch (nur Organisator:innen, mit Grund) |
+| Sprache des Kontos | Frieda im Gespräch (Anleitung, Antworten, Fehler), Mein Konto, Mails und Push-Nachrichten an dich (Betreff, Anrede, Hinweise; die Meldung selbst steht in der Sprache der Reise), Name des Kalender-Abos, die Hülle der Reiseseite, wenn du angemeldet bist | Mein Konto oder im Gespräch |
 | Umschalter im Fuß der Seite | nur die Beschriftungen der Seite auf diesem Gerät | nur für Gäste ohne Konto |
 
 ### Im Gespräch

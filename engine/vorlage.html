@@ -5670,8 +5670,9 @@ function ansichtRueckmeldungen(m) {
    eingebracht, geprüft (Claude hat sie aufgenommen, oft mit Vorschlag „passt zu …“), eingeplant (nur Organisator:innen),
    erlebt (alle, unterwegs und danach), passt nicht. Punkte: wie wichtig der eigene Wunsch ist, im Kontingent je Person.
    Punkte gehen nur mit Netz; Abhaken wird ohne Netz gemerkt und nachgereicht (nur das Abhaken, nicht das Zurücknehmen,
-   damit ein später nachgereichtes „nicht erlebt“ keinen fremden Haken löscht). Einplanen ist eine Entscheidung und geht
-   nur in der Claude-App mit dem persönlichen Link einer Organisator:in; die Karte zeigt, wer eingeplant hat. */
+   damit ein später nachgereichtes „nicht erlebt“ keinen fremden Haken löscht). Einplanen ist eine Entscheidung einer
+   Organisator:in im Gespräch (wish_update) oder durch die Wahl der Option; hier gibt es keinen Knopf dafür, die Karte
+   zeigt, wer eingeplant hat. */
 const BR_API = "api/brett";
 let BR = lies("brett", null);                 // letzte Antwort von api/brett (offline lesbar)
 let BR_AUSGANG = lies("brett-ausgang", []);   // abgehakt ohne Netz: [{rid, name, erlebt}]

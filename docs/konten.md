@@ -103,7 +103,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   Regel `anmeldung` je Reise (`uebergang`: auch ein eingetippter Name; `noetig`) ist entfallen; steht sie noch in einer
   `reise.yaml`, baut die Reise mit Hinweis, und `neu.py nachziehen` nimmt sie heraus. Lesen geht weiter ohne Anmeldung
   über den geheimen Link zur Seite.
-- **Einplanen** auf dem Wunsch-Brett: auch angemeldet auf der Seite, aber nur als Organisator:in.
+- **Einplanen** auf dem Wunsch-Brett: Der Rückmeldedienst nimmt es nur von angemeldeten Organisator:innen an. Die Reiseseite hat dafür keinen Knopf; eingeplant wird im Gespräch (`wish_update`) oder durch die Wahl der Option, die aus dem Wunsch entstand.
 - **Zurückziehen:** Angemeldet geht es nur bei eigenen Rückmeldungen.
 - **Reiseseite:** `GET api/ich` sagt, wer angemeldet ist.
   - Oben rechts steht „Anmelden“ oder der eigene Name (Molekül `kontoKnopf`, nur auf Friedas eigener Adresse).

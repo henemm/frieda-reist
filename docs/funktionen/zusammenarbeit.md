@@ -67,6 +67,7 @@ Jede Stufe enthält die darunter. Rollen gelten je Reise. Es kann mehrere Organi
 - Hat die Adresse schon ein Konto, gilt die Einladung sofort, sonst beim ersten Anmelden. Der Link in der Einladungsmail gilt 30 Tage; wer ihn öffnet, darf sich auch mit einer anderen Adresse anmelden.
 - Wer eingeladen ist, braucht für die Reiseseite kein Claude: Mitmachen geht dort angemeldet. Für das Gespräch braucht jede Person ein eigenes Claude-Konto mit Konnektoren ([Planen im Gespräch](gespraech.md)).
 - `person_remove` macht eine Person zum Gast, der nicht mitreist. Niemand wird gestrichen; im Verlauf bleibt ihr Name.
+- Rückmeldungen, Fragen, Aufgaben und Wünsche sieht jede Person, die die Reise lesen kann, auch Gäste über den Link zur Seite. Belege zu Buchungen sind enger gefasst ([Buchungen](buchungen.md)).
 - E-Mail-Adressen und Notizen zeigt Frieda nie in der Personenliste. Ob jemand schon angemeldet oder nur eingeladen ist, sehen nur Organisator:innen.
 
 ## Rückmeldungen, Fragen, Aufgaben, Wünsche

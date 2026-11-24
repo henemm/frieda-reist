@@ -50,7 +50,7 @@ Personen und Rollen stehen je Reise in `reisen/<reise>/reise.yaml` unter `person
 - **Spielregeln, mit Wert** (`regeln:`), Vorgaben in `engine/reise.py`: `konflikt` (offene_frage), `kontingent` beim Brett (Art `punkte` oder `anzahl`, `je_person`), `einladen` (organisator), dazu die Regeln des Wächters. Die Regeln des Einarbeitens (`entscheidungsweg`, `sammelzeit_minuten`) sind seit 29.10.2026 entfallen, die Regel `anmeldung` seit #421 (Mitmachen geht immer nur angemeldet); stehen sie noch in einer `reise.yaml`, baut die Reise mit Hinweis (`anmeldung` nimmt `neu.py nachziehen` heraus).
 - **Darstellung** (`darstellung:`): Startreiter, Namen der Reiter, Tiefe der Ansicht (nur noch der Plan-Baum im Vergleich der Pläne, #214), Gruppen. `plan_reiter` ist seit #214 ohne Wirkung (die Abschnitte stehen unter „Wissen“). Der Kasten „Mahnung“ auf der Seite ist seit dem 29.10.2026 weg (Product Owner); der alte Schlüssel `mahnungen` ist ohne Wirkung. Berechnet werden die Mahnungen weiter und stehen in der Claude-App (`ueberblick`).
 
-- **Sprache** (`sprache:`, Vorgabe `de`): die Sprache der Reise. Die Seite startet in ihr; Kalender, Meldungen des Wächters und alles, was die Software in Dateien der Reise schreibt, folgen ihr. Der Inhalt bleibt in der Sprache, in der er geschrieben wurde.
+- **Sprache** (`sprache:`, Vorgabe `de`): die Sprache der Reise. Die Seite startet in ihr; Die Einträge des Kalenders, der Wortlaut der Meldungen des Wächters und alles, was die Software in Dateien der Reise schreibt, folgen ihr; Mails, Push und Abo sprechen drumherum die Sprache des Kontos (`docs/waechter.md`, Sprache). Der Inhalt bleibt in der Sprache, in der er geschrieben wurde.
 
 Einstellungen setzt die Organisator:in, auch im Gespräch. Jede Änderung bekommt einen Verlaufseintrag. Die Zuordnung der Inhalte (Überschrift zu ID) bleibt getrennt davon in `reise.json`.
 
@@ -63,7 +63,7 @@ Ausdrücklich gesetzt, nicht abgeleitet; die Organisator:in setzt ihn, die KI er
 | `idee` | Eckdaten, Personen, Wünsche sammeln. Kein Plan nötig, keine Warnungen. |
 | `planung` | Alles offen. Lücken und offene Wahlstellen sind normaler Zwischenstand. |
 | `fest` | Plan gewählt, Buchen läuft. Offene Planungs-Wahlstellen werden zur Mahnung, Aufgabenfristen zählen, der Wächter prüft Veränderliches. |
-| `unterwegs` | Seite startet mit „Heute“ und Karte, Unterwegs-Wahlstellen rücken vor, Wünsche werden abgehakt, Rückmeldungen sind Notizen vom Weg. |
+| `unterwegs` | Vorn in der Leiste steht „Heute“ und führt zur Tagesseite des Tages (mit Karte), Unterwegs-Wahlstellen rücken vor, Wünsche werden abgehakt, Rückmeldungen sind Notizen vom Weg. |
 | `danach` | Nachlese, Profile lernen aus Erlebtem, Plan schreibgeschützt. Ausbau später. |
 | `archiv` | Nur noch lesen. |
 
@@ -76,13 +76,13 @@ Die Regeln stehen in `engine/reise.py` (`VERHALTEN`, `AKTIONEN`, `erlaubt`) und 
 | `idee` | alles | keine Warnungen des Plans |
 | `planung` | alles | Lücken und offene Wahlstellen sind Zwischenstand; Aufgabenfristen zählen noch nicht |
 | `fest` | alles | offene Planungs-Wahlstellen und ungeprüfte veränderliche Angaben der gewählten Optionen sind eine **Mahnung** (`route.mahnungen`, in der Claude-App; auf der Seite stehen sie als „Zu entscheiden“ in „Zu tun“ und als „ungeprüft“ am Wert, ohne Kasten); ein Merkmal „gut zu wissen“ ohne Wert ist keine Lücke und keine Mahnung, nur „nötig“ zählt; Aufgabenfristen zählen (überfällig) |
-| `unterwegs` | alles | wie `fest`; die Seite startet mit „Heute“ und der Karte, Wahlstellen mit Auslöser stehen vorn |
+| `unterwegs` | alles | wie `fest`; vorn in der Leiste steht „Heute“ (Tagesseite des Tages, #433), Wahlstellen mit Auslöser stehen vorn |
 | `danach` | Nachlese: Rückmeldungen, Aufgaben, Antworten, Wissen, Fragen schließen, Einladen und Abhaken von Wünschen ja; neue Wünsche, Punkte, Alternativen, Werte, Dinge und Entscheidungen nein | Plan schreibgeschützt |
 | `archiv` | nichts | nur lesen |
 
 `reise_status_setzen` und `einstellung_setzen` gehen in jedem Status, damit ein:e Organisator:in eine gesperrte Reise wieder öffnen kann.
 
-Rechte: Der Rückmeldedienst und der Konnektor kennen die Rolle aus `reise.yaml` (veröffentlichte `daten.json`), die Person aus ihrem Konto oder ihrem Link (ADR-0005). Eine bekannte Person mit Rolle `gast` kann nichts eintragen; ein unbekannter Name auf der Seite kommt über den geheimen Link und zählt als Mitwirkende:r (Übergangsregel).
+Rechte: Der Rückmeldedienst und der Konnektor kennen die Rolle aus `reise.yaml` (veröffentlichte `daten.json`), die Person aus ihrem Konto (ADR-0005). Lesen geht über den geheimen Link zur Seite ohne Anmeldung; eintragen kann nur, wer angemeldet und Mitglied der Reise ist (seit #421: ohne Sitzung 401, ohne Mitgliedschaft 403). Eine Person mit Rolle `gast` kann nichts eintragen.
 
 Bausteine: Ein ausgeschalteter Baustein verschwindet aus der Seite (Reiter, Knöpfe, Formulare), aus den Konnektor-Werkzeugen (Liste, Aufruf, Überblick, Anleitung) und blockiert das Schreiben im Dienst. Die Daten bleiben. Karte aus: `route.karte` wird auf der Seite nicht verwendet; Tagesseiten aus: die Etappen stehen wieder im Reiter „Etappen“.
 
@@ -94,7 +94,7 @@ Details und Eingaben der Werkzeuge: `docs/konnektor.md`, Abschnitt „Entscheide
 
 - `entscheiden` (Organisator:in): Entscheidung über eine Option wird im selben Moment geprüft (Option, Status, Grund, Doppelungen, Konflikt mit anderen Organisator:innen) und seit 29.10.2026 (O-3) mit Datum, Person und Grund direkt in den Plan geschrieben; ein Konflikt wird offene Frage mit Meldung. Die frühere Regel `regeln.entscheidungsweg` ist entfallen. Status und Einstellungen der Reise setzen Organisator:innen mit `reise_status_setzen` und `einstellung_setzen`.
 - `frage_beantworten` (Mitwirkende:r): Die Antwort hängt an der Frage; ob die Frage geklärt ist, entscheidet die Organisator:in.
-- `person_einladen` (`regeln.einladen`): legt die Person mit Rolle an; im Konnektor „Frieda“ mit E-Mail-Adresse und Einladung per Mail (ADR-0005), beim alten Link je Reise mit einem weiteren Link. Rolle und Zugang gelten sofort (`einladungen.json`); seit O-3 steht die Person sofort in `reise.yaml`.
+- `person_einladen` (`regeln.einladen`): legt die Person mit Rolle an; im Konnektor „Frieda“ mit E-Mail-Adresse und Einladung per Mail (ADR-0005). Rolle und Zugang gelten sofort (`einladungen.json`); seit O-3 steht die Person sofort in `reise.yaml`.
 - Die Anleitung des Konnektors nennt die Rolle, den Reisestatus und die Grenzen der sprechenden Person.
 
 ### Wächter und Erinnerer (Paket E, 26.10.2026)
@@ -104,7 +104,7 @@ Details: `docs/waechter.md`. Neue Regeln mit Vorgabe: `waechter_frist_tage` (60)
 - Der Wächter sucht veränderliche Angaben ohne oder mit altem Prüfdatum und meldet sie den Organisator:innen (seit O-4 eine Meldung, kein Prüfauftrag an eine KI); der AI-Client schlägt sie im Gespräch nach, Abweichungen entscheidet ein:e Organisator:in, nie still übernommen.
 - Der Erinnerer meldet Fristen und „ab“-Termine an die Zuständigen und den fälligen Statuswechsel an die Organisator:innen; die KI wechselt den Status nie selbst.
 - Beides gilt nur bei eingeschaltetem Baustein `waechter` und im Status `fest` oder `unterwegs`. Ausnahme Statuswechsel (#513, Product Owner 11.11.2026): für jede Reise mit Tagen, 7 Tage vorher „fest“ (`regeln.status_vorlauf_tage`), am ersten Tag „unterwegs“, danach „danach“; als Hinweis auf der Seite, Push und nach einem Tag ohne Push per Mail. Organisator:innen stellen den Status auf der Reiseseite selbst um (Tipp auf das Etikett unter dem Untertitel).
-- Die Meldungen erscheinen in der Claude-App (Überblick) und als Sammelnachricht an den Betreiber. E-Mail an alle gibt es nicht; Meldungen auf dem Handy über die Webseite sind Issue #21.
+- Die Meldungen erscheinen in der Claude-App (Überblick), angemeldet auf der Reiseseite („Für dich“) und auf Mein Konto, als Push-Nachricht und, je nach Stufe und Einstellung der Person, per Mail (`docs/waechter.md`, Stufen und Meldekanäle); dazu als Sammelnachricht an den Betreiber.
 
 ### Wunsch-Brett (Paket G, 27.10.2026)
 
@@ -120,7 +120,7 @@ Wünsche sind Ideen ohne feste Stelle (ein Ort, ein Erlebnis, ein Essen). Das Br
 
 - **Punkte** heißen „wie wichtig mir das ist“. Jede Person verteilt ihr Kontingent (`regeln.kontingent`, Vorgabe 10 Punkte) nur auf ihre eigenen Wünsche und darf umverteilen. Ein Wunsch, der nicht passt, gibt seine Punkte frei. Claude nutzt Punkte beim Prüfen als Priorität, nie als Entscheidung. Mit Art `anzahl` gibt es keine Punkte, dann begrenzt das Kontingent die Zahl offener Wünsche je Person.
 - **Abhaken** (erlebt) dürfen alle Mitwirkenden, auch fremde Wünsche, im Status `unterwegs` und `danach`. Die Seite merkt sich Abgehaktes ohne Netz und reicht es nach; einen Haken zurücknehmen geht nur mit Netz. Wer abgehakt hat, steht mit Datum im Verlauf.
-- **Einplanen** ist eine Entscheidung: nur ein:e Organisator:in, angemeldet in der Claude-App (auf der Webseite ist der Name nur eingetippt), ab Status `danach` nicht mehr. Die Seite zeigt, wer eingeplant hat. Der AI-Client schlägt nur vor (`wunsch_vorschlagen` nach `plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
+- **Einplanen** ist eine Entscheidung: nur ein:e Organisator:in, im Gespräch in der Claude-App (`wunsch_aendern`; die Reiseseite hat dafür keinen Knopf), ab Status `danach` nicht mehr. Die Seite zeigt, wer eingeplant hat. Der AI-Client schlägt nur vor (`wunsch_vorschlagen` nach `plan/wuensche.yaml`: Bezug, Notiz mit Herkunft, Option), plant aber nie selbst ein.
 - Die **Bilanz** je Person (Wünsche, eingeplant, erlebt, freie Punkte) sehen alle.
 - Technik: Punkte, eingeplant und erlebt liegen live in `brett.json` der Rückmelde-Ablage, mit Verlauf; gelöscht wird nichts. Seite: Reiter „Wünsche“. Claude-App: `wuensche` und `wunsch_aendern`.
 
