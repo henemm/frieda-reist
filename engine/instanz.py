@@ -27,7 +27,15 @@ import os
 from pathlib import Path
 
 VORGABE_INSTANZ = "frieda"
-KENNUNG = "Frieda-Reist/1 (+https://github.com/henemm/frieda-reist)"
+# Öffentliches Repo der Software (AGPL): einzige Quelle für Links auf Quellcode und Funktionsübersicht (#677)
+QUELLCODE = "https://github.com/henemm/frieda-reist"
+KENNUNG = f"Frieda-Reist/1 (+{QUELLCODE})"
+
+
+def quellcode_datei(pfad):
+    """Adresse einer Datei im öffentlichen Repo (#677), zum Beispiel der Funktionsübersicht; welche Datei zu einer Sprache
+    gehört, sagt deren Sprachdatei (info.funktionen.datei, ADR-0006 Punkt 9)."""
+    return f"{QUELLCODE}/blob/main/{pfad}"
 
 
 def wurzel():

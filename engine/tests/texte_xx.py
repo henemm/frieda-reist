@@ -36,3 +36,5 @@ for _k, _v in list(TEXTE.items()):
     if _k.endswith(".other"):
         for _kat in ("zero", "two", "few", "many"):
             TEXTE[_k[:-len("other")] + _kat] = _v.replace("[xx ", f"[xx {_kat} ", 1)
+# Pfad einer Datei im Repo, kein Text (#677): die Infoseite verlinkt die englische Kurzfassung unverändert
+TEXTE["info.funktionen.datei"] = texte_en.TEXTE["info.funktionen.datei"]

@@ -31,6 +31,7 @@ import urllib.request
 import sys
 
 import anmeldung
+import instanz
 import konten
 import texte
 
@@ -101,7 +102,7 @@ def redirect_passt(registriert, uri):
     return False
 
 
-USER_AGENT = "Frieda-Reist/1 (OAuth client metadata; +https://github.com/henemm/frieda-reist)"
+USER_AGENT = f"Frieda-Reist/1 (OAuth client metadata; +{instanz.QUELLCODE})"
 
 
 def cimd_erlaubt(client_id):

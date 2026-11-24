@@ -1428,13 +1428,18 @@ def info_seite(k=None, pfad="/"):
         schritt("loslegen", f'<p>{esc(tx("info.schritt.loslegen.text"))}</p>'),
         schritt("seite", f'<p>{esc(tx("info.schritt.seite.text"))}</p><p class="klein">{esc(tx("konto.anmelden.nur_lesen"))}</p>')))
     abschnitt = lambda titel, *inhalt: f'<section class="abschnitt"><h2>{esc(tx(titel))}</h2>{"".join(inhalt)}</section>'   # noqa: E731
+    # Öffentliche Funktionsübersicht und Quellcode (#677), Adressen aus instanz.QUELLCODE, in neuem Fenster
+    fremd = lambda adresse, schluessel: (f'<a href="{esc(adresse)}" target="_blank" rel="noopener">'   # noqa: E731
+                                         f'{esc(tx(schluessel))}</a>')
+    funktionen = th("info.funktionen.satz",
+                    link=fremd(instanz.quellcode_datei(tx("info.funktionen.datei")), "info.funktionen.link"))
     return seite(tx("info.titel"), oben,
-                 abschnitt("info.prinzipien.titel", f'<div class="prinzipien">{prinzipien}</div>'),
+                 abschnitt("info.prinzipien.titel", f'<div class="prinzipien">{prinzipien}</div>', f'<p>{funktionen}</p>'),
                  abschnitt("info.gespraeche.titel", f'<p>{esc(tx("info.gespraeche.einleitung"))}</p>', gespraeche),
                  abschnitt("info.bilder.titel", f'<p>{esc(tx("info.bilder.einleitung"))}</p>', f'<div class="bilder">{bilder}</div>')
                  if bilder else "",
                  abschnitt("info.schritte.titel", karte(f'<ol class="erste">{schritte}</ol>')),
-                 fuss(roh=(info_sprachen(pfad),), recht=True), kopf=kopf, breit=True)
+                 fuss(roh=(info_sprachen(pfad), fremd(instanz.QUELLCODE, "info.quellcode")), recht=True), kopf=kopf, breit=True)
 
 
 # ---------------------------------------------------------------- Ablauf

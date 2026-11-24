@@ -61,6 +61,28 @@ def test_infoseite_in_jeder_sprache(welt):
     assert '<html lang="de"' in abruf(f"{u.kurl}/?sprache=zz")[2]
 
 
+def test_infoseite_verlinkt_funktionen_und_quellcode(welt):
+    """#677: „So funktioniert Frieda“ endet mit dem Link auf die öffentliche Funktionsübersicht (Deutsch
+    docs/funktionen/README.md, jede andere Sprache README.en.md), die Fußzeile verlinkt den Quellcode. Beide Adressen kommen
+    aus instanz.QUELLCODE und öffnen in neuem Fenster; angemeldet unter /info/ ebenso."""
+    import instanz
+    assert instanz.QUELLCODE == "https://github.com/henemm/frieda-reist"
+    u = welt()
+    for sp in texte.SPRACHEN:
+        ziel = (f"{instanz.QUELLCODE}/blob/main/docs/funktionen/README.md" if sp == "de"
+                else f"{instanz.QUELLCODE}/blob/main/README.en.md")
+        for pfad in ("/", "/info/"):
+            t = abruf(f"{u.kurl}{pfad}?sprache={sp}")[2]
+            assert (f'<a href="{ziel}" target="_blank" rel="noopener">'
+                    f'{html.escape(text("info.funktionen.link", sp), quote=True)}</a>') in t, (sp, pfad)
+            assert (f'<a href="{instanz.QUELLCODE}" target="_blank" rel="noopener">'
+                    f'{html.escape(text("info.quellcode", sp), quote=True)}</a>') in t, (sp, pfad)
+            # der Link steht im Abschnitt „So funktioniert Frieda“, vor den Beispielen; der Quellcode in der Fußzeile
+            abschnitt = t.index(html.escape(text("info.prinzipien.titel", sp), quote=True))
+            assert abschnitt < t.index(ziel) < t.index(html.escape(text("info.gespraeche.titel", sp), quote=True))
+            assert t.index('<div class="fuss">') < t.index(f'href="{instanz.QUELLCODE}"')
+
+
 def test_anmeldeseite_fuehrt_zur_infoseite(welt):
     u = welt()
     t = abruf(f"{u.kurl}/anmelden")[2]
