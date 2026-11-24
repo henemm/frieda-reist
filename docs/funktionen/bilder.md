@@ -44,7 +44,7 @@ Claude entwirft das Symbol als Grafik und gibt es an Frieda. Ohne Angaben liefer
 ### Auf der Reiseseite
 
 - **Wo Bilder stehen:** Das Titelbild steht ganz oben im Reiseüberblick. Das erste Bild einer Stelle steht als Kopfbild an ihrer Heimat: am Ort über dem Namen, an der Etappe über den Kennzahlen, am Tag über der Tageszahl, an der Unterkunft oben in der Karte ihrer ersten Nacht. Weitere Bilder folgen als Bildreihe. Claude kann Bilder auch in Texte setzen.
-- **Großansicht:** Ein Tipp auf ein Bild öffnet es groß; blättern mit Wischen, Pfeilen oder Pfeiltasten.
+- **Großansicht:** Ein Tipp auf ein Bild öffnet es als Galerie über alle Bilder der Stelle; das Bild wächst dabei aus dem Vorschaubild heraus. Oben steht „Stelle · 2 / 5“, unten Bildunterschrift und Nennung. Blättern mit Wischen, Pfeilen oder Pfeiltasten; zoomen mit Doppeltipp, zwei Fingern, Mausrad oder dem Lupen-Knopf; schließen mit dem Kreuz, Escape oder Wischen nach unten. Die Galerie ist hell oder dunkel wie die Seite und verzichtet auf Bewegung, wenn das Gerät „Bewegung reduzieren“ eingestellt hat. Sie funktioniert auch ohne Netz.
 - **Nennung:** Unter jedem Bild stehen Urheber und Lizenz mit Link, bei eigenen Fotos „Foto: <Name>“.
 - **Eigene Fotos:** Unter den Bildern einer Stelle steht „+ Foto hinzufügen“, auch wenn es noch keine Bilder gibt. Nach der Auswahl zeigt ein Blatt, wie viele Fotos zu welcher Stelle gehen, und einen Hinweis zu den Menschen auf den Fotos. Nicht angemeldet steht dort „Anmelden, um Fotos hinzuzufügen.“
 - **Foto entfernen:** In der Großansicht eines eigenen Fotos, für die Person, die es hochgeladen hat, und für Organisator:innen. Vorher sagt Frieda genau, was wo entfernt wird und was bleibt.
