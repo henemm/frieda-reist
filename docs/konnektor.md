@@ -233,7 +233,7 @@ Jede Person braucht ein eigenes Claude-Konto, in dem eigene Konnektoren erlaubt 
 
 ## Reise-Stand (Epic #223, 2.11.2026)
 
-Jede Reise trägt eine fortlaufende Nummer neben dem Software-Release, etwa „Reise-Stand 42 · Frieda Release 357“. Sie zählt die Commits, die den Ordner der Reise ändern (`engine/stand.py`): Jeder gesicherte Schreibvorgang erhöht sie um 1, ein Software-Update lässt sie stehen, und Stand 43 enthält alles aus Stand 42.
+Jede Reise trägt eine fortlaufende Nummer neben dem Software-Release, etwa „Reise-Stand 42 · Frieda Release 357“. Sie zählt die Vorgänge der Reise im Reisespeicher (`engine/stand.py`, ADR-0009): Jeder gesicherte Schreibvorgang erhöht sie um 1, ein Software-Update lässt sie stehen, und Stand 43 enthält alles aus Stand 42.
 
 - **Schreibantwort:** Jedes Werkzeug, das über den Schreibweg sichert, hängt an seine Antwort „Gesichert als Reise-Stand 43. Veröffentlicht ist Stand 42; ob Stand 43 auf der Seite ist, zeigt veroeffentlichung_pruefen.“ (zentral beim Aufruf, nicht je Werkzeug). Rückmeldungen, Aufgaben, Wünsche und Belege liegen in der Ablage, gelten sofort und ändern den Reise-Stand nicht.
 - **`veroeffentlichung_pruefen`** (`publish_status`, optional `nummer`): liest den Stand auf dem Server, dieselbe Quelle wie `api/stand` der Seite, nie einen Speicher des Browsers. Zustände: wartet, wird gebaut, veröffentlicht, fehlgeschlagen (mit Grund und dem Stand, der sichtbar bleibt). Dazu die Dauer seit dem Sichern und das Ziel von 2 Minuten (Product Owner, E3, 2.11.2026); eine Überschreitung steht dabei.
@@ -264,7 +264,7 @@ Das Symbol entsteht im Gespräch (#252): Die Claude-App entwirft es und gibt es 
 
 ## Sicherheit
 
-- Wer einen Link kennt, kann die Reise lesen und Rückmeldungen schicken. Das ist dasselbe Prinzip wie bei der Webseite. Ein Mitwirkenden-Link kann nicht entscheiden und keine Arten, Status oder Einstellungen setzen. Der Link gehört zu einer Person: Wer ihn weitergibt, gibt ihre Rolle weiter.
+- Der Konnektor kennt nur angemeldete Personen (Konto, OAuth, ADR-0005); was sie dürfen, sagt ihre Rolle in der jeweiligen Reise. Die früheren Links je Reise und Person sind abgeschafft. Lesen der Reiseseite geht weiter über ihren geheimen Seitenlink, Mitmachen nur angemeldet (`docs/konten.md`).
 - Über den Konnektor ändern sich Aufgaben sowie alles, was die Schreibwerkzeuge eintragen, direkt (über den Schreibweg mit Rollen-, Status- und Formprüfung und einem Probebau, siehe „Ontologie im Gespräch“). Rückmeldungen sind Eingaben. Status `gewaehlt`/`verworfen` setzen nur Organisator:innen.
 - Drossel im Reverse-Proxy. Der Dienst protokolliert weder Tokens noch Inhalte.
 - Überwachung: `GET /gesund` (ohne Token) meldet `{"gesund": true}`, wenn die Zugänge lesbar und alle verlinkten Reisen veröffentlicht sind; zur Löschung vorgemerkte Reisen zählen nicht mit (#539).
