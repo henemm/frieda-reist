@@ -1,0 +1,97 @@
+..F.FFFF..F.                                                             [100%]
+=================================== FAILURES ===================================
+_____________ test_meine_reisen_und_mein_profil_sind_lesewerkzeuge _____________
+
+    def test_meine_reisen_und_mein_profil_sind_lesewerkzeuge():
+        w = werkzeuge_des_konnektors()
+        erlaubt = set(hook_modul().ERLAUBT)
+        for name in ("my_trips", "my_profile"):
+            assert name in w, name
+>           assert nur_lesen(w[name]), f"{name} ohne readOnlyHint"
+E           AssertionError: my_trips ohne readOnlyHint
+E           assert False
+E            +  where False = nur_lesen({'name': 'my_trips', 'description': '@konnektor.werkzeug.meine_reisen', 'inputSchema': {'type': 'object', 'properties': {}}})
+
+engine/tests/test_frieda_sperre.py:128: AssertionError
+_________ test_konten_wert_liest_datei_und_entfernt_anfuehrungszeichen _________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3195/test_konten_wert_liest_datei_u0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75c44d8b4740>
+
+    def test_konten_wert_liest_datei_und_entfernt_anfuehrungszeichen(tmp_path, monkeypatch):
+        konten_env(tmp_path, monkeypatch, 'FR_BETREIBER_KONTAKT="ida@example.org"\n')
+>       assert instanz.konten_wert("FR_BETREIBER_KONTAKT") == "ida@example.org"
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'konten_wert'
+
+engine/tests/test_instanz.py:110: AttributeError
+_____________________ test_konten_wert_umgebung_vor_datei ______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3195/test_konten_wert_umgebung_vor_0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75c44d8b4a70>
+
+    def test_konten_wert_umgebung_vor_datei(tmp_path, monkeypatch):
+        konten_env(tmp_path, monkeypatch, "FR_BETREIBER_KONTAKT=datei@example.org\n")
+        monkeypatch.setenv("FR_BETREIBER_KONTAKT", "umgebung@example.org")
+>       assert instanz.konten_wert("FR_BETREIBER_KONTAKT") == "umgebung@example.org"
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'konten_wert'
+
+engine/tests/test_instanz.py:116: AttributeError
+__________________ test_konten_wert_datei_fehlt_oder_unlesbar __________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3195/test_konten_wert_datei_fehlt_o0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75c44d8b5010>
+capsys = <_pytest.capture.CaptureFixture object at 0x75c44d8b4bf0>
+
+    def test_konten_wert_datei_fehlt_oder_unlesbar(tmp_path, monkeypatch, capsys):
+        konten_env(tmp_path, monkeypatch, None)
+>       assert instanz.konten_wert("FR_BETREIBER_KONTAKT") is None
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'konten_wert'
+
+engine/tests/test_instanz.py:121: AttributeError
+_________________ test_konten_wert_liefert_nur_den_einen_namen _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3195/test_konten_wert_liefert_nur_d0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75c44d8b4c80>
+
+    def test_konten_wert_liefert_nur_den_einen_namen(tmp_path, monkeypatch):
+        konten_env(tmp_path, monkeypatch, "FR_MAIL_PASSWORT=geheim-beispiel\n"
+                                          "FR_BETREIBER_KONTAKT=ida@example.org\n"
+                                          "OHNE_PRAEFIX=karl@example.org\n"
+                                          "FR_KAPUTT\n")
+>       assert instanz.konten_wert("FR_BETREIBER_KONTAKT") == "ida@example.org"
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'instanz' has no attribute 'konten_wert'
+
+engine/tests/test_instanz.py:134: AttributeError
+___________ test_einrichten_verweigert_kontaktadresse_aus_konten_env ___________
+
+zugang = <test_regeln.Umgebung object at 0x75c44d06cbf0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75c44d06c6e0>
+tmp_path = PosixPath('/tmp/pytest-of-<benutzer>/pytest-3195/test_einrichten_verweigert_kon0')
+
+    def test_einrichten_verweigert_kontaktadresse_aus_konten_env(zugang, monkeypatch, tmp_path):
+        _konten_env_setzen(monkeypatch, tmp_path, f'FR_MAIL_PASSWORT=geheim-beispiel\nFR_BETREIBER_KONTAKT="{TEST}"\n')
+        p = einrichten()
+>       assert p.returncode != 0, p.stdout + p.stderr
+E       AssertionError: Test access for frieda-test@beispiel.invalid set up: /tmp/pytest-of-<benutzer>/pytest-3195/test_einrichten_verweigert_kon0/zugang/testzugang.json
+E         
+E       assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['~/frieda-reist/.claude/worktrees/fix-xmp/engine/.venv/bin/python', '~/frieda-r...el.invalid set up: /tmp/pytest-of-<benutzer>/pytest-3195/test_einrichten_verweigert_kon0/zugang/testzugang.json\n', stderr='').returncode
+
+engine/tests/test_testzugang.py:173: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 201
+GET 200
+POST 303
+POST 200
+=========================== short test summary info ============================
+FAILED engine/tests/test_frieda_sperre.py::test_meine_reisen_und_mein_profil_sind_lesewerkzeuge
+FAILED engine/tests/test_instanz.py::test_konten_wert_liest_datei_und_entfernt_anfuehrungszeichen
+FAILED engine/tests/test_instanz.py::test_konten_wert_umgebung_vor_datei - At...
+FAILED engine/tests/test_instanz.py::test_konten_wert_datei_fehlt_oder_unlesbar
+FAILED engine/tests/test_instanz.py::test_konten_wert_liefert_nur_den_einen_namen
+FAILED engine/tests/test_testzugang.py::test_einrichten_verweigert_kontaktadresse_aus_konten_env
+6 failed, 6 passed, 25 deselected in 8.03s

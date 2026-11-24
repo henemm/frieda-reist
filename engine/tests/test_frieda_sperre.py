@@ -115,3 +115,28 @@ def test_hook_nutzt_nur_standardbibliothek():
                 assert a.name.split(".")[0] in sys.stdlib_module_names, a.name
         elif isinstance(k, ast.ImportFrom):
             assert not k.level and (k.module or "").split(".")[0] in sys.stdlib_module_names, k.module
+
+
+# ---------- #670: Konto-Lesewerkzeuge zugelassen, calendar bleibt gesperrt ----------
+# Spec: docs/specs/konnektor/lesewerkzeuge-670.md (AC-1 bis AC-3)
+
+def test_meine_reisen_und_mein_profil_sind_lesewerkzeuge():
+    w = werkzeuge_des_konnektors()
+    erlaubt = set(hook_modul().ERLAUBT)
+    for name in ("my_trips", "my_profile"):
+        assert name in w, name
+        assert nur_lesen(w[name]), f"{name} ohne readOnlyHint"
+        assert name in erlaubt, name
+        rc, err = fragen(PRAEFIX + name)
+        assert rc == 0, (name, err)
+
+
+def test_calendar_bleibt_gesperrt():
+    """calendar mit neu=true erneuert den Abo-Link (der alte gilt nicht mehr): kein reines Lesewerkzeug."""
+    w = werkzeuge_des_konnektors()
+    assert "calendar" in w
+    assert not nur_lesen(w["calendar"])
+    assert "calendar" not in set(hook_modul().ERLAUBT)
+    rc, err = fragen(PRAEFIX + "calendar")
+    assert rc == 2
+    assert "frieda-test" in err

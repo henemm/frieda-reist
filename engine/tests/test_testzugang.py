@@ -148,6 +148,41 @@ def test_einrichten_verweigert_betreiberkonto(zugang, monkeypatch):
         assert v.execute("SELECT rechte FROM konten WHERE id = 'K-chef'").fetchone()[0] == "betreiber"
 
 
+# ---------- #670: Kontaktadresse des Betreibers auch aus <FR_DIENST>/konten.env ----------
+# Spec: docs/specs/konnektor/lesewerkzeuge-670.md (AC-7, AC-8)
+
+def _konten_env_setzen(monkeypatch, tmp_path, inhalt):
+    """Dienstordner der Testinstanz mit konten.env (oder ohne, wenn inhalt None); FR_BETREIBER_KONTAKT nicht in der
+    Umgebung, damit nur die Datei den Wert kennt (wie bei einem Handaufruf auf dem Server)."""
+    monkeypatch.delenv("FR_BETREIBER_KONTAKT", raising=False)
+    import instanz
+    d = instanz.dienst() if os.environ.get("FR_DIENST") else tmp_path / "dienst"
+    d.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("FR_DIENST", str(d))
+    f = d / "konten.env"
+    if f.exists():
+        f.unlink()
+    if inhalt is not None:
+        f.write_text(inhalt, encoding="utf-8")
+    return f
+
+
+def test_einrichten_verweigert_kontaktadresse_aus_konten_env(zugang, monkeypatch, tmp_path):
+    _konten_env_setzen(monkeypatch, tmp_path, f'FR_MAIL_PASSWORT=geheim-beispiel\nFR_BETREIBER_KONTAKT="{TEST}"\n')
+    p = einrichten()
+    assert p.returncode != 0, p.stdout + p.stderr
+    assert konten.konto_per_email(TEST) is None
+    assert not zugang.ablage_zugang.exists()
+    assert "geheim-beispiel" not in p.stdout + p.stderr
+
+
+def test_einrichten_ohne_konten_env_bricht_nicht_ab(zugang, monkeypatch, tmp_path):
+    _konten_env_setzen(monkeypatch, tmp_path, None)
+    p = einrichten()
+    assert p.returncode == 0, p.stderr
+    assert konten.konto_per_email(TEST) is not None
+
+
 # ---------- Test 3: Brücke ----------
 
 def test_bruecke_liefert_die_werkzeugliste_des_konnektors(zugang):
