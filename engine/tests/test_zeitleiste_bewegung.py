@@ -417,6 +417,27 @@ def test_zeitleiste_in_den_seitendaten(tmp_path):
     assert all(p["bei"] == [] for p in e2), e2   # Gleis ohne Wert an E-02: nichts zu zeigen
 
 
+def test_zeige_nennt_die_zeitpunkte_der_zeitleiste(tmp_path, monkeypatch):
+    """AC-13: show (zeige) an E-01 des Stadtwochenendes nennt jeden Zeitpunkt, den die Seite in der Zeitleiste zeigt: die
+    erinnernden Zeitpunkt mit seinem Wert, Abfahrt und Ankunft mit Uhrzeit und die Buchung, deren ab der vierte Punkt ist."""
+    from test_konnektor import rpc
+    seiten = tmp_path / "web"
+    d = bau(kopie(tmp_path), tmp_path)
+    zug = tmp_path / "zugaenge.json"
+    zug.write_text(json.dumps({"t" * 32: {"reise": "stadtwochenende", "person": "tom"}}))
+    monkeypatch.setenv("KN_SEITEN", str(seiten))
+    monkeypatch.setenv("KN_ZUGAENGE", str(zug))
+    r = rpc(None, "t" * 32, "tools/call", {"name": "zeige", "arguments": {"id": "E-01"}})
+    t = r["content"][0]["text"]
+    assert not r["isError"], t
+    strecke = d["route"]["strecken"]["E-01"]
+    punkte = {p["art"]: p for p in strecke["zeitleiste"]}
+    assert set(punkte) == {"merkmal", "buchung", "abfahrt", "ankunft"}, strecke["zeitleiste"]
+    assert strecke["merkmale"][punkte["merkmal"]["merkmal"]]["wert"] in t, t   # erinnernder Zeitpunkt mit seinem Wert
+    assert f"ab {punkte['abfahrt']['zeit']}" in t and f"an {punkte['ankunft']['zeit']}" in t, t
+    assert f"zeige {punkte['buchung']['buchung']}" in t, t   # Buchungs-ab: Heimat ist die Buchung, show verweist darauf (ADR-0003)
+
+
 def test_ohne_weitere_zeitpunkte_keine_zeitleiste(tmp_path):
     """Test 10, AC-9 (Gegenprobe Wanderung, #619): die Bahnstrecke der Beispielreise mit Abfahrt und Ankunft allein hat keine
     Zeitleiste; ebenso ein Merkmal mit bei allein."""

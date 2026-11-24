@@ -56,6 +56,15 @@ Befunde: F001 (Nachtfahrt mit Ankunft ohne Datum), F002 (Strecke ohne Plantag), 
 - Tests: 14 Dateien (13 aus Runde 1 plus Protokolltest ohne Pfade), 718 passed, 0 übersprungen.
 **Implementierer:** (nicht beteiligt)
 
+### Runde 4 (Validierung: Test zu AC-13 ergänzt)
+**Adversary:** Die Validierung fand AC-13 („Seite und Konnektor show an E-01 zeigen dieselben Zeitpunkte“) ohne Test; ergänzt wurde nur `test_zeige_nennt_die_zeitpunkte_der_zeitleiste`, kein Produktcode. Geprüft:
+- Grün: test_zeitleiste_bewegung.py 48 passed.
+- Bruchversuch: show an E-01 lautet „ab 09:10, an 11:25“, „Buchung: gebucht (B-01, zeige B-01)“, „Fahrkarte freischalten ab: 2027-03-11T08:00 (erinnert …)“. Der Test liest die Erwartung aus den Seitendaten (zeitleiste mit vier Punktarten) und verlangt den Merkmalwert, „ab <zeit>“ und „an <zeit>“; fehlte einer davon in show, würde er rot. Nicht tautologisch.
+- Schwachstelle: die Buchungsprüfung verlangte nur „B-01“, das ohnehin in der Buchungszeile steht. Behoben: der Test verlangt jetzt den Verweis „zeige B-01“.
+- ADR-0003: Heimat der Buchung ist die Buchung; show nennt die Buchungs-ab nicht doppelt, sondern verweist (docs/adr/0003-heimat.md:21, :30, :61). Vereinbar.
+- Nach der Behebung: test_zeitleiste_bewegung.py und test_protokolle_ohne_pfade.py 51 passed; volle Suite davor 3698 passed, 0 übersprungen.
+**Implementierer:** (nicht beteiligt)
+
 ## Findings
 
 Finding:
@@ -227,8 +236,8 @@ kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
 ═══════════════════════════════════════
 VERDICT: VERIFIED
 ═══════════════════════════════════════
-Die Behebungen F001 bis F004 halten stand (Runde 3, eigene Reproduktionen).
-Tests: 718 passed, 0 failed, 0 übersprungen (gezielter Lauf; volle Suite 3672 passed laut Vorlauf)
+Die Behebungen F001 bis F004 halten stand (Runde 3, eigene Reproduktionen); der Test zu AC-13 trägt (Runde 4).
+Tests: volle Suite 3698 passed, 0 failed, 0 übersprungen (-n 3); nach dem Schärfen des Tests 51 passed (gezielt)
 Edge cases: alle geprüft; offen nur F005 (LOW, spec-konform, Hinweis)
 Regressions: None found
 Checklist: 14/14 points proven
@@ -257,6 +266,35 @@ Checklist: 14/14 points proven
 - blob:489112ca09c13d075cb9fb9ec31fbcae115ea8ac  engine/schnittstelle.py
 - blob:cace521c8f0e38593518e380c1854c7597cae1d2  engine/schreiben.py
 - blob:1c37faf78f9a90e9b69f04f0e2d6ee3f9ff77ca1  engine/tests/test_zeitleiste_bewegung.py
+- blob:3f4615e46b7e1c6bff7517c2a451a46d026c7285  engine/texte_de.py
+- blob:fa6a830f94558a3db3a85e27d2067b62c0cfd74b  engine/texte_en.py
+- blob:9be6ced153f03f5805ecba228d95c1978c40b4fb  engine/vorlage.html
+- blob:9c16af42fe76ef9ecaa9089ed0399976aeefdc15  engine/waechter.py
+
+## Geprüfte Dateien
+
+- sha256:0b03c6b4d6495bc32ed43add28dabc5b8e30a7523af21187656d4d2bfb6120f9  betrieb/deploy.sh
+- sha256:d8cc01967e8258d32b29aacb9869465c0746b7642a3ac9f685fbe31f6a78027a  engine/kalender.py
+- sha256:f53117849e17e657a31e9abcd9631b522f1bba78b8aca28f3b5fdfcd9e72bdd6  engine/konnektor.py
+- sha256:7b1ef936fc97c0e68d195ad5256d2d1d7306c7bfd138ac181d548ef2a029b730  engine/routen.py
+- sha256:31970afc3aac632859ff451cc7151b32702f57066b8c0d69eb89626cd6c48fdc  engine/schnittstelle.py
+- sha256:130fa843bc6c7b033162a7695bdab66ca05583b455899ec74810fca5b0cb3828  engine/schreiben.py
+- sha256:2a63327a40d255dda64710b14229dbaad5e7fe137db1469e81541dc0458faae5  engine/tests/test_zeitleiste_bewegung.py
+- sha256:cde36c417590430bae55ac57a492e8b372368362eae65927785eed85c93599e7  engine/texte_de.py
+- sha256:88bc95234e43e43120aec48166d25274f26b017f42eedc6aec91a3fc399452b9  engine/texte_en.py
+- sha256:415ee70f8e270d34d20bef6089fae80ddf7bd8fbd67c210f544aa1e8332d8ae5  engine/vorlage.html
+- sha256:4337801c3e808eb445b788c8cea5bb2eea65fa367f00e667e656783af52755f2  engine/waechter.py
+
+## Prüfbasis
+
+- base: fe7b1eaf3b5ffe8d8fab6d23f6ae5c894f9ab754
+- blob:94b55d431c9e4aa3d8cf91ad23926c3668347d1c  betrieb/deploy.sh
+- blob:1a9e965eecd651e84b2af6b3c9d36e9f67cd1a0d  engine/kalender.py
+- blob:80af9ad85c4d8a9c71d131ca26b381971b38a50f  engine/konnektor.py
+- blob:2c0f2a51b338ec2384e6ff66f800140718c4d277  engine/routen.py
+- blob:489112ca09c13d075cb9fb9ec31fbcae115ea8ac  engine/schnittstelle.py
+- blob:cace521c8f0e38593518e380c1854c7597cae1d2  engine/schreiben.py
+- blob:c85d23c95ed35b851cf481118f010a711f252e33  engine/tests/test_zeitleiste_bewegung.py
 - blob:3f4615e46b7e1c6bff7517c2a451a46d026c7285  engine/texte_de.py
 - blob:fa6a830f94558a3db3a85e27d2067b62c0cfd74b  engine/texte_en.py
 - blob:9be6ced153f03f5805ecba228d95c1978c40b4fb  engine/vorlage.html
