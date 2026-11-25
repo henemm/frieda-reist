@@ -1,0 +1,258 @@
+GREEN #689, Chromium und WebKit lokal (Playwright 1.59.1, WebKit Build 2272), Code aus dem Worktree
+pytest -n 3 engine/tests/test_bilder_eigen.py engine/tests/test_seite_bilder.py -v -rsfE (ohne Browserfilter; Kopfzeilen mit Pfaden entfernt)
+
+============================= test session starts ==============================
+configfile: pytest.ini
+created: 3/3 workers
+3 workers [122 items]
+
+scheduling tests via LoadScheduling
+
+engine/tests/test_bilder_eigen.py::test_grenzen_der_umwandlung
+engine/tests/test_bilder_eigen.py::test_zu_grosses_foto_vor_der_verkleinerung
+engine/tests/test_bilder_eigen.py::test_waisen_werden_beim_naechsten_hochladen_aufgeraeumt
+[gw0] [  0%] PASSED engine/tests/test_bilder_eigen.py::test_grenzen_der_umwandlung
+engine/tests/test_bilder_eigen.py::test_jpeg_mit_gps_ergibt_zwei_webp_ohne_metadaten
+[gw1] [  1%] PASSED engine/tests/test_bilder_eigen.py::test_zu_grosses_foto_vor_der_verkleinerung
+engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[64-megapixel]
+[gw1] [  2%] PASSED engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[64-megapixel]
+engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[400-megapixel]
+[gw1] [  3%] PASSED engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[400-megapixel]
+engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[abgeschnitten]
+[gw1] [  4%] PASSED engine/tests/test_bilder_eigen.py::test_bombe_und_kaputtes_bild_sind_ablehnung_kein_absturz[abgeschnitten]
+engine/tests/test_bilder_eigen.py::test_vorgabe_max_mb_150_und_einstellbar
+[gw0] [  4%] PASSED engine/tests/test_bilder_eigen.py::test_jpeg_mit_gps_ergibt_zwei_webp_ohne_metadaten
+engine/tests/test_bilder_eigen.py::test_drehung_wird_angewendet_und_verschwindet
+[gw1] [  5%] PASSED engine/tests/test_bilder_eigen.py::test_vorgabe_max_mb_150_und_einstellbar
+engine/tests/test_bilder_eigen.py::test_upload_route_legt_eigenes_foto_an_ohne_original[beispielreise-wer0-O-01]
+[gw0] [  6%] PASSED engine/tests/test_bilder_eigen.py::test_drehung_wird_angewendet_und_verschwindet
+engine/tests/test_bilder_eigen.py::test_png_und_webp_werden_angenommen
+[gw0] [  7%] PASSED engine/tests/test_bilder_eigen.py::test_png_und_webp_werden_angenommen
+engine/tests/test_bilder_eigen.py::test_heic_ergibt_zwei_fassungen_falsche_magic_bytes_nicht
+[gw2] [  8%] PASSED engine/tests/test_bilder_eigen.py::test_waisen_werden_beim_naechsten_hochladen_aufgeraeumt
+engine/tests/test_bilder_eigen.py::test_waisen_aufraeumen_und_fehler_mitten_im_speichern
+[gw2] [  9%] PASSED engine/tests/test_bilder_eigen.py::test_waisen_aufraeumen_und_fehler_mitten_im_speichern
+engine/tests/test_bilder_eigen.py::test_rueckmeldedienst_nimmt_fotos_nur_von_mitwirkenden_an
+[gw0] [  9%] PASSED engine/tests/test_bilder_eigen.py::test_heic_ergibt_zwei_fassungen_falsche_magic_bytes_nicht
+engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[Das ist kein Foto, nur eine Datei mit der Endung .jpg (Beispiel)]
+[gw0] [ 10%] PASSED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[Das ist kein Foto, nur eine Datei mit der Endung .jpg (Beispiel)]
+engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[GIF89a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00]
+[gw0] [ 11%] PASSED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[GIF89a\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00]
+engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[%PDF-1.4\n%%EOF\n]
+[gw0] [ 12%] PASSED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[%PDF-1.4\n%%EOF\n]
+engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[<svg xmlns="http://www.w3.org/2000/svg"/>]
+[gw0] [ 13%] PASSED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[<svg xmlns="http://www.w3.org/2000/svg"/>]
+engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[]
+[gw0] [ 13%] PASSED engine/tests/test_bilder_eigen.py::test_falsches_format_wird_abgelehnt[]
+engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[alt]
+[gw1] [ 14%] PASSED engine/tests/test_bilder_eigen.py::test_upload_route_legt_eigenes_foto_an_ohne_original[beispielreise-wer0-O-01]
+engine/tests/test_bilder_eigen.py::test_upload_route_legt_eigenes_foto_an_ohne_original[stadtwochenende-wer1-O-02]
+[gw2] [ 15%] PASSED engine/tests/test_bilder_eigen.py::test_rueckmeldedienst_nimmt_fotos_nur_von_mitwirkenden_an
+[gw0] [ 16%] PASSED engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[alt]
+engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[zurueckziehen]
+[gw1] [ 17%] PASSED engine/tests/test_bilder_eigen.py::test_upload_route_legt_eigenes_foto_an_ohne_original[stadtwochenende-wer1-O-02]
+engine/tests/test_bilder_eigen.py::test_upload_route_nur_mit_dienst_geheimnis_und_bis_12_mb
+[gw0] [ 18%] PASSED engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[zurueckziehen]
+engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[zu]
+engine/tests/test_bilder_eigen.py::test_rolle_aus_dem_aktuellen_stand
+[gw1] [ 18%] PASSED engine/tests/test_bilder_eigen.py::test_upload_route_nur_mit_dienst_geheimnis_und_bis_12_mb
+engine/tests/test_bilder_eigen.py::test_grenze_je_reise_lehnt_ab_und_speichert_nichts[anzahl]
+[gw2] [ 19%] PASSED engine/tests/test_bilder_eigen.py::test_rolle_aus_dem_aktuellen_stand
+[gw0] [ 20%] PASSED engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[zu]
+engine/tests/test_bilder_eigen.py::test_loeschprotokoll_steht_vor_dem_vorgang_und_ist_an_das_foto_gebunden
+[gw1] [ 21%] PASSED engine/tests/test_bilder_eigen.py::test_grenze_je_reise_lehnt_ab_und_speichert_nichts[anzahl]
+engine/tests/test_bilder_eigen.py::test_grenze_je_reise_lehnt_ab_und_speichert_nichts[mb]
+engine/tests/test_bilder_eigen.py::test_zu_gross_und_falsches_format_erreichen_den_schreibweg_nicht
+[gw0] [ 22%] PASSED engine/tests/test_bilder_eigen.py::test_loeschprotokoll_steht_vor_dem_vorgang_und_ist_an_das_foto_gebunden
+engine/tests/test_bilder_eigen.py::test_gescheiterter_vorgang_hinterlaesst_kein_loeschprotokoll
+[gw2] [ 22%] PASSED engine/tests/test_bilder_eigen.py::test_zu_gross_und_falsches_format_erreichen_den_schreibweg_nicht
+[gw1] [ 23%] PASSED engine/tests/test_bilder_eigen.py::test_grenze_je_reise_lehnt_ab_und_speichert_nichts[mb]
+engine/tests/test_bilder_eigen.py::test_zwei_uploads_mit_gleichem_inhalt_teilen_den_blob
+[gw0] [ 24%] PASSED engine/tests/test_bilder_eigen.py::test_gescheiterter_vorgang_hinterlaesst_kein_loeschprotokoll
+engine/tests/test_bilder_eigen.py::test_liegengebliebene_vormerkung_ohne_vorgang_schadet_nicht
+[gw1] [ 25%] PASSED engine/tests/test_bilder_eigen.py::test_zwei_uploads_mit_gleichem_inhalt_teilen_den_blob
+engine/tests/test_bilder_eigen.py::test_werkzeug_entfernt_foto_verlauf_bleibt[hochladende-person]
+[gw0] [ 26%] PASSED engine/tests/test_bilder_eigen.py::test_liegengebliebene_vormerkung_ohne_vorgang_schadet_nicht
+engine/tests/test_bilder_eigen.py::test_fehler_nach_dem_vorgang_ist_kein_abbruch_der_waechter_holt_nach
+[gw0] [ 27%] PASSED engine/tests/test_bilder_eigen.py::test_fehler_nach_dem_vorgang_ist_kein_abbruch_der_waechter_holt_nach
+engine/tests/test_bilder_eigen.py::test_sicherung_von_vor_dem_hochladen_neues_bild_gleicher_id_bleibt[commons-mit-pruefsummen]
+engine/tests/test_bilder_eigen.py::test_drosselung_wie_bei_belegen
+[gw1] [ 27%] PASSED engine/tests/test_bilder_eigen.py::test_werkzeug_entfernt_foto_verlauf_bleibt[hochladende-person]
+engine/tests/test_bilder_eigen.py::test_werkzeug_entfernt_foto_verlauf_bleibt[organisatorin]
+[gw0] [ 28%] PASSED engine/tests/test_bilder_eigen.py::test_sicherung_von_vor_dem_hochladen_neues_bild_gleicher_id_bleibt[commons-mit-pruefsummen]
+engine/tests/test_bilder_eigen.py::test_sicherung_von_vor_dem_hochladen_neues_bild_gleicher_id_bleibt[commons-zeile-von-vorher]
+[gw2] [ 29%] PASSED engine/tests/test_bilder_eigen.py::test_drosselung_wie_bei_belegen
+[gw1] [ 30%] PASSED engine/tests/test_bilder_eigen.py::test_werkzeug_entfernt_foto_verlauf_bleibt[organisatorin]
+engine/tests/test_bilder_eigen.py::test_andere_mitwirkende_person_darf_nicht_entfernen
+[gw1] [ 31%] PASSED engine/tests/test_bilder_eigen.py::test_andere_mitwirkende_person_darf_nicht_entfernen
+engine/tests/test_bilder_eigen.py::test_commons_bild_ist_nicht_echt_loeschbar
+[gw0] [ 31%] PASSED engine/tests/test_bilder_eigen.py::test_sicherung_von_vor_dem_hochladen_neues_bild_gleicher_id_bleibt[commons-zeile-von-vorher]
+engine/tests/test_bilder_eigen.py::test_stadtwochenende_nimmt_fotos_an
+engine/tests/test_bilder_eigen.py::test_sicherung_von_vor_dem_hochladen_neues_bild_gleicher_id_bleibt[eigen-mit-pruefsummen]
+[gw1] [ 32%] PASSED engine/tests/test_bilder_eigen.py::test_commons_bild_ist_nicht_echt_loeschbar
+engine/tests/test_bilder_eigen.py::test_alte_sicherung_bringt_das_bild_nicht_zurueck
+[gw2] [ 33%] PASSED engine/tests/test_bilder_eigen.py::test_stadtwochenende_nimmt_fotos_an
+[gw0] [ 34%] PASSED engine/tests/test_bilder_eigen.py::test_sicherung_von_vor_dem_hochladen_neues_bild_gleicher_id_bleibt[eigen-mit-pruefsummen]
+engine/tests/test_bilder_eigen.py::test_alte_protokollzeilen_ohne_neue_spalten_gelten_weiter
+[gw0] [ 35%] PASSED engine/tests/test_bilder_eigen.py::test_alte_protokollzeilen_ohne_neue_spalten_gelten_weiter
+engine/tests/test_bilder_eigen.py::test_frist_ist_eine_stunde
+[gw0] [ 36%] PASSED engine/tests/test_bilder_eigen.py::test_frist_ist_eine_stunde
+engine/tests/test_bilder_eigen.py::test_junge_vormerkung_bleibt_beim_waechter_und_laesst_sich_bestaetigen
+[gw0] [ 36%] PASSED engine/tests/test_bilder_eigen.py::test_junge_vormerkung_bleibt_beim_waechter_und_laesst_sich_bestaetigen
+engine/tests/test_bilder_eigen.py::test_vormerkung_traegt_ihren_zeitpunkt
+[gw1] [ 37%] PASSED engine/tests/test_bilder_eigen.py::test_alte_sicherung_bringt_das_bild_nicht_zurueck
+engine/tests/test_bilder_eigen.py::test_alte_sicherung_eintrag_wird_wieder_entfernt_und_reise_baut
+[gw0] [ 38%] PASSED engine/tests/test_bilder_eigen.py::test_vormerkung_traegt_ihren_zeitpunkt
+engine/tests/test_bilder_eigen.py::test_vormerkung_auf_alter_zeile_frischt_den_zeitpunkt_auf
+[gw0] [ 39%] PASSED engine/tests/test_bilder_eigen.py::test_vormerkung_auf_alter_zeile_frischt_den_zeitpunkt_auf
+engine/tests/test_bilder_eigen.py::test_verwerfen_mit_frist_nur_alte_unbestaetigte_zeilen
+engine/tests/test_bilder_eigen.py::test_loeschen_am_rueckmeldedienst_nur_angemeldet
+[gw0] [ 40%] PASSED engine/tests/test_bilder_eigen.py::test_verwerfen_mit_frist_nur_alte_unbestaetigte_zeilen
+engine/tests/test_bilder_eigen.py::test_bestaetigte_zeile_bleibt_in_jedem_alter
+[gw0] [ 40%] PASSED engine/tests/test_bilder_eigen.py::test_bestaetigte_zeile_bleibt_in_jedem_alter
+engine/tests/test_bilder_eigen.py::test_verwerfen_ohne_frist_wie_bisher
+[gw0] [ 41%] PASSED engine/tests/test_bilder_eigen.py::test_verwerfen_ohne_frist_wie_bisher
+engine/tests/test_bilder_eigen.py::test_junge_vormerkung_mit_entferntem_eintrag_wird_sofort_bestaetigt
+[gw2] [ 42%] PASSED engine/tests/test_bilder_eigen.py::test_loeschen_am_rueckmeldedienst_nur_angemeldet
+[gw1] [ 43%] PASSED engine/tests/test_bilder_eigen.py::test_alte_sicherung_eintrag_wird_wieder_entfernt_und_reise_baut
+engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[wiederherstellen]
+[gw0] [ 44%] PASSED engine/tests/test_bilder_eigen.py::test_junge_vormerkung_mit_entferntem_eintrag_wird_sofort_bestaetigt
+engine/tests/test_bilder_eigen.py::test_alte_unbestaetigte_zeilen_ohne_zeitpunkt_gelten_als_alt
+[gw0] [ 45%] PASSED engine/tests/test_bilder_eigen.py::test_alte_unbestaetigte_zeilen_ohne_zeitpunkt_gelten_als_alt
+engine/tests/test_bilder_eigen.py::test_betrieb_nennt_die_frist_von_einer_stunde
+[gw0] [ 45%] PASSED engine/tests/test_bilder_eigen.py::test_betrieb_nennt_die_frist_von_einer_stunde
+engine/tests/test_bilder_eigen.py::test_konto_geloescht_nennung_gelöschte_person_organisatorin_loescht
+engine/tests/test_bilder_eigen.py::test_bau_nennung_foto_von_und_verlauf_foto_entfernt
+[gw0] [ 46%] PASSED engine/tests/test_bilder_eigen.py::test_konto_geloescht_nennung_gelöschte_person_organisatorin_loescht
+engine/tests/test_bilder_eigen.py::test_quelltext_und_adr_nennen_die_dritte_ausnahme
+[gw0] [ 47%] PASSED engine/tests/test_bilder_eigen.py::test_quelltext_und_adr_nennen_die_dritte_ausnahme
+engine/tests/test_bilder_eigen.py::test_datenschutztabelle_nennt_eigene_fotos
+[gw0] [ 48%] PASSED engine/tests/test_bilder_eigen.py::test_datenschutztabelle_nennt_eigene_fotos
+engine/tests/test_bilder_eigen.py::test_werkzeug_gibt_link_token_nur_als_hash
+[gw1] [ 49%] PASSED engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[wiederherstellen]
+engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[bildunterschrift]
+[gw2] [ 50%] PASSED engine/tests/test_bilder_eigen.py::test_bau_nennung_foto_von_und_verlauf_foto_entfernt
+engine/tests/test_bilder_eigen.py::test_bild_entfernen_leert_nur_die_zwei_pfade
+[gw2] [ 50%] PASSED engine/tests/test_bilder_eigen.py::test_bild_entfernen_leert_nur_die_zwei_pfade
+engine/tests/test_bilder_eigen.py::test_glibc_pruefung_vor_dem_tausch_der_python_umgebung
+[gw2] [ 51%] SKIPPED engine/tests/test_bilder_eigen.py::test_glibc_pruefung_vor_dem_tausch_der_python_umgebung
+engine/tests/test_bilder_eigen.py::test_nginx_block_fuer_fotos_der_hochlade_link
+[gw2] [ 52%] PASSED engine/tests/test_bilder_eigen.py::test_nginx_block_fuer_fotos_der_hochlade_link
+engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+[gw0] [ 53%] PASSED engine/tests/test_bilder_eigen.py::test_werkzeug_gibt_link_token_nur_als_hash
+[gw1] [ 54%] PASSED engine/tests/test_bilder_eigen.py::test_entferntes_foto_laesst_sich_nicht_mehr_aendern[bildunterschrift]
+engine/tests/test_bilder_eigen.py::test_drosselspeicher_raeumt_alte_schluessel_auf
+[gw1] [ 54%] PASSED engine/tests/test_bilder_eigen.py::test_drosselspeicher_raeumt_alte_schluessel_auf
+engine/tests/test_bilder_eigen.py::test_link_seite_mit_eigener_csp_ohne_seitenlink
+[gw1] [ 55%] PASSED engine/tests/test_bilder_eigen.py::test_link_seite_mit_eigener_csp_ohne_seitenlink
+engine/tests/test_bilder_eigen.py::test_hochladen_ueber_link_ohne_anmeldung
+[gw0] [ 56%] PASSED engine/tests/test_bilder_eigen.py::test_hochladen_ueber_link_ohne_anmeldung
+engine/tests/test_bilder_eigen.py::test_konto_loeschen_raeumt_tokens_ab
+[gw1] [ 57%] PASSED engine/tests/test_bilder_eigen.py::test_konto_loeschen_raeumt_tokens_ab
+engine/tests/test_bilder_eigen.py::test_doku_des_konnektors_nennt_werkzeug_und_routen
+[gw1] [ 58%] PASSED engine/tests/test_bilder_eigen.py::test_doku_des_konnektors_nennt_werkzeug_und_routen
+engine/tests/test_bilder_eigen.py::test_neue_texte_in_allen_sprachen
+[gw1] [ 59%] PASSED engine/tests/test_bilder_eigen.py::test_neue_texte_in_allen_sprachen
+engine/tests/test_bilder_eigen.py::test_wortlaut_folgt_dem_entwurf
+engine/tests/test_bilder_eigen.py::test_abgelaufen_aufgebraucht_fremd_dieselbe_antwort
+[gw1] [ 59%] PASSED engine/tests/test_bilder_eigen.py::test_wortlaut_folgt_dem_entwurf
+engine/tests/test_bilder_eigen.py::test_pillow_heif_installiert_mit_lizenz_und_hashes
+[gw1] [ 60%] PASSED engine/tests/test_bilder_eigen.py::test_pillow_heif_installiert_mit_lizenz_und_hashes
+engine/tests/test_bilder_eigen.py::test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+[gw0] [ 61%] PASSED engine/tests/test_bilder_eigen.py::test_abgelaufen_aufgebraucht_fremd_dieselbe_antwort
+engine/tests/test_bilder_eigen.py::test_herabgestufte_rolle_mit_gueltigem_token
+[gw0] [ 62%] PASSED engine/tests/test_bilder_eigen.py::test_herabgestufte_rolle_mit_gueltigem_token
+engine/tests/test_bilder_eigen.py::test_token_erlaubt_nur_hochladen
+[gw0] [ 63%] PASSED engine/tests/test_bilder_eigen.py::test_token_erlaubt_nur_hochladen
+engine/tests/test_bilder_eigen.py::test_link_prueft_token_vor_dem_lesen_und_drosselt_je_link_und_adresse
+[gw0] [ 63%] PASSED engine/tests/test_bilder_eigen.py::test_link_prueft_token_vor_dem_lesen_und_drosselt_je_link_und_adresse
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+[gw2] [ 64%] PASSED engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[webkit]
+[gw2] [ 65%] PASSED engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[webkit]
+engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[chromium]
+[gw1] [ 66%] PASSED engine/tests/test_bilder_eigen.py::test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+[gw1] [ 67%] PASSED engine/tests/test_bilder_eigen.py::test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+[gw1] [ 68%] PASSED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_frage_meint_das_gezeigte_foto[chromium]
+[gw1] [ 68%] PASSED engine/tests/test_bilder_eigen.py::test_gross_frage_meint_das_gezeigte_foto[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+[gw0] [ 69%] PASSED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_reduzierte_bewegung_klick_sofort[chromium]
+[gw0] [ 70%] PASSED engine/tests/test_bilder_eigen.py::test_gross_reduzierte_bewegung_klick_sofort[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_fehlender_dialog_ist_klarer_fehler[chromium]
+[gw0] [ 71%] PASSED engine/tests/test_bilder_eigen.py::test_gross_fehlender_dialog_ist_klarer_fehler[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[webkit]
+[gw2] [ 72%] PASSED engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+[gw2] [ 72%] PASSED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+[gw1] [ 73%] PASSED engine/tests/test_bilder_eigen.py::test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+engine/tests/test_bilder_eigen.py::test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+[gw1] [ 74%] PASSED engine/tests/test_bilder_eigen.py::test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+[gw1] [ 75%] PASSED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+engine/tests/test_bilder_eigen.py::test_gross_frage_meint_das_gezeigte_foto[webkit]
+[gw1] [ 76%] PASSED engine/tests/test_bilder_eigen.py::test_gross_frage_meint_das_gezeigte_foto[webkit]
+engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium]
+[gw1] [ 77%] PASSED engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium]
+engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[webkit]
+[gw1] [ 77%] PASSED engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[webkit]
+engine/tests/test_seite_bilder.py::test_ohne_seitenfehler_und_ohne_csp_meldung[chromium]
+[gw0] [ 78%] PASSED engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[webkit]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+[gw0] [ 79%] PASSED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+engine/tests/test_seite_bilder.py::test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[chromium]
+[gw2] [ 80%] PASSED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+engine/tests/test_bilder_eigen.py::test_gross_reduzierte_bewegung_klick_sofort[webkit]
+[gw2] [ 81%] PASSED engine/tests/test_bilder_eigen.py::test_gross_reduzierte_bewegung_klick_sofort[webkit]
+engine/tests/test_bilder_eigen.py::test_gross_fehlender_dialog_ist_klarer_fehler[webkit]
+[gw2] [ 81%] PASSED engine/tests/test_bilder_eigen.py::test_gross_fehlender_dialog_ist_klarer_fehler[webkit]
+engine/tests/test_seite_bilder.py::test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[chromium]
+[gw1] [ 82%] PASSED engine/tests/test_seite_bilder.py::test_ohne_seitenfehler_und_ohne_csp_meldung[chromium]
+engine/tests/test_seite_bilder.py::test_titelbild_vor_dem_reisekopf_mit_nennung[chromium]
+[gw1] [ 83%] PASSED engine/tests/test_seite_bilder.py::test_titelbild_vor_dem_reisekopf_mit_nennung[chromium]
+engine/tests/test_seite_bilder.py::test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[chromium]
+[gw1] [ 84%] PASSED engine/tests/test_seite_bilder.py::test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[chromium]
+engine/tests/test_seite_bilder.py::test_grossansicht_zaehler_tasten_fokus_und_wischen[chromium]
+[gw1] [ 85%] PASSED engine/tests/test_seite_bilder.py::test_grossansicht_zaehler_tasten_fokus_und_wischen[chromium]
+engine/tests/test_seite_bilder.py::test_grossansicht_oeffnet_aus_dem_vorschaubild[chromium]
+[gw1] [ 86%] PASSED engine/tests/test_seite_bilder.py::test_grossansicht_oeffnet_aus_dem_vorschaubild[chromium]
+engine/tests/test_seite_bilder.py::test_handy_360_ohne_ueberbreite_und_ohne_pfeile[chromium]
+[gw1] [ 86%] PASSED engine/tests/test_seite_bilder.py::test_handy_360_ohne_ueberbreite_und_ohne_pfeile[chromium]
+engine/tests/test_seite_bilder.py::test_stadtwochenende_ohne_bild_elemente[chromium]
+[gw1] [ 87%] PASSED engine/tests/test_seite_bilder.py::test_stadtwochenende_ohne_bild_elemente[chromium]
+engine/tests/test_seite_bilder.py::test_ohne_seitenfehler_und_ohne_csp_meldung[webkit]
+[gw0] [ 88%] PASSED engine/tests/test_seite_bilder.py::test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[chromium]
+engine/tests/test_seite_bilder.py::test_unterkunft_kopfbild_nur_an_der_ersten_nacht[chromium]
+[gw0] [ 89%] PASSED engine/tests/test_seite_bilder.py::test_unterkunft_kopfbild_nur_an_der_ersten_nacht[chromium]
+engine/tests/test_seite_bilder.py::test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[webkit]
+[gw2] [ 90%] PASSED engine/tests/test_seite_bilder.py::test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[chromium]
+engine/tests/test_seite_bilder.py::test_jedes_bild_genau_einmal_verpackt[chromium]
+[gw2] [ 90%] PASSED engine/tests/test_seite_bilder.py::test_jedes_bild_genau_einmal_verpackt[chromium]
+engine/tests/test_seite_bilder.py::test_unterkunft_kopfbild_nur_an_der_ersten_nacht[webkit]
+[gw1] [ 91%] PASSED engine/tests/test_seite_bilder.py::test_ohne_seitenfehler_und_ohne_csp_meldung[webkit]
+engine/tests/test_seite_bilder.py::test_titelbild_vor_dem_reisekopf_mit_nennung[webkit]
+[gw1] [ 92%] PASSED engine/tests/test_seite_bilder.py::test_titelbild_vor_dem_reisekopf_mit_nennung[webkit]
+engine/tests/test_seite_bilder.py::test_jedes_bild_genau_einmal_verpackt[webkit]
+[gw1] [ 93%] PASSED engine/tests/test_seite_bilder.py::test_jedes_bild_genau_einmal_verpackt[webkit]
+engine/tests/test_seite_bilder.py::test_grossansicht_zaehler_tasten_fokus_und_wischen[webkit]
+[gw1] [ 94%] PASSED engine/tests/test_seite_bilder.py::test_grossansicht_zaehler_tasten_fokus_und_wischen[webkit]
+engine/tests/test_seite_bilder.py::test_grossansicht_oeffnet_aus_dem_vorschaubild[webkit]
+[gw1] [ 95%] PASSED engine/tests/test_seite_bilder.py::test_grossansicht_oeffnet_aus_dem_vorschaubild[webkit]
+engine/tests/test_seite_bilder.py::test_handy_360_ohne_ueberbreite_und_ohne_pfeile[webkit]
+[gw1] [ 95%] PASSED engine/tests/test_seite_bilder.py::test_handy_360_ohne_ueberbreite_und_ohne_pfeile[webkit]
+engine/tests/test_seite_bilder.py::test_stadtwochenende_ohne_bild_elemente[webkit]
+[gw1] [ 96%] PASSED engine/tests/test_seite_bilder.py::test_stadtwochenende_ohne_bild_elemente[webkit]
+[gw0] [ 97%] PASSED engine/tests/test_seite_bilder.py::test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[webkit]
+engine/tests/test_seite_bilder.py::test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[webkit]
+[gw0] [ 98%] PASSED engine/tests/test_seite_bilder.py::test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[webkit]
+[gw2] [ 99%] PASSED engine/tests/test_seite_bilder.py::test_unterkunft_kopfbild_nur_an_der_ersten_nacht[webkit]
+engine/tests/test_seite_bilder.py::test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[webkit]
+[gw2] [100%] PASSED engine/tests/test_seite_bilder.py::test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[webkit]
+
+=========================== short test summary info ============================
+SKIPPED [1] engine/tests/test_bilder_eigen.py:1329: flock fehlt
+================== 121 passed, 1 skipped in 161.31s (0:02:41) ==================
