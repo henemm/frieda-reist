@@ -138,3 +138,21 @@ Zwei Fotos (BI-91 zuerst): nie ein DELETE ohne Bestätigung, nie eine Frage zu B
 == 6. Wiederholung Mutation m5b (Klick nie sofort), nur reduzierte Bewegung und hochladen, 3 Läufe mit -n 3 ==
 4 failed, 7 passed (3 von 3 Läufen): rot jeweils test_gross_reduzierte_bewegung_klick_sofort und test_browser_hochladen_hinweis_nennung_und_loeschen in beiden Browsern.
 Im ersten Lauf (Abschnitt 4) war test_gross_reduzierte_bewegung_klick_sofort[webkit] unter Last nicht rot; nicht reproduziert, als Auffälligkeit vermerkt.
+
+== 7. Runde 3: CI-Läufe zu Commit 9f5ff05 (PR #707), mit gh gelesen ==
+Lauf 45704557945 ("Tests"), headSha in allen Versuchen 9f5ff05657614a777cc9ba24855119829757eced; Geheimnis-Scan 45704557919: success (gitleaks).
+Aufruf der Suite: python -m pytest -q -rs -n auto engine/tests (.github/workflows/tests.yml:136)
+Versuch 1: tests (instanz) success, tests (leer) success
+  tests (instanz): 3741 passed, 1 skipped in 1065.75s (0:17:45)
+  tests (leer):    3741 passed, 1 skipped in 1165.61s (0:19:25)
+Versuch 2: tests (instanz) success, tests (leer) failure
+  tests (instanz): 3741 passed, 1 skipped in 1149.63s (0:19:09)
+  tests (leer):    1 failed, 3740 passed, 1 skipped in 1225.75s (0:20:25)
+  ausgefallen: engine/tests/test_warteliste.py::test_eintrag_ueber_die_seite_antwort_ist_immer_gleich (TimeoutError: timed out, POST /anmelden in seite_anmelden, 10-s-Grenze); Issue #708
+Versuch 3: tests (leer) success, tests (instanz) success
+  tests (leer):    3741 passed, 1 skipped in 1152.08s (0:19:12)
+  tests (instanz): 3741 passed, 1 skipped in 1127.14s (0:18:47)
+Skip in allen Jobs: SKIPPED [1] engine/tests/test_wackel_599.py:118: Stand 5f36075 nicht im Checkout
+Schritt "Browser-Prüfung darf nicht übersprungen worden sein" in allen Jobs: 2 passed, 7 deselected
+gh pr checks 707 (nach Versuch 3): gitleaks pass, tests (instanz) pass, tests (leer) pass
+Hinweis: -q nennt keine Testnamen; dass die Tests aus test_bilder_eigen.py und test_seite_bilder.py in beiden Browsern liefen und bestanden, ist aus Skip-Liste (-rs), Gesamtzahl 3742 je Job und dem einzigen benannten Fehlschlag abgeleitet, nicht mit Namen belegt.

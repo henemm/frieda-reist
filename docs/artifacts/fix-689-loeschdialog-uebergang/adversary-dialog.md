@@ -13,13 +13,13 @@ Datum: 2026-11-25 18:23
 - [x] **AC-7:** Given Klick im Öffnen / When sofort Escape gedrückt wird / Then kommt die Frage. Test: `engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_escape_fragt`
 - [x] **AC-8:** Given der Dialog fehlt beim ersten Öffnen / When `grossAuf` und `frage` laufen / Then ist das ein klarer Fehler mit Grund (Gegenprobe); der Ablauf für „Mo“ (kein Knopf) bleibt unverändert. Test: `engine/tests/test_bilder_eigen.py::test_gross_fehlender_dialog_ist_klarer_fehler`
 - [x] **AC-9:** Given der heutige Stand (Vorlage unverändert) / When die Tests der AC-1 bis AC-4b, AC-7 und AC-8 laufen / Then sind sie rot (RED), einschließlich des Falls „später blättern und schließen: gezeigt BI-90, gelöscht BI-91“; nach der Änderung grün. AC-5, AC-6 und AC-12 sind Wächter und heute schon grün. Test: von Claude ausgeführt (RED-Lauf und GREEN-Lauf, Ausgabe im Nachweis)
-- [ ] **AC-10:** Given der Stand vor der Auslieferung / When `test_bilder_eigen.py` und `test_seite_bilder.py` laufen / Then sind sie grün (Chromium lokal, WebKit in der CI), der betroffene Test in mindestens 3 CI-Läufen, dazu die Pflichtprüfungen `tests (leer)`, `tests (instanz)` und `gitleaks`. Test: von Claude ausgeführt (CI-Läufe, `gh run rerun` genügt)
+- [x] **AC-10:** Given der Stand vor der Auslieferung / When `test_bilder_eigen.py` und `test_seite_bilder.py` laufen / Then sind sie grün (Chromium lokal, WebKit in der CI), der betroffene Test in mindestens 3 CI-Läufen, dazu die Pflichtprüfungen `tests (leer)`, `tests (instanz)` und `gitleaks`. Test: von Claude ausgeführt (CI-Läufe, `gh run rerun` genügt)
 - [x] **AC-11:** Given der Stand der Änderung / When er mit `main` verglichen wird / Then sind nur `engine/vorlage.html`, `engine/tests/seiten_bilder_eigen.mjs`, `engine/tests/test_bilder_eigen.py` und Unterlagen unter `docs/` geändert; `docs/funktionen/bilder.md` und der Vendor sind unverändert. Test: von Claude ausgeführt (Vergleich mit `main`)
 - [x] **AC-12:** Given die ausgelieferte Bibliothek / When die Verlängerung des Öffnens eingespielt wird / Then kommt `showAnimationDuration:333` genau einmal vor; sonst scheitert der Test mit Grund, statt das Fenster still zu verlieren. Test: `engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift`
 
 ## Dialog
 
-Testlauf: `docs/artifacts/fix-689-loeschdialog-uebergang/adversary-test-output.txt` (voller Lauf von `test_bilder_eigen.py` und `test_seite_bilder.py`: 121 passed, 1 übersprungen, der Skip ist `flock fehlt` in `test_bilder_eigen.py:1329`, unabhängig von #689; Chromium und WebKit, beide lokal vorhanden). Mutationen und Probe-Abläufe liefen in Kopien unter dem Scratchpad; nichts unter `engine/` im Worktree wurde geändert (Dateien vor und nach den Läufen byteweise verglichen). AC-10 (3 CI-Läufe) ist offen und wird in Runde 3 nach dem Push belegt; es wird hier nicht als bewiesen geführt.
+Testlauf: `docs/artifacts/fix-689-loeschdialog-uebergang/adversary-test-output.txt` (voller Lauf von `test_bilder_eigen.py` und `test_seite_bilder.py`: 121 passed, 1 übersprungen, der Skip ist `flock fehlt` in `test_bilder_eigen.py:1329`, unabhängig von #689; Chromium und WebKit, beide lokal vorhanden). Mutationen und Probe-Abläufe liefen in Kopien unter dem Scratchpad; nichts unter `engine/` im Worktree wurde geändert (Dateien vor und nach den Läufen byteweise verglichen). AC-10 (3 CI-Läufe) ist in Runde 3 geprüft und erfüllt (siehe dort; der Teil „betroffene Tests je Lauf grün“ ist aus den Summenzeilen abgeleitet, nicht aus Testnamen).
 
 ### Runde 1
 **Adversary:** Spec lesen, nicht den Kommentar im Code. Pro AC ein eigener Lauf oder eine eigene Messung.
@@ -42,6 +42,17 @@ Testlauf: `docs/artifacts/fix-689-loeschdialog-uebergang/adversary-test-output.t
 - Dialog nennt das Foto nicht: `bildEntfernenFragen` zeigt nur Titel und Zusage; wer „Entfernen“ bestätigt, kann am Dialog nicht prüfen, welches Foto es trifft. Deshalb zählt F001 mehr, als sein Auslöser vermuten lässt.
 - AC-11: Dateiliste des Vergleichs mit dem Stand von main außerhalb `docs/`: genau `engine/vorlage.html`, `engine/tests/seiten_bilder_eigen.mjs`, `engine/tests/test_bilder_eigen.py`; `docs/funktionen/bilder.md` und `engine/vendor/` nicht dabei.
 - WebKit: lokal vorhanden und gemessen; die Spec sagt „nur in der CI messbar“, das stimmt für diese Maschine nicht mehr. Ergebnisse stimmen in beiden Browsern überein.
+**Implementierer:** (nicht beteiligt, Kontextisolation)
+
+### Runde 3
+**Adversary:** Nur AC-10, an den CI-Läufen selbst mit `gh` gelesen, keiner Zusammenfassung geglaubt.
+- Geprüfter Stand: Commit 9f5ff05 (Kopf von PR #707). `headSha` aller drei Versuche des Laufs 45704557945 und des Geheimnis-Scans 45704557919 ist dieser Commit. Die drei Blob-Kennungen im Block „Prüfbasis“ stimmen mit dem Baum des Commits überein, die sha256 im Block „Geprüfte Dateien“ mit den Dateien im Arbeitsbaum (neu berechnet); `git status` unter `engine/` ist sauber. Das Protokoll gilt also für genau diesen Commit. Der Vergleich der PR-Dateiliste (`gh pr view 707 --json files`) zeigt unter `engine/` genau die drei Dateien aus AC-11; der lokale Zweig `main` im Worktree ist veraltet (ihm fehlen die #656-Commits), daher zeigt `git diff main...HEAD` dort fälschlich eine vierte Datei.
+- Versuche (belegt, Ausgabe von `gh run view ... --attempt N --json jobs`): Versuch 1 `tests (instanz)` und `tests (leer)` success; Versuch 2 `tests (instanz)` success, `tests (leer)` failure; Versuch 3 beide success. `gh pr checks 707` jetzt: `gitleaks` pass, `tests (instanz)` pass, `tests (leer)` pass (Versuch 3). Geheimnis-Scan 45704557919 success.
+- Summenzeilen je Job (belegt, wörtlich im Nachweis): 5 Jobs `3741 passed, 1 skipped`, Versuch 2 `tests (leer)` `1 failed, 3740 passed, 1 skipped in 1225.75s`. Der eine Skip ist in allen sechs Jobs `engine/tests/test_wackel_599.py:118: Stand 5f36075 nicht im Checkout` (Aufruf mit `-q -rs -n auto engine/tests`, `.github/workflows/tests.yml:136`); kein Skip in `test_bilder_eigen.py` oder `test_seite_bilder.py` (der Skip „Playwright fehlt“, `engine/tests/test_bilder_eigen.py:1359`, steht in keinem Job). Die Schritte „Browser-Prüfung darf nicht übersprungen worden sein“ sind in allen Jobs grün. Chromium und WebKit werden in der CI installiert (`npx playwright install ... chromium webkit`, Schritt „Playwright und Browser“).
+- Ausgefallener Test in Versuch 2 (belegt, `--log-failed`): `engine/tests/test_warteliste.py::test_eintrag_ueber_die_seite_antwort_ist_immer_gleich`; schon die Vorbereitung `seite_anmelden`, `POST /anmelden`, läuft in `TimeoutError: timed out` (10-s-Grenze). Kein Bezug zu #689: weder Vorlage, noch Bildtests, noch Großansicht werden dort berührt; derselbe Test war in Versuch 1 und 3 sowie in `tests (instanz)` von Versuch 2 grün. Ursache offen, in Issue #708 geführt. Nicht ausschließbar (nur vermutet): Last auf dem Runner, zu der die 3-Sekunden-Abläufe der neuen Tests beitragen könnten; Versuch 2 war mit 1225 s der längste, aber Versuch 1 und 3 mit gleichen Tests liefen in 1152 bis 1166 s ohne Ausfall.
+- Liefen die betroffenen Tests, grün, nicht übersprungen? Abgeleitet, nicht belegt: `-q` nennt keine Testnamen, also steht in der CI nirgends „`test_gross_klick_im_oeffnen_fragt_einmal[webkit]` passed“. Die Ableitung: (a) der Zweig `-rs` listet jeden Skip, und es gibt nur den einen fremden; (b) in Versuch 2 ist der einzige Fehlschlag der Wartelisten-Test mit Namen, also alle übrigen 3740 Tests, darunter die Bildtests beider Browser, bestanden; (c) 3741 + 1 = 3742 Tests in jedem Job (Versuch 2: 3740 + 1 + 1), also dieselbe Menge; (d) die Bildtests sind Teil von `engine/tests`. Der Beweis für Dateien, Parametrisierung (`engine/tests/test_bilder_eigen.py:1487`, chromium und webkit) und die Zahl der Tests (121 lokal) stammt aus dem Quelltext und dem lokalen Lauf, nicht aus der CI. Das genügt für AC-10; nicht belegt bleibt, dass in der CI wirklich ein WebKit-Prozess startete (der Skip-Zweig dafür steht in `test_bilder_eigen.py:1359` und hätte sich gezeigt).
+- F005 (Empfindlichkeit von `test_gross_reduzierte_bewegung_klick_sofort[webkit]`): in der CI nicht aufgefallen. Streng genommen kann die CI das auch nicht zeigen, F005 betraf die Mutation (rot werden), nicht die Stabilität; die CI zeigt nur, dass der Test in sechs Jobs (3 Versuche je zwei Jobs) nicht ausfiel. Befund bleibt LOW und unverändert.
+- Ergebnis AC-10 nach Wortlaut: „Chromium lokal, WebKit in der CI“ grün (lokal 121 passed, CI 3741 passed je Job); „betroffener Test in mindestens 3 CI-Läufen“ drei Versuche desselben Commits (die Spec lässt `gh run rerun` ausdrücklich genügen), in allen dreien liefen die Bildtests und bestanden (abgeleitet); „Pflichtprüfungen `tests (leer)`, `tests (instanz)`, `gitleaks`“ im jetzigen Stand alle grün (Versuch 3). Der rote Versuch 2 widerspricht dem nicht: der Fehlschlag ist ein fremder, einmaliger Zeitablauf (#708), die betroffenen Tests waren in ihm grün. Erfüllt.
 **Implementierer:** (nicht beteiligt, Kontextisolation)
 
 ## Findings
@@ -170,9 +181,11 @@ Confirmation:
   Evidence: `showAnimationDuration:333` kommt genau einmal in der Bibliothek vor; die Mutationen auf `334` und auf einen doppelten Treffer machen `test_gross_verlaengerung_greift` und alle Tests mit Klick im Öffnen rot mit dem Grund „Verlängerung greift nicht ... [0]-mal / [2]-mal statt einmal“ (Test `engine/tests/test_bilder_eigen.py:1508`).
   Status: CONFIRMED
 
-Offen (nicht bewiesen):
+Confirmation:
   AC: AC-10
-  Stand: drei CI-Läufe mit den Pflichtprüfungen stehen aus (erst nach dem Push möglich); Runde 3.
+  Code reference: engine/tests/test_bilder_eigen.py:1487
+  Evidence: Commit 9f5ff05, Lauf 45704557945 Versuch 1 bis 3: `tests (instanz)` und `tests (leer)` je success außer Versuch 2 `tests (leer)` (`1 failed, 3740 passed, 1 skipped`, ausgefallen `test_warteliste.py::test_eintrag_ueber_die_seite_antwort_ist_immer_gleich`, `TimeoutError` bei `POST /anmelden`, Issue #708, ohne Bezug zu #689); Versuch 3 und `gitleaks` (Lauf 45704557919) grün, `gh pr checks 707` alle drei Pflichtprüfungen pass. Der einzige Skip ist `test_wackel_599.py:118`. Die Bildtests beider Browser (Parametrisierung hier) sind aus den Summenzeilen als bestanden abgeleitet, nicht mit Namen belegt.
+  Status: CONFIRMED
 
 ## Herkunft der Vorbedingungen
 
@@ -180,10 +193,23 @@ kein Sprachprofil konfiguriert (`precondition_origins.default_lang`)
 
 ## Verdict
 
-AC-1 bis AC-9, AC-11 und AC-12 sind belegt; AC-10 ist offen und wird in Runde 3 nach dem Push geprüft. Ein MEDIUM-Befund (F001) außerhalb der Akzeptanzkriterien, vier LOW-Befunde.
+AC-1 bis AC-12 sind belegt; AC-10 in Runde 3 an den CI-Läufen (drei Versuche desselben Commits, Pflichtprüfungen im jetzigen Stand grün; der Ausfall in Versuch 2 ist ein fremder Zeitablauf, Issue #708). Ein MEDIUM-Befund (F001) außerhalb der Akzeptanzkriterien, vier LOW-Befunde; Runde 3 bringt keinen neuen Befund.
 
 VERDICT: VERIFIED
-(vorläufig für den Rest ohne AC-10; Tests: 121 passed, 0 failed, 1 übersprungen (fremd, `flock fehlt`); Runde 3 folgt)
+(Tests lokal: 121 passed, 0 failed, 1 übersprungen (fremd, `flock fehlt`); CI Commit 9f5ff05: 3741 passed, 1 skipped (fremd, `test_wackel_599.py`) je Job im grünen Zustand)
+
+## Geprüfte Dateien
+
+- sha256:a2721ad1dbc42a01904dd100c05388ea422aa55e93a84787a110cd7cbf4e03c6  engine/tests/seiten_bilder_eigen.mjs
+- sha256:e8b135bc4cc6611be6c1121b01bff9a893dabd93a4a36ded31c1c375a20c4df9  engine/tests/test_bilder_eigen.py
+- sha256:536c44a14f40dafc1d01bc119f9f8696a6faf4b3c9d86042484297da6b3c879e  engine/vorlage.html
+
+## Prüfbasis
+
+- base: 2a40a98ac99719c7aa31114f37e41c021dec4478
+- blob:17a5b8dffa2a4b20bfcb27fba8d0a83c5e9eb01c  engine/tests/seiten_bilder_eigen.mjs
+- blob:63be84ba3bdf89894a0e6c7287ab2d872fa22fd9  engine/tests/test_bilder_eigen.py
+- blob:698d3bddd889c8dc9d7f79ac8d07a734d458ef60  engine/vorlage.html
 
 ## Geprüfte Dateien
 
