@@ -2518,8 +2518,25 @@ def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE
 
 @contextlib.contextmanager
 def faeden_abwarten(frist=30):
-    """RED (#656): noch ohne Wirkung."""
-    yield
+    """#656: Wartet beim Verlassen, auch nach einem Fehler im Block, auf alle Fäden, die seit dem Betreten gestartet wurden
+    (zusammen höchstens `frist` Sekunden). Läuft danach noch einer, scheitert der Test mit seinem Namen; ein Fehler aus dem Block
+    bleibt der gemeldete und bekommt die Meldung als Zusatz."""
+    import time
+    vorher = {*threading.enumerate(), threading.current_thread()}
+
+    def warten():
+        ende = time.monotonic() + frist
+        while (neu := set(threading.enumerate()) - vorher) and time.monotonic() < ende:
+            time.sleep(0.01)                  # kein join: der scheitert an einem Faden, der gerade erst startet
+        return f"Nach {frist} s laufen noch Fäden: {', '.join(sorted(f.name for f in neu))}" if neu else None
+    try:
+        yield
+    except BaseException as e:
+        if meldung := warten():
+            e.add_note(meldung)
+        raise
+    if meldung := warten():
+        raise AssertionError(meldung)
 
 
 def env_mitschneiden(monkeypatch):

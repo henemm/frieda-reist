@@ -1,0 +1,28 @@
+== Die vier Tests (-k 'faeden_abwarten or vorab_ordner' -v)
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0 -- engine/.venv/bin/python
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collecting ... collected 163 items / 155 deselected / 8 selected
+
+engine/tests/test_schreiben.py::test_faeden_abwarten_bis_zum_ende PASSED [ 12%]
+engine/tests/test_schreiben.py::test_faeden_abwarten_nennt_haengenden_faden PASSED [ 25%]
+engine/tests/test_schreiben.py::test_faeden_abwarten_auch_nach_fehler PASSED [ 37%]
+engine/tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[erfolg] PASSED [ 50%]
+engine/tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ablehnung] PASSED [ 62%]
+engine/tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[frist] PASSED [ 75%]
+engine/tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ausnahme] PASSED [ 87%]
+engine/tests/test_schreiben.py::test_kartenpunkte_vorab_ordner_auch_nach_zu_langer_vorbereitung_weg PASSED [100%]
+
+====================== 8 passed, 155 deselected in 4.19s =======================
+exit 0
+== Ganze Datei (-q -n 3)
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 44%]
+........................................................................ [ 88%]
+...................                                                      [100%]
+163 passed in 63.01s (0:01:03)
+exit 0

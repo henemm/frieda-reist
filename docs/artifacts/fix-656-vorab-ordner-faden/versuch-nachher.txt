@@ -1,0 +1,63 @@
+== Lauf 1 (Test nach der Änderung, Faden vor mkdir angehalten, längstens 20 s)
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 163 items / 159 deselected / 4 selected
+
+engine/tests/test_schreiben.py Done kartenpunkte_holen 200 in 0.9 s
+.Rejected kartenpunkte_holen 422: Der OpenStreetMap-Dienst (Overpass) hat nicht geantwortet (URLError). Bitte später noch einmal; nichts wurde geändert.
+Done kartenpunkte_holen 422 in 0.2 s
+.Timeout kartenpunkte_holen 504: aborted, not saved
+Done kartenpunkte_holen 504 in 0.2 s
+.Prefetch kartenpunkte_holen: RuntimeError: unerwartet
+Rejected kartenpunkte_holen 422: The OpenStreetMap service (Overpass) did not respond (URLError). Please try again later; nothing was changed.
+Done kartenpunkte_holen 422 in 1.1 s
+SPUR test_kartenpunkte_vorab_ordner0 ['angehalten', 'weiter', 'angelegt'] []
+.
+
+====================== 4 passed, 159 deselected in 23.37s ======================
+exit 0
+== Lauf 2 (Test nach der Änderung, Faden vor mkdir angehalten, längstens 20 s)
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 163 items / 159 deselected / 4 selected
+
+engine/tests/test_schreiben.py Done kartenpunkte_holen 200 in 1.0 s
+.Rejected kartenpunkte_holen 422: Der OpenStreetMap-Dienst (Overpass) hat nicht geantwortet (URLError). Bitte später noch einmal; nichts wurde geändert.
+Done kartenpunkte_holen 422 in 0.2 s
+.Timeout kartenpunkte_holen 504: aborted, not saved
+Done kartenpunkte_holen 504 in 0.2 s
+.Prefetch kartenpunkte_holen: RuntimeError: unerwartet
+Rejected kartenpunkte_holen 422: The OpenStreetMap service (Overpass) did not respond (URLError). Please try again later; nothing was changed.
+Done kartenpunkte_holen 422 in 0.7 s
+SPUR test_kartenpunkte_vorab_ordner0 ['angehalten', 'weiter', 'angelegt'] []
+.
+
+====================== 4 passed, 159 deselected in 23.17s ======================
+exit 0
+== Lauf 3 (Test nach der Änderung, Faden vor mkdir angehalten, längstens 20 s)
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 163 items / 159 deselected / 4 selected
+
+engine/tests/test_schreiben.py Done kartenpunkte_holen 200 in 1.0 s
+.Rejected kartenpunkte_holen 422: Der OpenStreetMap-Dienst (Overpass) hat nicht geantwortet (URLError). Bitte später noch einmal; nichts wurde geändert.
+Done kartenpunkte_holen 422 in 0.2 s
+.Timeout kartenpunkte_holen 504: aborted, not saved
+Done kartenpunkte_holen 504 in 0.2 s
+.Prefetch kartenpunkte_holen: RuntimeError: unerwartet
+Rejected kartenpunkte_holen 422: The OpenStreetMap service (Overpass) did not respond (URLError). Please try again later; nothing was changed.
+Done kartenpunkte_holen 422 in 0.7 s
+SPUR test_kartenpunkte_vorab_ordner0 ['angehalten', 'weiter', 'angelegt'] []
+.
+
+====================== 4 passed, 159 deselected in 23.09s ======================
+exit 0
