@@ -1,8 +1,10 @@
 // Eigene Fotos (#582, Spec docs/specs/oberflaeche/bilder-582-eigene-fotos.md), aufgerufen von test_bilder_eigen.py.
-// Zwei Arten:
+// Drei Arten:
 //   node seiten_bilder_eigen.mjs <playwright-modul> seite <basis beispielreise> <basis stadtwochenende> <foto> <texte-json>
 //     Die Dienste sind nachgestellt: api/ich liefert die Person (Karl, Mo, Lea oder niemand), api/bilder… nimmt Hochladen und
 //     Löschen an und merkt sich die Anfragen; alles andere unter api/ ist 404. Hochladen mit echtem setInputFiles.
+//   node seiten_bilder_eigen.mjs <playwright-modul> oeffnen <dieselben Argumente wie seite>
+//     „Foto entfernen“ im Öffnen der Großansicht (#689); die Quelle hat zwei eigene Fotos an O-01, BI-91 zuerst.
 //   node seiten_bilder_eigen.mjs <playwright-modul> sw <basis beispielreise> <web-ordner> <web-ordner neuer stand> <marke> [frist_ms]
 //     Service Worker: Seite laden (Vorab-Speicher), dann den neuen Stand (Bild entfernt) an die Stelle legen, neu laden, das
 //     Update anstoßen und warten, bis der neue Worker wartet oder übernommen hat. Dann einmal zählen, wie viele Einträge mit
@@ -22,7 +24,7 @@ const leise = ms => new Promise(r => setTimeout(r, ms));
 const genau = text => new RegExp("^\\s*" + text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+") + "\\s*$");
 const teile = vorlage => vorlage.split(/\{[^{}]*\}/).map(s => s.trim()).filter(s => s.length >= 2);
 
-if (art === "seite") {
+if (art === "seite" || art === "oeffnen") {
   const [basis, basisStadt, foto, texteJson] = rest;
   const T = JSON.parse(texteJson);
   const ich = person => ({basis: new URL(basis).origin, meldungen: [],
@@ -101,7 +103,7 @@ if (art === "seite") {
   const aus = {fotoVon: T.fotoVon};
   const karl = {schluessel: "karl", name: "Karl", rolle: "mitwirkend"};
 
-  const abschnitt = async (name, f) => { try { await f(); } catch (e) { fehler.push(name + ": " + String(e).split("\n")[0]); } };
+  const abschnitt = async (name, f) => { if (art === "seite") try { await f(); } catch (e) { fehler.push(name + ": " + String(e).split("\n")[0]); } };
   // Karl (mitwirkend, hat BI-90 hochgeladen): Hochladen mit Hinweis, Nennung, Löschen mit Zusage
   await abschnitt("karl", async () => {
     const {ctx, p, gesendet} = await seite(karl);
@@ -160,6 +162,112 @@ if (art === "seite") {
     aus.stadt = {knopfHochladen: (await knopf(p, T.hochladen).count()) > 0};
     await ctx.close();
   });
+  // Art oeffnen (#689): Klick auf „Foto entfernen“, solange die Großansicht öffnet. Die Dauer des Öffnens wird nur hier verlängert
+  // (Antwort auf die Bibliothek), damit das Fenster nicht vom Rechner abhängt. Je Ablauf eine eigene Seite; ein Abbruch steht mit
+  // Grund im Ergebnis.
+  const DAUER = "showAnimationDuration:333", LANG = 3000, FRIST = {timeout: 15000};
+  const stand = p => p.evaluate(() => ({dialoge: document.querySelectorAll("dialog.blatt[open]").length,
+    gross: !!document.getElementById("gross"), isOpen: !!(GROSS && GROSS.opener.isOpen),
+    fokusImDialog: !!document.activeElement.closest("dialog.blatt")}));
+  const ablauf = async (name, f, {person = karl, reduziert = false} = {}) => {
+    if (art !== "oeffnen") return;
+    const ab = fehler.length, a = aus[name] = {verlaengerung: []};
+    const {ctx, p, gesendet} = await seite(person);
+    try {
+      if (reduziert) await p.emulateMedia({reducedMotion: "reduce"});
+      await ctx.route("**/photoswipe-*.esm.min.js", async r => {
+        const antwort = await r.fetch(), text = await antwort.text();
+        a.verlaengerung.push(text.split(DAUER).length - 1);
+        await r.fulfill({response: antwort, body: text.replace(DAUER, "showAnimationDuration:" + LANG)});
+      });
+      await gehe(p, basis + "#O-01");
+      await f(a, p, p.locator("#main .bild.kopf").first(), gesendet);
+    } catch (e) { a.abbruch = String(e).split("\n")[0]; }
+    a.geloescht = gesendet.filter(x => x.methode === "DELETE").map(x => x.url.split("/").pop());
+    a.gesendet = gesendet.length;
+    await ctx.close();
+    a.fehler = fehler.splice(ab);
+  };
+  // Großansicht öffnen und im Öffnen n-mal „Foto entfernen“ klicken; ist das Fenster nicht wie erwartet (isOpen), scheitert der
+  // Ablauf mit Grund
+  const klickImOeffnen = async (a, p, kopf, n = 1, isOpen = false) => {
+    await kopf.click();
+    await p.waitForFunction(() => document.querySelector("#gross.pswp--ui-visible .gross-unten button.entfernen"), null, FRIST);
+    if (a.verlaengerung.join() !== "1") throw new Error(`Verlängerung greift nicht: „${DAUER}“ je Abruf ${JSON.stringify(a.verlaengerung)}-mal statt einmal`);
+    a.klick = await p.evaluate(n => {
+      const weg = document.querySelector("#gross .gross-unten button.entfernen");
+      const k = {isOpen: GROSS.opener.isOpen, dauer: GROSS.options.showAnimationDuration, bild: GROSS.currSlide.data.bild.id};
+      for (let i = 0; i < n; i++) weg.click();
+      return k;
+    }, n);
+    if (a.klick.isOpen !== isOpen) throw new Error("Fenster verfehlt: " + JSON.stringify(a.klick));
+  };
+  const offen = p => p.waitForFunction(() => GROSS && GROSS.opener.isOpen, null, FRIST);
+  // Frage abwarten; danach noch etwas Zeit für eine zweite, die es nicht geben darf
+  const nachFrage = async p => {
+    const da = await p.waitForSelector("dialog.blatt[open]", FRIST).then(() => true, () => false);
+    await p.waitForTimeout(1000);
+    return {da, titel: await sichtbarerText(p, T.titel), ...await stand(p)};
+  };
+  // Mit Escape schließen; kommt danach doch noch eine Frage, steht sie im Ergebnis
+  const schliessen = async p => {
+    await p.keyboard.press("Escape");
+    await p.waitForFunction(() => !document.getElementById("gross"), null, FRIST);
+    await p.waitForTimeout(1500);
+    return stand(p);
+  };
+  await ablauf("einmal", async (a, p, kopf) => { await klickImOeffnen(a, p, kopf); a.danach = await nachFrage(p); });
+  await ablauf("dreimal", async (a, p, kopf) => { await klickImOeffnen(a, p, kopf, 3); a.danach = await nachFrage(p); });
+  await ablauf("behalten", async (a, p, kopf) => {
+    await klickImOeffnen(a, p, kopf);
+    a.danach = await nachFrage(p);
+    await knopf(p, T.behalten).first().click();
+    await p.waitForFunction(() => !document.querySelector("dialog.blatt"), null, FRIST);
+    await kopf.click();
+    await offen(p);
+    a.wiederOffen = await stand(p);
+    a.wiederZu = await schliessen(p);
+  });
+  await ablauf("entfernen", async (a, p, kopf, gesendet) => {
+    await klickImOeffnen(a, p, kopf);
+    a.danach = await nachFrage(p);
+    if (a.danach.gross) {   // Klick verloren: was passiert beim Weiterblättern und Schließen?
+      await p.evaluate(() => GROSS.next());
+      await p.waitForTimeout(800);
+      a.zuletztGezeigt = await p.evaluate(() => GROSS.currSlide.data.bild.id);
+      a.zu = await schliessen(p);
+    }
+    await knopf(p, T.ja).first().click();
+    await warten(gesendet, x => x.methode === "DELETE");
+  });
+  await ablauf("blaettern", async (a, p, kopf) => {
+    await klickImOeffnen(a, p, kopf);
+    a.pfeil = await p.evaluate(() => {
+      document.querySelector("#gross .pswp__button--arrow--next").click();
+      return {isOpen: GROSS.opener.isOpen, index: GROSS.currIndex};
+    });
+    await p.waitForFunction(() => !GROSS || GROSS.opener.isOpen, null, FRIST);
+    await p.waitForTimeout(1500);
+    a.danach = await stand(p);
+    a.zu = await schliessen(p);
+    if (a.zu.dialoge) { await knopf(p, T.ja).first().click(); await p.waitForTimeout(500); }
+  });
+  await ablauf("escape", async (a, p, kopf) => {
+    await klickImOeffnen(a, p, kopf);
+    await p.keyboard.press("Escape");
+    a.danach = await nachFrage(p);
+  });
+  await ablauf("reduziert", async (a, p, kopf) => { await klickImOeffnen(a, p, kopf, 1, true); a.danach = await nachFrage(p); }, {reduziert: true});
+  // Gegenprobe: Der Dialog bleibt aus (nur in dieser Seite); frage muss das melden statt weiterzulaufen
+  await ablauf("gegenprobe", async (a, p, kopf) => {
+    await p.evaluate(() => { bildEntfernenFragen = () => {}; });
+    await grossAuf(p, kopf);
+    await knopf(p, T.entfernen, "#gross").first().click();
+    await frage(p, 1500);
+    a.verschluckt = true;
+  });
+  await ablauf("mo", async (a, p, kopf, gesendet) => { a.loeschen = await loeschen(p, gesendet); },
+               {person: {schluessel: "mo", name: "Mo", rolle: "mitwirkend"}});
   console.log(JSON.stringify({fehler, aus}));
 } else if (art === "sw") {
   const [basis, ordner, ordnerNeu, marke, frist = "20000"] = rest;
