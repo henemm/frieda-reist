@@ -3,9 +3,11 @@
 //   node seiten_bilder_eigen.mjs <playwright-modul> seite <basis beispielreise> <basis stadtwochenende> <foto> <texte-json>
 //     Die Dienste sind nachgestellt: api/ich liefert die Person (Karl, Mo, Lea oder niemand), api/bilder… nimmt Hochladen und
 //     Löschen an und merkt sich die Anfragen; alles andere unter api/ ist 404. Hochladen mit echtem setInputFiles.
-//   node seiten_bilder_eigen.mjs <playwright-modul> sw <basis beispielreise> <web-ordner> <web-ordner neuer stand> <marke>
-//     Service Worker: Seite laden (Vorab-Speicher), dann den neuen Stand (Bild entfernt) an die Stelle legen, neu laden und
-//     zählen, wie viele Einträge mit <marke> im Adressnamen noch in den Speichern der Reise liegen.
+//   node seiten_bilder_eigen.mjs <playwright-modul> sw <basis beispielreise> <web-ordner> <web-ordner neuer stand> <marke> [frist_ms]
+//     Service Worker: Seite laden (Vorab-Speicher), dann den neuen Stand (Bild entfernt) an die Stelle legen, neu laden, das
+//     Update anstoßen und warten, bis der neue Worker wartet oder übernommen hat. Dann einmal zählen, wie viele Einträge mit
+//     <marke> im Adressnamen noch in den Speichern der Reise liegen. Wiederholt wird nur ein gescheiterter Anstoß, höchstens
+//     bis zum Ende der Frist (Vorgabe 20000), nie die Prüfung (#654). Ausgabe: _sw_ablauf in test_bilder_eigen.py.
 import fs from "node:fs";
 
 const [, , modul, art, ...rest] = process.argv;
@@ -160,12 +162,23 @@ if (art === "seite") {
   });
   console.log(JSON.stringify({fehler, aus}));
 } else if (art === "sw") {
-  const [basis, ordner, ordnerNeu, marke] = rest;
+  const [basis, ordner, ordnerNeu, marke, frist = "20000"] = rest;
   const ctx = await b.newContext();
   const p = await ctx.newPage();
   p.setDefaultTimeout(15000);
   p.on("pageerror", e => fehler.push("pageerror: " + e));
-  const zaehlen = () => p.evaluate(async m => {
+  // Übernimmt ein neuer Worker, lädt die Seite neu (controllerchange) und bricht eine laufende Auswertung ab: dann auf der
+  // neu geladenen Seite noch einmal, begrenzt. Andere Fehler bleiben Fehler.
+  async function auswerten(f, arg) {
+    for (let versuch = 1; ; versuch++) {
+      try { return await p.evaluate(f, arg); }
+      catch (e) {
+        if (versuch >= 5 || !/Execution context was destroyed/.test(e)) throw e;
+        await p.waitForSelector("#main > *", {state: "attached"});
+      }
+    }
+  }
+  const zaehlen = () => auswerten(async m => {
     let n = 0;
     for (const name of await caches.keys()) {
       if (!name.startsWith("rh:")) continue;
@@ -173,19 +186,63 @@ if (art === "seite") {
     }
     return n;
   }, marke);
+  // Je Worker der Registrierung seine Version; null nur, wenn es ihn nicht gibt
+  const zustaende = () => auswerten(async () => {
+    const version = w => w ? new Promise(r => {
+      const c = new MessageChannel();
+      c.port1.onmessage = e => r(e.data);
+      setTimeout(() => r(`keine Antwort (${w.state})`), 5000);
+      w.postMessage({typ: "version"}, [c.port2]);
+    }) : null;
+    const reg = await navigator.serviceWorker.getRegistration() || {};
+    const [installing, waiting, active] = await Promise.all([reg.installing, reg.waiting, reg.active].map(version));
+    return {installing, waiting, active};
+  });
+  // Ein Anstoß: null oder der Grund, warum er scheiterte
+  const anstossen = ende => auswerten(bis => Promise.race([
+    navigator.serviceWorker.getRegistration().then(r => r.update()).then(() => null, e => String(e)),
+    new Promise(r => setTimeout(() => r("update() ohne Ergebnis bis zum Ende der Frist"), bis - Date.now())),
+  ]), ende);
+  // Bis ein neuer Worker wartet oder übernommen hat, spätestens bis zum Ende der Frist. Zweimal derselbe Zustand: Auch ein
+  // Worker, der sofort übernimmt, wartet für einen Augenblick. Antwortet ein Worker nicht, ist nichts entschieden.
+  async function neuerWorker(alt, ende) {
+    for (let letzter = ""; ; await leise(100)) {
+      const z = await zustaende(), text = JSON.stringify(z);
+      const entschieden = (z.waiting || z.active !== alt.active) && text === letzter && !text.includes("keine Antwort");
+      if (entschieden || Date.now() >= ende) return z;
+      letzter = text;
+    }
+  }
+  // Nach einer Übernahme räumt activate den alten Speicher auf; gezählt wird erst danach
+  const aufgeraeumt = ende => auswerten(async bis => {
+    const reg = await navigator.serviceWorker.getRegistration();
+    while (reg && reg.active && reg.active.state === "activating" && Date.now() < bis) await new Promise(r => setTimeout(r, 50));
+  }, ende);
+
   await p.goto(basis);
   await p.evaluate(() => Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(r, 15000))]));
   await p.waitForFunction(() => navigator.serviceWorker.controller !== null, null, {timeout: 15000});
   const vorher = await zaehlen();
+  const zustandVorher = await zustaende();
   // neuer Stand: das Bild ist entfernt (Dateien weg, Liste ohne Fassungen)
   fs.rmSync(ordner, {recursive: true, force: true});
   fs.cpSync(ordnerNeu, ordner, {recursive: true});
   await p.reload();
   await p.waitForSelector("#main > *", {state: "attached"});
-  await p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.update().catch(() => {}); });
-  let nachher = await zaehlen();
-  for (let i = 0; i < 100 && nachher > 0; i++) { await leise(100); nachher = await zaehlen(); }
-  console.log(JSON.stringify({fehler, vorher, nachher}));
+  const start = Date.now(), ende = start + Number(frist), updateFehler = [];
+  let anstoesse = 0, grund = null;
+  do {
+    if (grund) await leise(300);
+    anstoesse++;
+    grund = await anstossen(ende);
+    if (grund) updateFehler.push(grund);
+  } while (grund && Date.now() + 300 < ende);
+  const zustandNachher = await neuerWorker(zustandVorher, ende);
+  await aufgeraeumt(ende);
+  const dauerMs = Date.now() - start;
+  const nachher = await zaehlen();
+  console.log(JSON.stringify({fehler, vorher, nachher, updateFehler, anstoesse, dauerMs,
+                              zustaende: {vorher: zustandVorher, nachher: zustandNachher}}));
 } else {
   console.error("unbekannte Art: " + art);
   process.exitCode = 2;

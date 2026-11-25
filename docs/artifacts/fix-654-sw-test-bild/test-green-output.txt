@@ -1,0 +1,32 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0 -- ~/Developer/frieda-reist/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: ~/Developer/frieda-reist/.claude/worktrees/jazzy-yawning-papert
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collecting ... collected 95 items / 86 deselected / 9 selected
+
+engine/tests/test_wackel_654.py::test_sw_einmal_abgebrochen_gruen[chromium] PASSED [ 11%]
+engine/tests/test_wackel_654.py::test_sw_mehrfach_abgebrochen_gruen[chromium] PASSED [ 22%]
+engine/tests/test_wackel_654.py::test_sw_gleiche_aenderungszeit_gruen[chromium] PASSED [ 33%]
+engine/tests/test_wackel_654.py::test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium] PASSED [ 44%]
+engine/tests/test_wackel_654.py::test_sw_ohne_bilder_vergessen_rot[chromium] PASSED [ 55%]
+engine/tests/test_wackel_654.py::test_sw_sofortige_uebernahme_rot[chromium] PASSED [ 66%]
+engine/tests/test_wackel_654.py::test_server_queue_nocache_kein_304 PASSED [ 77%]
+engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium] PASSED [ 88%]
+engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium] PASSED [100%]
+
+============================= slowest 12 durations =============================
+8.32s call     engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+3.68s call     engine/tests/test_wackel_654.py::test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium]
+1.98s call     engine/tests/test_wackel_654.py::test_sw_sofortige_uebernahme_rot[chromium]
+1.84s call     engine/tests/test_wackel_654.py::test_sw_mehrfach_abgebrochen_gruen[chromium]
+1.32s call     engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium]
+1.25s call     engine/tests/test_wackel_654.py::test_sw_einmal_abgebrochen_gruen[chromium]
+0.90s call     engine/tests/test_wackel_654.py::test_sw_ohne_bilder_vergessen_rot[chromium]
+0.90s call     engine/tests/test_wackel_654.py::test_sw_gleiche_aenderungszeit_gruen[chromium]
+0.77s setup    engine/tests/test_wackel_654.py::test_sw_einmal_abgebrochen_gruen[chromium]
+0.52s call     engine/tests/test_wackel_654.py::test_server_queue_nocache_kein_304
+0.04s setup    engine/tests/test_wackel_654.py::test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium]
+0.03s teardown engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium]
+====================== 9 passed, 86 deselected in 21.92s =======================

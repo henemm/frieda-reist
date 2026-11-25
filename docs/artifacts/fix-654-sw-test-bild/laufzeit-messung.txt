@@ -1,0 +1,22 @@
+#654, AC-10: Laufzeit von test_browser_service_worker_vergisst_geloeschtes_bild[chromium] (pytest --durations, call)
+25.11.2026, macOS, Chromium über Playwright (engine/tests/playwright), ohne künstliche Last, vorher und nachher abwechselnd.
+Vorher: Kopie von engine/ und beispiel/ mit seiten_bilder_eigen.mjs und test_bilder_eigen.py aus origin/main (16ed58c);
+nachher: gleiche Kopie mit dem Stand des Arbeitsbaums. Jede Kopie prüft ihr eigenes Skript mit ihrem eigenen Test.
+
+Lauf  vorher                    nachher
+1     1.43 s grün               1.40 s grün
+2     1.33 s grün               1.36 s grün
+3     1.34 s grün               1.36 s grün
+4     11.51 s ROT (siehe unten) 1.44 s grün
+5     1.39 s grün               1.34 s grün
+Mittel der grünen Läufe: vorher 1.37 s (4), nachher 1.38 s (5). Zuwachs 0.01 s, Grenze 1 s.
+
+Vorher, Lauf 4, ohne eingespielten Fehler und ohne künstliche Last (das Bild aus der CI, Grund nicht protokolliert):
+E       AssertionError: {'fehler': [], 'vorher': 2, 'nachher': 2}
+
+Wiederholungen nachher (Chromium, ohne WebKit; je Durchgang 8 Tests: 7 aus test_wackel_654.py und der umgebaute Test):
+nacheinander                                   10 Durchgänge   80 von  80 grün
+-n 4                                            5 Durchgänge   40 von  40 grün
+8 Prozesse zugleich, 3 Runden                  24 Durchgänge  192 von 192 grün
+24 Prozesse zugleich, 2 Runden (10 Kerne)      48 Durchgänge  384 von 384 grün
+zusammen                                       87 Durchgänge  696 von 696 grün, kein roter Lauf

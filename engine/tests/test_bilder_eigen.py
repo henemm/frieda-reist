@@ -1397,6 +1397,10 @@ class _Server:
             def log_request(self, code="-", size="-"):
                 server.protokoll.append((self.path.split("?")[0], int(code)))
 
+            def end_headers(self):
+                self.send_header("Cache-Control", "no-cache")   # wie nginx im Betrieb (betrieb/vorlagen/nginx-reise.conf)
+                super().end_headers()
+
             def do_GET(self):
                 if self.path.split("?")[0].endswith("/sw.js") and neuer_stand():
                     with sperre:
@@ -1408,8 +1412,14 @@ class _Server:
                         return
                     if zeit_behalten:
                         os.utime(sw_datei, ns=(zeit, zeit))
+                # Immer den aktuellen Inhalt liefern: Alte und neue sw.js können in derselben Sekunde entstehen, und die
+                # sekundengenaue Änderungszeit ergäbe „304 unverändert“ mit dem alten Inhalt (#654, wie #154 in test_pwa.py).
+                del self.headers["If-Modified-Since"]
                 super().do_GET()
-        self.s = ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(ordner)))
+
+        class Dienst(ThreadingHTTPServer):
+            request_queue_size = 128   # gilt ab listen(); mit 5 scheiterte unter Last die Anmeldung des Workers (#654)
+        self.s = Dienst(("127.0.0.1", 0), functools.partial(Handler, directory=str(ordner)))
         threading.Thread(target=self.s.serve_forever, daemon=True).start()
         self.basis = f"http://127.0.0.1:{self.s.server_address[1]}"
 
