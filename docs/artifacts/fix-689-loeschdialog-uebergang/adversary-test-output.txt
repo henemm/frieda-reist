@@ -1,0 +1,140 @@
+Adversary-Testausgabe fix-689-loeschdialog-uebergang (Chromium und WebKit, Playwright 1.59.1)
+
+== 1. Voller Lauf test_bilder_eigen.py und test_seite_bilder.py im Worktree (pytest -q -rs -n 3), Runde 1 ==
+bringing up nodes...
+bringing up nodes...
+
+..............................................................s......... [ 59%]
+..................................................                       [100%]
+=========================== short test summary info ============================
+SKIPPED [1] engine/tests/test_bilder_eigen.py:1329: flock fehlt
+121 passed, 1 skipped in 159.69s (0:02:39)
+
+== 2. Mutationen (Kopie von engine/, beispiel/, betrieb/; nur -k 'gross or hochladen', beide Browser, 29 Tests je Lauf) ==
+base: 29 passed in 122.39s (0:02:02)
+red_vorlage: 12 failed, 17 passed in 242.46s (0:04:02)
+m1_change_weg: 2 failed, 27 passed in 121.94s (0:02:01)
+m2_change_hinter: 2 failed, 27 passed in 121.13s (0:02:01)
+m3_isdestroying_weg: 29 passed in 122.24s (0:02:02)
+m5_isopen_weg: 29 passed in 121.48s (0:02:01)
+m5b_nie_sofort: 5 failed, 24 passed in 164.47s (0:02:44)
+m6_oae_weg: 10 failed, 19 passed in 250.30s (0:04:10)
+m7_string: 16 failed, 13 passed in 42.68s
+m7b_string_doppelt: 16 failed, 13 passed in 53.58s
+m8_frage_verschluckt: 2 failed, 27 passed in 122.57s (0:02:02)
+m9_klick_meint_gezeigtes: 29 passed in 122.74s (0:02:02)
+m4_settimeout_weg: 29 passed in 122.68s (0:02:02)
+
+== 3. RED-Nachstellung (AC-9) ==
+a) Tests von Commit ecd51b3 mit Vorlage von ecd51b3 (= Vorlage von main): 14 failed, 15 passed in 235.86s (0:03:55)
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+  rot: test_gross_frage_meint_das_gezeigte_foto[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+  rot: test_gross_fehlender_dialog_ist_klarer_fehler[chromium]
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+  rot: test_gross_frage_meint_das_gezeigte_foto[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+  rot: test_gross_fehlender_dialog_ist_klarer_fehler[webkit]
+b) heutige Tests mit unveränderter Vorlage von main: red_vorlage: 12 failed, 17 passed in 242.46s (0:04:02)
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+  rot: test_gross_frage_meint_das_gezeigte_foto[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+  rot: test_gross_frage_meint_das_gezeigte_foto[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+Meldung des Falls (b, erste Zeile): E       AssertionError: Klick verloren; gezeigt BI-90, gelöscht ['BI-91']: {'verlaengerung': [1], 'klick': {'i
+
+== 4. Rot je Mutation ==
+-- m1_change_weg
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+-- m2_change_hinter
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+-- m3_isdestroying_weg (keine roten Tests)
+-- m4_settimeout_weg (keine roten Tests)
+-- m5_isopen_weg (keine roten Tests)
+-- m5b_nie_sofort
+  rot: test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+  rot: test_browser_hochladen_hinweis_nennung_und_loeschen[webkit]
+  rot: test_gross_reduzierte_bewegung_klick_sofort[chromium]
+  rot: test_gross_fehlender_dialog_ist_klarer_fehler[chromium]
+  rot: test_gross_fehlender_dialog_ist_klarer_fehler[webkit]
+-- m6_oae_weg
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+  rot: test_gross_frage_meint_das_gezeigte_foto[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+  rot: test_gross_frage_meint_das_gezeigte_foto[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+-- m7_string
+  rot: test_gross_verlaengerung_greift[chromium]
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+  rot: test_gross_frage_meint_das_gezeigte_foto[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+  rot: test_gross_reduzierte_bewegung_klick_sofort[chromium]
+  rot: test_gross_verlaengerung_greift[webkit]
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+  rot: test_gross_frage_meint_das_gezeigte_foto[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+  rot: test_gross_reduzierte_bewegung_klick_sofort[webkit]
+-- m7b_string_doppelt
+  rot: test_gross_verlaengerung_greift[chromium]
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+  rot: test_gross_frage_meint_das_gezeigte_foto[chromium]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+  rot: test_gross_reduzierte_bewegung_klick_sofort[chromium]
+  rot: test_gross_verlaengerung_greift[webkit]
+  rot: test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+  rot: test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+  rot: test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+  rot: test_gross_frage_meint_das_gezeigte_foto[webkit]
+  rot: test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+  rot: test_gross_reduzierte_bewegung_klick_sofort[webkit]
+-- m8_frage_verschluckt
+  rot: test_gross_fehlender_dialog_ist_klarer_fehler[chromium]
+  rot: test_gross_fehlender_dialog_ist_klarer_fehler[webkit]
+-- m9_klick_meint_gezeigtes (keine roten Tests)
+
+== 5. Eigene Randfälle (Probe-Abläufe in einer Kopie, beide Browser, Ergebnis je Ablauf) ==
+Klick im Öffnen, normale Dauer 333 ms, Klickzeitpunkt 0 bis 520 ms nach Erscheinen des Knopfs (12 Zeitpunkte): je 1 Dialog, Großansicht zu, Frage zu BI-91, kein DELETE; Chromium und WebKit
+Klick im Öffnen, verlängert 3000 ms, Klickzeitpunkte 2850 bis 3200 ms, davon 3020 bis 3100 ms in 10-ms-Schritten um das Ende (isOpen kippt in Chromium zwischen 3090 und 3100, in WebKit zwischen 3080 und 3090): je 1 Dialog, Großansicht zu, kein DELETE
+Klick im selben Takt wie openingAnimationEnd (Hörer nach dem der Vorlage), und im Takt danach: je 1 Dialog
+Ohne Klick, offen lassen, Pfeiltasten: 0 Dialoge
+Klick, dann Pfeiltaste / Mausziehen / Kreuz / Mausrad / Fenstergröße / Rücksprung im Hash (#O-02) im Öffnen: je 1 Frage zu BI-91 am Ende des Öffnens, kein DELETE ohne Bestätigung
+Klick, Behalten, wieder Klick im Öffnen, Behalten, öffnen, nach dem Öffnen Klick: je 1 Frage, nichts gesendet
+Einzelbild-Galerie (1 Eintrag): Klick im Öffnen, 1 Frage
+Reduzierte Bewegung: Klick wirkt sofort, 1 Frage
+Klick im Öffnen, dann Pfeilknopf (Chromium und WebKit, normal und verlängert): Klick verworfen, keine Frage, nur der erwartete Seitenfehler aus #706
+Pfeilknopf zuerst, dann Klick auf den stehengebliebenen Knopf (#706): Frage zu BI-91 bei angezeigtem Index 1, Bestätigen löscht BI-91 (Befund F001)
+Zwei Fotos (BI-91 zuerst): nie ein DELETE ohne Bestätigung, nie eine Frage zu BI-90 in einem der Abläufe
+
+== 6. Wiederholung Mutation m5b (Klick nie sofort), nur reduzierte Bewegung und hochladen, 3 Läufe mit -n 3 ==
+4 failed, 7 passed (3 von 3 Läufen): rot jeweils test_gross_reduzierte_bewegung_klick_sofort und test_browser_hochladen_hinweis_nennung_und_loeschen in beiden Browsern.
+Im ersten Lauf (Abschnitt 4) war test_gross_reduzierte_bewegung_klick_sofort[webkit] unter Last nicht rot; nicht reproduziert, als Auffälligkeit vermerkt.

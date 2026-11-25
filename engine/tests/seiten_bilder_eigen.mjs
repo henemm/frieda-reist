@@ -69,14 +69,18 @@ if (art === "seite" || art === "oeffnen") {
   async function warten(liste, bedingung, ms = 5000) {
     for (let i = 0; i < ms / 100 && !liste.some(bedingung); i++) await leise(100);
   }
+  const stand = p => p.evaluate(() => ({dialoge: document.querySelectorAll("dialog.blatt[open]").length,
+    gross: !!document.getElementById("gross"), isOpen: !!(GROSS && GROSS.opener.isOpen),
+    fokusImDialog: !!document.activeElement.closest("dialog.blatt")}));
   // Großansicht (PhotoSwipe, #676) öffnen und warten, bis der Übergang vorbei ist; „Foto entfernen“ schließt sie und fragt dann
   const grossAuf = async (p, kopf) => {
-    await p.waitForFunction(() => !document.getElementById("gross"), null, {timeout: 3000}).catch(() => {});
+    await p.waitForFunction(() => !document.getElementById("gross"), null, {timeout: 3000});
     await kopf.click();
-    await p.waitForSelector("#gross.pswp--open", {timeout: 5000}).catch(() => {});
-    await p.waitForTimeout(500);
+    await p.waitForFunction(() => GROSS && GROSS.opener.isOpen, null, {timeout: 15000});
   };
-  const frage = p => p.waitForSelector("dialog.blatt[open]", {timeout: 3000}).catch(() => {});
+  const frage = (p, frist = 15000) => p.waitForSelector("dialog.blatt[open]", {timeout: frist}).catch(async () => {
+    throw new Error("Keine Frage nach „Foto entfernen“: " + JSON.stringify(await stand(p)));
+  });
   async function loeschen(p, gesendet) {
     const d = {knopf: false};
     const kopf = p.locator("#main .bild.kopf").first();
@@ -91,7 +95,7 @@ if (art === "seite" || art === "oeffnen") {
     if (d.dialog.knoepfe[0]) await knopf(p, T.behalten).first().click();
     await p.waitForTimeout(500);
     d.nachBehalten = gesendet.filter(x => x.methode === "DELETE");
-    if ((await knopf(p, T.entfernen, "#gross").count()) === 0) await grossAuf(p, kopf).catch(() => {});   // Großansicht wieder öffnen
+    if ((await knopf(p, T.entfernen, "#gross").count()) === 0) await grossAuf(p, kopf);   // Großansicht wieder öffnen
     await knopf(p, T.entfernen, "#gross").first().click().catch(() => {});
     await frage(p);
     await knopf(p, T.ja).first().click().catch(() => {});
@@ -166,9 +170,6 @@ if (art === "seite" || art === "oeffnen") {
   // (Antwort auf die Bibliothek), damit das Fenster nicht vom Rechner abhängt. Je Ablauf eine eigene Seite; ein Abbruch steht mit
   // Grund im Ergebnis.
   const DAUER = "showAnimationDuration:333", LANG = 3000, FRIST = {timeout: 15000};
-  const stand = p => p.evaluate(() => ({dialoge: document.querySelectorAll("dialog.blatt[open]").length,
-    gross: !!document.getElementById("gross"), isOpen: !!(GROSS && GROSS.opener.isOpen),
-    fokusImDialog: !!document.activeElement.closest("dialog.blatt")}));
   const ablauf = async (name, f, {person = karl, reduziert = false} = {}) => {
     if (art !== "oeffnen") return;
     const ab = fehler.length, a = aus[name] = {verlaengerung: []};

@@ -1533,14 +1533,16 @@ def test_gross_behalten_und_entfernen_nach_klick_im_oeffnen(oeffnen):
     assert b["klick"]["bild"] == "BI-91" and b["geloescht"] == ["BI-91"], b
 
 
-def test_gross_klick_im_oeffnen_dann_blaettern_verwirft(oeffnen):
+def test_gross_klick_im_oeffnen_dann_blaettern_verwirft(oeffnen, request):
     """#689 AC-4: Blättern im Öffnen verwirft den Klick: keine Frage, kein DELETE, auch nicht nach dem Schließen."""
     a = oeffnen["blaettern"]
     assert "abbruch" not in a and a["pfeil"] == {"isOpen": False, "index": 1}, a
     assert a["danach"]["dialoge"] == 0 and a["danach"]["isOpen"], a
     assert not a["zu"]["gross"] and a["zu"]["dialoge"] == 0 and a["geloescht"] == [], a
-    # Der Pfeilknopf im Öffnen hat einen eigenen Fehler (#706): nur hier und nur mit genau diesem Text zugelassen
-    bekannt = "pageerror: TypeError: Cannot read properties of undefined (reading 'data')"
+    # Der Pfeilknopf im Öffnen hat einen eigenen Fehler (#706): nur hier und nur mit genau diesem Text je Browser zugelassen
+    bekannt = {"chromium": "pageerror: TypeError: Cannot read properties of undefined (reading 'data')",
+               "webkit": "pageerror: TypeError: undefined is not an object (evaluating 'pswp.currSlide.data')",
+               }[request.node.callspec.params["oeffnen"]]
     assert [f for f in a["fehler"] if f != bekannt] == [], a
 
 
