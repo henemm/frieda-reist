@@ -103,7 +103,7 @@ Grundsatz: Wiederholt wird nur der Anstoß, nie die Prüfung; geprüft wird weit
 
 Nachweise in `engine/tests/test_wackel_654.py`, der umgebaute Test in `engine/tests/test_bilder_eigen.py`.
 
-- [ ] Test 1 (a, einmal): GIVEN `sw.js` wird nach dem neuen Stand einmal abgebrochen / WHEN der Ablauf der Art `sw` läuft / THEN ist er grün, `nachher == 0`, und die Ausgabe nennt den gesammelten Fehler.
+- [ ] Test 1 (a, einmal): GIVEN `sw.js` wird nach dem neuen Stand einmal abgebrochen / WHEN der Ablauf der Art `sw` läuft / THEN ist er grün, `nachher == 0`, und jeder gescheiterte Anstoß steht in der Ausgabe (keiner, wenn der eigene Abruf des Browsers den Abbruch verbraucht, Befund 2; dass Fehler gesammelt werden, belegen Test 2 und Test 4).
 - [ ] Test 2 (a, mehrfach): GIVEN `sw.js` wird dreimal abgebrochen / WHEN der Ablauf läuft / THEN ist er grün innerhalb der Frist.
 - [ ] Test 3 (b): GIVEN die neue `sw.js` hat die Änderungszeit der alten / WHEN der Ablauf läuft / THEN ist er grün; der Server beantwortet nie mit 304.
 - [ ] Test 4 (c): GIVEN `sw.js` wird dauerhaft abgebrochen (verkürzte Frist) / WHEN der Ablauf läuft / THEN ist er rot, und die Meldung nennt Fehler von `update()`, Zustände und Anfragen mit Status.
