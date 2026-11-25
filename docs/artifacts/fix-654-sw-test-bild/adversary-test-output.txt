@@ -16,5 +16,4 @@ engine/tests/test_wackel_654.py::test_server_queue_nocache_kein_304 PASSED [ 77%
 engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium] PASSED [ 88%]
 engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium] PASSED [100%]
 
-====================== 9 passed, 86 deselected in 21.56s =======================
-exit: 9 passed, 0 failed, 0 skipped (WebKit abgewählt, lokal nicht installiert)
+====================== 9 passed, 86 deselected in 25.32s =======================

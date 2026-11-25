@@ -11,7 +11,7 @@ Datum: 2026-11-25 09:00
 - [x] **AC-6:** Given der neue Stand ohne `bilderVergessen`, der sich sofort selbst aktiviert (`skipWaiting` in der Kopie) / When der Test läuft / Then ist er rot, obwohl `nachher == 0`, weil kein `waiting` bei aktivem altem Worker vorliegt; `activate` kann die Prüfung nicht erfüllen. Test: `engine/tests/test_wackel_654.py::test_sw_sofortige_uebernahme_rot`
 - [x] **AC-7:** Given `_Server` / When er direkt per HTTP abgefragt wird / Then hat er Warteschlange 128, sendet `Cache-Control: no-cache` und antwortet auch bei `If-Modified-Since` nie mit 304. Test: `engine/tests/test_wackel_654.py::test_server_queue_nocache_kein_304`
 - [x] **AC-8:** Given der umgebaute `_Server` / When der Test der Seite (#689) läuft / Then ist er unverändert grün. Test: `engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen`
-- [ ] **AC-9 (OFFEN BIS CI, kein Defekt):** Given der Stand vor der Auslieferung / When der betroffene Test und die Nachweise in der CI in beiden Browsern laufen / Then sind sie in mindestens 3 CI-Läufen grün (`gh run rerun` genügt); ebenso die Pflichtprüfungen `tests (leer)`, `tests (instanz)` und `gitleaks`. Test: von Claude ausgeführt (CI-Läufe), WebKit nur dort messbar
+- [x] **AC-9:** Given der Stand vor der Auslieferung / When der betroffene Test und die Nachweise in der CI in beiden Browsern laufen / Then sind sie in mindestens 3 CI-Läufen grün (`gh run rerun` genügt); ebenso die Pflichtprüfungen `tests (leer)`, `tests (instanz)` und `gitleaks`. Test: von Claude ausgeführt (CI-Läufe), WebKit nur dort messbar
 - [x] **AC-10:** Given der Normalfall ohne eingespielten Fehler / When der umgebaute Test vor und nach der Änderung gemessen wird / Then steigt die Laufzeit um weniger als 1 s. Test: von Claude ausgeführt (Laufzeitmessung, Ergebnis im Nachweis)
 - [x] **AC-11:** Given der Stand der Änderung / When er mit `main` verglichen wird / Then sind `engine/sw.vorlage.js`, `engine/vorlage.html`, Engine und `betrieb/` unverändert; geändert sind nur die drei genannten Dateien (und Unterlagen unter `docs/`). Test: von Claude ausgeführt (Vergleich mit `main`)
 
@@ -41,6 +41,14 @@ Testlauf (Chromium, WebKit lokal nicht installiert): `docs/artifacts/fix-654-sw-
 - Auffälligkeit, kein Befund: Mutation M2 (Warteschlange 5) macht auch `test_sw_gleiche_aenderungszeit_gruen` rot, nicht nur AC-7; unklar ob Zufall oder Warteschlangeneffekt; AC-7 bleibt verlässlich rot.
 - WebKit: lokal nicht ausführbar, daher nicht gemessen; nur über die CI belegbar (AC-9).
 **Implementierer:** (nicht beteiligt, Kontextisolation)
+
+### Runde 3 (AC-9, unabhängig gegen die CI geprüft)
+**Adversary:** Gemessen an Commit 965f882 (PR #703), Lauf 45602750201 Versuche 1 bis 3, gitleaks-Lauf 45602750413; Quelle `gh run view -R henemm/frieda-reist --attempt N --json/--log`, Logs je Versuch im Scratchpad gelesen.
+- (a) DIREKT: Alle drei Versuche haben `headSha` 965f882bdbfbbf8c45bb83bc99e12742d895fa2b, Gesamtergebnis success; in jedem Versuch sind `tests (leer)` und `tests (instanz)` success, ebenso die Schritte "Playwright und Browser", "Tests" und "Browser-Prüfung darf nicht übersprungen worden sein". Pflichtprüfungen aus AC-9 also alle drei grün, dreimal.
+- (b) Lief der Test dort, in Chromium und WebKit, nicht übersprungen: Der Tests-Schritt ist `pytest -q -rs -n auto engine/tests` (ganzer Ordner). DIREKT je Job und Versuch (6 von 6): "3720 passed, 1 skipped"; die -rs-Liste enthält genau einen Skip, `engine/tests/test_wackel_599.py:118` (Stand 5f36075 nicht im Checkout), keinen aus test_wackel_654 oder test_bilder_eigen. Der Installationsschritt ruft `npx playwright install --with-deps chromium webkit` auf und ist success (direkt). ABGELEITET: Die Namen der einzelnen Tests stehen wegen `-q` nicht im Log; meine lokale Sammlung des identischen engine-Stands (`pytest --collect-only`) ergibt 3721 Tests (13 aus test_wackel_654.py, davon 6 mit `[webkit]`) = 3720 + 1, also lief jeder gesammelte Test, darunter die WebKit-Fälle, und bestand. Nicht direkt gezeigt: dass der WebKit-Browser im Test wirklich startete (kein Skip wegen fehlendem Browser ist aber ausgeschlossen, weil der einzige Skip ein anderer ist).
+- (c) DIREKT: `git diff 965f882 --stat -- engine` im Worktree ist leer.
+- (d) DIREKT: gitleaks-Lauf 45602750413, headSha 965f882, Job `gitleaks` success.
+**Implementierer:** (nicht beteiligt)
 
 ## Findings
 
@@ -126,19 +134,26 @@ Confirmation:
   Evidence: `git diff origin/main --name-only` außerhalb docs/: nur die drei genannten Testdateien.
   Status: CONFIRMED
 
+Confirmation:
+  AC: AC-9
+  Code reference: .github/workflows/tests.yml:136
+  Evidence: Lauf 45602750201, Versuche 1 bis 3, Commit 965f882, tests (leer) und tests (instanz) je success; gitleaks-Lauf 45602750413 success; `pytest -q -rs -n auto engine/tests` je 3720 passed, 1 skipped (fremd, test_wackel_599.py:118); Browser-Installation chromium und webkit success; 3721 lokal gesammelte Tests = 3720 + 1.
+  Status: CONFIRMED
+
 ## Herkunft der Vorbedingungen
 
 kein Sprachprofil konfiguriert (`precondition_origins.default_lang`) — in `openspec.yaml` und `.claude/settings*.json` geprüft, kein Eintrag.
 
 ## Verdict
 
-AC-9 ist OFFEN BIS CI (3 grüne CI-Läufe, WebKit nur dort messbar) und nicht abgehakt; das ist kein Defekt. Alle übrigen Punkte sind belegt. WebKit-Verhalten (waiting im Zustand `waiting` in WebKit, Risiko der Spec) ist ungemessen.
+Alle elf Punkte AC-1 bis AC-11 sind belegt. AC-9: drei grüne CI-Läufe auf 965f882 in beiden Jobs plus gitleaks; Test und Nachweise liefen in Chromium und WebKit, nur der Einzelname je Test ist abgeleitet (Zahl 3720 + 1 Skip = 3721 gesammelt). Ungemessen bleibt nur, was die CI nicht zeigt (Namen im Log).
 
 VERDICT: VERIFIED
-(vorbehaltlich AC-9 in der CI; 9 passed, 0 failed, 0 übersprungen lokal in Chromium)
+(9 passed lokal in Chromium, 0 failed, 0 übersprungen; CI 3720 passed, 1 fremder Skip, dreimal)
 
 ## Geprüfte Dateien
 
+- sha256:4c21345a6d447a5394d968171ed1a7c21be680aae126d008efe9f842acc7f6d5  .github/workflows/tests.yml
 - sha256:e5799dd83a7b99c79f0fb633fc3e906590bfa1bc20a1c36fb8aec781525bb995  engine/tests/seiten_bilder_eigen.mjs
 - sha256:10c5885dbb023a7ef38d974bdc52079eca78fca4e1b145b27c4349214dfba54b  engine/tests/test_bilder_eigen.py
 - sha256:6ba205604d3527f144cb495c98f2883a07c013cb9bd5680314248a62e8202e6e  engine/tests/test_wackel_654.py
@@ -146,19 +161,7 @@ VERDICT: VERIFIED
 ## Prüfbasis
 
 - base: 16ed58c86fbda2cc730abd935107cdb94824ddb2
-- blob:3d7d32827e90716a6cc0359e8e9aa5424833101c  engine/tests/seiten_bilder_eigen.mjs
-- blob:3dbb3f1624258187fef265b37f38269ce78baa7d  engine/tests/test_bilder_eigen.py
-- blob:2509f10ae0cd1b6d2e640e26a263640b7f721b55  engine/tests/test_wackel_654.py
-
-## Geprüfte Dateien
-
-- sha256:e5799dd83a7b99c79f0fb633fc3e906590bfa1bc20a1c36fb8aec781525bb995  engine/tests/seiten_bilder_eigen.mjs
-- sha256:10c5885dbb023a7ef38d974bdc52079eca78fca4e1b145b27c4349214dfba54b  engine/tests/test_bilder_eigen.py
-- sha256:6ba205604d3527f144cb495c98f2883a07c013cb9bd5680314248a62e8202e6e  engine/tests/test_wackel_654.py
-
-## Prüfbasis
-
-- base: 16ed58c86fbda2cc730abd935107cdb94824ddb2
+- blob:a9a2a81d883c7b666167dd3af2790227137f3196  .github/workflows/tests.yml
 - blob:3d7d32827e90716a6cc0359e8e9aa5424833101c  engine/tests/seiten_bilder_eigen.mjs
 - blob:3dbb3f1624258187fef265b37f38269ce78baa7d  engine/tests/test_bilder_eigen.py
 - blob:2509f10ae0cd1b6d2e640e26a263640b7f721b55  engine/tests/test_wackel_654.py
