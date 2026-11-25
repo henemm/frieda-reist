@@ -1,0 +1,126 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0 -- ~/Developer/frieda-reist/engine/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: ~/Developer/frieda-reist/.claude/worktrees/jazzy-yawning-papert
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collecting ... collected 95 items / 86 deselected / 9 selected
+
+engine/tests/test_wackel_654.py::test_sw_einmal_abgebrochen_gruen[chromium] FAILED [ 11%]
+engine/tests/test_wackel_654.py::test_sw_mehrfach_abgebrochen_gruen[chromium] FAILED [ 22%]
+engine/tests/test_wackel_654.py::test_sw_gleiche_aenderungszeit_gruen[chromium] FAILED [ 33%]
+engine/tests/test_wackel_654.py::test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium] FAILED [ 44%]
+engine/tests/test_wackel_654.py::test_sw_ohne_bilder_vergessen_rot[chromium] FAILED [ 55%]
+engine/tests/test_wackel_654.py::test_sw_sofortige_uebernahme_rot[chromium] FAILED [ 66%]
+engine/tests/test_wackel_654.py::test_server_queue_nocache_kein_304 FAILED [ 77%]
+engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium] PASSED [ 88%]
+engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium] FAILED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_sw_einmal_abgebrochen_gruen[chromium] __________________
+engine/tests/test_wackel_654.py:73: in test_sw_einmal_abgebrochen_gruen
+    e = _abgebrochen_gruen(staende, browser, 1)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/tests/test_wackel_654.py:63: in _abgebrochen_gruen
+    tbe._sw_pruefen(e, s)
+engine/tests/test_bilder_eigen.py:1502: in _sw_pruefen
+    assert not maengel, (f"{'; '.join(maengel)} | vorher={e['vorher']} nachher={e['nachher']}"
+E   AssertionError: vor dem neuen Stand kein aktiver Worker oder schon ein wartender; kein wartender neuer Worker; alter Worker nicht mehr aktiv; Bild noch im Speicher | vorher=2 nachher=2 | Fehler von update(): None | Anstöße: None | Zustände: {} | Anfragen an sw.js: [200, 'abgebrochen', 304]
+E   assert not ['vor dem neuen Stand kein aktiver Worker oder schon ein wartender', 'kein wartender neuer Worker', 'alter Worker nicht mehr aktiv', 'Bild noch im Speicher']
+_________________ test_sw_mehrfach_abgebrochen_gruen[chromium] _________________
+engine/tests/test_wackel_654.py:80: in test_sw_mehrfach_abgebrochen_gruen
+    e = _abgebrochen_gruen(staende, browser, 3)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/tests/test_wackel_654.py:63: in _abgebrochen_gruen
+    tbe._sw_pruefen(e, s)
+engine/tests/test_bilder_eigen.py:1502: in _sw_pruefen
+    assert not maengel, (f"{'; '.join(maengel)} | vorher={e['vorher']} nachher={e['nachher']}"
+E   AssertionError: vor dem neuen Stand kein aktiver Worker oder schon ein wartender; kein wartender neuer Worker; alter Worker nicht mehr aktiv; Bild noch im Speicher | vorher=2 nachher=2 | Fehler von update(): None | Anstöße: None | Zustände: {} | Anfragen an sw.js: [200, 'abgebrochen', 'abgebrochen']
+E   assert not ['vor dem neuen Stand kein aktiver Worker oder schon ein wartender', 'kein wartender neuer Worker', 'alter Worker nicht mehr aktiv', 'Bild noch im Speicher']
+________________ test_sw_gleiche_aenderungszeit_gruen[chromium] ________________
+engine/tests/test_wackel_654.py:93: in test_sw_gleiche_aenderungszeit_gruen
+    assert 304 not in [status for _, status in s.protokoll], (s.anfragen("sw.js"), e)
+E   AssertionError: ([200, 304, 304], {'fehler': [], 'vorher': 2, 'nachher': 2})
+E   assert 304 not in [200, 200, 200, 200, 200, 200, ...]
+____________ test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium] _____________
+engine/tests/test_wackel_654.py:105: in test_sw_dauerhaft_abgebrochen_rot_mit_grund
+    assert e.get("updateFehler") and all(e["updateFehler"]) and repr(e["updateFehler"]) in grund, grund
+E   AssertionError: vor dem neuen Stand kein aktiver Worker oder schon ein wartender; kein wartender neuer Worker; alter Worker nicht mehr aktiv; Bild noch im Speicher | vorher=2 nachher=2 | Fehler von update(): None | Anstöße: None | Zustände: {} | Anfragen an sw.js: [200, 'abgebrochen', 'abgebrochen']
+E     assert not ['vor dem neuen Stand kein aktiver Worker oder schon ein wartender', 'kein wartender neuer Worker', 'alter Worker nicht mehr aktiv', 'Bild noch im Speicher']
+E   assert (None)
+E    +  where None = <built-in method get of dict object at 0x10ac0c4c0>('updateFehler')
+E    +    where <built-in method get of dict object at 0x10ac0c4c0> = {'fehler': [], 'vorher': 2, 'nachher': 2}.get
+_________________ test_sw_ohne_bilder_vergessen_rot[chromium] __________________
+engine/tests/test_wackel_654.py:120: in test_sw_ohne_bilder_vergessen_rot
+    assert e["nachher"] > 0 and grund.startswith("Bild noch im Speicher |"), grund
+E   AssertionError: vor dem neuen Stand kein aktiver Worker oder schon ein wartender; kein wartender neuer Worker; alter Worker nicht mehr aktiv; Bild noch im Speicher | vorher=2 nachher=2 | Fehler von update(): None | Anstöße: None | Zustände: {} | Anfragen an sw.js: [200, 200, 304]
+E     assert not ['vor dem neuen Stand kein aktiver Worker oder schon ein wartender', 'kein wartender neuer Worker', 'alter Worker nicht mehr aktiv', 'Bild noch im Speicher']
+E   assert (2 > 0 and False)
+E    +  where False = <built-in method startswith of str object at 0x10a665d40>('Bild noch im Speicher |')
+E    +    where <built-in method startswith of str object at 0x10a665d40> = "vor dem neuen Stand kein aktiver Worker oder schon ein wartender; kein wartender neuer Worker; alter Worker nicht mehr aktiv; Bild noch im Speicher | vorher=2 nachher=2 | Fehler von update(): None | Anstöße: None | Zustände: {} | Anfragen an sw.js: [200, 200, 304]\nassert not ['vor dem neuen Stand kein aktiver Worker oder schon ein wartender', 'kein wartender neuer Worker', 'alter Worker nicht mehr aktiv', 'Bild noch im Speicher']".startswith
+__________________ test_sw_sofortige_uebernahme_rot[chromium] __________________
+engine/tests/test_wackel_654.py:131: in test_sw_sofortige_uebernahme_rot
+    e = tbe._sw_ablauf(s, web, neu_web, browser)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/tests/test_bilder_eigen.py:1483: in _sw_ablauf
+    return _node(["sw", basis + "/beispiel/", str(web / "beispiel"), str(neu_web / "beispiel"), "BI-90-", str(frist_ms)], browser)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+engine/tests/test_bilder_eigen.py:1439: in _node
+    assert aus.returncode == 0, aus.stderr[-3000:]
+E   AssertionError: node:internal/modules/run_main:111
+E         triggerUncaughtException(
+E         ^
+E     
+E     page.evaluate: Execution context was destroyed, most likely because of a navigation
+E         at zaehlen (engine/tests/seiten_bilder_eigen.mjs:168:27)
+E         at engine/tests/seiten_bilder_eigen.mjs:187:84 {
+E       name: 'Error'
+E     }
+E     
+E     Node.js v26.10.0
+E     
+E   assert 1 == 0
+E    +  where 1 = CompletedProcess(args=['node', 'engine/tests/seiten_bilder_eigen.mjs', 'engine/tests/playwright/node_modules/playwright/index.mjs', 'sw', 'http://localhost:63709/beispiel/', 'pytest-of-<benutzer>/pytest-1498/test_sw_sofortige_uebernahme_r0/web/beispiel', 'pytest-of-<benutzer>/pytest-1498/test_sw_sofortige_uebernahme_r0/web-neu/beispiel', 'BI-90-', '20000'], returncode=1, stdout='', stderr="node:internal/modules/run_main:111\n    triggerUncaughtException(\n    ^\n\npage.evaluate: Execution context was destroyed, most likely because of a navigation\n    at zaehlen (engine/tests/seiten_bilder_eigen.mjs:168:27)\n    at engine/tests/seiten_bilder_eigen.mjs:187:84 {\n  name: 'Error'\n}\n\nNode.js v26.10.0\n").returncode
+______________________ test_server_queue_nocache_kein_304 ______________________
+engine/tests/test_wackel_654.py:151: in test_server_queue_nocache_kein_304
+    assert (status, inhalt) == (200, b"// Beispielwert\n")
+E   AssertionError: assert (304, b'') == (200, b'// Beispielwert\n')
+E     
+E     At index 0 diff: 304 != 200
+E     
+E     Full diff:
+E       (
+E     -     200,
+E     ?     ^ ^...
+E     
+E     ...Full output truncated (5 lines hidden), use '-vv' to show
+_______ test_browser_service_worker_vergisst_geloeschtes_bild[chromium] ________
+engine/tests/test_bilder_eigen.py:1515: in test_browser_service_worker_vergisst_geloeschtes_bild
+    _sw_pruefen(_sw_ablauf(s, web, neu_web, browser), s)
+engine/tests/test_bilder_eigen.py:1502: in _sw_pruefen
+    assert not maengel, (f"{'; '.join(maengel)} | vorher={e['vorher']} nachher={e['nachher']}"
+E   AssertionError: vor dem neuen Stand kein aktiver Worker oder schon ein wartender; kein wartender neuer Worker; alter Worker nicht mehr aktiv; Bild noch im Speicher | vorher=2 nachher=2 | Fehler von update(): None | Anstöße: None | Zustände: {} | Anfragen an sw.js: [200, 304, 304]
+E   assert not ['vor dem neuen Stand kein aktiver Worker oder schon ein wartender', 'kein wartender neuer Worker', 'alter Worker nicht mehr aktiv', 'Bild noch im Speicher']
+============================= slowest 12 durations =============================
+11.54s call     engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium]
+11.08s call     engine/tests/test_wackel_654.py::test_sw_einmal_abgebrochen_gruen[chromium]
+11.07s call     engine/tests/test_wackel_654.py::test_sw_ohne_bilder_vergessen_rot[chromium]
+11.06s call     engine/tests/test_wackel_654.py::test_sw_mehrfach_abgebrochen_gruen[chromium]
+11.06s call     engine/tests/test_wackel_654.py::test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium]
+11.06s call     engine/tests/test_wackel_654.py::test_sw_gleiche_aenderungszeit_gruen[chromium]
+8.26s call     engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+1.89s call     engine/tests/test_wackel_654.py::test_sw_sofortige_uebernahme_rot[chromium]
+0.52s setup    engine/tests/test_wackel_654.py::test_sw_einmal_abgebrochen_gruen[chromium]
+0.52s call     engine/tests/test_wackel_654.py::test_server_queue_nocache_kein_304
+0.03s setup    engine/tests/test_wackel_654.py::test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium]
+0.03s setup    engine/tests/test_wackel_654.py::test_sw_ohne_bilder_vergessen_rot[chromium]
+=========================== short test summary info ============================
+FAILED engine/tests/test_wackel_654.py::test_sw_einmal_abgebrochen_gruen[chromium]
+FAILED engine/tests/test_wackel_654.py::test_sw_mehrfach_abgebrochen_gruen[chromium]
+FAILED engine/tests/test_wackel_654.py::test_sw_gleiche_aenderungszeit_gruen[chromium]
+FAILED engine/tests/test_wackel_654.py::test_sw_dauerhaft_abgebrochen_rot_mit_grund[chromium]
+FAILED engine/tests/test_wackel_654.py::test_sw_ohne_bilder_vergessen_rot[chromium]
+FAILED engine/tests/test_wackel_654.py::test_sw_sofortige_uebernahme_rot[chromium]
+FAILED engine/tests/test_wackel_654.py::test_server_queue_nocache_kein_304 - ...
+FAILED engine/tests/test_bilder_eigen.py::test_browser_service_worker_vergisst_geloeschtes_bild[chromium]
+============ 8 failed, 1 passed, 86 deselected in 78.58s (0:01:18) =============

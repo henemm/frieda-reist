@@ -1372,16 +1372,50 @@ def _quelle(tmp_path, entfernt=False):
 
 
 class _Server:
-    def __init__(self, ordner):
+    """Testserver der beiden Browsertests mit Protokoll der Anfragen [(Pfad, Status)]. Einspielbare Fehler für die Nachweise
+    (test_wackel_654.py), beide erst ab dem neuen Stand von neuer_stand_von (die sw.js dort hat anderen Inhalt als beim Start):
+    abbrechen: so viele Abrufe von sw.js enden ohne Antwort; zeit_behalten: die neue sw.js trägt die Änderungszeit der alten."""
+
+    def __init__(self, ordner, neuer_stand_von=None, abbrechen=0, zeit_behalten=False):
         import functools
         import http.server
+
+        self.protokoll = []
+        self.abbrechen = abbrechen
+        sw_datei = Path(neuer_stand_von) / "sw.js" if neuer_stand_von else None
+        inhalt, zeit = (sw_datei.read_bytes(), sw_datei.stat().st_mtime_ns) if sw_datei else (None, None)
+        sperre = threading.Lock()
+        server = self
+
+        def neuer_stand():
+            return sw_datei is not None and sw_datei.exists() and sw_datei.read_bytes() != inhalt
 
         class Handler(http.server.SimpleHTTPRequestHandler):
             def log_message(self, *a):
                 pass
+
+            def log_request(self, code="-", size="-"):
+                server.protokoll.append((self.path.split("?")[0], int(code)))
+
+            def do_GET(self):
+                if self.path.split("?")[0].endswith("/sw.js") and neuer_stand():
+                    with sperre:
+                        ab = server.abbrechen > 0
+                        server.abbrechen -= ab
+                    if ab:
+                        server.protokoll.append((self.path.split("?")[0], "abgebrochen"))
+                        self.close_connection = True   # keine Antwort
+                        return
+                    if zeit_behalten:
+                        os.utime(sw_datei, ns=(zeit, zeit))
+                super().do_GET()
         self.s = ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(ordner)))
         threading.Thread(target=self.s.serve_forever, daemon=True).start()
         self.basis = f"http://127.0.0.1:{self.s.server_address[1]}"
+
+    def anfragen(self, datei):
+        """Status aller Anfragen an diese Datei, in der Reihenfolge."""
+        return [status for pfad, status in self.protokoll if pfad.endswith("/" + datei)]
 
     def __enter__(self):
         return self
@@ -1440,6 +1474,36 @@ def test_browser_hochladen_hinweis_nennung_und_loeschen(tmp_path, browser):
     assert a["stadt"]["knopfHochladen"], a["stadt"]
 
 
+def _sw_ablauf(server, web, neu_web, browser, frist_ms=20000):
+    """Service Worker (#654): Seite laden, neuen Stand hinlegen, Update anstoßen, zählen. Ausgabe des Messskripts: fehler, vorher,
+    nachher, updateFehler (Texte der gescheiterten Anstöße), anstoesse, dauerMs (Anstoß bis zum Zählen) und zustaende: je „vorher“
+    (vor dem neuen Stand) und „nachher“ installing, waiting und active der Registrierung (Version des Workers oder null)."""
+    # Service Worker nur auf https oder localhost (vorlage.html)
+    basis = server.basis.replace("127.0.0.1", "localhost")
+    return _node(["sw", basis + "/beispiel/", str(web / "beispiel"), str(neu_web / "beispiel"), "BI-90-", str(frist_ms)], browser)
+
+
+def _sw_pruefen(e, server):
+    """AC-15: Der neue Worker ist installiert und wartet, der alte ist noch aktiv (sonst räumte activate den alten Speicher ab),
+    und trotzdem ist das Bild weg. Sonst AssertionError mit allen Mängeln und der Diagnose."""
+    z = e.get("zustaende") or {}
+    vor, nach = z.get("vorher") or {}, z.get("nachher") or {}
+    maengel = [f"Fehler der Seite: {e['fehler']}"] if e["fehler"] else []
+    if not e["vorher"] > 0:
+        maengel.append("Bild lag vorher nicht im Speicher")
+    if not vor.get("active") or vor.get("waiting"):
+        maengel.append("vor dem neuen Stand kein aktiver Worker oder schon ein wartender")
+    if not nach.get("waiting") or nach["waiting"] == vor.get("active"):
+        maengel.append("kein wartender neuer Worker")
+    if not nach.get("active") or nach["active"] != vor.get("active"):
+        maengel.append("alter Worker nicht mehr aktiv")
+    if e["nachher"] != 0:
+        maengel.append("Bild noch im Speicher")
+    assert not maengel, (f"{'; '.join(maengel)} | vorher={e['vorher']} nachher={e['nachher']}"
+                         f" | Fehler von update(): {e.get('updateFehler')} | Anstöße: {e.get('anstoesse')}"
+                         f" | Zustände: {z} | Anfragen an sw.js: {server.anfragen('sw.js')}")
+
+
 @pytest.mark.parametrize("browser", ["chromium", "webkit"])
 def test_browser_service_worker_vergisst_geloeschtes_bild(tmp_path, browser):
     """AC-15: Liegt ein gelöschtes Bild im Speicher des Service Workers, ist es nach dem nächsten Laden der Seite weg."""
@@ -1448,9 +1512,4 @@ def test_browser_service_worker_vergisst_geloeschtes_bild(tmp_path, browser):
     bauen.bauen(_quelle(tmp_path), web / "beispiel")
     bauen.bauen(_quelle(tmp_path, entfernt=True), neu_web / "beispiel")
     with _Server(web) as s:
-        # Service Worker nur auf https oder localhost (vorlage.html)
-        basis = s.basis.replace("127.0.0.1", "localhost")
-        e = _node(["sw", basis + "/beispiel/", str(web / "beispiel"), str(neu_web / "beispiel"), "BI-90-"], browser)
-    assert e["fehler"] == [], e["fehler"]
-    assert e["vorher"] > 0, e
-    assert e["nachher"] == 0, e
+        _sw_pruefen(_sw_ablauf(s, web, neu_web, browser), s)
