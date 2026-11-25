@@ -1,0 +1,66 @@
+== Lauf 1 (Test vor der Änderung, Faden vor mkdir angehalten)
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 160 items / 156 deselected / 4 selected
+
+engine/tests/test_vorher656.py Done kartenpunkte_holen 200 in 0.9 s
+.Rejected kartenpunkte_holen 422: Der OpenStreetMap-Dienst (Overpass) hat nicht geantwortet (URLError). Bitte später noch einmal; nichts wurde geändert.
+Done kartenpunkte_holen 422 in 0.2 s
+.Timeout kartenpunkte_holen 504: aborted, not saved
+Done kartenpunkte_holen 504 in 0.2 s
+.SPUR test_kartenpunkte_vorab_ordner0 ['angehalten', 'weiter', 'angelegt'] ['tmp-osm']
+F
+
+=================================== FAILURES ===================================
+E   FileExistsError: [Errno 17] File exists: '<tmp>/pytest-of-<benutzer>/pytest-1764/test_kartenpunkte_vorab_ordner0/tmp-osm'
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1311: FileExistsError: [Errno 17] File exists: '<tmp>/pytest-of-<benutzer>/pytest-1764/test_kartenpunkte_vorab_ordner0/tmp-osm'
+=========================== short test summary info ============================
+FAILED engine/tests/test_vorher656.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ausnahme]
+================= 1 failed, 3 passed, 156 deselected in 2.23s ==================
+== Lauf 2 (Test vor der Änderung, Faden vor mkdir angehalten)
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 160 items / 156 deselected / 4 selected
+
+engine/tests/test_vorher656.py Done kartenpunkte_holen 200 in 0.9 s
+.Rejected kartenpunkte_holen 422: Der OpenStreetMap-Dienst (Overpass) hat nicht geantwortet (URLError). Bitte später noch einmal; nichts wurde geändert.
+Done kartenpunkte_holen 422 in 0.1 s
+.Timeout kartenpunkte_holen 504: aborted, not saved
+Done kartenpunkte_holen 504 in 0.2 s
+.SPUR test_kartenpunkte_vorab_ordner0 ['angehalten', 'weiter', 'angelegt'] ['tmp-osm']
+F
+
+=================================== FAILURES ===================================
+E   FileExistsError: [Errno 17] File exists: '<tmp>/pytest-of-<benutzer>/pytest-1765/test_kartenpunkte_vorab_ordner0/tmp-osm'
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1311: FileExistsError: [Errno 17] File exists: '<tmp>/pytest-of-<benutzer>/pytest-1765/test_kartenpunkte_vorab_ordner0/tmp-osm'
+=========================== short test summary info ============================
+FAILED engine/tests/test_vorher656.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ausnahme]
+================= 1 failed, 3 passed, 156 deselected in 1.88s ==================
+== Lauf 3 (Test vor der Änderung, Faden vor mkdir angehalten)
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0
+rootdir: .
+configfile: pytest.ini
+plugins: xdist-3.8.0
+collected 160 items / 156 deselected / 4 selected
+
+engine/tests/test_vorher656.py Done kartenpunkte_holen 200 in 0.8 s
+.Rejected kartenpunkte_holen 422: Der OpenStreetMap-Dienst (Overpass) hat nicht geantwortet (URLError). Bitte später noch einmal; nichts wurde geändert.
+Done kartenpunkte_holen 422 in 0.1 s
+.Timeout kartenpunkte_holen 504: aborted, not saved
+Done kartenpunkte_holen 504 in 0.2 s
+.SPUR test_kartenpunkte_vorab_ordner0 ['angehalten', 'weiter', 'angelegt'] ['tmp-osm']
+F
+
+=================================== FAILURES ===================================
+E   FileExistsError: [Errno 17] File exists: '<tmp>/pytest-of-<benutzer>/pytest-1766/test_kartenpunkte_vorab_ordner0/tmp-osm'
+/opt/homebrew/Cellar/python@3.12/3.12.15/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1311: FileExistsError: [Errno 17] File exists: '<tmp>/pytest-of-<benutzer>/pytest-1766/test_kartenpunkte_vorab_ordner0/tmp-osm'
+=========================== short test summary info ============================
+FAILED engine/tests/test_vorher656.py::test_kartenpunkte_vorab_ordner_wird_immer_geloescht[ausnahme]
+================= 1 failed, 3 passed, 156 deselected in 1.86s ==================

@@ -4,6 +4,7 @@ Aufbau (#557: nur noch der Reisespeicher): ein Bauordner ohne Reisen und der Rei
 Beispielreise. Die Schreiber der Tests holen vor jedem Schreibvorgang den neuesten Stand aus dem Speicher in ihre
 Arbeitskopie (wie vorgang_speicher im Dienst, nur im Testprozess). Veröffentlichen ist ein Stummel, der nur festhält, dass
 er gerufen wurde. „Auf main“ heißt hier: im neuesten Stand im Reisespeicher."""
+import contextlib
 import datetime
 import json
 import re
@@ -2515,6 +2516,12 @@ def osm_ersatz(monkeypatch, reise="beispielreise", elemente=(OSM_NAH, OSM_QUELLE
     return aufrufe
 
 
+@contextlib.contextmanager
+def faeden_abwarten(frist=30):
+    """RED (#656): noch ohne Wirkung."""
+    yield
+
+
 def env_mitschneiden(monkeypatch):
     """Zeichnet die Umgebung jedes Unterprozesses `anwenden` auf und lässt ihn laufen -> Liste der Umgebungen."""
     original, umgebungen = sb.befehl_mit_frist, []
@@ -2734,10 +2741,71 @@ def test_kartenpunkte_vorab_nur_aus_eigener_datei(repo, monkeypatch, tmp_path):
     assert eigene == [sb.OSM_ZEIT] * 4
 
 
+def test_faeden_abwarten_bis_zum_ende():
+    """#656 AC-2: Der Block endet erst, wenn auch ein Faden geendet hat, der eine Weile braucht (und der, den dieser startet)."""
+    import time
+    geendet = []
+
+    def spaet():
+        time.sleep(0.3)
+        geendet.append("zweiter")
+
+    def lang():
+        time.sleep(0.3)
+        threading.Thread(target=spaet, daemon=True).start()
+        geendet.append("erster")
+    with faeden_abwarten():
+        threading.Thread(target=lang, daemon=True).start()
+    assert geendet == ["erster", "zweiter"]
+
+
+def test_faeden_abwarten_nennt_haengenden_faden():
+    """#656 AC-3: Endet ein Faden nicht in der Zeitgrenze, nennt die Meldung seinen Namen; Fäden von vorher zählen nicht."""
+    schluss = threading.Event()
+    vorher = threading.Thread(target=schluss.wait, args=(30,), name="faden-von-vorher", daemon=True)
+    vorher.start()
+    faden = threading.Thread(target=schluss.wait, args=(30,), name="faden-haengt", daemon=True)
+    try:
+        with pytest.raises(AssertionError, match="faden-haengt") as e:
+            with faeden_abwarten(frist=0.2):
+                faden.start()
+        assert "faden-von-vorher" not in str(e.value)
+    finally:
+        schluss.set()
+
+
+def test_faeden_abwarten_auch_nach_fehler():
+    """#656 AC-4: Scheitert eine Prüfung im Block, wird trotzdem gewartet; gemeldet wird der ursprüngliche Fehler, auch wenn
+    danach noch ein Faden hängt."""
+    import time
+    schluss, geendet = threading.Event(), []
+
+    def kurz():
+        time.sleep(0.3)
+        geendet.append(1)
+    with pytest.raises(ValueError, match="aus dem Block"):
+        with faeden_abwarten():
+            threading.Thread(target=kurz, daemon=True).start()
+            raise ValueError("aus dem Block")
+    assert geendet == [1]
+    haengt = threading.Thread(target=schluss.wait, args=(30,), name="faden-haengt", daemon=True)
+    try:
+        with pytest.raises(ValueError, match="aus dem Block") as e:
+            with faeden_abwarten(frist=0.2):
+                haengt.start()
+                raise ValueError("aus dem Block")
+        assert any("faden-haengt" in n for n in getattr(e.value, "__notes__", [])), "der hängende Faden steht als Zusatz am Fehler"
+    finally:
+        schluss.set()
+
+
 @pytest.mark.parametrize("ausgang", ["erfolg", "ablehnung", "frist", "ausnahme"])
 def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_path, ausgang):
-    """AC-8: Der Ordner frieda-osm-* des Vorab-Abrufs ist nach jedem Ausgang des Vorgangs weg."""
+    """AC-8: Der Ordner frieda-osm-* des Vorab-Abrufs ist nach jedem Ausgang des Vorgangs weg. #656: Im Fall frist exportiert der
+    Faden erst nach der Antwort 504 und legt dabei fehlende Elternordner wieder an; der Test wartet ihn ab, sonst bekäme der
+    nächste Fall (gleicher gekürzter Name von tmp_path) ein tmp-osm, das schon da ist."""
     import tempfile
+    import time
     wurzel, _, arbeit, _ = repo
     tmp = tmp_path / "tmp-osm"
     tmp.mkdir()
@@ -2746,12 +2814,32 @@ def test_kartenpunkte_vorab_ordner_wird_immer_geloescht(repo, monkeypatch, tmp_p
     fehler = {"ablehnung": sb.Ablehnung("schreiben.kartenpunkte.dienst", w1="URLError"),
               "ausnahme": RuntimeError("unerwartet")}.get(ausgang)
     osm_ersatz(monkeypatch, fehler=fehler, beim_abruf=lambda: gesehen.extend(tmp.glob("frieda-osm-*")))
+    beantwortet, begonnen, geendet, original = threading.Event(), [], [], _rs().exportieren
+
+    def nach_der_antwort(reise, ziel, *a, **k):
+        if "frieda-schreiben-" not in str(ziel):
+            return original(reise, ziel, *a, **k)
+        assert beantwortet.wait(20)
+        time.sleep(0.3)                       # ohne das Abwarten wäre der Test hier sicher schon vorbei
+        begonnen.append(1)
+        try:
+            return original(reise, ziel, *a, **k)
+        finally:
+            geendet.append(1)
     if ausgang == "frist":
         monkeypatch.setattr(sb, "ZEIT_GESAMT", 0.01)
-    code, _ = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
-    assert gesehen, "der Vorab-Abruf legt seinen Ordner mit tempfile.mkdtemp(prefix='frieda-osm-') an"
-    assert {"erfolg": 200, "ablehnung": 422, "frist": 504}.get(ausgang, code) == code
-    assert list(tmp.glob("frieda-osm-*")) == []
+        monkeypatch.setattr(_rs(), "exportieren", nach_der_antwort)
+    with faeden_abwarten():
+        try:
+            code, _ = sb.anwenden_extern(sb.Schreiber(wurzel, arbeit), "beispielreise", "kartenpunkte_holen", {**IDA, "args": KARTENPUNKTE})
+            assert begonnen == []
+        finally:
+            beantwortet.set()
+        assert gesehen, "der Vorab-Abruf legt seinen Ordner mit tempfile.mkdtemp(prefix='frieda-osm-') an"
+        assert {"erfolg": 200, "ablehnung": 422, "frist": 504}.get(ausgang, code) == code
+        assert list(tmp.glob("frieda-osm-*")) == []
+    assert begonnen == geendet == ([1] if ausgang == "frist" else [])
+    assert list(tmp.iterdir()) == []
 
 
 def test_kartenpunkte_vorab_ordner_auch_nach_zu_langer_vorbereitung_weg(repo, monkeypatch, tmp_path, capsys):
