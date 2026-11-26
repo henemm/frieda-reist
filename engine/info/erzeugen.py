@@ -52,6 +52,7 @@ BILDER = {
     "mitreisende": {"reise": "beispielreise", "hash": "", "ziel": ".mitreisende"},
     "etappe": {"reise": "beispielreise", "hash": "E-02"},
     "kalender": {"reise": "beispielreise", "hash": "", "ziel": ".reise-tage > .chips"},
+    "fuss": {"reise": "beispielreise", "hash": "", "ziel": "#fuss"},
 }
 BREITE, HOEHE = 585, 1050   # Pixel der Dateien (390 × 700 CSS-Pixel in anderthalbfacher Dichte); die Infoseite rechnet damit
 
