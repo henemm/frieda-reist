@@ -3877,7 +3877,7 @@ TEXTE = {
     "info.bereich.reiseseite.wie.5.titel": "Anmerken",
     "info.bereich.reiseseite.wie.5.text": "An jeder Stelle sitzt eine kleine Sprechblase. Ein Tipp öffnet die bisherigen Rückmeldungen und ein Feld für deine. Ist die Blase grün gefüllt, gibt es schon Rückmeldungen; eine Zahl daran heißt: noch offen.",
     "info.bereich.reiseseite.wie.6.titel": "Ohne Netz und als App",
-    "info.bereich.reiseseite.wie.6.text": "Beim ersten Öffnen speichert die Seite alles Nötige auf dem Gerät, auch die Karte. Ohne Netz steht oben „Ohne Netz: gespeicherter Stand“; Rückmeldungen und Wünsche schickt sie, sobald wieder Netz da ist. Über „Teilen“ und „Zum Home-Bildschirm“ liegt die Reise mit eigenem Symbol neben deinen Apps.",
+    "info.bereich.reiseseite.wie.6.text": "Beim ersten Öffnen speichert die Seite alles Nötige auf dem Gerät, auch die Karte. Ohne Netz steht oben „Ohne Netz: gespeicherter Stand“; Rückmeldungen und Wünsche schickt sie, sobald wieder Netz da ist. Über „Teilen“ und „Zum Home-Bildschirm“ liegt die Reise mit eigenem Symbol auf deinem Home-Bildschirm.",
     "info.bereich.reiseseite.wie.7.titel": "Neuer Stand",
     "info.bereich.reiseseite.wie.7.text": "Gibt es eine neuere Fassung der Reise, erscheint oben „Neu: Aktualisieren“. Erst dein Tipp übernimmt sie, damit sich nichts verschiebt, während du liest.",
     "info.bereich.reiseseite.gespraech.einleitung": "Claude kann die Reiseseite selbst ansehen, bevor es dir sagt, wo etwas steht oder wie es aussieht.",
