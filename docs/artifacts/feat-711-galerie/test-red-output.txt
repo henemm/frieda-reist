@@ -1,0 +1,274 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFFFFFFFF                                                              [100%]
+=================================== FAILURES ===================================
+____________________ test_texte_und_bilder_jeder_unterseite ____________________
+[gw3] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+    def test_texte_und_bilder_jeder_unterseite():
+        """AC-10: jede Unterseite hat ihre Texte in jeder Sprache; jedes Bild gibt es für Deutsch und Englisch in den Maßen von
+        erzeugen, und das Skript zum Erzeugen kennt alle Bilder."""
+        from info import erzeugen
+>       alle = set(anmeldung.INFO_BILDER) | {b for s in anmeldung.INFO_UNTERSEITEN.values() for b in s["bilder"]}
+                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'anmeldung' has no attribute 'INFO_UNTERSEITEN'
+
+engine/tests/test_funktionsseiten_711.py:176: AttributeError
+__________________ test_infoseite_fuehrt_zu_allen_funktionen ___________________
+[gw1] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x10a04c860>
+
+    def test_infoseite_fuehrt_zu_allen_funktionen(welt):
+        """AC-6: Die Karte „Was Frieda alles kann“ mit Knopf zur Übersicht ersetzt den Link auf GitHub; der Quellcode bleibt."""
+        import instanz
+        u = welt()
+        for sp in texte.SPRACHEN:
+            t = abruf(f"{u.kurl}/info/?sprache={sp}")[2]
+>           assert '<section class="karte einstieg">' in t and meldet(t, "info.einstieg.titel", sp) and meldet(t, "info.einstieg.text", sp)
+E           assert ('<section class="karte einstieg">' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_funktionsseiten_711.py:76: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+_______________ test_infoseite_hat_die_bildreihe_und_das_skript ________________
+[gw0] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x107788860>
+
+    def test_infoseite_hat_die_bildreihe_und_das_skript(welt):
+        """AC-1: Bildreihe mit Name der Galerie und Texten für das Skript, je Bild die Maße der großen Fassung, Hinweis zum Wischen;
+        das Skript liegt unter /info/, kein Inline-Skript."""
+        u = welt()
+        for sp in texte.SPRACHEN:
+            t = abruf(f"{u.kurl}/?sprache={sp}")[2]
+>           assert '<div class="bilder reihe" data-galerie="' in t, sp
+E           AssertionError: de
+E           assert '<div class="bilder reihe" data-galerie="' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>'
+
+engine/tests/test_funktionsseiten_711.py:48: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+__________________________ test_unterseite_reiseseite __________________________
+[gw2] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x109568860>
+
+    def test_unterseite_reiseseite(welt):
+        """AC-8: die Muster-Unterseite mit allen Abschnitten aus dem Katalog, Bildern in der Sprache der Seite und „Siehe auch“
+        ohne kaputte Links."""
+        u = welt()
+>       seite = anmeldung.INFO_UNTERSEITEN["reiseseite"]
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'anmeldung' has no attribute 'INFO_UNTERSEITEN'
+
+engine/tests/test_funktionsseiten_711.py:120: AttributeError
+______________________ test_galerie_im_browser[/info/-de] ______________________
+[gw3] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x10bfac040>, sp = 'de', pfad = '/info/'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("sp", list(texte.ERSTE))
+    @pytest.mark.parametrize("pfad", ["/info/", f"{UEBERSICHT}reiseseite/"])
+    def test_galerie_im_browser(welt, sp, pfad):
+        """AC-3, AC-4, AC-5: Reihe am Handy wischbar mit Hinweis, am Rechner in einer Zeile; die Großansicht zeigt das angetippte
+        Bild, die Unterschrift im undurchsichtigen Streifen unter dem Bild und den Zähler, blättert und schließt; Blättern sofort
+        beim Öffnen (#706) wirft keinen Fehler, der Streifen passt danach zum gezeigten Bild."""
+        u = welt()
+        r = subprocess.run(["node", str(HIER / "info_galerie_711.mjs"), str(PLAYWRIGHT), f"{u.kurl}{pfad}?sprache={sp}",
+                            text("info.galerie.zaehler", sp)], capture_output=True, text=True, timeout=180)
+>       assert r.returncode == 0, r.stderr[-2000:]
+E       AssertionError: node:internal/modules/run_main:111
+E             triggerUncaughtException(
+E             ^
+E         
+E         page.evaluate: TypeError: Cannot read properties of null (reading 'querySelectorAll')
+E             at eval (eval at evaluate (:302:30), <anonymous>:2:69)
+E             at UtilityScript.evaluate (<anonymous>:304:16)
+E             at UtilityScript.<anonymous> (<anonymous>:1:44)
+E             at <repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21
+E         
+E         Node.js v26.10.0
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '<repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tes.../frieda-reist/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21\n\nNode.js v26.10.0\n").returncode
+
+engine/tests/test_funktionsseiten_711.py:205: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+GET 200
+GET 200
+_______________________ test_uebersicht_alle_funktionen ________________________
+[gw1] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x10a5713a0>
+
+    def test_uebersicht_alle_funktionen(welt):
+        """AC-7: drei Orte, drei Gruppen mit je einer Zeile je Bereich; nur Bereiche mit Unterseite sind Links, die anderen tragen
+        „Seite folgt“; „Wer darf was“ mit den Rollen; Sprachumschalter auf derselben Adresse."""
+        u = welt()
+>       assert len(anmeldung.INFO_ORTE) == 3 and len(anmeldung.INFO_GRUPPEN) == 3 and "reiseseite" in anmeldung.INFO_UNTERSEITEN
+                   ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'anmeldung' has no attribute 'INFO_ORTE'. Did you mean: 'INFO_DATEI'?
+
+engine/tests/test_funktionsseiten_711.py:86: AttributeError
+_____________________ test_skripte_unter_info_ausgeliefert _____________________
+[gw0] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x107cad3a0>
+
+    def test_skripte_unter_info_ausgeliefert(welt):
+        """AC-2: Skript der Galerie und PhotoSwipe-Modul als JavaScript; alles andere unter /info/ bleibt 404."""
+        u = welt()
+        for pfad, quelle in (("/info/galerie.js", ENGINE / "app" / "galerie.js"),
+                             ("/info/photoswipe-5.4.4.esm.min.js", ENGINE / "vendor" / "photoswipe-5.4.4.esm.min.js")):
+            s, art, cache, body = hol(u, pfad)
+>           assert (s, art) == (200, "text/javascript; charset=utf-8") and body == quelle.read_bytes(), pfad
+E           AssertionError: /info/galerie.js
+E           assert ((404, 'applic...harset=utf-8') == (200, 'text/j...harset=utf-8')
+E             
+E             At index 0 diff: 404 != 200
+E             Use -v to get more diff)
+
+engine/tests/test_funktionsseiten_711.py:63: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+________________________ test_wege_der_funktionsseiten _________________________
+[gw2] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x109a8d3a0>
+
+    def test_wege_der_funktionsseiten(welt):
+        """AC-9: ohne Schrägstrich weiter, unbekannter Bereich 404, POST ohne Wirkung zurück; angemeldet Mein Konto im Kopf."""
+        u = welt()
+        for alt, neu in (("/info/funktionen", UEBERSICHT), ("/info/funktionen?sprache=en", f"{UEBERSICHT}?sprache=en"),
+                         ("/info/funktionen/reiseseite", f"{UEBERSICHT}reiseseite/")):
+            s, h, _ = abruf(f"{u.kurl}{alt}")
+>           assert s == 303 and kopf(h, "Location") == [neu], alt
+E           AssertionError: /info/funktionen
+E           assert (404 == 303)
+
+engine/tests/test_funktionsseiten_711.py:159: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+______________________ test_galerie_im_browser[/info/-en] ______________________
+[gw3] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x10bfac180>, sp = 'en', pfad = '/info/'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("sp", list(texte.ERSTE))
+    @pytest.mark.parametrize("pfad", ["/info/", f"{UEBERSICHT}reiseseite/"])
+    def test_galerie_im_browser(welt, sp, pfad):
+        """AC-3, AC-4, AC-5: Reihe am Handy wischbar mit Hinweis, am Rechner in einer Zeile; die Großansicht zeigt das angetippte
+        Bild, die Unterschrift im undurchsichtigen Streifen unter dem Bild und den Zähler, blättert und schließt; Blättern sofort
+        beim Öffnen (#706) wirft keinen Fehler, der Streifen passt danach zum gezeigten Bild."""
+        u = welt()
+        r = subprocess.run(["node", str(HIER / "info_galerie_711.mjs"), str(PLAYWRIGHT), f"{u.kurl}{pfad}?sprache={sp}",
+                            text("info.galerie.zaehler", sp)], capture_output=True, text=True, timeout=180)
+>       assert r.returncode == 0, r.stderr[-2000:]
+E       AssertionError: node:internal/modules/run_main:111
+E             triggerUncaughtException(
+E             ^
+E         
+E         page.evaluate: TypeError: Cannot read properties of null (reading 'querySelectorAll')
+E             at eval (eval at evaluate (:302:30), <anonymous>:2:69)
+E             at UtilityScript.evaluate (<anonymous>:304:16)
+E             at UtilityScript.<anonymous> (<anonymous>:1:44)
+E             at <repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21
+E         
+E         Node.js v26.10.0
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '<repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tes.../frieda-reist/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21\n\nNode.js v26.10.0\n").returncode
+
+engine/tests/test_funktionsseiten_711.py:205: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+GET 200
+GET 200
+___________ test_galerie_im_browser[/info/funktionen/reiseseite/-en] ___________
+[gw0] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x107788720>, sp = 'en'
+pfad = '/info/funktionen/reiseseite/'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("sp", list(texte.ERSTE))
+    @pytest.mark.parametrize("pfad", ["/info/", f"{UEBERSICHT}reiseseite/"])
+    def test_galerie_im_browser(welt, sp, pfad):
+        """AC-3, AC-4, AC-5: Reihe am Handy wischbar mit Hinweis, am Rechner in einer Zeile; die Großansicht zeigt das angetippte
+        Bild, die Unterschrift im undurchsichtigen Streifen unter dem Bild und den Zähler, blättert und schließt; Blättern sofort
+        beim Öffnen (#706) wirft keinen Fehler, der Streifen passt danach zum gezeigten Bild."""
+        u = welt()
+        r = subprocess.run(["node", str(HIER / "info_galerie_711.mjs"), str(PLAYWRIGHT), f"{u.kurl}{pfad}?sprache={sp}",
+                            text("info.galerie.zaehler", sp)], capture_output=True, text=True, timeout=180)
+>       assert r.returncode == 0, r.stderr[-2000:]
+E       AssertionError: node:internal/modules/run_main:111
+E             triggerUncaughtException(
+E             ^
+E         
+E         page.evaluate: TypeError: Cannot read properties of null (reading 'querySelectorAll')
+E             at eval (eval at evaluate (:302:30), <anonymous>:2:69)
+E             at UtilityScript.evaluate (<anonymous>:304:16)
+E             at UtilityScript.<anonymous> (<anonymous>:1:44)
+E             at <repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21
+E         
+E         Node.js v26.10.0
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '<repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tes.../frieda-reist/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21\n\nNode.js v26.10.0\n").returncode
+
+engine/tests/test_funktionsseiten_711.py:205: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+___________ test_galerie_im_browser[/info/funktionen/reiseseite/-de] ___________
+[gw1] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x10a04c720>, sp = 'de'
+pfad = '/info/funktionen/reiseseite/'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("sp", list(texte.ERSTE))
+    @pytest.mark.parametrize("pfad", ["/info/", f"{UEBERSICHT}reiseseite/"])
+    def test_galerie_im_browser(welt, sp, pfad):
+        """AC-3, AC-4, AC-5: Reihe am Handy wischbar mit Hinweis, am Rechner in einer Zeile; die Großansicht zeigt das angetippte
+        Bild, die Unterschrift im undurchsichtigen Streifen unter dem Bild und den Zähler, blättert und schließt; Blättern sofort
+        beim Öffnen (#706) wirft keinen Fehler, der Streifen passt danach zum gezeigten Bild."""
+        u = welt()
+        r = subprocess.run(["node", str(HIER / "info_galerie_711.mjs"), str(PLAYWRIGHT), f"{u.kurl}{pfad}?sprache={sp}",
+                            text("info.galerie.zaehler", sp)], capture_output=True, text=True, timeout=180)
+>       assert r.returncode == 0, r.stderr[-2000:]
+E       AssertionError: node:internal/modules/run_main:111
+E             triggerUncaughtException(
+E             ^
+E         
+E         page.evaluate: TypeError: Cannot read properties of null (reading 'querySelectorAll')
+E             at eval (eval at evaluate (:302:30), <anonymous>:2:69)
+E             at UtilityScript.evaluate (<anonymous>:304:16)
+E             at UtilityScript.<anonymous> (<anonymous>:1:44)
+E             at <repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21
+E         
+E         Node.js v26.10.0
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['node', '<repo>/.claude/worktrees/agent-a21340a2acce3826b/engine/tes.../frieda-reist/.claude/worktrees/agent-a21340a2acce3826b/engine/tests/info_galerie_711.mjs:27:21\n\nNode.js v26.10.0\n").returncode
+
+engine/tests/test_funktionsseiten_711.py:205: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+=========================== short test summary info ============================
+FAILED engine/tests/test_funktionsseiten_711.py::test_texte_und_bilder_jeder_unterseite
+FAILED engine/tests/test_funktionsseiten_711.py::test_infoseite_fuehrt_zu_allen_funktionen
+FAILED engine/tests/test_funktionsseiten_711.py::test_infoseite_hat_die_bildreihe_und_das_skript
+FAILED engine/tests/test_funktionsseiten_711.py::test_unterseite_reiseseite
+FAILED engine/tests/test_funktionsseiten_711.py::test_galerie_im_browser[/info/-de]
+FAILED engine/tests/test_funktionsseiten_711.py::test_uebersicht_alle_funktionen
+FAILED engine/tests/test_funktionsseiten_711.py::test_skripte_unter_info_ausgeliefert
+FAILED engine/tests/test_funktionsseiten_711.py::test_wege_der_funktionsseiten
+FAILED engine/tests/test_funktionsseiten_711.py::test_galerie_im_browser[/info/-en]
+FAILED engine/tests/test_funktionsseiten_711.py::test_galerie_im_browser[/info/funktionen/reiseseite/-en]
+FAILED engine/tests/test_funktionsseiten_711.py::test_galerie_im_browser[/info/funktionen/reiseseite/-de]
+11 failed in 5.14s

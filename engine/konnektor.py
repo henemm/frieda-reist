@@ -3738,7 +3738,9 @@ class Dienst(BaseHTTPRequestHandler):
             return self._senden(404, {"fehler": "unbekannt"})
         self.send_response(200)
         self.send_header("Content-Type", art)
-        self.send_header("Cache-Control", "no-cache" if pfad in APP_DATEIEN else "public, max-age=86400")
+        # Skripte (Frieda-App, Galerie der Erklärseiten) ohne Zwischenspeicher, damit eine neue Fassung sofort gilt
+        self.send_header("Cache-Control", "no-cache" if pfad in APP_DATEIEN or art.startswith("text/javascript")
+                         else "public, max-age=86400")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -3800,10 +3802,11 @@ class Dienst(BaseHTTPRequestHandler):
             return self._senden(*gesund())
         if self.path.split("?", 1)[0] in FESTE_DATEIEN:
             return self._marke(self.path.split("?", 1)[0])
-        if self.path.split("?", 1)[0].startswith("/info/") and self.path.split("?", 1)[0] != "/info/":
-            # Bilder der Infoseite (#436); welche es gibt, liest der Dienst bei jedem Abruf. /info/ selbst ist die Infoseite (#440)
-            datei = anmeldung.info_datei(self.path.split("?", 1)[0])
-            return self._marke(None, datei, "image/webp") if datei else self._senden(404, {"fehler": "unbekannt"})
+        if self.path.split("?", 1)[0].startswith("/info/") and not anmeldung.ist_unsere(self.path):
+            # Bilder der Infoseite (#436) und Skripte der Galerie (#711); welche es gibt, liest der Dienst bei jedem Abruf.
+            # /info/ selbst ist die Infoseite (#440)
+            gefunden = anmeldung.info_datei(self.path.split("?", 1)[0])
+            return self._marke(None, *gefunden) if gefunden else self._senden(404, {"fehler": "unbekannt"})
         # Die Startseite der Adresse: angemeldet Mein Konto (#41), sonst die Infoseite (#436); POST auf / bleibt unbekannt
         if anmeldung.ist_unsere(self.path) or oauth.ist_unsere(self.path) or self.path.split("?", 1)[0] == "/":
             return self._anmeldung()

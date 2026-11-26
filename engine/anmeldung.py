@@ -179,6 +179,18 @@ ol.erste ol{margin:0;padding-inline-start:1.2rem;display:flex;flex-direction:col
 .sprachen{display:flex;flex-wrap:wrap;gap:0 1rem}.sprachen a{padding:.35rem 0}.sprachen a[aria-current]{color:var(--fg);font-weight:600;text-decoration:none}
 .kopf-rechts{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:0 1.1rem}
 .einstieg{border-inline-start:4px solid var(--acc)}.einstieg h2{margin:0}.einstieg a.knopf{margin:0}
+.bilder.reihe{display:flex;gap:.9rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:.2rem .25rem .6rem;margin:0 -.25rem;scrollbar-width:thin}
+.bilder.reihe figure{flex:0 0 62%;scroll-snap-align:start;min-width:0}.bilder.reihe figure a{position:relative;border-radius:14px}
+.bilder.reihe figure a:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+.lupe{position:absolute;right:.5rem;bottom:.5rem;width:2rem;height:2rem;border-radius:50%;background:rgba(29,36,32,.72);color:#fff;
+display:flex;align-items:center;justify-content:center}.lupe svg{width:1rem;height:1rem}
+.wisch{font-size:.8125rem;color:var(--mut);margin:0 .25rem}
+@media (min-width:640px){.bilder.reihe{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}.bilder.reihe figure{flex:none}
+.wisch{display:none}}
+.unterschrift-streifen{position:absolute;left:0;right:0;bottom:0;min-height:6rem;display:flex;flex-direction:column;justify-content:center;
+padding:1rem max(1rem,env(safe-area-inset-right,0px)) calc(1rem + env(safe-area-inset-bottom,0px)) max(1rem,env(safe-area-inset-left,0px));
+background:#151816;border-top:1px solid rgba(255,255,255,.12);color:#fff;font:1rem/1.4 "Source Sans 3",sans-serif;text-align:center}
+.unterschrift-streifen small{display:block;opacity:.75;font-size:.8125rem;margin-top:.2rem}
 .spalten,.spalte{display:flex;flex-direction:column;gap:1.5rem}
 @media (min-width:760px){main.konto{max-width:72rem;padding:1.75rem 2rem 3rem}
 .spalten{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:2rem;align-items:start}
@@ -190,11 +202,11 @@ def esc(t):
     return html.escape(str(t or ""), quote=True)
 
 
-def seite(titel, *teile, kopf=None, skript=False, breit=False, klasse=""):
+def seite(titel, *teile, kopf=None, skript=False, breit=False, klasse="", galerie=False):
     """Ganze Seite. kopf: eigener Kopf (Mein Konto); sonst Friedas Zeichen mittig über der Karte. Jede Seite trägt das
     Manifest der Frieda-App (Issue #21: ein Symbol auf dem Home-Bildschirm, Start „Mein Konto“, Scope „/“); skript lädt
     engine/app/konto.js (nur Mein Konto: Benachrichtigungen je Gerät, Speichern mit Zustand); breit: Lesespalte der Infoseite (#436);
-    klasse: Klasse von main (konto: zwei Spalten ab Tablet, #441)."""
+    klasse: Klasse von main (konto: zwei Spalten ab Tablet, #441); galerie: Skript und Stile der Großansicht (Erklärseiten, #711)."""
     rumpf = "".join(teile)
     sp = sprache_der_seite()
     klasse = f' class="{esc(klasse or "breit")}"' if breit or klasse else ""
@@ -205,7 +217,8 @@ def seite(titel, *teile, kopf=None, skript=False, breit=False, klasse=""):
             f'<link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/manifest.webmanifest">'
             f'<meta name="apple-mobile-web-app-title" content="Frieda"><meta name="theme-color" content="#f8f8f5">'
             + ('<script src="/konto.js" defer></script>' if skript else "")
-            + f'<title>{esc(titel)} – Frieda</title><style>{CSS}</style></head><body>'
+            + ('<script src="/info/galerie.js" defer></script>' if galerie else "")
+            + f'<title>{esc(titel)} – Frieda</title><style>{CSS}{galerie_stile() if galerie else ""}</style></head><body>'
             f'<main{klasse}>{kopf}{rumpf}</main></body></html>')
 
 
@@ -1304,6 +1317,11 @@ INFO_GESPRAECHE = (("anlegen", ("person", "claude", "person", "claude")),
 INFO_BILDER = ("reise", "tag", "wahl", "packliste")
 INFO = Path(__file__).resolve().parent / "info"
 INFO_DATEI = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*\.webp")
+BILD_MASSE = (585, 1050)    # Pixel der Bilder unter /info/ (engine/info/erzeugen.py, BREITE und HOEHE)
+# Skripte der Erklärseiten unter /info/ (#711): die Galerie (engine/app/) und PhotoSwipe (engine/vendor/, im Dienst daneben)
+INFO_SKRIPTE = {"galerie.js": Path(__file__).resolve().parent / "app" / "galerie.js",
+                "photoswipe-5.4.4.esm.min.js": Path(__file__).resolve().parent / "vendor" / "photoswipe-5.4.4.esm.min.js"}
+GALERIE_STILE = Path(__file__).resolve().parent / "vendor" / "photoswipe-5.4.4.css"
 
 
 def info_bild(name):
@@ -1315,12 +1333,25 @@ def info_bild(name):
 
 
 def info_datei(pfad):
-    """/info/<datei>.webp -> Datei in engine/info/ oder None (nur Bilder dieser Form, kein Weg aus dem Ordner)."""
+    """/info/<datei> -> (Datei, Content-Type) oder None: Bilder dieser Form aus engine/info/ und die festen Skripte (#711), kein
+    Weg aus dem Ordner."""
     name = pfad.removeprefix("/info/")
-    if not pfad.startswith("/info/") or not INFO_DATEI.fullmatch(name):
+    if not pfad.startswith("/info/"):
+        return None
+    if name in INFO_SKRIPTE:
+        return (INFO_SKRIPTE[name], "text/javascript; charset=utf-8") if INFO_SKRIPTE[name].is_file() else None
+    if not INFO_DATEI.fullmatch(name):
         return None
     datei = INFO / name
-    return datei if datei.is_file() else None
+    return (datei, "image/webp") if datei.is_file() else None
+
+
+def galerie_stile():
+    """Stile von PhotoSwipe für die Seite selbst (die CSP der Konnektorseiten lässt nur Stile in der Seite zu)."""
+    try:
+        return GALERIE_STILE.read_text(encoding="utf-8")
+    except OSError:
+        return ""
 
 
 # Bilder der Kacheln auf Mein Konto (#455): /bild/<reise>/BI-NN.webp (kleine Fassung eines aktiven Bildes laut daten.json der gebauten
@@ -1392,6 +1423,26 @@ def info_gespraech(name, folge):
     return karte(f'<div class="gespraech"><h3>{esc(tx(f"info.gespraech.{name}.titel"))}</h3>{blasen}</div>')
 
 
+LUPE = ('<span class="lupe" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
+        'stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></span>')
+
+
+def info_galerie(galerie, bilder, schluessel):
+    """Baustein bildReihe (#711): wischbare Reihe der Bilder mit Unterschrift <schluessel>.<bild>, für die Großansicht
+    (engine/app/galerie.js) mit Name der Galerie und Texten; fehlt ein Bild, entfällt es. "" ohne Bilder."""
+    breite, hoehe = BILD_MASSE
+    figuren = "".join(f'<figure><a href="{esc(b)}" data-breite="{breite}" data-hoehe="{hoehe}"><img src="{esc(b)}" '
+                      f'alt="{esc(tx(f"{schluessel}.{n}"))}" loading="lazy" width="{breite}" height="{hoehe}">{LUPE}</a>'
+                      f'<figcaption>{esc(tx(f"{schluessel}.{n}"))}</figcaption></figure>'
+                      for n in bilder if (b := info_bild(n)))
+    if not figuren:
+        return ""
+    daten = json.dumps({"zaehler": tx("info.galerie.zaehler"), **{k: tx(f"seite.bild.{k}") for k in
+                        ("schliessen", "zoomen", "vorheriges", "naechstes", "ladefehler")}}, ensure_ascii=False)
+    return (f'<div class="bilder reihe" data-galerie="{esc(galerie)}" data-texte="{esc(daten)}">{figuren}</div>'
+            f'<p class="wisch">{esc(tx("info.galerie.wischen"))}</p>')
+
+
 def info_seite(k=None, pfad="/"):
     """Was ist Frieda? Grundprinzipien, Beispiel-Gespräche, Bilder der Reiseseite und die ersten Schritte, mit der Adresse des
     Konnektors dieser Instanz. Die Startseite der Adresse für alle, die nicht angemeldet sind (Product Owner, 9.11.2026), und
@@ -1412,10 +1463,7 @@ def info_seite(k=None, pfad="/"):
     prinzipien = "".join(karte(f'<h3>{esc(tx(f"info.prinzip.{p}.titel"))}</h3><p>{esc(tx(f"info.prinzip.{p}.text"))}</p>')
                          for p in INFO_PRINZIPIEN)
     gespraeche = "".join(info_gespraech(n, f) for n, f in INFO_GESPRAECHE)
-    bilder = "".join(f'<figure><a href="{esc(b)}"><img src="{esc(b)}" alt="{esc(tx("info.bild." + n))}" loading="lazy" width="585" '
-                     'height="1050"></a>'
-                     f'<figcaption>{esc(tx("info.bild." + n))}</figcaption></figure>'
-                     for n in INFO_BILDER if (b := info_bild(n)))
+    bilder = info_galerie(tx("info.bereich.reiseseite.titel"), INFO_BILDER, "info.bild")
     # Adresse des Konnektors dieser Instanz zum Kopieren; ohne eingerichtete Adresse (FR_BASIS) kein leeres Feld
     adresse = (f'<input type="text" readonly aria-label="{esc(tx("konto.verbinden.adresse_label"))}" value="{esc(konten.basis() + "/mcp")}">'
                if konten.basis() else "")
@@ -1436,10 +1484,10 @@ def info_seite(k=None, pfad="/"):
     return seite(tx("info.titel"), oben,
                  abschnitt("info.prinzipien.titel", f'<div class="prinzipien">{prinzipien}</div>', f'<p>{funktionen}</p>'),
                  abschnitt("info.gespraeche.titel", f'<p>{esc(tx("info.gespraeche.einleitung"))}</p>', gespraeche),
-                 abschnitt("info.bilder.titel", f'<p>{esc(tx("info.bilder.einleitung"))}</p>', f'<div class="bilder">{bilder}</div>')
-                 if bilder else "",
+                 abschnitt("info.bilder.titel", f'<p>{esc(tx("info.bilder.einleitung"))}</p>', bilder) if bilder else "",
                  abschnitt("info.schritte.titel", karte(f'<ol class="erste">{schritte}</ol>')),
-                 fuss(roh=(info_sprachen(pfad), fremd(instanz.QUELLCODE, "info.quellcode")), recht=True), kopf=kopf, breit=True)
+                 fuss(roh=(info_sprachen(pfad), fremd(instanz.QUELLCODE, "info.quellcode")), recht=True), kopf=kopf, breit=True,
+                 galerie=bool(bilder))
 
 
 # ---------------------------------------------------------------- Ablauf
