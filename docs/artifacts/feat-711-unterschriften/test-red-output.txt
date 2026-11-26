@@ -1,0 +1,5 @@
+engine/tests/test_funktionsseiten_711.py:240: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_funktionsseiten_711.py::test_unterschriften_nur_das_sichtbare
+FAILED engine/tests/test_funktionsseiten_711.py::test_betrieb_nennt_das_ziel_der_quelle
+2 failed, 25 deselected in 0.09s

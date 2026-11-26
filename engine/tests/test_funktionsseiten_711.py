@@ -223,6 +223,24 @@ def test_unterseiten_konto():
     assert {b for _, liste in anmeldung.INFO_GRUPPEN for b in liste} <= set(anmeldung.INFO_UNTERSEITEN)
 
 
+def test_unterschriften_nur_das_sichtbare():
+    """Die Bilder „Überblick“ und „Tag“ zeigen nur den Anfang ihrer Ansicht (Zähler, Anreise, Karte; Pläne A und B, S-Bahn mit
+    Quelle und Buchung); ihre Unterschriften versprechen nicht mehr (keine Zeitachse aller Tage, keine Pläne, keine Nacht)."""
+    for sp, falsch in (("de", ("zeitachse", "erwogene", "nacht", "jeder angabe")),
+                       ("en", ("timeline and", "as a timeline", "under consideration", "night", "every statement"))):
+        for s in ("info.bereich.reiseseite.bild.reise", "info.bild.reise", "info.bereich.reiseseite.bild.tag", "info.bild.tag"):
+            t = text(s, sp).lower()
+            assert not any(w in t for w in falsch), (sp, s, t)
+        assert all(w in text("info.bild.reise", sp) for w in {"de": ("Karte", "Anreise"), "en": ("map", "arrival")}[sp])
+        assert "S-Bahn" in text("info.bild.tag", sp) and "S-Bahn" in text("info.bereich.reiseseite.bild.tag", sp)
+
+
+def test_betrieb_nennt_das_ziel_der_quelle():
+    """Selbst betreiben: Die Seite einer neuen Reise steht nach höchstens zwei Minuten (Ziel aus docs/betrieb.md)."""
+    assert "höchstens zwei Minuten" in text("info.bereich.betrieb.gespraech.2", "de")
+    assert "two minutes" in text("info.bereich.betrieb.gespraech.2", "en")
+
+
 def test_link_zur_anleitung(welt):
     """Eine Unterseite mit doku verlinkt die Anleitung im Quellcode der Instanz (neues Fenster); die anderen nicht."""
     import instanz
