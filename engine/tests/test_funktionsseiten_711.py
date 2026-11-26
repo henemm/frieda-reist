@@ -210,3 +210,8 @@ def test_uebersicht_an_handy_und_rechner(welt, sp):
 def test_unterseiten_planen():
     """#711, Etappe 2: Die Gruppe „Planen und entscheiden“ bekommt ihre Unterseiten; jede prüft test_unterseite."""
     assert {"wahrheit", "gespraech", "alternativen", "buchungen", "gespraeche", "lebenslauf"} <= set(anmeldung.INFO_UNTERSEITEN)
+
+
+def test_unterseiten_unterwegs():
+    """#711, Etappe 2: Die Gruppe „Unterwegs und gemeinsam“ bekommt ihre Unterseiten; jede prüft test_unterseite."""
+    assert {"karte", "packliste"} <= set(anmeldung.INFO_UNTERSEITEN)

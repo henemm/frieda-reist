@@ -33,7 +33,7 @@ import texte  # noqa: E402
 
 BEISPIELE = WURZEL / "beispiel" / "reisen"
 # Je Bild der Infoseite (anmeldung.INFO_BILDER) und der Funktionsseiten (anmeldung.INFO_UNTERSEITEN, #711): welche
-# Beispielreise und welche Ansicht. Eine neue Unterseite trägt hier ihre neuen Bilder ein.
+# Beispielreise und welche Ansicht (ziel: an diese Stelle gerollt). Eine neue Unterseite trägt hier ihre neuen Bilder ein.
 BILDER = {
     "reise": {"reise": "beispielreise", "hash": ""},
     "tag": {"reise": "beispielreise", "hash": "T-02"},
@@ -46,6 +46,9 @@ BILDER = {
     "bahnbuchung": {"reise": "beispielreise", "hash": "B-02"},
     "zubuchen": {"reise": "beispielreise", "hash": "zu-buchen"},
     "stadt": {"reise": "stadtwochenende", "hash": ""},
+    "karte": {"reise": "beispielreise", "hash": "", "ziel": ".kartenbox"},
+    "lage": {"reise": "beispielreise", "hash": "U-01"},
+    "summen": {"reise": "beispielreise", "hash": "packliste"},
 }
 BREITE, HOEHE = 585, 1050   # Pixel der Dateien (390 × 700 CSS-Pixel in anderthalbfacher Dichte); die Infoseite rechnet damit
 
