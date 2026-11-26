@@ -49,6 +49,8 @@ BILDER = {
     "karte": {"reise": "beispielreise", "hash": "", "ziel": ".kartenbox"},
     "lage": {"reise": "beispielreise", "hash": "U-01"},
     "summen": {"reise": "beispielreise", "hash": "packliste"},
+    "mitreisende": {"reise": "beispielreise", "hash": "", "ziel": ".mitreisende"},
+    "etappe": {"reise": "beispielreise", "hash": "E-02"},
 }
 BREITE, HOEHE = 585, 1050   # Pixel der Dateien (390 × 700 CSS-Pixel in anderthalbfacher Dichte); die Infoseite rechnet damit
 

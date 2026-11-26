@@ -1361,6 +1361,10 @@ INFO_UNTERSEITEN = {
               "siehe": ("reiseseite", "wahrheit", "gespraech", "erinnerungen")},
     "packliste": {"bilder": ("summen", "packliste"), "gespraech": ("person", "claude", "person", "claude"),
                   "siehe": ("wahrheit", "reiseseite", "zusammenarbeit", "gespraech")},
+    "zusammenarbeit": {"bilder": ("mitreisende", "tag"), "gespraech": ("person", "claude", "person", "claude"),
+                       "siehe": ("gespraech", "reiseseite", "erinnerungen", "alternativen")},
+    "bilder": {"bilder": ("ort", "etappe", "lage"), "gespraech": ("person", "claude", "person", "claude"),
+               "siehe": ("reiseseite", "gespraech", "konto", "wahrheit")},
 }
 INFO_WEG = re.compile(r"/info/funktionen(?:/([a-z]+))?(/?)")
 
