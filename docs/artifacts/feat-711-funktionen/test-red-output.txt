@@ -1,0 +1,110 @@
+bringing up nodes...
+bringing up nodes...
+
+FFFFF                                                                    [100%]
+=================================== FAILURES ===================================
+________________________ test_wege_der_funktionsseiten _________________________
+[gw2] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x107bc7420>
+
+    def test_wege_der_funktionsseiten(welt):
+        """Ohne Schrägstrich weiter, ein Bereich ohne Unterseite gibt 404, POST führt ohne Wirkung zurück, HEAD geht; angemeldet
+        Mein Konto im Kopf."""
+        u = welt()
+        for alt, neu in (("/info/funktionen", UEBERSICHT), ("/info/funktionen?sprache=en", f"{UEBERSICHT}?sprache=en"),
+                         ("/info/funktionen/karte", f"{UEBERSICHT}karte/")):
+            s, h, _ = abruf(f"{u.kurl}{alt}")
+>           assert s == 303 and kopf(h, "Location") == [neu], alt
+E           AssertionError: /info/funktionen
+E           assert (404 == 303)
+
+engine/tests/test_funktionsseiten_711.py:88: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+_______________________ test_uebersicht_alle_funktionen ________________________
+[gw1] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x109d5f420>
+
+    def test_uebersicht_alle_funktionen(welt):
+        """AC-7: drei Orte, drei Gruppen mit je einer Zeile je Bereich; nur Bereiche mit Unterseite sind Links, die anderen tragen
+        „Seite folgt“; „Wer darf was“ mit den Rollen; Sprachumschalter auf derselben Adresse."""
+        u = welt()
+>       assert len(anmeldung.INFO_ORTE) == 3 and len(anmeldung.INFO_GRUPPEN) == 3
+                   ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'anmeldung' has no attribute 'INFO_ORTE'. Did you mean: 'INFO_DATEI'?
+
+engine/tests/test_funktionsseiten_711.py:57: AttributeError
+__________________ test_infoseite_fuehrt_zu_allen_funktionen ___________________
+[gw0] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x109f0b380>
+
+    def test_infoseite_fuehrt_zu_allen_funktionen(welt):
+        """AC-6: Die Karte „Was Frieda alles kann“ mit Knopf zur Übersicht ersetzt den Link auf GitHub; der Quellcode bleibt."""
+        import instanz
+        u = welt()
+        for sp in texte.SPRACHEN:
+            t = abruf(f"{u.kurl}/info/?sprache={sp}")[2]
+>           assert '<section class="karte einstieg">' in t and meldet(t, "info.einstieg.titel", sp) and meldet(t, "info.einstieg.text", sp)
+E           assert ('<section class="karte einstieg">' in '<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>')
+
+engine/tests/test_funktionsseiten_711.py:47: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 200
+___________________ test_uebersicht_an_handy_und_rechner[de] ___________________
+[gw3] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x10a3d3420>, sp = 'de'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("sp", list(texte.ERSTE))
+    def test_uebersicht_an_handy_und_rechner(welt, sp):
+        """Am Handy stehen die drei Orte untereinander, am Rechner nebeneinander; jede Zeile ist hoch genug zum Tippen; nirgends
+        seitlicher Überlauf, keine Skriptfehler."""
+        u = welt()
+        r = subprocess.run(["node", "--input-type=module", "-e", MASSE, str(PLAYWRIGHT), f"{u.kurl}{UEBERSICHT}?sprache={sp}"],
+                           capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, r.stderr[-2000:]
+        m = json.loads(r.stdout.strip().splitlines()[-1])
+        assert m["fehler"] == [] and not m["390"]["ueber"] and not m["1280"]["ueber"], m
+>       assert m["390"]["orte"] == 3 and m["1280"]["orte"] == 1, m
+E       AssertionError: {'390': {'ueber': False, 'zeilen': [], 'orte': 0}, '1280': {'ueber': False, 'zeilen': [], 'orte': 0}, 'fehler': []}
+E       assert (0 == 3)
+
+engine/tests/test_funktionsseiten_711.py:132: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+GET 404
+___________________ test_uebersicht_an_handy_und_rechner[en] ___________________
+[gw0] darwin -- Python 3.12.15 <repo>/engine/.venv/bin/python
+
+welt = <function welt.<locals>.neu at 0x109fd4400>, sp = 'en'
+
+    @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
+    @pytest.mark.parametrize("sp", list(texte.ERSTE))
+    def test_uebersicht_an_handy_und_rechner(welt, sp):
+        """Am Handy stehen die drei Orte untereinander, am Rechner nebeneinander; jede Zeile ist hoch genug zum Tippen; nirgends
+        seitlicher Überlauf, keine Skriptfehler."""
+        u = welt()
+        r = subprocess.run(["node", "--input-type=module", "-e", MASSE, str(PLAYWRIGHT), f"{u.kurl}{UEBERSICHT}?sprache={sp}"],
+                           capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, r.stderr[-2000:]
+        m = json.loads(r.stdout.strip().splitlines()[-1])
+        assert m["fehler"] == [] and not m["390"]["ueber"] and not m["1280"]["ueber"], m
+>       assert m["390"]["orte"] == 3 and m["1280"]["orte"] == 1, m
+E       AssertionError: {'390': {'ueber': False, 'zeilen': [], 'orte': 0}, '1280': {'ueber': False, 'zeilen': [], 'orte': 0}, 'fehler': []}
+E       assert (0 == 3)
+
+engine/tests/test_funktionsseiten_711.py:132: AssertionError
+----------------------------- Captured stderr call -----------------------------
+GET 404
+GET 404
+=========================== short test summary info ============================
+FAILED engine/tests/test_funktionsseiten_711.py::test_wege_der_funktionsseiten
+FAILED engine/tests/test_funktionsseiten_711.py::test_uebersicht_alle_funktionen
+FAILED engine/tests/test_funktionsseiten_711.py::test_infoseite_fuehrt_zu_allen_funktionen
+FAILED engine/tests/test_funktionsseiten_711.py::test_uebersicht_an_handy_und_rechner[de]
+FAILED engine/tests/test_funktionsseiten_711.py::test_uebersicht_an_handy_und_rechner[en]
+5 failed in 3.49s

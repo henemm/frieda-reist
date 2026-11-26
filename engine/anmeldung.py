@@ -191,6 +191,9 @@ display:flex;align-items:center;justify-content:center}.lupe svg{width:1rem;heig
 padding:1rem max(1rem,env(safe-area-inset-right,0px)) calc(1rem + env(safe-area-inset-bottom,0px)) max(1rem,env(safe-area-inset-left,0px));
 background:#151816;border-top:1px solid rgba(255,255,255,.12);color:#fff;font:1rem/1.4 "Source Sans 3",sans-serif;text-align:center}
 .unterschrift-streifen small{display:block;opacity:.75;font-size:.8125rem;margin-top:.2rem}
+.zeile .unter{color:var(--mut);font-size:.9375rem}
+.prinzipien.orte{grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))}
+.gruppe{margin:0 .25rem;font-size:.8125rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
 .spalten,.spalte{display:flex;flex-direction:column;gap:1.5rem}
 @media (min-width:760px){main.konto{max-width:72rem;padding:1.75rem 2rem 3rem}
 .spalten{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:2rem;align-items:start}
@@ -1323,6 +1326,17 @@ INFO_SKRIPTE = {"galerie.js": Path(__file__).resolve().parent / "app" / "galerie
                 "photoswipe-5.4.4.esm.min.js": Path(__file__).resolve().parent / "vendor" / "photoswipe-5.4.4.esm.min.js"}
 GALERIE_STILE = Path(__file__).resolve().parent / "vendor" / "photoswipe-5.4.4.css"
 
+# Funktionsseiten unter /info/funktionen/ (#711). Die Übersicht: drei Orte, Gruppen mit ihren Bereichen, Rollen; Texte unter
+# info.ort.<o>.…, info.gruppe.<g>, info.bereich.<b>.titel und .satz, info.rolle.<r>.…
+INFO_ORTE = ("gespraech", "seite", "konto")
+INFO_GRUPPEN = (("planen", ("wahrheit", "gespraech", "gespraeche", "alternativen", "buchungen", "lebenslauf")),
+                ("unterwegs", ("reiseseite", "karte", "zusammenarbeit", "packliste", "bilder", "erinnerungen")),
+                ("konto", ("konto", "sprachen", "betrieb")))
+INFO_ROLLEN = ("gast", "mitwirkend", "organisierend")
+# Bereiche mit eigener Unterseite /info/funktionen/<bereich>/ (Form: docs/design.md, Abschnitt Funktionsseiten)
+INFO_UNTERSEITEN = {}
+INFO_WEG = re.compile(r"/info/funktionen(?:/([a-z]+))?(/?)")
+
 
 def info_bild(name):
     """Pfad des Bilds name in der Sprache der Seite (ersatzweise in der Vorgabe) oder None."""
@@ -1443,21 +1457,35 @@ def info_galerie(galerie, bilder, schluessel):
             f'<p class="wisch">{esc(tx("info.galerie.wischen"))}</p>')
 
 
+def info_abschnitt(titel, *inhalt):
+    return f'<section class="abschnitt"><h2>{esc(tx(titel))}</h2>{"".join(inhalt)}</section>'
+
+
+def info_kopf(k):
+    ziel, schluessel = ("/konto", "info.mein_konto") if k else ("/anmelden", "info.anmelden")
+    return (f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span>'
+            f'<a class="kopf-link" href="{ziel}">{esc(tx(schluessel))}</a></header>')
+
+
+def info_fuss(pfad):
+    """Fuß der Erklärseiten: Sprachen, Quellcode (instanz.QUELLCODE, neues Fenster, #677) und die Rechtszeile."""
+    quellcode = f'<a href="{esc(instanz.QUELLCODE)}" target="_blank" rel="noopener">{esc(tx("info.quellcode"))}</a>'
+    return fuss(roh=(info_sprachen(pfad), quellcode), recht=True)
+
+
 def info_seite(k=None, pfad="/"):
-    """Was ist Frieda? Grundprinzipien, Beispiel-Gespräche, Bilder der Reiseseite und die ersten Schritte, mit der Adresse des
-    Konnektors dieser Instanz. Die Startseite der Adresse für alle, die nicht angemeldet sind (Product Owner, 9.11.2026), und
-    unter /info/ für alle, auch angemeldet als Einstiegshilfe (#440). k: angemeldetes Konto, dann führen Kopf und Knopf zu Mein
-    Konto statt zu Anmelden und Warteliste. pfad: Adresse der Seite für den Sprachumschalter."""
+    """Was ist Frieda? Grundprinzipien, Bilder der Reiseseite als Galerie, der Weg zu allen Funktionen, Beispiel-Gespräche und
+    die ersten Schritte, mit der Adresse des Konnektors dieser Instanz. Die Startseite der Adresse für alle, die nicht
+    angemeldet sind (Product Owner, 9.11.2026), und unter /info/ für alle, auch angemeldet als Einstiegshilfe (#440). k:
+    angemeldetes Konto, dann führen Kopf und Knopf zu Mein Konto statt zu Anmelden und Warteliste. pfad: Adresse der Seite für
+    den Sprachumschalter."""
     if k:
-        kopf_link = f'<a class="kopf-link" href="/konto">{esc(tx("info.mein_konto"))}</a>'
         knoepfe = f'<a class="knopf" href="/konto">{esc(tx("info.zu_reisen"))}</a>'
         satz = tx("info.angemeldet_als", name=k["name"])
     else:
-        kopf_link = f'<a class="kopf-link" href="/anmelden">{esc(tx("info.anmelden"))}</a>'
         knoepfe = (f'<a class="knopf" href="/anmelden">{esc(tx("info.anmelden"))}</a>'
                    f'<a class="knopf leise" href="/warteliste">{esc(tx("info.warteliste"))}</a>')
         satz = tx("info.schon_dabei")
-    kopf = f'<header class="kopf breit"><span><img src="/favicon.svg" alt="">Frieda</span>{kopf_link}</header>'
     oben = karte(f'<div><h1>{esc(tx("info.ueberschrift"))}</h1>', f'<p class="lead">{esc(tx("info.lead"))}</p></div>',
                  f'<div class="knoepfe">{knoepfe}</div>', f'<p class="klein">{esc(satz)}</p>')
     prinzipien = "".join(karte(f'<h3>{esc(tx(f"info.prinzip.{p}.titel"))}</h3><p>{esc(tx(f"info.prinzip.{p}.text"))}</p>')
@@ -1475,19 +1503,53 @@ def info_seite(k=None, pfad="/"):
         schritt("verbinden", f'<ol>{verbinden}</ol><p class="klein">{esc(tx("konto.verbinden.bezahlt"))}</p>'),
         schritt("loslegen", f'<p>{esc(tx("info.schritt.loslegen.text"))}</p>'),
         schritt("seite", f'<p>{esc(tx("info.schritt.seite.text"))}</p><p class="klein">{esc(tx("konto.anmelden.nur_lesen"))}</p>')))
-    abschnitt = lambda titel, *inhalt: f'<section class="abschnitt"><h2>{esc(tx(titel))}</h2>{"".join(inhalt)}</section>'   # noqa: E731
-    # Öffentliche Funktionsübersicht und Quellcode (#677), Adressen aus instanz.QUELLCODE, in neuem Fenster
-    fremd = lambda adresse, schluessel: (f'<a href="{esc(adresse)}" target="_blank" rel="noopener">'   # noqa: E731
-                                         f'{esc(tx(schluessel))}</a>')
-    funktionen = th("info.funktionen.satz",
-                    link=fremd(instanz.quellcode_datei(tx("info.funktionen.datei")), "info.funktionen.link"))
+    # Was Frieda alles kann (#711): der Weg zur Übersicht auf dieser Webseite, statt des Links nach GitHub (#677)
+    einstieg = (f'<section class="karte einstieg"><div><h2>{esc(tx("info.einstieg.titel"))}</h2>'
+                f'<p class="hinweis" style="margin:.35rem 0 0">{esc(tx("info.einstieg.text"))}</p></div>'
+                f'<a class="knopf" href="/info/funktionen/">{esc(tx("info.einstieg.knopf"))}</a></section>')
     return seite(tx("info.titel"), oben,
-                 abschnitt("info.prinzipien.titel", f'<div class="prinzipien">{prinzipien}</div>', f'<p>{funktionen}</p>'),
-                 abschnitt("info.gespraeche.titel", f'<p>{esc(tx("info.gespraeche.einleitung"))}</p>', gespraeche),
-                 abschnitt("info.bilder.titel", f'<p>{esc(tx("info.bilder.einleitung"))}</p>', bilder) if bilder else "",
-                 abschnitt("info.schritte.titel", karte(f'<ol class="erste">{schritte}</ol>')),
-                 fuss(roh=(info_sprachen(pfad), fremd(instanz.QUELLCODE, "info.quellcode")), recht=True), kopf=kopf, breit=True,
-                 galerie=bool(bilder))
+                 info_abschnitt("info.prinzipien.titel", f'<div class="prinzipien">{prinzipien}</div>'),
+                 info_abschnitt("info.bilder.titel", f'<p>{esc(tx("info.bilder.einleitung"))}</p>', bilder) if bilder else "",
+                 einstieg,
+                 info_abschnitt("info.gespraeche.titel", f'<p>{esc(tx("info.gespraeche.einleitung"))}</p>', gespraeche),
+                 info_abschnitt("info.schritte.titel", karte(f'<ol class="erste">{schritte}</ol>')),
+                 info_fuss(pfad), kopf=info_kopf(k), breit=True, galerie=bool(bilder))
+
+
+def info_zeile(titel, unter="", href="", marke="", anker=""):
+    """Zeile einer Liste der Erklärseiten: Titel und ein Satz; mit href ein Link, sonst ohne Pfeil, mit marke rechts eine Marke."""
+    was = (f'<span class="was"><span class="titel">{esc(titel)}</span>'
+           + (f'<span class="unter">{esc(unter)}</span>' if unter else "") + "</span>")
+    kennung = f' id="{esc(anker)}"' if anker else ""
+    if href:
+        return f'<a{kennung} class="zeile" href="{esc(href)}">{was}</a>'
+    return (f'<div{kennung} class="zeile ohne-link">{was}' + (f'<span class="marke leise">{esc(marke)}</span>' if marke else "")
+            + "</div>")
+
+
+def info_bereich_link(name):
+    """Adresse eines Bereichs: seine Unterseite, ohne Unterseite seine Zeile in der Übersicht (ADR-0003)."""
+    return f"/info/funktionen/{name}/" if name in INFO_UNTERSEITEN else f"/info/funktionen/#{name}"
+
+
+def info_rollen(liste):
+    return '<div class="liste">' + "".join(info_zeile(t, u) for t, u in liste) + "</div>"
+
+
+def funktionen_seite(k=None, pfad="/info/funktionen/"):
+    """Alle Funktionen (#711): drei Orte, je Gruppe eine Zeile je Bereich (ein Link, wo es die Unterseite gibt), Wer darf was."""
+    oben = karte(f'<h1>{esc(tx("info.funktionen.titel"))}</h1>', f'<p class="lead">{esc(tx("info.funktionen.lead"))}</p>')
+    orte = "".join(karte(f'<h3>{esc(tx(f"info.ort.{o}.titel"))}</h3><p>{esc(tx(f"info.ort.{o}.text"))}</p>') for o in INFO_ORTE)
+    zeile = lambda b: info_zeile(tx(f"info.bereich.{b}.titel"), tx(f"info.bereich.{b}.satz"),   # noqa: E731
+                                 info_bereich_link(b) if b in INFO_UNTERSEITEN else "",
+                                 "" if b in INFO_UNTERSEITEN else tx("info.funktionen.folgt"), anker=b)
+    gruppen = "".join(f'<section class="abschnitt"><p class="gruppe">{esc(tx(f"info.gruppe.{g}"))}</p>'
+                      f'<div class="liste">{"".join(zeile(b) for b in bereiche)}</div></section>' for g, bereiche in INFO_GRUPPEN)
+    rollen = info_rollen((tx(f"info.rolle.{r}.titel"), tx(f"info.rolle.{r}.text")) for r in INFO_ROLLEN)
+    return seite(tx("info.funktionen.titel"), f'<a class="zurueck" href="/info/">‹ {esc(tx("info.titel"))}</a>', oben,
+                 info_abschnitt("info.orte.titel", f'<div class="prinzipien orte">{orte}</div>'), gruppen,
+                 info_abschnitt("info.rollen.titel", f'<p>{esc(tx("info.rollen.einleitung"))}</p>', rollen),
+                 info_fuss(pfad), kopf=info_kopf(k), breit=True)
 
 
 # ---------------------------------------------------------------- Ablauf
@@ -1513,7 +1575,8 @@ def geraet(headers):
 def ist_unsere(pfad):
     p = pfad.split("?", 1)[0]
     return p in ("/anmelden", "/konto", "/abmelden", "/warteliste", "/info", "/info/") + RECHT or p.startswith(("/einladung/", "/kalender/", "/bild/",
-                                                                                     "/warteliste/bestaetigen/"))
+                                                                                     "/warteliste/bestaetigen/")) \
+        or bool(INFO_WEG.fullmatch(p))
 
 
 def bearbeiten(methode, pfad, headers, body, ip, reise_info):
@@ -1642,6 +1705,17 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
 
     if weg == "/info":     # nginx leitet /info wegen des Orts /info/ (Bilder) selbst dorthin; der Dienst ebenso, mit der Sprache
         return weiter("/info/" + (f"?{teile.query}" if teile.query else ""))
+    m = INFO_WEG.fullmatch(weg)
+    if m and m[1] and m[1] not in INFO_UNTERSEITEN:     # Funktionsseiten (#711): nur Bereiche mit Unterseite
+        return antwort(404, seite(tx("konto.nicht_gefunden"), karte(f"<h1>{esc(tx('konto.nicht_gefunden'))}</h1>")))
+    if m and not m[2]:      # immer mit Schrägstrich am Ende
+        return weiter(weg + "/" + (f"?{teile.query}" if teile.query else ""))
+    if m:
+        if methode == "POST":
+            return weiter(weg)
+        if texte.gueltig(q.get("sprache") or ""):
+            _anfrage.sprache = q["sprache"]
+        return antwort(200, funktionen_seite(k, weg))
     if weg in ("/", "/info/"):
         # Startseite: angemeldet Mein Konto (#41), sonst die Infoseite (#436); /info/ zeigt sie allen, auch angemeldet (#440). Sie liegt
         # unter /info/, weil nginx diesen Ort für die Bilder schon zum Dienst führt (kein neuer Ort, kein Handschritt in der Instanz).

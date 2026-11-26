@@ -24,7 +24,7 @@ Datenschlüssel in YAML und JSON (`art`, `quelle`, `geprueft`, `gilt`, `status` 
 
 1. **Datei anlegen:** `engine/texte_<kürzel>.py` (zwei oder drei Kleinbuchstaben, zum Beispiel `fr`). Am einfachsten wird `texte_en.py` kopiert und übersetzt. Die Felder stehen unten. Der Test `test_texte.py` nennt, was an Schlüsseln oder Platzhaltern fehlt.
 2. **Prüfen, dass sie gefunden wird:** `texte.SPRACHEN` liest die Dateien `texte_*.py` neben `texte.py` (Deutsch und Englisch zuerst, dann nach dem Alphabet). Es gibt keine Liste, in die das Kürzel einzutragen wäre; `betrieb/deploy.sh` nimmt jede Sprachdatei von selbst mit auf den Server.
-3. **Optional die Reisevorlage:** `engine/reisevorlage/<kürzel>/` (Überschriften und Gerüst einer neuen Reise in dieser Sprache; fehlt der Ordner, nimmt `neu.py` die englische) und ein `README.<kürzel>.md`; dann in der Sprachdatei `info.funktionen.datei` darauf setzen, sonst verlinkt die Infoseite `README.en.md` (#677).
+3. **Optional die Reisevorlage:** `engine/reisevorlage/<kürzel>/` (Überschriften und Gerüst einer neuen Reise in dieser Sprache; fehlt der Ordner, nimmt `neu.py` die englische) und ein `README.<kürzel>.md`. Die Funktionsübersicht steht seit #711 auf der Webseite (`/info/funktionen/`) und kommt mit den Texten der Sprachdatei.
 4. **Tests laufen lassen:** `engine/.venv/bin/python -m pytest -q engine/tests`. Parität der Kataloge, Rundgang im Browser je Sprache, Konnektor je Sprache und die Literal-Tests laufen über `texte.SPRACHEN` und nehmen die neue Sprache mit. Mehr ist nicht zu tun.
 
 Eine Sprache, deren Datei einen Schlüssel nicht hat, fällt für diesen Text auf Englisch zurück; ein Absturz wegen eines Textes gibt es nicht. Der Paritätstest verlangt trotzdem alle Schlüssel.
