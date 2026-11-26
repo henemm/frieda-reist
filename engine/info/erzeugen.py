@@ -41,6 +41,10 @@ BILDER = {
     "packliste": {"reise": "stadtwochenende", "hash": "packliste"},
     "ort": {"reise": "beispielreise", "hash": "O-03"},
     "zutun": {"reise": "beispielreise", "hash": "zu-tun"},
+    "vergleich": {"reise": "beispielreise", "hash": "V-01"},
+    "buchung": {"reise": "beispielreise", "hash": "B-01"},
+    "bahnbuchung": {"reise": "beispielreise", "hash": "B-02"},
+    "zubuchen": {"reise": "beispielreise", "hash": "zu-buchen"},
 }
 BREITE, HOEHE = 585, 1050   # Pixel der Dateien (390 × 700 CSS-Pixel in anderthalbfacher Dichte); die Infoseite rechnet damit
 
