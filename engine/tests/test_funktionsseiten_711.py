@@ -218,5 +218,19 @@ def test_unterseiten_unterwegs():
 
 
 def test_unterseiten_konto():
-    """#711, Etappe 3: Die Gruppe „Konto und Betrieb“ bekommt ihre Unterseiten; jede prüft test_unterseite."""
-    assert {"konto", "sprachen"} <= set(anmeldung.INFO_UNTERSEITEN)
+    """#711, Etappe 3: Die Gruppe „Konto und Betrieb“ bekommt ihre Unterseiten; jede prüft test_unterseite. Damit hat jeder
+    Bereich der Übersicht seine Unterseite."""
+    assert {b for _, liste in anmeldung.INFO_GRUPPEN for b in liste} <= set(anmeldung.INFO_UNTERSEITEN)
+
+
+def test_link_zur_anleitung(welt):
+    """Eine Unterseite mit doku verlinkt die Anleitung im Quellcode der Instanz (neues Fenster); die anderen nicht."""
+    import instanz
+    u = welt()
+    assert anmeldung.INFO_UNTERSEITEN["betrieb"].get("doku") == "docs/betrieb.md"
+    for name, seite in anmeldung.INFO_UNTERSEITEN.items():
+        for sp in texte.SPRACHEN:
+            t = abruf(f"{u.kurl}{UEBERSICHT}{name}/?sprache={sp}")[2]
+            link = (f'<a href="{instanz.QUELLCODE}/blob/main/docs/betrieb.md" target="_blank" rel="noopener">'
+                    f'{e(f"info.bereich.{name}.doku", sp)}</a>') if seite.get("doku") else None
+            assert (link in t) if link else ("/blob/main/" not in t), (name, sp)

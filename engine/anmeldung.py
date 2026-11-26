@@ -1339,9 +1339,9 @@ INFO_GRUPPEN = (("planen", ("wahrheit", "gespraech", "gespraeche", "alternativen
 INFO_ROLLEN = ("gast", "mitwirkend", "organisierend")
 # Bereiche mit eigener Unterseite /info/funktionen/<bereich>/, je Bereich ein Eintrag (Form: docs/design.md, Abschnitt
 # Funktionsseiten): bilder (Namen in engine/info/, jedes auch in erzeugen.BILDER), gespraech (Sprecher der Blasen, person oder
-# claude), siehe (andere Bereiche). Texte unter info.bereich.<name>.… (lead, wo, wer, bild.<bild>, tun.<n>, wie.<n>.titel und
-# .text, gespraech.einleitung, gespraech.person, gespraech.<n>, rolle.<n>.titel und .text, gut.<n>); die Zahl der Einträge
-# zählt die Seite im Katalog.
+# claude), siehe (andere Bereiche), wahlweise doku (Pfad einer Anleitung im Quellcode, Linktext info.bereich.<name>.doku).
+# Texte unter info.bereich.<name>.… (lead, wo, wer, bild.<bild>, tun.<n>, wie.<n>.titel und .text, gespraech.einleitung,
+# gespraech.person, gespraech.<n>, rolle.<n>.titel und .text, gut.<n>); die Zahl der Einträge zählt die Seite im Katalog.
 INFO_UNTERSEITEN = {
     "reiseseite": {"bilder": ("reise", "tag", "ort", "zutun"), "gespraech": ("person", "claude"),
                    "siehe": ("gespraech", "karte", "alternativen", "buchungen", "zusammenarbeit")},
@@ -1371,6 +1371,8 @@ INFO_UNTERSEITEN = {
               "siehe": ("gespraech", "erinnerungen", "sprachen", "betrieb")},
     "sprachen": {"bilder": ("fuss", "tag"), "gespraech": ("person", "claude"),
                  "siehe": ("konto", "reiseseite", "lebenslauf", "gespraech")},
+    "betrieb": {"bilder": ("fuss", "reise"), "gespraech": ("person", "claude"), "doku": "docs/betrieb.md",
+                "siehe": ("konto", "wahrheit", "erinnerungen", "sprachen")},
 }
 INFO_WEG = re.compile(r"/info/funktionen(?:/([a-z]+))?(/?)")
 
@@ -1627,6 +1629,9 @@ def unterseite(k, name, pfad):
                  f'<p>{esc(tx(f"{p}.gespraech.einleitung"))}</p>{blasen(wer, s["gespraech"], f"{p}.gespraech")}</section>')
     rollen = info_rollen((tx(f"{p}.rolle.{n}.titel"), tx(f"{p}.rolle.{n}.text")) for n in nummern(f"{p}.rolle", ".titel"))
     siehe = "".join(f'<a href="{esc(info_bereich_link(b))}">{esc(tx(f"info.bereich.{b}.titel"))}</a>' for b in s["siehe"])
+    if s.get("doku"):   # Anleitung im Quellcode der Instanz, etwa für Betreiber
+        siehe += (f'<a href="{esc(instanz.QUELLCODE)}/blob/main/{esc(s["doku"])}" target="_blank" rel="noopener">'
+                  f'{esc(tx(f"{p}.doku"))}</a>')
     return seite(tx(f"{p}.titel"), f'<a class="zurueck" href="/info/funktionen/">‹ {esc(tx("info.funktionen.titel"))}</a>', oben,
                  info_abschnitt("info.unterseite.bilder", bilder) if bilder else "",
                  karte(f'<h2>{esc(tx("info.unterseite.tun"))}</h2>', info_liste("darf", f"{p}.tun")),
