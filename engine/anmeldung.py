@@ -1345,6 +1345,10 @@ INFO_ROLLEN = ("gast", "mitwirkend", "organisierend")
 INFO_UNTERSEITEN = {
     "reiseseite": {"bilder": ("reise", "tag", "ort", "zutun"), "gespraech": ("person", "claude"),
                    "siehe": ("gespraech", "karte", "alternativen", "buchungen", "zusammenarbeit")},
+    "wahrheit": {"bilder": ("wahl",), "gespraech": ("person", "claude"),
+                 "siehe": ("gespraech", "alternativen", "buchungen", "packliste")},
+    "gespraech": {"bilder": ("tag",), "gespraech": ("person", "claude", "person", "claude"),
+                  "siehe": ("gespraeche", "wahrheit", "alternativen", "konto")},
 }
 INFO_WEG = re.compile(r"/info/funktionen(?:/([a-z]+))?(/?)")
 

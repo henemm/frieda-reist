@@ -205,3 +205,8 @@ def test_uebersicht_an_handy_und_rechner(welt, sp):
     assert m["fehler"] == [] and not m["390"]["ueber"] and not m["1280"]["ueber"], m
     assert m["390"]["orte"] == 3 and m["1280"]["orte"] == 1, m
     assert min(m["390"]["zeilen"]) >= 44 and min(m["1280"]["zeilen"]) >= 44, m
+
+
+def test_unterseiten_planen():
+    """#711, Etappe 2: Die Gruppe „Planen und entscheiden“ bekommt ihre Unterseiten; jede prüft test_unterseite."""
+    assert {"wahrheit", "gespraech"} <= set(anmeldung.INFO_UNTERSEITEN)
