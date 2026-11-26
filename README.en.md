@@ -12,20 +12,7 @@
 
 ## What it does
 
-- **Day plan, stages, places, stays** with fixed IDs, so that every comment can be matched to exactly one item.
-- **Alternatives in the model:** choices with options on every level, named plans with totals, and a history. Nothing rejected is ever deleted.
-- **Packing list:** gear with categories (the trip's kinds), attributes such as weight or room, and totals; it is built in conversation, the page plans (totals per category) and packs (grouping, ticking off per person, also offline). Frieda keeps no inventory (`docs/adr/0010-gegenstand.md`, German).
-- **Offline:** the page is a PWA with an offline cache, an update notice and an outbox for feedback without a network; maps with numbered places.
-- **Fellow travellers:** feedback, wishes and tasks on every ID, through the page or through the Claude app. Roles: `gast` (read), `mitwirkend` (contribute), `organisator` (decide).
-- **The connector writes directly:** what is settled in conversation is checked against the trip's rules and saved at once to the trip store (append-only versions, nothing is overwritten), with person and source; a few minutes later it is on the page.
-- **Bookings:** a booking is an item of its own with number, deadline, cancellation terms, payment state and receipts; a check-in view; accommodation costs.
-- **Map:** built from every place with coordinates, GPX tracks, map views per day or journey, points from OpenStreetMap, offline base map.
-- **Reminders:** deadlines, cancellation deadlines, open payments, due status changes and outdated check dates, as in-app notices, push notifications or mail; one calendar subscription for all trips.
-- **Images:** pictures from Wikimedia Commons with attribution, own photos without location data, a cover image and an app icon per trip.
-- **Account and privacy:** sign-in with a code by mail instead of a password, one connector for all trips, a personal profile only the person sees, data export and account deletion.
-- **Languages:** German and English. The page follows the trip's language and has a switcher for the labels; the connector speaks the language of the person's account. A further language is one file, `engine/texte_<code>.py` (see [`docs/sprachen.md`](docs/sprachen.md), German).
-
-Every feature has its own page (German): [docs/funktionen/](docs/funktionen/README.md). Start of the documentation: [docs/README.md](docs/README.md).
+All features, with examples and pictures, are on the website of every Frieda instance under "What Frieda can do" (`/info/funktionen/`), one page per area, in English and German: from the trip model and planning in conversation to the trip page, alternatives, bookings, map, collaboration, packing list, images and reminders, to accounts, languages and running Frieda on your own server. For developers: [guide to the areas](docs/funktionen/README.md) (German) and the documentation under [docs/README.md](docs/README.md).
 
 ## Try it
 
@@ -35,7 +22,7 @@ engine/.venv/bin/python engine/bauen.py --reisen beispiel/reisen --ziel dist bei
 python3 -m http.server -d dist 8000      # then open http://localhost:8000/beispielreise/
 ```
 
-The example trip "Malerweg in four days" is invented (see `beispiel/README.md`). In operation, trips are created in conversation and kept in the trip store of an instance (SQLite, append-only); running your own instance is described in [`docs/funktionen/selbst-betreiben.md`](docs/funktionen/selbst-betreiben.md) and [`docs/betrieb.md`](docs/betrieb.md) (German).
+The example trip "Malerweg in four days" is invented (see `beispiel/README.md`). In operation, trips are created in conversation and kept in the trip store of an instance (SQLite, append-only); running your own instance is described in [`docs/betrieb.md`](docs/betrieb.md) (German).
 
 ## Tests
 

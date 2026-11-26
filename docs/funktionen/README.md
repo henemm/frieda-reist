@@ -1,54 +1,33 @@
 # Funktionen von Frieda
 
-Diese Übersicht zeigt alles, was Frieda kann, gegliedert nach Aufgaben rund um eine Reise. Jede Zeile führt zu einer eigenen Seite mit Beispielen, Rechten und Grenzen. Die Beispiele stammen aus der erfundenen Beispielreise „Malerweg in vier Tagen“ mit Ida und Karl.
+Was Frieda kann, steht für Nutzer:innen und Interessierte auf der Webseite jeder Frieda-Instanz: „Alle Funktionen“ unter `/info/funktionen/`, mit einer Unterseite je Bereich, auf Deutsch und Englisch, mit Bildern aus den Beispielreisen. Die Inhalte stehen nur dort (#711). Dieser Ordner bleibt als Wegweiser für Entwickler:innen: welcher Bereich wo auf der Webseite steht und welche Entwicklerdoku dazugehört.
 
-Frieda arbeitet an drei Orten:
+## Bereiche
 
-- **Im Gespräch:** In der Claude-App (Handy, Desktop, claude.ai) planst du die Reise mit Claude. Frieda ist dort ein Konnektor: Claude liest die Reise und trägt ein, Frieda prüft jede Eintragung nach festen Regeln.
-- **Auf der Reiseseite:** Eine Webseite je Reise, die auch ohne Netz funktioniert. Sie ist das Nachschlagewerk unterwegs und die Stelle für Rückmeldungen, Aufgaben, Wünsche und Packliste.
-- **Auf Mein Konto:** Anmeldung, Meldungen über alle Reisen, Kalender, Benachrichtigungen, eigene Daten.
+| Bereich | Webseite | Wegweiser |
+|---|---|---|
+| Die Reise als geprüfte Wahrheit | `/info/funktionen/wahrheit/` | [reisemodell.md](reisemodell.md) |
+| Planen im Gespräch | `/info/funktionen/gespraech/` | [gespraech.md](gespraech.md) |
+| Gute Gespräche mit Frieda | `/info/funktionen/gespraeche/` | [gute-gespraeche.md](gute-gespraeche.md) |
+| Alternativen und Entscheidungen | `/info/funktionen/alternativen/` | [alternativen.md](alternativen.md) |
+| Buchungen und Belege | `/info/funktionen/buchungen/` | [buchungen.md](buchungen.md) |
+| Von der Idee bis zum Archiv | `/info/funktionen/lebenslauf/` | [lebenszyklus.md](lebenszyklus.md) |
+| Reiseseite | `/info/funktionen/reiseseite/` | [reiseseite.md](reiseseite.md) |
+| Karte | `/info/funktionen/karte/` | [karte.md](karte.md) |
+| Zusammenarbeit | `/info/funktionen/zusammenarbeit/` | [zusammenarbeit.md](zusammenarbeit.md) |
+| Packliste | `/info/funktionen/packliste/` | [packliste.md](packliste.md) |
+| Bilder | `/info/funktionen/bilder/` | [bilder.md](bilder.md) |
+| Erinnerungen und Meldungen | `/info/funktionen/erinnerungen/` | [erinnerungen.md](erinnerungen.md) |
+| Konto und Datenschutz | `/info/funktionen/konto/` | [konto.md](konto.md) |
+| Sprachen | `/info/funktionen/sprachen/` | [sprachen.md](sprachen.md) |
+| Selbst betreiben | `/info/funktionen/betrieb/` | [selbst-betreiben.md](selbst-betreiben.md) |
 
-## Überblick
+## Eine Unterseite ändern
 
-| Bereich | Was es kann | Wo | Seite |
-|---|---|---|---|
-| **Die Reise als geprüfte Wahrheit** | Tage, Orte, Unterkünfte, Aufenthalte, Strecken mit festen Kennungen; Arten und Merkmale je Reise; jede Angabe mit Herkunft und Prüfdatum; nichts wird gelöscht, alles hat einen Verlauf | überall | [Reisemodell](reisemodell.md) |
-| **Planen im Gespräch** | die Reise in der Claude-App lesen, recherchieren lassen, eintragen; prüfen, ob eine Änderung schon auf der Seite ist; die Seite als Bild ansehen | Gespräch | [Planen im Gespräch](gespraech.md) |
-| **Gute Gespräche** | typische Abläufe mit Beispielsätzen: Unterkünfte vergleichen, entscheiden, Buchung mit Beleg, Rückmeldungen einarbeiten, vor der Abreise durchgehen | Gespräch | [Gute Gespräche mit Frieda](gute-gespraeche.md) |
-| **Reiseseite** | Reiseüberblick mit Zeitachse, Tagesseiten, Ortsseiten, Wissen, „Zu tun“, Suche; offline, als App auf dem Home-Bildschirm | Reiseseite | [Reiseseite](reiseseite.md) |
-| **Alternativen und Entscheidungen** | Wahlstellen mit Optionen an jeder Stelle, benannte Pläne mit Summen, Vergleich nach Merkmalen, Entscheidungen mit Person, Datum und Grund, Konflikte werden zur offenen Frage | Gespräch, Reiseseite | [Alternativen](alternativen.md) |
-| **Buchungen und Belege** | Buchungen mit Nummer, Frist, Stornoregel und Zahlstand; Belege anhängen und freigeben; Check-in-Ansicht; Kosten der Übernachtungen | Gespräch, Reiseseite | [Buchungen](buchungen.md) |
-| **Karte** | Karte aus allen Orten mit Koordinaten, GPX-Tracks, Kartenansichten je Tag oder Fahrt, Punkte aus OpenStreetMap, Grundkarte offline | Gespräch, Reiseseite | [Karte](karte.md) |
-| **Zusammenarbeit** | Personen mit Rollen einladen; Rückmeldungen an jeder Stelle; offene Fragen; Aufgaben mit Frist und Zuständigkeit; Wunsch-Brett mit Punkten | Gespräch, Reiseseite | [Zusammenarbeit](zusammenarbeit.md) |
-| **Packliste** | Gegenstände in Kategorien, Summen wie Gewicht, wer packt was, Abhaken auch ohne Netz, Übernahme aus einer früheren Reise | Gespräch, Reiseseite | [Packliste](packliste.md) |
-| **Bilder** | Bilder aus Wikimedia Commons mit Namensnennung, eigene Fotos hochladen, Titelbild, eigenes App-Symbol der Reise | Gespräch, Reiseseite | [Bilder](bilder.md) |
-| **Erinnerungen und Meldungen** | Fristen, Stornofristen, offene Zahlungen, fällige Statuswechsel, zu alte Prüfdaten; als Meldung, Push-Nachricht oder Mail; Kalender-Abo | Mein Konto, Reiseseite, Gespräch | [Erinnerungen](erinnerungen.md) |
-| **Von der Idee bis zum Archiv** | neue Reise im Gespräch anlegen; Status Idee, Planung, fest, unterwegs, danach, Archiv; Bausteine an- und abschalten; Reise löschen mit Schonfrist | Gespräch, Mein Konto | [Lebenszyklus einer Reise](lebenszyklus.md) |
-| **Konto und Datenschutz** | Anmeldung ohne Passwort, Claude verbinden, persönliches Profil, Meine Daten herunterladen, Konto löschen, Warteliste | Mein Konto, Gespräch | [Konto](konto.md) |
-| **Sprachen** | Deutsch und Englisch; Sprache der Reise, Sprache des Kontos und Umschalter auf der Seite sind getrennt | überall | [Sprachen](sprachen.md) |
-| **Selbst betreiben** | eigene Instanz auf dem eigenen Server: Reisespeicher, Veröffentlichen, Sicherung, Überwachung; keine KI auf dem Server | Server | [Selbst betreiben](selbst-betreiben.md) |
-
-## Wer darf was
-
-Rollen gelten je Reise. Jede Stufe enthält die darunter.
-
-| Rolle | darf |
-|---|---|
-| Gast | lesen |
-| Mitwirkende:r | dazu Rückmeldungen, Antworten, Aufgaben, Wünsche, Packliste; Werte, Dinge, Optionen, Fragen, Wissen und Buchungen eintragen |
-| Organisator:in | dazu entscheiden, Arten und Merkmale festlegen, Status und Einstellungen setzen, Personen einladen |
-
-Claude im Gespräch ist kein Mitglied der Reise: Es handelt immer im Namen der angemeldeten Person und mit deren Rolle, schlägt vor und trägt ein, entscheidet aber nie selbst. Einzelheiten: [Zusammenarbeit](zusammenarbeit.md#rollen).
-
-## Was Frieda bewusst nicht tut
-
-- **Keine eigene KI.** Recherchieren, Abwägen und Formulieren geschieht in der Claude-App der Person. Frieda prüft Regeln, hält die Reise und zeigt sie ([ADR-0001](../adr/0001-kern.md)).
-- **Kein Katalog.** Welche Arten von Dingen eine Reise kennt (Hütte, Ryokan, Nachtfähre, Museum) und was über sie bekannt sein muss, legt jede Reise selbst fest.
-- **Kein stilles Überschreiben.** Nichts wird gelöscht; Verworfenes, Storniertes und Weggelassenes bleibt mit Verlauf erhalten. Ausnahmen gibt es nur für den Datenschutz (Konto, Reise oder eigenes Foto löschen).
-- **Keine Buchungsplattform.** Frieda bucht nichts, sie hält fest, was gebucht ist.
+Ändert sich, was Nutzer:innen sehen oder tun können, wird im selben PR die Unterseite auf der Webseite nachgezogen: Texte in `engine/texte_<sprache>.py` unter `info.bereich.<name>.…` in allen Sprachen, Aufbau (Bilder, Gespräch, Siehe auch) in `INFO_UNTERSEITEN` in `engine/anmeldung.py`, neue Bilder in `engine/info/erzeugen.py`. Die Form beschreibt [Design](../design.md) („Form einer neuen Unterseite“); die Tests stehen in `engine/tests/test_funktionsseiten_711.py`.
 
 ## Siehe auch
 
 - [Startseite der Dokumentation](../README.md)
-- [Der Kern (ADR-0001)](../adr/0001-kern.md) und [Produktbild](../produkt.md)
+- [Der Kern (ADR-0001)](../adr/0001-kern.md) und [Produktbild](../produkt.md) (Rollen, Status einer Reise)
 - [Konnektor: alle Werkzeuge im Einzelnen](../konnektor.md)

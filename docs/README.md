@@ -9,31 +9,15 @@ Frieda hält eine Reise als geprüfte Wahrheit, die Reisenden planen sie im Gesp
 | Wenn du … | dann lies |
 |---|---|
 | wissen willst, was Frieda ist | [README](../README.md) und [Der Kern (ADR-0001)](adr/0001-kern.md) |
-| sehen willst, was Frieda kann | [Funktionen](funktionen/README.md) |
+| sehen willst, was Frieda kann | „Alle Funktionen“ auf der Webseite einer Frieda-Instanz (`/info/funktionen/`); Wegweiser für Entwickler:innen: [Funktionen](funktionen/README.md) |
 | die Beispielreise auf dem eigenen Rechner bauen willst | [README, „Ausprobieren“](../README.md#ausprobieren) und [Beispielreisen](../beispiel/README.md) |
-| Frieda in der Claude-App nutzen willst | [Planen im Gespräch](funktionen/gespraech.md), [Gute Gespräche mit Frieda](funktionen/gute-gespraeche.md) und [Konto](funktionen/konto.md) |
-| Frieda auf einem eigenen Server betreiben willst | [Selbst betreiben](funktionen/selbst-betreiben.md), dann [Betrieb einer Instanz](betrieb.md) |
+| Frieda in der Claude-App nutzen willst | die Infoseite einer Frieda-Instanz (`/info/`) und dort „Planen im Gespräch“, „Gute Gespräche mit Frieda“ und „Konto und Datenschutz“ |
+| Frieda auf einem eigenen Server betreiben willst | [Betrieb einer Instanz](betrieb.md) (Überblick für Interessierte: „Selbst betreiben“ unter `/info/funktionen/betrieb/` einer Instanz) |
 | an der Software mitarbeiten willst | [Arbeitsregeln](../CLAUDE.md), [Architektur-Entscheidungen](adr/README.md), [Design und Bausteine](design.md) |
 
 ## Funktionen
 
-Eine Seite je Bereich, jeweils mit Beispielen, Rechten, Regeln und Grenzen. Übersicht: [funktionen/README.md](funktionen/README.md).
-
-- [Die Reise als geprüfte Wahrheit](funktionen/reisemodell.md)
-- [Planen im Gespräch](funktionen/gespraech.md)
-- [Gute Gespräche mit Frieda](funktionen/gute-gespraeche.md): Abläufe mit Beispielsätzen
-- [Reiseseite](funktionen/reiseseite.md)
-- [Alternativen und Entscheidungen](funktionen/alternativen.md)
-- [Buchungen und Belege](funktionen/buchungen.md)
-- [Karte](funktionen/karte.md)
-- [Zusammenarbeit](funktionen/zusammenarbeit.md)
-- [Packliste](funktionen/packliste.md)
-- [Bilder](funktionen/bilder.md)
-- [Erinnerungen und Meldungen](funktionen/erinnerungen.md)
-- [Von der Idee bis zum Archiv](funktionen/lebenszyklus.md)
-- [Konto und Datenschutz](funktionen/konto.md)
-- [Sprachen](funktionen/sprachen.md)
-- [Selbst betreiben](funktionen/selbst-betreiben.md)
+Die Funktionsseiten für Nutzer:innen stehen auf der Webseite jeder Frieda-Instanz unter `/info/funktionen/`, eine Unterseite je Bereich, auf Deutsch und Englisch, mit Bildern aus den Beispielreisen. Welcher Bereich wo steht und welche Entwicklerdoku dazugehört: [funktionen/README.md](funktionen/README.md).
 
 ## Anleitungen
 

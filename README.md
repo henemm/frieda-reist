@@ -10,24 +10,7 @@
 
 ## Was es kann
 
-| | Funktion | Mehr |
-|---|---|---|
-| **Reisemodell** | Tage, Orte, Unterkünfte, Aufenthalte, Strecken mit festen Kennungen (T-, O-, U-, A-, E- …); Arten und Merkmale legt jede Reise selbst fest; jede Angabe mit Herkunft, Veränderliches mit Prüfdatum; nichts wird gelöscht | [Reisemodell](docs/funktionen/reisemodell.md) |
-| **Planen im Gespräch** | Die Claude-App liest die Reise über den Konnektor und trägt ein; Frieda prüft jede Eintragung nach den Regeln der Reise und sichert sie sofort, wenige Minuten später steht sie auf der Seite | [Planen im Gespräch](docs/funktionen/gespraech.md) |
-| **Reiseseite** | Reiseüberblick mit Zeitachse, Tagesseiten, Ortsseiten, Wissen, „Zu tun“, Suche; als App auf dem Home-Bildschirm, offline mit Update-Hinweis und Ausgang für Eingaben ohne Netz | [Reiseseite](docs/funktionen/reiseseite.md) |
-| **Alternativen** | Wahlstellen mit Optionen an jeder Stelle, benannte Pläne mit Summen (Gehzeit, Strecke, Höhenmeter, Nächte), Vergleich nach Merkmalen; entscheiden nur Organisator:innen, mit Person, Datum und Grund | [Alternativen](docs/funktionen/alternativen.md) |
-| **Buchungen** | Buchung als eigenes Ding mit Nummer, Frist, Stornoregel, Zahlstand und Belegen; Check-in-Ansicht; Kosten der Übernachtungen | [Buchungen](docs/funktionen/buchungen.md) |
-| **Karte** | Karte aus allen Orten mit Koordinaten, GPX-Tracks, Kartenansichten, Punkte aus OpenStreetMap, Grundkarte offline (PMTiles) | [Karte](docs/funktionen/karte.md) |
-| **Zusammenarbeit** | Personen mit Rollen (Gast, Mitwirkende:r, Organisator:in) per E-Mail einladen; Rückmeldungen zu jeder Stelle, offene Fragen, Aufgaben, Wunsch-Brett mit Punkten | [Zusammenarbeit](docs/funktionen/zusammenarbeit.md) |
-| **Packliste** | Gegenstände in Kategorien mit Summen wie Gewicht, Abhaken je Person auch ohne Netz, Übernahme aus einer früheren Reise; kein Inventar | [Packliste](docs/funktionen/packliste.md) |
-| **Bilder** | Bilder aus Wikimedia Commons mit Namensnennung, eigene Fotos ohne Standortdaten, Titelbild, App-Symbol je Reise | [Bilder](docs/funktionen/bilder.md) |
-| **Erinnerungen** | Fristen, Stornofristen, offene Zahlungen, fällige Statuswechsel, zu alte Prüfdaten; als Meldung, Push-Nachricht oder Mail; Kalender-Abo über alle Reisen | [Erinnerungen](docs/funktionen/erinnerungen.md) |
-| **Lebenszyklus** | Neue Reise im Gespräch; Status von Idee bis Archiv mit eigenem Verhalten; Bausteine an- und abschalten; Reise löschen mit Schonfrist | [Lebenszyklus](docs/funktionen/lebenszyklus.md) |
-| **Konto** | Anmeldung mit Code per Mail statt Passwort, ein Konnektor für alle Reisen, persönliches Profil, Meine Daten herunterladen, Konto löschen | [Konto](docs/funktionen/konto.md) |
-| **Sprachen** | Deutsch und Englisch, jede weitere Sprache ist eine Datei | [Sprachen](docs/funktionen/sprachen.md) |
-| **Selbst betreiben** | eigene Instanz: Reisespeicher (SQLite, nur anhängen), Veröffentlichen, tägliche Sicherung, Überwachung; keine KI auf dem Server | [Selbst betreiben](docs/funktionen/selbst-betreiben.md) |
-
-Alle Funktionen mit Beispielen: [docs/funktionen/](docs/funktionen/README.md). Die ganze Dokumentation: [docs/](docs/README.md).
+Alle Funktionen mit Beispielen und Bildern stehen auf der Webseite jeder Frieda-Instanz unter „Alle Funktionen“ (`/info/funktionen/`), eine Seite je Bereich, auf Deutsch und Englisch: vom Reisemodell und dem Planen im Gespräch über Reiseseite, Alternativen, Buchungen, Karte, Zusammenarbeit, Packliste, Bilder und Erinnerungen bis zu Konto, Sprachen und dem Betrieb auf einem eigenen Server. Für Entwickler:innen: [Wegweiser zu den Bereichen](docs/funktionen/README.md) und die ganze Dokumentation unter [docs/](docs/README.md).
 
 ## Ausprobieren
 
@@ -41,13 +24,13 @@ Die Beispielreise „Malerweg in vier Tagen“ ist erfunden (siehe `beispiel/REA
 
 ## Eigene Reisen
 
-Im Betrieb entsteht eine Reise im Gespräch: Wer Reisen anlegen darf, sagt der Claude-App „Leg eine neue Reise an …“, und Frieda legt sie im Reisespeicher der Instanz an ([Lebenszyklus](docs/funktionen/lebenszyklus.md), [Neue Reise anlegen](docs/neue-reise.md)). Von da an wächst sie im Gespräch.
+Im Betrieb entsteht eine Reise im Gespräch: Wer Reisen anlegen darf, sagt der Claude-App „Leg eine neue Reise an …“, und Frieda legt sie im Reisespeicher der Instanz an ([Neue Reise anlegen](docs/neue-reise.md)). Von da an wächst sie im Gespräch.
 
 Zum Ausprobieren ohne Server baut der Generator Reisen aus Ordnern, standardmäßig aus `./reisen/` des aktuellen Ordners (`--reisen`, `--ziel` zum Ändern). Aufbau einer Reise: `beispiel/reisen/beispielreise/` (Wanderung) und `beispiel/reisen/stadtwochenende/` (Wochenende ohne Wanderung), `reise.yaml`, `reise.json`, `plan/routen.yaml`, `plan/arten.yaml`, `inhalt/`, `medien/`. Das Modell beschreibt die [Reise-Ontologie](docs/ontologie.md).
 
 ## Auf dem eigenen Server
 
-Seiten ausliefern, Rückmeldungen annehmen, was der AI-Client über den Konnektor festlegt sofort in den Reisespeicher schreiben und veröffentlichen: `betrieb/` mit Überblick in [Selbst betreiben](docs/funktionen/selbst-betreiben.md) und Anleitung in [`docs/betrieb.md`](docs/betrieb.md). Auf dem Server läuft keine KI (`docs/adr/0001-kern.md`). Eine Reisegruppe mit eigenem Betreiber ist eine Instanz (eigene Ordner, Dienste und Adresse; die Software kommt direkt aus diesem Repo); ihre Werte stehen unter `<FR_DIENST>/instanz/` in `einstellungen.env`, die Skripte kennen keine Instanz. Grundkarten und Punkte aus OpenStreetMap holen die Werkzeuge in `werkzeuge/` (`docs/werkzeuge.md`).
+Seiten ausliefern, Rückmeldungen annehmen, was der AI-Client über den Konnektor festlegt sofort in den Reisespeicher schreiben und veröffentlichen: `betrieb/` mit Anleitung in [`docs/betrieb.md`](docs/betrieb.md). Auf dem Server läuft keine KI (`docs/adr/0001-kern.md`). Eine Reisegruppe mit eigenem Betreiber ist eine Instanz (eigene Ordner, Dienste und Adresse; die Software kommt direkt aus diesem Repo); ihre Werte stehen unter `<FR_DIENST>/instanz/` in `einstellungen.env`, die Skripte kennen keine Instanz. Grundkarten und Punkte aus OpenStreetMap holen die Werkzeuge in `werkzeuge/` (`docs/werkzeuge.md`).
 
 ## Tests
 
