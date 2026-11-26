@@ -214,4 +214,4 @@ def test_unterseiten_planen():
 
 def test_unterseiten_unterwegs():
     """#711, Etappe 2: Die Gruppe „Unterwegs und gemeinsam“ bekommt ihre Unterseiten; jede prüft test_unterseite."""
-    assert {"karte", "packliste", "zusammenarbeit", "bilder"} <= set(anmeldung.INFO_UNTERSEITEN)
+    assert set(dict(anmeldung.INFO_GRUPPEN)["unterwegs"]) <= set(anmeldung.INFO_UNTERSEITEN)

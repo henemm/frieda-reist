@@ -1,0 +1,16 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________________ test_unterseiten_unterwegs __________________________
+
+    def test_unterseiten_unterwegs():
+        """#711, Etappe 2: Die Gruppe „Unterwegs und gemeinsam“ bekommt ihre Unterseiten; jede prüft test_unterseite."""
+>       assert set(dict(anmeldung.INFO_GRUPPEN)["unterwegs"]) <= set(anmeldung.INFO_UNTERSEITEN)
+E       AssertionError: assert {'bilder', 'e...sammenarbeit'} <= {'alternative... 'karte', ...}
+E         
+E         Extra items in the left set:
+E         'erinnerungen'
+
+engine/tests/test_funktionsseiten_711.py:217: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_funktionsseiten_711.py::test_unterseiten_unterwegs
+1 failed, 18 deselected in 0.09s
