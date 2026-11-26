@@ -1,0 +1,17 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___________________________ test_unterseiten_planen ____________________________
+
+    def test_unterseiten_planen():
+        """#711, Etappe 2: Die Gruppe „Planen und entscheiden“ bekommt ihre Unterseiten; jede prüft test_unterseite."""
+>       assert {"wahrheit", "gespraech", "alternativen", "buchungen", "gespraeche", "lebenslauf"} <= set(anmeldung.INFO_UNTERSEITEN)
+E       AssertionError: assert {'alternative...', 'wahrheit'} <= {'alternative...', 'wahrheit'}
+E         
+E         Extra items in the left set:
+E         'gespraeche'
+E         'lebenslauf'
+
+engine/tests/test_funktionsseiten_711.py:212: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_funktionsseiten_711.py::test_unterseiten_planen - As...
+1 failed, 11 deselected in 0.14s

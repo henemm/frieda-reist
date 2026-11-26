@@ -45,6 +45,7 @@ BILDER = {
     "buchung": {"reise": "beispielreise", "hash": "B-01"},
     "bahnbuchung": {"reise": "beispielreise", "hash": "B-02"},
     "zubuchen": {"reise": "beispielreise", "hash": "zu-buchen"},
+    "stadt": {"reise": "stadtwochenende", "hash": ""},
 }
 BREITE, HOEHE = 585, 1050   # Pixel der Dateien (390 × 700 CSS-Pixel in anderthalbfacher Dichte); die Infoseite rechnet damit
 
