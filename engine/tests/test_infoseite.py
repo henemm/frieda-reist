@@ -136,7 +136,7 @@ def test_bilder_vollstaendig_und_gleich_gross():
     """Je Bild der Infoseite und Sprache der Software eine Datei, alle so groß, wie die Seite sie einplant; das Skript zum
     Erzeugen kennt dieselben Bilder."""
     from info import erzeugen
-    assert list(erzeugen.BILDER) == list(anmeldung.INFO_BILDER)
+    assert set(anmeldung.INFO_BILDER) <= set(erzeugen.BILDER)     # dazu die Bilder der Unterseiten (#711)
     for sp in texte.SPRACHEN:
         if sp not in texte.ERSTE:      # die Pseudo-Sprache der Tests hat keine Bilder; die Seite nimmt dann die der Vorgabe
             continue

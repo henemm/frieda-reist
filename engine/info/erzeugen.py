@@ -1,4 +1,5 @@
-"""Bildschirmbilder der Reiseseite für die Infoseite „Was ist Frieda?“ (#436), aus den erfundenen Beispielreisen.
+"""Bildschirmbilder der Reiseseite für die Infoseite „Was ist Frieda?“ (#436) und die Funktionsseiten (#711), aus den
+erfundenen Beispielreisen.
 
 Aufruf:  engine/.venv/bin/python engine/info/erzeugen.py [--ziel <ordner>]
 
@@ -31,12 +32,15 @@ import bauen  # noqa: E402
 import texte  # noqa: E402
 
 BEISPIELE = WURZEL / "beispiel" / "reisen"
-# Je Bild der Infoseite (anmeldung.INFO_BILDER): welche Beispielreise und welche Ansicht
+# Je Bild der Infoseite (anmeldung.INFO_BILDER) und der Funktionsseiten (anmeldung.INFO_UNTERSEITEN, #711): welche
+# Beispielreise und welche Ansicht. Eine neue Unterseite trägt hier ihre neuen Bilder ein.
 BILDER = {
     "reise": {"reise": "beispielreise", "hash": ""},
     "tag": {"reise": "beispielreise", "hash": "T-02"},
     "wahl": {"reise": "beispielreise", "hash": "V-03"},
     "packliste": {"reise": "stadtwochenende", "hash": "packliste"},
+    "ort": {"reise": "beispielreise", "hash": "O-03"},
+    "zutun": {"reise": "beispielreise", "hash": "zu-tun"},
 }
 BREITE, HOEHE = 585, 1050   # Pixel der Dateien (390 × 700 CSS-Pixel in anderthalbfacher Dichte); die Infoseite rechnet damit
 
@@ -79,9 +83,14 @@ def aufnehmen(web, aus):
     return json.loads(r.stdout.strip().splitlines()[-1])
 
 
+def alle_bilder():
+    """Die Namen aller Bilder, die die Erklärseiten zeigen."""
+    return set(anmeldung.INFO_BILDER) | {b for s in anmeldung.INFO_UNTERSEITEN.values() for b in s["bilder"]}
+
+
 def erzeugen(ziel=HIER, sprachen=None):
     """Alle Bilder in allen Sprachen der Software; -> {sprache: Bericht von aufnehmen}."""
-    assert set(BILDER) == set(anmeldung.INFO_BILDER), "BILDER und anmeldung.INFO_BILDER müssen dieselben Namen haben"
+    assert set(BILDER) == alle_bilder(), "BILDER muss genau die Bilder der Infoseite und der Unterseiten nennen"
     berichte = {}
     with tempfile.TemporaryDirectory() as tmp:
         for sp in sprachen or texte.SPRACHEN:

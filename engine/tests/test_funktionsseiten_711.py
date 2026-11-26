@@ -18,9 +18,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import anmeldung  # noqa: E402
 import texte  # noqa: E402
 from conftest import meldet, text  # noqa: E402
+from PIL import Image  # noqa: E402
 from playwright_pfad import PLAYWRIGHT  # noqa: E402
 from test_anmeldung import IDA, abruf, anmelden, kopf, welt  # noqa: E402,F401
 
+INFO = ENGINE / "info"
 UEBERSICHT = "/info/funktionen/"
 
 
@@ -78,6 +80,74 @@ def test_uebersicht_alle_funktionen(welt):
 
 
 
+def nummern(praefix, sp="de"):
+    katalog, n = texte.sprache(sp).TEXTE, 0
+    while f"{praefix}.{n + 1}" in katalog or f"{praefix}.{n + 1}.titel" in katalog:
+        n += 1
+    return n
+
+
+@pytest.mark.parametrize("name", list(anmeldung.INFO_UNTERSEITEN))
+def test_unterseite(welt, name):
+    """Jede Unterseite (Muster: Reiseseite) mit allen Abschnitten aus dem Katalog, Bildern in der Sprache der Seite und „Siehe
+    auch“ ohne kaputte Links; eine neue Unterseite braucht keinen eigenen Test."""
+    u = welt()
+    seite = anmeldung.INFO_UNTERSEITEN[name]
+    p = f"info.bereich.{name}"
+    assert seite["bilder"] and nummern(f"{p}.tun") and nummern(f"{p}.wie") and nummern(f"{p}.rolle") and nummern(f"{p}.gut")
+    for sp in texte.SPRACHEN:
+        s, _, t = abruf(f"{u.kurl}{UEBERSICHT}{name}/?sprache={sp}")
+        assert s == 200 and f"<title>{e(f'{p}.titel', sp)} – Frieda</title>" in t, sp
+        assert f'<a class="zurueck" href="{UEBERSICHT}">‹ {e("info.funktionen.titel", sp)}</a>' in t
+        assert meldet(t, f"{p}.lead", sp) and meldet(t, f"{p}.wo", sp) and meldet(t, f"{p}.wer", sp)
+        assert '<dl class="kurz">' in t and meldet(t, "info.unterseite.wo", sp) and meldet(t, "info.unterseite.wer", sp)
+        bild_sp = sp if sp in texte.ERSTE else texte.VORGABE_REISE
+        assert '<div class="bilder reihe" data-galerie="' in t
+        for b in seite["bilder"]:
+            assert f'href="/info/{b}-{bild_sp}.webp"' in t and meldet(t, f"{p}.bild.{b}", sp), (sp, b)
+        for n in range(1, nummern(f"{p}.tun") + 1):
+            assert meldet(t, f"{p}.tun.{n}", sp), (sp, n)
+        assert t.count('<details><summary class="zeile">') == nummern(f"{p}.wie")
+        for n in range(1, nummern(f"{p}.wie") + 1):
+            assert meldet(t, f"{p}.wie.{n}.titel", sp), (sp, n)
+            for absatz in text(f"{p}.wie.{n}.text", sp).split("\n\n"):
+                assert f"<p>{html.escape(absatz, quote=True)}</p>" in t, (sp, n)
+        for n, r in enumerate(seite["gespraech"], 1):
+            assert f'<p class="blase {r}">' in t and meldet(t, f"{p}.gespraech.{n}", sp), (sp, n)
+        for n in range(1, nummern(f"{p}.rolle") + 1):
+            assert meldet(t, f"{p}.rolle.{n}.titel", sp) and meldet(t, f"{p}.rolle.{n}.text", sp)
+        for n in range(1, nummern(f"{p}.gut") + 1):
+            assert meldet(t, f"{p}.gut.{n}", sp)
+        for ziel in seite["siehe"]:
+            href = f"{UEBERSICHT}{ziel}/" if ziel in anmeldung.INFO_UNTERSEITEN else f"{UEBERSICHT}#{ziel}"
+            assert f'<a href="{href}">{e(f"info.bereich.{ziel}.titel", sp)}</a>' in t, (sp, ziel)
+        for titel in ("bilder", "tun", "wie", "gespraech", "rollen", "gut", "siehe"):
+            assert meldet(t, f"info.unterseite.{titel}", sp), (sp, titel)
+
+
+def test_texte_und_bilder_jeder_unterseite():
+    """AC-10: jede Unterseite hat ihre Texte in jeder Sprache; jedes Bild gibt es für Deutsch und Englisch in den Maßen von
+    erzeugen, und das Skript zum Erzeugen kennt alle Bilder."""
+    from info import erzeugen
+    alle = set(anmeldung.INFO_BILDER) | {b for s in anmeldung.INFO_UNTERSEITEN.values() for b in s["bilder"]}
+    assert set(erzeugen.BILDER) == alle == erzeugen.alle_bilder()
+    for name, seite in anmeldung.INFO_UNTERSEITEN.items():
+        assert {"bilder", "gespraech", "siehe"} <= set(seite), name
+        for ziel in seite["siehe"]:
+            assert any(ziel in liste for _, liste in anmeldung.INFO_GRUPPEN), (name, ziel)
+        for sp in texte.SPRACHEN:
+            katalog = texte.sprache(sp).TEXTE
+            for k in ("titel", "lead", "wo", "wer", "gespraech.einleitung", "gespraech.person"):
+                assert f"info.bereich.{name}.{k}" in katalog, (sp, name, k)
+            for b in seite["bilder"]:
+                assert f"info.bereich.{name}.bild.{b}" in katalog, (sp, name, b)
+            assert all(f"info.bereich.{name}.gespraech.{n}" in katalog for n in range(1, len(seite["gespraech"]) + 1))
+    for sp in texte.ERSTE:
+        for b in alle:
+            with Image.open(INFO / f"{b}-{sp}.webp") as bild:
+                assert (bild.format, bild.size) == ("WEBP", (erzeugen.BREITE, erzeugen.HOEHE)), (b, sp)
+
+
 def test_wege_der_funktionsseiten(welt):
     """Ohne Schrägstrich weiter, ein Bereich ohne Unterseite gibt 404, POST führt ohne Wirkung zurück, HEAD geht; angemeldet
     Mein Konto im Kopf."""
@@ -85,16 +155,21 @@ def test_wege_der_funktionsseiten(welt):
     for alt, neu in (("/info/funktionen", UEBERSICHT), ("/info/funktionen?sprache=en", f"{UEBERSICHT}?sprache=en")):
         s, h, _ = abruf(f"{u.kurl}{alt}")
         assert s == 303 and kopf(h, "Location") == [neu], alt
-    ohne = next(b for _, liste in anmeldung.INFO_GRUPPEN for b in liste if b not in anmeldung.INFO_UNTERSEITEN)
-    for pfad in (f"{UEBERSICHT}gibtsnicht/", "/info/funktionen/karte", f"{UEBERSICHT}{ohne}/", f"{UEBERSICHT}reiseseite/mehr/", f"{UEBERSICHT}Karte/",
+    ohne = next((b for _, liste in anmeldung.INFO_GRUPPEN for b in liste if b not in anmeldung.INFO_UNTERSEITEN), "gibtsnicht")
+    assert "reiseseite" in anmeldung.INFO_UNTERSEITEN
+    for pfad in (f"{UEBERSICHT}gibtsnicht/", f"/info/funktionen/{ohne}", f"{UEBERSICHT}{ohne}/", f"{UEBERSICHT}reiseseite/mehr/", f"{UEBERSICHT}Karte/",
                  "/info/funktionen/galerie.js", "/info/funktionenx/"):
         assert abruf(f"{u.kurl}{pfad}")[0] == 404, pfad
-    s, h, _ = abruf(f"{u.kurl}{UEBERSICHT}", "POST", {})
-    assert s == 303 and kopf(h, "Location") == [UEBERSICHT]
-    assert hol(u, UEBERSICHT, "HEAD")[0] == 200
+    s, h, _ = abruf(f"{u.kurl}/info/funktionen/reiseseite")
+    assert s == 303 and kopf(h, "Location") == [f"{UEBERSICHT}reiseseite/"]
+    for pfad in (UEBERSICHT, f"{UEBERSICHT}reiseseite/"):
+        s, h, _ = abruf(f"{u.kurl}{pfad}", "POST", {})
+        assert s == 303 and kopf(h, "Location") == [pfad], pfad
+        assert hol(u, pfad, "HEAD")[0] == 200, pfad
     ida = anmelden(u, IDA, name="Ida")[0]
-    t = abruf(f"{u.kurl}{UEBERSICHT}", cookie=ida)[2]
-    assert f'<a class="kopf-link" href="/konto">{e("info.mein_konto")}</a>' in t and 'href="/anmelden"' not in t
+    for pfad in (UEBERSICHT, f"{UEBERSICHT}reiseseite/"):
+        t = abruf(f"{u.kurl}{pfad}", cookie=ida)[2]
+        assert f'<a class="kopf-link" href="/konto">{e("info.mein_konto")}</a>' in t and 'href="/anmelden"' not in t, pfad
 
 
 MASSE = r"""

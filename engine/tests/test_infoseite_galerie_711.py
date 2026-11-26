@@ -65,7 +65,7 @@ def test_skripte_unter_info_ausgeliefert(welt):
 
 @pytest.mark.skipif(not PLAYWRIGHT.exists() or not shutil.which("node"), reason="Playwright fehlt")
 @pytest.mark.parametrize("sp", list(texte.ERSTE))
-@pytest.mark.parametrize("pfad", ["/info/"])
+@pytest.mark.parametrize("pfad", ["/info/", "/info/funktionen/reiseseite/"])
 def test_galerie_im_browser(welt, sp, pfad):
     """AC-3, AC-4, AC-5: Reihe am Handy wischbar mit Hinweis, am Rechner in einer Zeile; die Großansicht zeigt das angetippte
     Bild, die Unterschrift im undurchsichtigen Streifen unter dem Bild und den Zähler, blättert und schließt; Blättern sofort

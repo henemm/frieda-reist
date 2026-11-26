@@ -193,6 +193,10 @@ background:#151816;border-top:1px solid rgba(255,255,255,.12);color:#fff;font:1r
 .unterschrift-streifen small{display:block;opacity:.75;font-size:.8125rem;margin-top:.2rem}
 .zeile .unter{color:var(--mut);font-size:.9375rem}
 .prinzipien.orte{grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))}
+.kurz{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.35rem .9rem;margin:0;font-size:.9375rem}.kurz dt{font-weight:600}.kurz dd{margin:0;color:var(--mut)}
+.siehe{display:flex;flex-wrap:wrap;gap:.5rem}
+.siehe a{font-size:.9375rem;font-weight:600;text-decoration:none;color:var(--acc);background:var(--acc2);border-radius:999px;padding:.35rem .8rem}
+.liste details>.inhalt p{margin:0;font-size:.9375rem}.karte.gespraech h2{margin:0}
 .gruppe{margin:0 .25rem;font-size:.8125rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
 .spalten,.spalte{display:flex;flex-direction:column;gap:1.5rem}
 @media (min-width:760px){main.konto{max-width:72rem;padding:1.75rem 2rem 3rem}
@@ -1333,8 +1337,15 @@ INFO_GRUPPEN = (("planen", ("wahrheit", "gespraech", "gespraeche", "alternativen
                 ("unterwegs", ("reiseseite", "karte", "zusammenarbeit", "packliste", "bilder", "erinnerungen")),
                 ("konto", ("konto", "sprachen", "betrieb")))
 INFO_ROLLEN = ("gast", "mitwirkend", "organisierend")
-# Bereiche mit eigener Unterseite /info/funktionen/<bereich>/ (Form: docs/design.md, Abschnitt Funktionsseiten)
-INFO_UNTERSEITEN = {}
+# Bereiche mit eigener Unterseite /info/funktionen/<bereich>/, je Bereich ein Eintrag (Form: docs/design.md, Abschnitt
+# Funktionsseiten): bilder (Namen in engine/info/, jedes auch in erzeugen.BILDER), gespraech (Sprecher der Blasen, person oder
+# claude), siehe (andere Bereiche). Texte unter info.bereich.<name>.… (lead, wo, wer, bild.<bild>, tun.<n>, wie.<n>.titel und
+# .text, gespraech.einleitung, gespraech.person, gespraech.<n>, rolle.<n>.titel und .text, gut.<n>); die Zahl der Einträge
+# zählt die Seite im Katalog.
+INFO_UNTERSEITEN = {
+    "reiseseite": {"bilder": ("reise", "tag", "ort", "zutun"), "gespraech": ("person", "claude"),
+                   "siehe": ("gespraech", "karte", "alternativen", "buchungen", "zusammenarbeit")},
+}
 INFO_WEG = re.compile(r"/info/funktionen(?:/([a-z]+))?(/?)")
 
 
@@ -1430,11 +1441,16 @@ def info_sprachen(pfad="/"):
             + "</nav>")
 
 
+def blasen(wer, folge, schluessel):
+    """Sprechblasen eines Gesprächs: folge die Sprecher (person, claude), die Texte heißen <schluessel>.<n>."""
+    return "".join(f'<p class="blase {r}"><span class="wer">{esc(wer[r])}</span>{esc(tx(f"{schluessel}.{n}"))}</p>'
+                   for n, r in enumerate(folge, 1))
+
+
 def info_gespraech(name, folge):
     wer = {"person": tx(f"info.gespraech.{name}.person"), "claude": tx("info.gespraech.claude")}
-    blasen = "".join(f'<p class="blase {r}"><span class="wer">{esc(wer[r])}</span>{esc(tx(f"info.gespraech.{name}.{n}"))}</p>'
-                     for n, r in enumerate(folge, 1))
-    return karte(f'<div class="gespraech"><h3>{esc(tx(f"info.gespraech.{name}.titel"))}</h3>{blasen}</div>')
+    return karte(f'<div class="gespraech"><h3>{esc(tx(f"info.gespraech.{name}.titel"))}</h3>'
+                 f'{blasen(wer, folge, f"info.gespraech.{name}")}</div>')
 
 
 LUPE = ('<span class="lupe" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" '
@@ -1550,6 +1566,49 @@ def funktionen_seite(k=None, pfad="/info/funktionen/"):
                  info_abschnitt("info.orte.titel", f'<div class="prinzipien orte">{orte}</div>'), gruppen,
                  info_abschnitt("info.rollen.titel", f'<p>{esc(tx("info.rollen.einleitung"))}</p>', rollen),
                  info_fuss(pfad), kopf=info_kopf(k), breit=True)
+
+
+def nummern(praefix, endung=""):
+    """1 … n, solange <praefix>.<n><endung> im Katalog der Seite steht (Listen der Unterseiten, ohne Zahl im Code)."""
+    katalog = (texte.sprache(sprache_der_seite()) or texte.sprache(texte.VORGABE)).TEXTE
+    n = 0
+    while f"{praefix}.{n + 1}{endung}" in katalog:
+        n += 1
+    return range(1, n + 1)
+
+
+def info_liste(klasse, schluessel):
+    return f'<ul class="{klasse}">' + "".join(f'<li>{esc(tx(f"{schluessel}.{n}"))}</li>' for n in nummern(schluessel)) + "</ul>"
+
+
+def info_klappen(p):
+    """So geht's: je Eintrag eine Klappe, Absätze im Text durch eine Leerzeile getrennt."""
+    return "".join(f'<details><summary class="zeile"><span class="was"><span class="titel">{esc(tx(f"{p}.wie.{n}.titel"))}'
+                   '</span></span></summary><div class="inhalt">'
+                   + "".join(f"<p>{esc(a)}</p>" for a in tx(f"{p}.wie.{n}.text").split("\n\n")) + "</div></details>"
+                   for n in nummern(f"{p}.wie", ".titel"))
+
+
+def unterseite(k, name, pfad):
+    """Unterseite eines Bereichs (#711, Muster Reiseseite): Kopf mit Wo und Wer, Galerie, was du tun kannst, So geht's als
+    Klappen, ein Gespräch, Wer darf was, Gut zu wissen, Siehe auch. Aufbau aus INFO_UNTERSEITEN, Texte aus dem Katalog."""
+    s, p = INFO_UNTERSEITEN[name], f"info.bereich.{name}"
+    kurz = "".join(f'<dt>{esc(tx(f"info.unterseite.{w}"))}</dt><dd>{esc(tx(f"{p}.{w}"))}</dd>' for w in ("wo", "wer"))
+    oben = karte(f'<h1>{esc(tx(f"{p}.titel"))}</h1>', f'<p class="lead">{esc(tx(f"{p}.lead"))}</p>', f'<dl class="kurz">{kurz}</dl>')
+    bilder = info_galerie(tx(f"{p}.titel"), s["bilder"], f"{p}.bild")
+    wer = {"person": tx(f"{p}.gespraech.person"), "claude": tx("info.gespraech.claude")}
+    gespraech = (f'<section class="karte gespraech"><h2>{esc(tx("info.unterseite.gespraech"))}</h2>'
+                 f'<p>{esc(tx(f"{p}.gespraech.einleitung"))}</p>{blasen(wer, s["gespraech"], f"{p}.gespraech")}</section>')
+    rollen = info_rollen((tx(f"{p}.rolle.{n}.titel"), tx(f"{p}.rolle.{n}.text")) for n in nummern(f"{p}.rolle", ".titel"))
+    siehe = "".join(f'<a href="{esc(info_bereich_link(b))}">{esc(tx(f"info.bereich.{b}.titel"))}</a>' for b in s["siehe"])
+    return seite(tx(f"{p}.titel"), f'<a class="zurueck" href="/info/funktionen/">‹ {esc(tx("info.funktionen.titel"))}</a>', oben,
+                 info_abschnitt("info.unterseite.bilder", bilder) if bilder else "",
+                 karte(f'<h2>{esc(tx("info.unterseite.tun"))}</h2>', info_liste("darf", f"{p}.tun")),
+                 info_abschnitt("info.unterseite.wie", f'<div class="liste">{info_klappen(p)}</div>'), gespraech,
+                 info_abschnitt("info.unterseite.rollen", rollen),
+                 karte(f'<h2>{esc(tx("info.unterseite.gut"))}</h2>', info_liste("punkte", f"{p}.gut")),
+                 info_abschnitt("info.unterseite.siehe", f'<div class="siehe">{siehe}</div>'),
+                 info_fuss(pfad), kopf=info_kopf(k), breit=True, galerie=bool(bilder))
 
 
 # ---------------------------------------------------------------- Ablauf
@@ -1715,7 +1774,7 @@ def bearbeiten(methode, pfad, headers, body, ip, reise_info):
             return weiter(weg)
         if texte.gueltig(q.get("sprache") or ""):
             _anfrage.sprache = q["sprache"]
-        return antwort(200, funktionen_seite(k, weg))
+        return antwort(200, unterseite(k, m[1], weg) if m[1] else funktionen_seite(k, weg))
     if weg in ("/", "/info/"):
         # Startseite: angemeldet Mein Konto (#41), sonst die Infoseite (#436); /info/ zeigt sie allen, auch angemeldet (#440). Sie liegt
         # unter /info/, weil nginx diesen Ort für die Bilder schon zum Dienst führt (kein neuer Ort, kein Handschritt in der Instanz).
