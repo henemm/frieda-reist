@@ -299,6 +299,26 @@ def test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypa
     assert not konten.reise_vorgemerkt("beispielreise")
 
 
+def test_knopf_auch_bei_abgebauter_seite(zwei, monkeypatch):
+    """#730: Nach dem Vormerken wird die Seite abgebaut; die Rollen kommen dann aus reise.yaml im Reisespeicher, wo die
+    Personen eine Zuordnung {schlüssel: {name, rolle}} sind. Der Knopf bleibt der Organisatorin."""
+    u = zwei()
+    _im_speicher(monkeypatch, u, "beispielreise")
+    from test_anmeldung import anmelden
+    karl_keks, _ = anmelden(u, KARL)
+    konten.loeschung_vormerken("beispielreise", u.a["id"])
+    (u.seiten / "beispielreise" / "daten.json").unlink()   # Seite abgebaut: kein Zustand der Seite mehr
+    import rueckmeldungen as rm
+    assert rm.zustand("beispielreise") is None
+    assert 'value="reise_zurueckholen"' in _seite(u, u.a_keks), "Organisatorin sieht den Knopf (AC-1)"
+    tk = _seite(u, karl_keks)
+    assert 'class="vorgemerkt' in tk and 'value="reise_zurueckholen"' not in tk, "Mitwirkende ohne Knopf (AC-2)"
+    abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_zurueckholen", "reise": "beispielreise"}, cookie=karl_keks)
+    assert konten.reise_vorgemerkt("beispielreise"), "Mitwirkende holen nicht zurück (AC-2)"
+    abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_zurueckholen", "reise": "beispielreise"}, cookie=u.a_keks)
+    assert not konten.reise_vorgemerkt("beispielreise"), "Organisatorin holt zurück (AC-1)"
+
+
 @pytest.mark.parametrize("reise,ausloeser,andere", [("beispielreise", IDA, KARL), ("stadtwochenende", TOM, None)])
 def test_benachrichtigung_nur_an_die_anderen(zwei, monkeypatch, reise, ausloeser, andere):
     u = zwei()

@@ -731,6 +731,8 @@ def _person(reise, schluessel, z=None):
     personen = ((z if z is not None else rm.zustand(reise)) or {}).get("personen")
     if personen is None:
         personen = _reise_aus_speicher(reise).get("personen") or []
+        if isinstance(personen, dict):   # reise.yaml: Zuordnung {schlüssel: {name, rolle, …}} (#730)
+            personen = [{**p, "schluessel": s} for s, p in personen.items() if isinstance(p, dict)]
     return next((p for p in personen if isinstance(p, dict) and p.get("schluessel") == schluessel), {})
 
 
