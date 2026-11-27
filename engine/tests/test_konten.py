@@ -77,6 +77,19 @@ def test_abgelehnte_bitte_bleibt_abgelehnt(umgebung):
                                                                                          "reise_anlegen")
 
 
+def test_nach_entzug_des_rechts_neu_bitten(umgebung):
+    """#695: Ein Entzug ist keine Ablehnung. Nach Freischalten und Entzug öffnet eine neue Bitte die alte wieder."""
+    _, k = einloggen(umgebung, IDA, "Ida")
+    konten.reisen_anlegen_anfragen(k["id"])
+    konten.freischalten(k["id"])
+    konten.recht_setzen(k["id"], "reise_anlegen", False)
+    assert konten.reisen_anlegen_anfragen(k["id"]) == "offen"
+    [a] = konten.anfragen()
+    assert a["email"] == IDA and a["status"] == "offen" and a["entschieden"] is None
+    assert konten.reisen_anlegen_anfragen(k["id"]) == "offen"          # eine offene Bitte bleibt eine
+    assert len(konten.anfragen(nur_offen=False)) == 1
+
+
 def test_szenario2_eingeladen_gilt_beim_ersten_anmelden(umgebung):
     r = konten.einladen("winterwoche", "karl", KARL, "mitwirkend", "Karl", "Ida", titel="Winterwoche im Allgäu",
                         seite="https://frieda.beispiel.invalid/winterwoche-x/")

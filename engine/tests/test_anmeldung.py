@@ -271,6 +271,25 @@ def test_kontoseite(welt):
     assert s == 200 and meldet(t, "konto.seite.geloescht") and konten.konto_per_email(IDA) is None
 
 
+def test_bitte_nach_entzug_auf_mein_konto(welt):
+    """#695: Nach Freischalten und Entzug wirkt der Knopf auf Mein Konto: neue Bitte, Meldung an den Betreiber."""
+    u = welt()
+    anmelden(u, IDA, "Ida")
+    konten.recht_setzen(konten.konto_per_email(IDA)["id"], "betreiber")
+    mo, _ = anmelden(u, MO, "Mo")
+    kid = konten.konto_per_email(MO)["id"]
+    konten.freischalten(kid)
+    konten.recht_setzen(kid, "reise_anlegen", False)
+    sprache = konten.konto(kid)["sprache"] or texte.VORGABE
+    assert texte.t(sprache, "konto.reisen.anlegen_knopf") in abruf(f"{u.kurl}/konto", cookie=mo)[2]
+    abruf(f"{u.kurl}/konto", "POST", {"aktion": "anfragen"}, cookie=mo)
+    seite = abruf(f"{u.kurl}/konto", cookie=mo)[2]
+    assert texte.t(sprache, "konto.reisen.anlegen_offen") in seite
+    assert texte.t(sprache, "konto.reisen.anlegen_knopf") not in seite
+    m = [json.loads(z) for z in (konten.pfad().parent / "neu" / "meldungen.jsonl").read_text().splitlines()]
+    assert [x for x in m if x.get("art") == "anfrage_reisen" and x["an"] == [konten.konto_per_email(IDA)["id"]]]
+
+
 def test_konnektor_braucht_das_geheimnis(welt):
     """Der Konnektor ruft den Rückmeldedienst mit dem Dienst-Geheimnis; ohne es wäre es die Seite."""
     u = welt(regeln={"anmeldung": "noetig"})

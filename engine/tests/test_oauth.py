@@ -336,6 +336,18 @@ def test_reisen_anlegen_mit_recht(welt):
     assert not meldet(aufruf(u, t["access_token"], "meine_reisen")[0], "konnektor.werkzeug.reise_anlegen.titel")   # steht dort, sobald die Seite online ist
 
 
+def test_bitte_nach_entzug_des_rechts(welt):
+    """#695: Nach Freischalten und Entzug bricht trip_create_request nicht ab, sondern legt eine neue Bitte an."""
+    u = welt()
+    t, _ = verbinden(u, BEN, "Ben")
+    kid = konten.konto_per_email(BEN)["id"]
+    konten.freischalten(kid)
+    konten.recht_setzen(kid, "reise_anlegen", False)
+    text, fehler = aufruf(u, t["access_token"], "reisen_anlegen_anfragen")
+    assert not fehler and "beim Betreiber" in text, text
+    assert [a["email"] for a in konten.anfragen()] == [BEN]
+
+
 def test_betreiber_entscheidet_bitten(welt):
     u = welt()
     ida, _ = verbinden(u, IDA, "Ida")
