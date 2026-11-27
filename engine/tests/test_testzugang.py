@@ -16,6 +16,7 @@ Schnittstelle, die diese Tests festlegen:
 import ast
 import json
 import os
+import re
 import socket
 import stat
 import subprocess
@@ -367,12 +368,28 @@ class Weiterleiter:
                 k, _ = self.server.accept()
             except OSError:
                 return
+            if self.an == 502:
+                threading.Thread(target=self._bad_gateway, args=(k,), daemon=True).start()
+                continue
             if not self.an:
                 k.close()
                 continue
             z = socket.create_connection(self.ziel)
             for von, nach in ((k, z), (z, k)):
                 threading.Thread(target=self._pumpen, args=(von, nach), daemon=True).start()
+
+    @staticmethod
+    def _bad_gateway(k):
+        """Wie nginx während eines Neustarts: Anfrage ganz lesen, dann 502 (#669, AC-6)."""
+        with k:
+            daten = b""
+            while b"\r\n\r\n" not in daten and (stueck := k.recv(65536)):
+                daten += stueck
+            kopf, _, rumpf = daten.partition(b"\r\n\r\n")
+            laenge = int((re.search(rb"(?i)content-length:\s*(\d+)", kopf) or [b"", b"0"])[1])
+            while len(rumpf) < laenge and (stueck := k.recv(65536)):
+                rumpf += stueck
+            k.sendall(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
 
     @staticmethod
     def _pumpen(von, nach):
@@ -448,6 +465,20 @@ def test_bruecke_prueft_nach_netzfehler_beim_start_und_leitet_dann_weiter(zugang
     assert "my_trips" in namen(_zeile(p, LISTE))
     rc, rest, err = _ende(p)
     assert rc == 0 and rest == [], err
+
+
+def test_bruecke_ueberlebt_serverfehler_bei_der_kontopruefung(zugang, weiterleiter):
+    """AC-6: 502 bei der Kontoprüfung gilt wie ein Netzfehler; die Prüfung wird nachgeholt, nichts ungeprüft weiter."""
+    assert einrichten({"FR_KN_ADRESSE": zugang.kurl}).returncode == 0
+    weiterleiter.an = 502
+    p, _ = bruecke_starten()
+    erste = _zeile(p, INIT)
+    assert _netzfehler(erste, 1) and "502" in erste["error"]["message"], erste
+    weiterleiter.an = True
+    assert "my_trips" in namen(_zeile(p, LISTE))
+    rc, rest, err = _ende(p)
+    assert rc == 0 and rest == [], err
+    assert "Traceback" not in err
 
 
 def test_bruecke_bricht_nach_netzfehler_beim_start_bei_anderem_konto_ab(zugang, weiterleiter):

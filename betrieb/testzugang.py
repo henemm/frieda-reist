@@ -53,7 +53,11 @@ class ErneuernFehler(Abbruch):
     """Token-Erneuerung gescheitert. Die Brücke beantwortet die Anfrage mit einem Fehler und läuft weiter (#669)."""
 
 
-NETZFEHLER = (OSError, http.client.HTTPException)    # Konnektor nicht erreichbar: abgelehnt, Zeitüberschreitung, …
+class Serverfehler(Exception):
+    """5xx bei der Kontoprüfung, etwa 502 hinter nginx während eines Neustarts: wie ein Netzfehler (#669, AC-6)."""
+
+
+NETZFEHLER = (OSError, http.client.HTTPException, Serverfehler)    # Konnektor nicht erreichbar: abgelehnt, Zeitüberschreitung, …
 
 
 # ---------------------------------------------------------------- Instanzwerte (wie engine/instanz.py, ohne Engine)
@@ -296,6 +300,8 @@ class Bruecke:
             a = json.loads(t)
         except ValueError:
             a = None
+        if s >= 500:
+            raise Serverfehler(f"Connector answered HTTP {s}")
         if s != 200 or not isinstance(a, dict) or "result" not in a:
             raise Abbruch(f"Connector check failed ({methode}, HTTP {s}).")
         return a["result"]
@@ -325,6 +331,8 @@ def _voruebergehend(aufgabe):
     Der Text nennt nur die Art des Fehlers, nie Tokens oder Pfade."""
     try:
         return aufgabe(), None
+    except Serverfehler as f:
+        return None, str(f)
     except NETZFEHLER as f:
         return None, f"Connector unreachable ({type(f).__name__})"
     except ErneuernFehler as f:
