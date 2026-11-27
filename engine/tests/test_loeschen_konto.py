@@ -284,11 +284,15 @@ def test_betriebsdoku_belege_nicht_mehr_nie_geloescht():
 # ---------- #694: Ablage ohne Reise (neu/), Aufträge und ausstehende neue Reisen ----------
 # Spec: docs/specs/betrieb/konto-loeschen-ablage-neu-694.md. Schnittstelle zusätzlich:
 #   rueckmeldungen.ablage_sperre(ordner)   Kontextmanager, Dateisperre für Anhängen und Umschreiben in einem Ordner
-#   konten._ablage_neu_bereinigen(kid, email, name)   räumt neu/meldungen.jsonl, neu/auftraege.jsonl und die
-#                                                      Ausstehend-Datei (KN_AUSSTEHEND) ab, Aufruf in loeschen
+#   konten._ablage_neu_bereinigen(kid, email, name)   räumt neu/meldungen.jsonl und neu/auftraege.jsonl ab, Aufruf in
+#                                                      loeschen; die Ausstehend-Datei (KN_AUSSTEHEND) räumt zustellen.py ab
 
 import contextlib  # noqa: E402
+import os  # noqa: E402
 import rueckmeldungen as rm  # noqa: E402
+
+sys.path.insert(0, str(WURZEL / "betrieb"))
+import zustellen  # noqa: E402
 
 LEA = "lea@beispiel.invalid"   # Beispielwert: weitere eingeladene Person, bleibt unberührt
 
@@ -334,6 +338,12 @@ def _auftrag(aid, k, pfad, personen, einladen=()):
             "konto_id": k["id"], "art": "Neue Reise", "ziel": "allgemein", "quelle": "Claude-App",
             "text": f"Neue Reise „Skiwoche“. Personen: {namen}. Ordner {pfad}.",
             "daten": {"neue_reise": {"pfad": pfad, "sprache": "de", "personen": personen}}, "einladen": list(einladen)}
+
+
+def _zustellen(u, tmp_path):
+    """Lauf von betrieb/zustellen.py auf der Ausstehend-Datei; die Seiten sind leer, also wird nichts freigeschaltet."""
+    (tmp_path / "seiten").mkdir(exist_ok=True)
+    return zustellen.ausstehend(WURZEL, u.ausstehend, seiten=tmp_path / "seiten", freischalten="/bin/false")
 
 
 def test_neu_anfrage_reisen_der_person_entfaellt(neu_lage):
@@ -415,13 +425,17 @@ def test_neu_einladen_mit_adresse_entfernt_fremder_auftrag(neu_lage):
     assert a["daten"]["neue_reise"]["personen"]["lea"]["name"] == "Lea"
 
 
-def test_neu_ausstehende_reise_vorgemerkt(neu_lage):
+def test_neu_ausstehende_reise_vorgemerkt(neu_lage, tmp_path, capsys):
     u = neu_lage()
     fremd = {"ordner": "segeltoern-2027", "aid": "A-20261121-100000-cd34", "name": "Tom", "person": "tom", "konto_id": u.b["id"]}
     _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-20261120-100000-ab12", "name": u.karl["name"],
                                "person": "karl", "konto_id": u.karl["id"]}, fremd])
+    vorher = u.ausstehend.read_bytes()
     konten.loeschen(u.karl["id"])
+    assert u.ausstehend.read_bytes() == vorher   # der Rückmeldedienst darf den Ordner des Konnektors nicht beschreiben
+    assert _zustellen(u, tmp_path) == 0
     assert _zeilen(u.ausstehend) == [fremd]
+    assert "Dropped: skiwoche-2027 (account deleted)" in capsys.readouterr().out
     assert konten.reise_vorgemerkt("skiwoche-2027") and not konten.reise_vorgemerkt("segeltoern-2027")
     assert [z["konto"] for z in konten.loeschungen() if z["reise"] == "skiwoche-2027"] == [None]
 
@@ -439,7 +453,7 @@ def test_neu_fremde_zeilen_byteidentisch(neu_lage):
     assert [p.read_bytes() for p in dateien] == vorher
 
 
-def test_neu_volltextsuche_ohne_spur(neu_lage):
+def test_neu_volltextsuche_ohne_spur(neu_lage, tmp_path):
     u = neu_lage()
     name = u.karl["name"]
     _bitte(u, u.karl)
@@ -452,6 +466,7 @@ def test_neu_volltextsuche_ohne_spur(neu_lage):
                  [{"schluessel": "karl", "email": KARL, "rolle": "mitwirkend", "name": name}])])
     _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-1", "name": name, "person": "karl", "konto_id": u.karl["id"]}])
     konten.loeschen(u.karl["id"])
+    _zustellen(u, tmp_path)
     for p in [*sorted(x for x in u.neu.rglob("*") if x.is_file()), u.ausstehend]:
         t = p.read_text(encoding="utf-8")
         assert KARL not in t and u.karl["id"] not in t and not re.search(rf"\b{re.escape(name)}\b", t), p.name
@@ -507,7 +522,21 @@ def test_neu_sperre_beim_bereinigen(neu_lage, monkeypatch):
     _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-1", "name": "Karl", "person": "karl", "konto_id": u.karl["id"]}])
     genommen = _sperren_protokollieren(monkeypatch)
     konten.loeschen(u.karl["id"])
-    assert u.neu in genommen and u.ausstehend.parent in genommen
+    assert u.neu in genommen and u.ausstehend.parent not in genommen
+
+
+def test_neu_loeschen_ohne_schreibrecht_im_konnektorordner(neu_lage):
+    """Der Rückmeldedienst sieht den Ordner des Konnektors nur lesend (ProtectSystem=strict): Löschen gelingt trotzdem."""
+    u = neu_lage()
+    _bitte(u, u.karl)
+    _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-1", "name": "Karl", "person": "karl", "konto_id": u.karl["id"]}])
+    modus = u.ausstehend.parent.stat().st_mode & 0o777
+    os.chmod(u.ausstehend.parent, 0o500)
+    try:
+        konten.loeschen(u.karl["id"])
+    finally:
+        os.chmod(u.ausstehend.parent, modus)
+    assert konten.konto(u.karl["id"]) is None and _zeilen(u.neu / "meldungen.jsonl") == []
 
 
 def test_neu_bestehende_ablage_der_reisen_unveraendert(neu_lage):
@@ -531,4 +560,4 @@ def test_neu_sperre_im_konnektor_anhaengen(schreibweg, tmp_path, monkeypatch):
     t, f = kn.reise_anlegen(IDA_KONTO, {"titel": "Skiwoche", "von": "2027-02-06", "bis": "2027-02-13", "sprache": "de",
                                         "personen": [{"vorname": "Karl", "rolle": "mitwirkend"}]})
     assert not f, t
-    assert rm.ordner_neu() in genommen and ausstehend.parent in genommen
+    assert rm.ordner_neu() in genommen and ausstehend.parent not in genommen

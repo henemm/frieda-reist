@@ -76,7 +76,9 @@ Person, die er erkannt hat. Alles andere gilt als Seite: Name und Rolle kommen a
 Origin muss Friedas Adresse sein) und der Mitgliedschaft; ohne Sitzung 401, ohne Mitgliedschaft 403. Ein eingetippter Name
 zählt nicht (die Regel anmeldung: uebergang ist seit #421 entfallen).
 """
+import contextlib
 import datetime
+import fcntl
 import functools
 import hashlib
 import json
@@ -306,6 +308,19 @@ def status_lesen(o):
 ADRESSE = re.compile(r"https?://", re.I)
 
 
+@contextlib.contextmanager
+def ablage_sperre(ordner):
+    """Dateisperre für einen Ordner der Ablage (#694): Anhängen (Meldungen, Aufträge, ausstehende Reisen) und Umschreiben
+    beim Löschen eines Kontos nehmen sie, damit beim Umschreiben keine gleichzeitig angehängte Zeile verloren geht.
+    Gehalten über fcntl.flock auf <ordner>/.sperre, freigegeben beim Verlassen."""
+    with open(Path(ordner) / ".sperre", "a") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
 def meldung_anlegen(o, an, art, ziel, text, auftraege=(), schluessel=None, bezug=None, zeit=None, extra=None, teile=None):
     """Meldung an Personen (Namen) in meldungen.jsonl. Der Konnektor zeigt sie der Person (Überblick, rueckmeldungen).
     schluessel: Kennung gegen doppelte Meldungen (Wächter und Erinnerer, Paket E); bezug: AG-… oder „reise“, damit eine
@@ -326,7 +341,7 @@ def meldung_anlegen(o, an, art, ziel, text, auftraege=(), schluessel=None, bezug
     if bezug:
         m["bezug"] = bezug
     m.update(extra or {})
-    with (o / "meldungen.jsonl").open("a", encoding="utf-8") as f:
+    with ablage_sperre(o), (o / "meldungen.jsonl").open("a", encoding="utf-8") as f:
         f.write(json.dumps(m, ensure_ascii=False) + "\n")
         f.flush()
         os.fsync(f.fileno())

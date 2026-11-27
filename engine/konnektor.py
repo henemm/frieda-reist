@@ -2468,7 +2468,7 @@ def reise_anlegen(konto, args):
                     mails.append({"schluessel": schl, "email": adr, "rolle": neu["personen"][schl]["rolle"],
                                   "name": neu["personen"][schl]["name"]})
         e["einladen"] = mails
-        with (o / "auftraege.jsonl").open("a", encoding="utf-8") as f:
+        with rm.ablage_sperre(o), (o / "auftraege.jsonl").open("a", encoding="utf-8") as f:   # Sperre wie beim Löschen eines Kontos (#694)
             f.write(json.dumps(e, ensure_ascii=False) + "\n")
             f.flush()
             os.fsync(f.fileno())

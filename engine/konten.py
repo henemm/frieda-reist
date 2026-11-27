@@ -649,17 +649,123 @@ def _pseudonymisieren(kid, bleiben):
         _ablage_pseudonymisieren(reise, set(namen), ersatz)
 
 
+def _jsonl_umschreiben(p, aendern):
+    """JSONL-Datei unter der Sperre ihres Ordners (rueckmeldungen.ablage_sperre) umschreiben: aendern(Zeile) -> neue Zeile
+    oder None (entfällt). Unlesbare Zeilen bleiben, wie sie sind; ändert sich nichts, bleibt die Datei unberührt (#694).
+    Atomar über eine Temp-Datei im selben Ordner wie _ablage_pseudonymisieren; fehlt die Datei, gibt es nichts zu tun."""
+    import rueckmeldungen as rm
+    if not p.parent.is_dir():
+        return
+    with rm.ablage_sperre(p.parent):
+        try:
+            alt = p.read_bytes()
+        except FileNotFoundError:
+            return
+        aus, geaendert = [], False
+        for z in alt.splitlines(keepends=True):
+            try:
+                d = json.loads(z.decode("utf-8")) if z.strip() else None
+            except ValueError:   # auch UnicodeDecodeError
+                d = None
+            if not isinstance(d, dict):
+                aus.append(z)
+                continue
+            n = aendern(json.loads(z.decode("utf-8")))   # frische Kopie, damit der Vergleich mit d trägt
+            if n == d:
+                aus.append(z)
+                continue
+            geaendert = True
+            if n is not None:
+                aus.append((json.dumps(n, ensure_ascii=False) + "\n").encode("utf-8"))
+        if not geaendert:
+            return
+        tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp")
+        try:
+            tmp.write_bytes(b"".join(aus))
+            os.chmod(tmp, p.stat().st_mode & 0o777)
+            tmp.replace(p)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+
+def _gleicher_name(a, b):
+    return isinstance(a, str) and isinstance(b, str) and a.strip().casefold() == b.strip().casefold()
+
+
+def _meldung_ohne(m, kid, adresse, name):
+    """Meldung ohne Reise ohne die gelöschte Person: Bitten und Wartelisten-Meldungen der Person entfallen, in „an“ fehlen
+    ihre Kennung und (nur wenn kein anderes Konto ihn trägt, name sonst None) ihr Name; ist „an“ dann leer, entfällt sie."""
+    import rueckmeldungen as rm
+    art = m.get("art")
+    if art == "anfrage_reisen" and (m.get("konto") == kid or (adresse and rm.meldung_adresse(m) == adresse)):
+        return None
+    if art == "anfrage_warteliste" and adresse and rm.meldung_adresse(m) == adresse:
+        return None
+    an = m.get("an")
+    if isinstance(an, list):
+        m["an"] = [x for x in an if x != kid and not (name and _gleicher_name(x, name))]
+        if not m["an"]:
+            return None
+    return m
+
+
+def _auftrag_ohne(a, kid, adresse, name):
+    """Auftrag in neu/auftraege.jsonl ohne die gelöschte Person (#694): Hat sie ihn angelegt, werden Name und Kürzel zu
+    „gelöschte Person“ (Sprache der neuen Reise) und die Kennung fällt weg; Einladungen an ihre Adresse fallen weg. Ihr
+    Name (der eigene oder der aus der Einladung) wird bei den Personen als ganzer Wert und im Text als ganzes Wort ersetzt.
+    Der Pfad bleibt (vergebene_pfade)."""
+    nr = (a.get("daten") or {}).get("neue_reise") if isinstance(a.get("daten"), dict) else None
+    nr = nr if isinstance(nr, dict) else {}
+    personen = nr.get("personen") if isinstance(nr.get("personen"), dict) else {}
+    ersatz = texte.t(nr.get("sprache") or texte.VORGABE_REISE, "konto.geloeschte_person")
+    weg = []   # (Personen-Schlüssel oder None für jede Person mit dem Namen, Name)
+    if a.get("konto_id") == kid:
+        a["name"] = a["konto"] = ersatz
+        a.pop("konto_id")
+        weg.append((None, name))
+    einladen = a.get("einladen")
+    if isinstance(einladen, list) and adresse:
+        treffer = [e for e in einladen if isinstance(e, dict) and str(e.get("email") or "").casefold() == adresse]
+        a["einladen"] = [e for e in einladen if not any(e is x for x in treffer)]
+        weg += [(e.get("schluessel"), e.get("name")) for e in treffer]
+    for schluessel, n in weg:
+        if not isinstance(n, str) or not n.strip():
+            continue
+        for k, p in personen.items():
+            if isinstance(p, dict) and p.get("name") == n and schluessel in (None, k):
+                p["name"] = ersatz
+        if isinstance(a.get("text"), str):
+            a["text"] = re.sub(rf"(?<!\w){re.escape(n)}(?!\w)", ersatz, a["text"])
+    return a
+
+
+def _ablage_neu_bereinigen(kid, email, name):
+    """Ablage ohne Reise (rueckmeldungen.ordner_neu: meldungen.jsonl, auftraege.jsonl) von der gelöschten Person befreien
+    (#694). Die Datei der ausstehenden neuen Reisen des Konnektors bleibt unberührt: Der Rückmeldedienst darf den Ordner
+    des Konnektors nicht beschreiben; ihre Zeilen räumt betrieb/zustellen.py ab. Jeder Fehler beim Lesen oder Schreiben wirft."""
+    import rueckmeldungen as rm
+    adresse = (email or "").strip().casefold()
+    with closing(db()) as v:
+        andere = [z[0] for z in v.execute("SELECT name FROM konten WHERE id != ?", (kid,))]
+    frei = name if name and not any(_gleicher_name(n, name) for n in andere) else None
+    o = rm.ordner_neu()
+    if o is not None:
+        _jsonl_umschreiben(o / "meldungen.jsonl", lambda m: _meldung_ohne(m, kid, adresse, frei))
+        _jsonl_umschreiben(o / "auftraege.jsonl", lambda a: _auftrag_ohne(a, kid, adresse, name))
+
+
 def loeschen(kid):
     """Konto löschen (auf Wunsch der Person, #381). Ist es die einzige Organisator:in einer Reise mit weiteren Mitgliedern,
-    KontoFehler „erst klären“ mit den Reisen. Sonst: Name in den übrigen Reisen durch „gelöschte Person“ ersetzen, Reisen
-    nur mit dieser Person zur Löschung vormerken (ohne auslösendes Konto, Zurückholen geht nicht mehr) und in einer
-    Transaktion jede Spur aus allen Tabellen der Kontendatenbank entfernen."""
+    KontoFehler „erst klären“ mit den Reisen. Sonst: Name in den übrigen Reisen durch „gelöschte Person“ ersetzen, die Ablage
+    ohne Reise bereinigen (#694), Reisen nur mit dieser Person zur Löschung vormerken (ohne auslösendes Konto, Zurückholen
+    geht nicht mehr) und in einer Transaktion jede Spur aus allen Tabellen der Kontendatenbank entfernen."""
     gesperrt, allein, bleiben = loeschen_pruefen(kid)
     if gesperrt:
         raise KontoFehler("konto.fehler.letzte_organisatorin", reisen=", ".join(gesperrt))
     k = konto(kid)
     try:
         _pseudonymisieren(kid, bleiben)
+        _ablage_neu_bereinigen(kid, (k or {}).get("email"), (k or {}).get("name"))
     except Exception as f:   # noqa: BLE001  Speicher nicht grün oder nicht erreichbar: Konto bleibt, nichts halb gelöscht
         sys.stderr.write(f"account deletion {kid}: renaming failed: {type(f).__name__}: {f}\n")
         raise KontoFehler("konto.fehler.loeschen_spaeter") from f

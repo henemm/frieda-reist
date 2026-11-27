@@ -20,6 +20,21 @@ import sys
 from pathlib import Path
 
 
+def _konto_geloescht(konten, e):
+    """Ist das Konto, das die Reise angelegt hat, gelöscht (#694), entfällt die Zeile: Die Reise hat nur diese Person und
+    wird ohne auslösendes Konto zur Löschung vorgemerkt. Der Rückmeldedienst darf diese Datei nicht beschreiben, darum
+    räumt sie das Zustellen ab statt konten.loeschen."""
+    if not e.get("konto_id") or konten.konto(e["konto_id"]) is not None:
+        return False
+    if not konten.reise_vorgemerkt(e["ordner"]):
+        try:
+            konten.loeschung_vormerken(e["ordner"], None)
+        except konten.KontoFehler:
+            pass   # gleichzeitig vorgemerkt: die erste Frist bleibt
+    print(f"Dropped: {e['ordner']} (account deleted)")
+    return True
+
+
 def ausstehend(wurzel, datei, seiten=None, freischalten=None):
     """Neue Reisen zustellen, sobald die Seite veröffentlicht ist -> Zahl der Fehlschläge.
     Das Konto der Anfrage (konto_id, Paket J) wird mit der Reise verknüpft, und wer eine Adresse hat, bekommt die
@@ -42,6 +57,8 @@ def ausstehend(wurzel, datei, seiten=None, freischalten=None):
         try:
             e = json.loads(zeile)
         except json.JSONDecodeError:
+            continue
+        if _konto_geloescht(konten, e):
             continue
         daten = seiten / e["ordner"] / "daten.json"
         if not daten.exists():
