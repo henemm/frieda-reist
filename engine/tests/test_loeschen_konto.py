@@ -398,7 +398,7 @@ def test_neu_auftrag_der_person_pseudonymisiert(neu_lage):
     _schreiben(u.neu / "auftraege.jsonl", [_auftrag("A-20261120-100000-ab12", u.karl, "skiwoche-2027", personen)])
     konten.loeschen(u.karl["id"])
     [a] = _zeilen(u.neu / "auftraege.jsonl")
-    assert a["name"] == GELOESCHT and a["konto"] == GELOESCHT
+    assert a["name"] == GELOESCHT and a["konto"] == GELOESCHT and "konto_id" not in a
     assert a["daten"]["neue_reise"]["personen"]["karl"]["name"] == GELOESCHT
     assert a["daten"]["neue_reise"]["personen"]["karla"]["name"] == name + "a"     # längerer Name bleibt
     assert f"{GELOESCHT} (organisator)" in a["text"] and f"{name}a (mitwirkend)" in a["text"]

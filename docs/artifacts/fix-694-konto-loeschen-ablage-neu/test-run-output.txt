@@ -2276,7 +2276,7 @@ tmp_path = PosixPath('/private/var/folders/9n/w5wl_q1x7j17v9y0b5nw6vj80000gn/T/p
                 ausfuehrbar(bin_ / name, "#!/bin/sh\nexit 0\n")
         env = {**{k: v for k, v in SAUBER.items() if not k.startswith("EI_")}, "PATH": f"{bin_}:{SAUBER.get('PATH', '/usr/bin:/bin')}",
                "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "EI_ZIEL": str(tmp_path / "aus"),
-               "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen",
+               "EI_SYSTEMD": str(tmp_path / "systemd"), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "<FR_HOME>",
                "FR_PFAD": f"{bin_}:/usr/bin:/bin", "FR_PYTHON": sys.executable, "FR_NGINX_SNIPPETS": str(tmp_path / "snippets")}
         r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--installieren"], input="ja\n", env=env, capture_output=True,
                            text=True, timeout=120)
@@ -2356,8 +2356,8 @@ tmp_path = PosixPath('/private/var/folders/9n/w5wl_q1x7j17v9y0b5nw6vj80000gn/T/p
         dienst = tmp_path / "dienst"
         env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
                "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
-               "FR_HOME": "/home/hans", "FR_DIENST": str(dienst), "EI_ZIEL": str(ziel),
-               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+               "FR_HOME": "<FR_HOME>", "FR_DIENST": str(dienst), "EI_ZIEL": str(ziel),
+               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "<FR_DIENST>/kartendienst"}
         r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
 >       assert r.returncode == 0, r.stdout + r.stderr
 E       AssertionError: <repo>/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
@@ -2380,8 +2380,8 @@ tmp_path = PosixPath('/private/var/folders/9n/w5wl_q1x7j17v9y0b5nw6vj80000gn/T/p
         ziel = tmp_path / "soll"
         env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
                "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
-               "FR_HOME": "/home/hans", "EI_ZIEL": str(ziel), "EI_SYSTEMD": str(tmp_path / "systemd"),
-               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+               "FR_HOME": "<FR_HOME>", "EI_ZIEL": str(ziel), "EI_SYSTEMD": str(tmp_path / "systemd"),
+               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "<FR_DIENST>/kartendienst"}
         r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
 >       assert r.returncode == 0, r.stdout + r.stderr
 E       AssertionError: <repo>/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
@@ -2405,8 +2405,8 @@ tmp_path = PosixPath('/private/var/folders/9n/w5wl_q1x7j17v9y0b5nw6vj80000gn/T/p
         ziel = tmp_path / "soll"
         env = {**{k: v for k, v in os.environ.items() if not k.startswith(("FR_", "RM_", "KN_", "EI_"))},
                "FR_WURZEL": str(tmp_path), "FR_INSTANZ": "probe", "FR_TITEL": "Probe", "FR_BENUTZER": "hans", "FR_GRUPPE": "hans",
-               "FR_HOME": "/home/hans", "EI_ZIEL": str(ziel),
-               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "/srv/probe/kartendienst"}
+               "FR_HOME": "<FR_HOME>", "EI_ZIEL": str(ziel),
+               "FR_KARTENDIENST_REGIONEN": "europe/andorra", "FR_KARTENDIENST_ORDNER": "<FR_DIENST>/kartendienst"}
         r = subprocess.run(["bash", str(betrieb / "einrichten.sh"), "--erzeugen"], env=env, capture_output=True, text=True)
 >       assert r.returncode == 0, r.stdout + r.stderr
 E       AssertionError: <repo>/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
@@ -4092,7 +4092,7 @@ tmp_path = PosixPath('/private/var/folders/9n/w5wl_q1x7j17v9y0b5nw6vj80000gn/T/p
             "FR_INSTANZ=probe\nFR_TITEL=Probe\nFR_ADRESSE=https://example.invalid\n")
         aus = tmp_path / "aus"
         env = {**SAUBER, "FR_WURZEL": str(repo), "FR_SEITEN": str(tmp_path / "srv/probe"), "FR_DIENST": str(tmp_path / "dienst"),
-               "EI_ZIEL": str(aus), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "/home/reisen"}
+               "EI_ZIEL": str(aus), "FR_BENUTZER": "reisen", "FR_GRUPPE": "reisen", "FR_HOME": "<FR_HOME>"}
         r = subprocess.run(["bash", str(BETRIEB / "einrichten.sh"), "--erzeugen"], capture_output=True, text=True, env=env)
 >       assert r.returncode == 0, r.stdout + r.stderr
 E       AssertionError: <repo>/betrieb/einrichten.sh: line 61: shopt: globasciiranges: invalid shell option name
