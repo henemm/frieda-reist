@@ -187,3 +187,4 @@ Bestehende Tests `test_bilder_eigen.py` und `test_seite_bilder.py` bleiben grün
 
 - 2026-11-25: Initiale Spec (#689)
 - 2026-11-26: Known Limitations: WebKit lokal gemessen, Wortlaut des #706-Fehlers in WebKit (Validierung)
+- 2026-11-27: #706: Der Pfeilknopf wirkt im Öffnen nicht mehr. AC-4 („Klick, dann Pfeil verwirft“) gilt seitdem so: es blättert nichts, die Frage kommt zum gezeigten Foto; Test umbenannt in `test_gross_klick_im_oeffnen_dann_pfeil_fragt`, Ausnahme für den Seitenfehler entfernt (`docs/specs/oberflaeche/pfeil-im-oeffnen-706.md`).
