@@ -2,4 +2,4 @@ engine/tests/test_protokolle_ohne_pfade.py::test_protokolle_ohne_absolute_pfade 
 engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pfade PASSED [ 50%]
 engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pytest_tmp PASSED [ 75%]
 engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_macos_temp PASSED [100%]
-============================== 4 passed in 0.18s ===============================
+============================== 4 passed in 0.25s ===============================

@@ -88,7 +88,7 @@ E         - ]
 engine/tests/test_schreiben.py:2790: AssertionError
 __________ test_kartenpunkte_vorab_ordner_wird_immer_geloescht[frist] __________
 
-repo = (PosixPath('<tmp>/pytest-of-<benutzer>/pytest-1763/test_kartenpunkte_vorab...olders/9n/w5wl_q1x7j17v9y0b5nw6vj80000gn/T/pytest-of-<benutzer>/pytest-1763/test_kartenpunkte_vorab_ordner0/veroeffentlicht'))
+repo = (PosixPath('<tmp>/pytest-of-<benutzer>/pytest-1763/test_kartenpunkte_vorab...$TMPDIR/pytest-of-<benutzer>/pytest-1763/test_kartenpunkte_vorab_ordner0/veroeffentlicht'))
 monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107cad250>
 tmp_path = PosixPath('<tmp>/pytest-of-<benutzer>/pytest-1763/test_kartenpunkte_vorab_ordner0')
 ausgang = 'frist'

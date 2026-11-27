@@ -1,7 +1,7 @@
 ---
 spec_file: docs/specs/fast/fix-692-macos-temp-pfade.md
-spec_sha256: cac6facf688c8f6c56d1ed10cb22de0a237db73c6ab43a4cf81823d8fdde309b
-spec_frozen_sha256: dee6c256fcf0fb50507414c79789bc33e5990a589bc7047bc67a194d497c5d02
+spec_sha256: 9148ccb55843e4bd4880dc5ea5e104efcb91afc32363633f897d08d396f5798d
+spec_frozen_sha256: ed21d4f44951fd8b785271fb55e3f35b66871d424e6b950f20a778cb45fc4dba
 ---
 
 # PO-Briefing: fix-692-macos-temp-pfade
@@ -16,16 +16,16 @@ Die Protokollprüfung schlägt künftig auch an, wenn ein Protokoll Temp-Ordner 
 
 ## Definition of Done
 
-Die Prüfung meldet Mac-Temp-Pfade unter „/private/var/…“, „/private/tmp/…“ und „/var/folders/…“, und das bereinigte Protokoll von #694 besteht sie.
+Die Prüfung meldet Mac-Temp-Pfade unter „/private/var/…“, „/private/tmp/…“ und „/var/folders/…“, und die bereinigten Protokolle von #694 und #656 bestehen sie.
 
 ## Wie geprüft wird
 
-Ein neuer Testfall belegt erkannte und erlaubte Pfadformen, die Prüfung läuft über alle Protokolle; künftige Protokolle bleiben nur durch diese Prüfung abgesichert.
+Ein neuer Testfall belegt erkannte und erlaubte Pfadformen, die Prüfung läuft über alle Protokolle; sonst ist nichts abgesichert.
 
 ## Kritische Anmerkungen
 
-- Leichte Abweichung: „/private/var/folders“ wird nur mit echtem Namen dahinter gemeldet, gekürzte Schreibweise mit „…“ bleibt erlaubt.
-- Zusatz zum Ticket: Das Protokoll von #694 (198 Zeilen plus gekürzte Reste) wird mitbereinigt.
+- Abweichung vom Wortlaut: „/private/var/folders“ wird nur mit echtem Namen dahinter gemeldet, gekürzte Schreibweise mit „…“ bleibt erlaubt.
+- Zusatz: Protokoll von #694 (198 Zeilen) und eine Zeile in #656 werden mitbereinigt; #656 hast du freigegeben.
 - Einfaches „/tmp/…“ bleibt bewusst erlaubt, weil es keinen Rechner verrät.
 
 ## Freigabe-Frage
