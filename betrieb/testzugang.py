@@ -273,7 +273,12 @@ class Bruecke:
                 {"Content-Type": "application/x-www-form-urlencoded"})
             if s != 200:
                 raise ErneuernFehler(f"Token refresh failed (HTTP {s}); run `testzugang.py einrichten` again.")
-            self.daten = _tokens_uebernehmen(daten, json.loads(t))
+            try:                        # HTTP 200, aber unbrauchbare Antwort: Ablage bleibt unverändert (#738)
+                neu = _tokens_uebernehmen(daten, json.loads(t))
+            except (ValueError, TypeError, KeyError, AttributeError):
+                raise ErneuernFehler("Token refresh failed (unusable answer); run `testzugang.py einrichten` again.") \
+                    from None
+            self.daten = neu
             ablage_schreiben(self.pfad, self.daten)
         finally:
             os.close(sperre)            # gibt die Sperre frei

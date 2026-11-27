@@ -371,6 +371,9 @@ class Weiterleiter:
             if self.an == 502:
                 threading.Thread(target=self._bad_gateway, args=(k,), daemon=True).start()
                 continue
+            if isinstance(self.an, bytes):
+                threading.Thread(target=self._token_koerper, args=(k, self.an), daemon=True).start()
+                continue
             if not self.an:
                 k.close()
                 continue
@@ -379,17 +382,35 @@ class Weiterleiter:
                 threading.Thread(target=self._pumpen, args=(von, nach), daemon=True).start()
 
     @staticmethod
+    def _anfrage_lesen(k):
+        daten = b""
+        while b"\r\n\r\n" not in daten and (stueck := k.recv(65536)):
+            daten += stueck
+        kopf, _, rumpf = daten.partition(b"\r\n\r\n")
+        laenge = int((re.search(rb"(?i)content-length:\s*(\d+)", kopf) or [b"", b"0"])[1])
+        while len(rumpf) < laenge and (stueck := k.recv(65536)):
+            rumpf += stueck
+        return kopf + b"\r\n\r\n" + rumpf
+
+    @staticmethod
     def _bad_gateway(k):
         """Wie nginx während eines Neustarts: Anfrage ganz lesen, dann 502 (#669, AC-6)."""
         with k:
-            daten = b""
-            while b"\r\n\r\n" not in daten and (stueck := k.recv(65536)):
-                daten += stueck
-            kopf, _, rumpf = daten.partition(b"\r\n\r\n")
-            laenge = int((re.search(rb"(?i)content-length:\s*(\d+)", kopf) or [b"", b"0"])[1])
-            while len(rumpf) < laenge and (stueck := k.recv(65536)):
-                rumpf += stueck
+            Weiterleiter._anfrage_lesen(k)
             k.sendall(b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+
+    def _token_koerper(self, k, koerper):
+        """POST /token mit HTTP 200 und dem gegebenen Körper beantworten, alles andere durchreichen (#738)."""
+        anfrage = self._anfrage_lesen(k)
+        if not anfrage.startswith(b"POST /token"):
+            z = socket.create_connection(self.ziel)
+            z.sendall(anfrage)
+            for von, nach in ((k, z), (z, k)):
+                threading.Thread(target=self._pumpen, args=(von, nach), daemon=True).start()
+            return
+        with k:
+            k.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "
+                      + str(len(koerper)).encode() + b"\r\nConnection: close\r\n\r\n" + koerper)
 
     @staticmethod
     def _pumpen(von, nach):
@@ -505,3 +526,20 @@ def test_bruecke_beantwortet_gescheiterte_erneuerung_mit_fehler(zugang):
     assert all(_netzfehler(a, a["id"]) for a in antworten), antworten
     assert "verfaelscht-beispiel" not in json.dumps(antworten) + err
     assert "Traceback" not in err
+
+
+@pytest.mark.parametrize("koerper", [b"", b"[]", b"{}"])
+def test_bruecke_beantwortet_unbrauchbare_erneuerung_mit_fehler(zugang, weiterleiter, koerper):
+    """#738, AC-1/AC-2: /token antwortet beim Erneuern mit HTTP 200, aber unbrauchbarem Körper. Die Brücke beantwortet
+    jede Anfrage mit -32603, läuft bis zum Ende der Eingabe weiter, und die Ablage bleibt unverändert."""
+    assert einrichten({"FR_KN_ADRESSE": zugang.kurl}).returncode == 0
+    zugang.ablage_zugang.write_text(json.dumps({**ablage(zugang), "access_ablauf": 0}))
+    access_ablaufen_lassen()
+    vorher = zugang.ablage_zugang.read_bytes()
+    weiterleiter.an = koerper
+    rc, antworten, err = bruecke(INIT, INITIALISIERT, LISTE)
+    assert rc == 0, err
+    assert [a["id"] for a in antworten] == [1, 2]
+    assert all(_netzfehler(a, a["id"]) for a in antworten), antworten
+    assert "Traceback" not in err
+    assert zugang.ablage_zugang.read_bytes() == vorher
