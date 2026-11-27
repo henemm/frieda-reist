@@ -1,12 +1,12 @@
 """Protokolle, Nachweise, Specs und Kontext in docs/artifacts/, docs/specs/ und docs/context/ sind öffentlich: Sie nennen keine absoluten Pfade
-eines Rechners oder Servers (Heimatordner, /srv/…, /mnt/…), sondern Pfade relativ zum Repo oder zu ~. Anlass: frieda-reisen#245,
+eines Rechners oder Servers (Heimatordner, /srv/…, /mnt/…, Temp-Ordner von macOS wie /private/var/folders/…, #692), sondern Pfade relativ zum Repo oder zu ~. Anlass: frieda-reisen#245,
 wo kopierte pytest-Ausgaben den Benutzer des Servers verrieten (CLAUDE.md, „Was nie hierher gehört“)."""
 import re
 import subprocess
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parents[2]
-ABSOLUT = re.compile(r"(?<![\w.~-])/(?:home|Users|srv|mnt|root|var/www)/[\w.-]+")
+ABSOLUT = re.compile(r"(?<![\w.~-])/(?:home|Users|srv|mnt|root|var/www|(?:private/)?var/folders|private/var(?!/folders\b)|private/tmp)/[\w.-]+")
 PYTEST_TMP = re.compile(r"pytest-of-\w[\w-]*|\.\.\.-\w+/pytest-\d")
 
 
@@ -35,3 +35,11 @@ def test_muster_erkennt_pytest_tmp():
         assert PYTEST_TMP.search(beispiel), beispiel
     for platzhalter in ("/tmp/pytest-of-<benutzer>/pytest-3", "/tmp/pytest-of-<user>/x", "rm -rf /tmp/pytest-of-*", "/tmp/pytest-of-.../pytest-3", "...-<benutzer>/pytest-15574/popen-gw2"):
         assert not PYTEST_TMP.search(platzhalter), platzhalter
+
+
+def test_muster_erkennt_macos_temp():
+    """#692: Die Temp-Ordner von macOS (/private/var/…, /private/tmp/…, /var/folders/…) verraten den Rechner; Platzhalter wie $TMPDIR und gekürzte Formen mit … bleiben erlaubt."""
+    for beispiel in ("PosixPath('/private/var/folders/ab/xyz/T/pytest-of-<benutzer>/x')", "/private/tmp/sitzung/x", "/var/folders/ab/xyz/T/x"):
+        assert ABSOLUT.search(beispiel), beispiel
+    for platzhalter in ("$TMPDIR/pytest-of-<benutzer>/x", "/private/var/folders/…/T/pytest-of-<benutzer>/…", "/tmp/pytest-of-<benutzer>/pytest-3"):
+        assert not ABSOLUT.search(platzhalter), platzhalter
