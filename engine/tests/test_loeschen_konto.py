@@ -279,3 +279,256 @@ def test_betriebsdoku_belege_nicht_mehr_nie_geloescht():
     text = (WURZEL / "docs" / "betrieb.md").read_text(encoding="utf-8")
     assert "nie gelöscht" not in text.lower() and "#381" in text
     assert "Schonfrist" in text and "30 Tage" in text and "loeschen" in text
+
+
+# ---------- #694: Ablage ohne Reise (neu/), Aufträge und ausstehende neue Reisen ----------
+# Spec: docs/specs/betrieb/konto-loeschen-ablage-neu-694.md. Schnittstelle zusätzlich:
+#   rueckmeldungen.ablage_sperre(ordner)   Kontextmanager, Dateisperre für Anhängen und Umschreiben in einem Ordner
+#   konten._ablage_neu_bereinigen(kid, email, name)   räumt neu/meldungen.jsonl, neu/auftraege.jsonl und die
+#                                                      Ausstehend-Datei (KN_AUSSTEHEND) ab, Aufruf in loeschen
+
+import contextlib  # noqa: E402
+import rueckmeldungen as rm  # noqa: E402
+
+LEA = "lea@beispiel.invalid"   # Beispielwert: weitere eingeladene Person, bleibt unberührt
+
+
+def _zeilen(p):
+    return [json.loads(z) for z in p.read_text(encoding="utf-8").splitlines() if z.strip()] if p.exists() else []
+
+
+def _schreiben(p, zeilen):
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("".join(json.dumps(z, ensure_ascii=False) + "\n" for z in zeilen), encoding="utf-8")
+
+
+@pytest.fixture
+def neu_lage(zwei, tmp_path, monkeypatch):
+    """Beide Reisen, Karl angemeldet (die Person, deren Konto gelöscht wird), Ausstehend-Datei unter tmp_path."""
+    def bauen():
+        u = zwei()
+        anmelden(u, KARL)
+        u.karl = konten.konto_per_email(KARL)
+        u.neu = rm.ordner_neu(anlegen=True)
+        u.ausstehend = tmp_path / "konnektor" / "neue-reisen-ausstehend.jsonl"
+        monkeypatch.setenv("KN_AUSSTEHEND", str(u.ausstehend))
+        return u
+    return bauen
+
+
+def _bitte(u, k, mit_konto=True):
+    """Meldung „Reisen anlegen“ wie anmeldung.betreiber_melden, an Ida."""
+    return rm.meldung_anlegen(u.neu, [u.a["id"]], "anfrage_reisen", "reise", f"{k['name']} <{k['email']}> bittet",
+                              teile=[("konto.meldungen.text.anfrage_reisen", {"name": k["name"], "email": k["email"]})],
+                              extra={"konto": k["id"]} if mit_konto else None)
+
+
+def _warteliste(u, email):
+    return rm.meldung_anlegen(u.neu, [u.a["id"]], "anfrage_warteliste", "reise", f"{email} wartet",
+                              teile=[("konto.meldungen.text.anfrage_warteliste", {"email": email})])
+
+
+def _auftrag(aid, k, pfad, personen, einladen=()):
+    namen = ", ".join(f"{p['name']} ({p['rolle']})" for p in personen.values())
+    return {"id": aid, "erstellt": "2026-11-20T10:00:00+00:00", "name": k["name"], "konto": k["name"].lower(),
+            "konto_id": k["id"], "art": "Neue Reise", "ziel": "allgemein", "quelle": "Claude-App",
+            "text": f"Neue Reise „Skiwoche“. Personen: {namen}. Ordner {pfad}.",
+            "daten": {"neue_reise": {"pfad": pfad, "sprache": "de", "personen": personen}}, "einladen": list(einladen)}
+
+
+def test_neu_anfrage_reisen_der_person_entfaellt(neu_lage):
+    u = neu_lage()
+    _bitte(u, u.karl)
+    _bitte(u, u.karl, mit_konto=False)          # alte Zeile von vor #687: nur über die Adresse zuzuordnen
+    fremd = _bitte(u, u.b)
+    konten.loeschen(u.karl["id"])
+    assert _zeilen(u.neu / "meldungen.jsonl") == [fremd]
+
+
+def test_neu_anfrage_warteliste_derselben_adresse_entfaellt(neu_lage):
+    u = neu_lage()
+    _warteliste(u, KARL)
+    fremd = _warteliste(u, LEA)
+    konten.loeschen(u.karl["id"])
+    assert _zeilen(u.neu / "meldungen.jsonl") == [fremd]
+
+
+def test_neu_betreiberin_nur_kennung_aus_an(neu_lage):
+    u = neu_lage()
+    konten.recht_setzen(u.karl["id"], "betreiber")
+    beide = rm.meldung_anlegen(u.neu, [u.a["id"], u.karl["id"]], "anfrage_reisen", "reise", "Tom bittet",
+                               extra={"konto": u.b["id"]})
+    rm.meldung_anlegen(u.neu, [u.karl["id"]], "technik", "reise", "Sicherung gelungen")
+    konten.loeschen(u.karl["id"])
+    assert _zeilen(u.neu / "meldungen.jsonl") == [beide | {"an": [u.a["id"]]}]
+
+
+def test_neu_neue_reise_an_person_entfaellt(neu_lage):
+    u = neu_lage()
+    rm.meldung_anlegen(u.neu, [u.karl["id"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+    rm.meldung_anlegen(u.neu, [u.karl["name"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")  # alter Rückfall
+    rm.meldung_anlegen(u.neu, [u.karl["id"]], "loeschung", "reise", "Ida hat eine Reise vorgemerkt")
+    konten.loeschen(u.karl["id"])
+    assert _zeilen(u.neu / "meldungen.jsonl") == []
+
+
+def test_neu_name_in_an_bleibt_wenn_anderes_konto_ihn_traegt(neu_lage):
+    u = neu_lage()
+    konten.name_setzen(u.b["id"], u.karl["name"])
+    gleich = rm.meldung_anlegen(u.neu, [u.karl["name"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+    rm.meldung_anlegen(u.neu, [u.karl["id"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+    konten.loeschen(u.karl["id"])
+    assert _zeilen(u.neu / "meldungen.jsonl") == [gleich]
+
+
+def test_neu_auftrag_der_person_pseudonymisiert(neu_lage):
+    u = neu_lage()
+    name = u.karl["name"]
+    personen = {"karl": {"name": name, "rolle": "organisator"}, "karla": {"name": name + "a", "rolle": "mitwirkend"}}
+    _schreiben(u.neu / "auftraege.jsonl", [_auftrag("A-20261120-100000-ab12", u.karl, "skiwoche-2027", personen)])
+    konten.loeschen(u.karl["id"])
+    [a] = _zeilen(u.neu / "auftraege.jsonl")
+    assert a["name"] == GELOESCHT and a["konto"] == GELOESCHT
+    assert a["daten"]["neue_reise"]["personen"]["karl"]["name"] == GELOESCHT
+    assert a["daten"]["neue_reise"]["personen"]["karla"]["name"] == name + "a"     # längerer Name bleibt
+    assert f"{GELOESCHT} (organisator)" in a["text"] and f"{name}a (mitwirkend)" in a["text"]
+    assert not re.search(rf"\b{re.escape(name)}\b", a["text"])
+    assert a["daten"]["neue_reise"]["pfad"] == "skiwoche-2027" and a["id"] == "A-20261120-100000-ab12"
+
+
+def test_neu_einladen_mit_adresse_entfernt_fremder_auftrag(neu_lage):
+    u = neu_lage()
+    personen = {"tom": {"name": "Tom", "rolle": "organisator"}, "karl": {"name": "Karli", "rolle": "mitwirkend"},
+                "lea": {"name": "Lea", "rolle": "mitwirkend"}}
+    lea = {"schluessel": "lea", "email": LEA, "rolle": "mitwirkend", "name": "Lea"}
+    _schreiben(u.neu / "auftraege.jsonl", [_auftrag("A-20261121-100000-cd34", u.b, "segeltoern-2027", personen, [
+        {"schluessel": "karl", "email": KARL.upper(), "rolle": "mitwirkend", "name": "Karli"}, lea])])
+    vorher = _zeilen(u.neu / "auftraege.jsonl")[0]
+    konten.loeschen(u.karl["id"])
+    [a] = _zeilen(u.neu / "auftraege.jsonl")
+    assert a["einladen"] == [lea]
+    assert a["daten"]["neue_reise"]["personen"]["karl"]["name"] == GELOESCHT
+    assert "Karli" not in a["text"] and f"{GELOESCHT} (mitwirkend)" in a["text"] and "Lea (mitwirkend)" in a["text"]
+    erwartet = vorher | {"einladen": [lea], "text": a["text"],
+                         "daten": {"neue_reise": vorher["daten"]["neue_reise"] | {"personen": a["daten"]["neue_reise"]["personen"]}}}
+    assert a == erwartet and a["name"] == "Tom" and a["konto_id"] == u.b["id"]
+    assert a["daten"]["neue_reise"]["personen"]["lea"]["name"] == "Lea"
+
+
+def test_neu_ausstehende_reise_vorgemerkt(neu_lage):
+    u = neu_lage()
+    fremd = {"ordner": "segeltoern-2027", "aid": "A-20261121-100000-cd34", "name": "Tom", "person": "tom", "konto_id": u.b["id"]}
+    _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-20261120-100000-ab12", "name": u.karl["name"],
+                               "person": "karl", "konto_id": u.karl["id"]}, fremd])
+    konten.loeschen(u.karl["id"])
+    assert _zeilen(u.ausstehend) == [fremd]
+    assert konten.reise_vorgemerkt("skiwoche-2027") and not konten.reise_vorgemerkt("segeltoern-2027")
+    assert [z["konto"] for z in konten.loeschungen() if z["reise"] == "skiwoche-2027"] == [None]
+
+
+def test_neu_fremde_zeilen_byteidentisch(neu_lage):
+    u = neu_lage()
+    _bitte(u, u.b)
+    _warteliste(u, LEA)
+    _schreiben(u.neu / "auftraege.jsonl", [_auftrag("A-20261121-100000-cd34", u.b, "segeltoern-2027",
+                                                    {"tom": {"name": "Tom", "rolle": "organisator"}})])
+    _schreiben(u.ausstehend, [{"ordner": "segeltoern-2027", "aid": "A-1", "name": "Tom", "person": "tom", "konto_id": u.b["id"]}])
+    dateien = [u.neu / "meldungen.jsonl", u.neu / "auftraege.jsonl", u.ausstehend]
+    vorher = [p.read_bytes() for p in dateien]
+    konten.loeschen(u.karl["id"])
+    assert [p.read_bytes() for p in dateien] == vorher
+
+
+def test_neu_volltextsuche_ohne_spur(neu_lage):
+    u = neu_lage()
+    name = u.karl["name"]
+    _bitte(u, u.karl)
+    _warteliste(u, KARL)
+    rm.meldung_anlegen(u.neu, [u.karl["id"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+    _schreiben(u.neu / "auftraege.jsonl", [
+        _auftrag("A-1", u.karl, "skiwoche-2027", {"karl": {"name": name, "rolle": "organisator"}}),
+        _auftrag("A-2", u.b, "segeltoern-2027", {"tom": {"name": "Tom", "rolle": "organisator"},
+                                                 "karl": {"name": name, "rolle": "mitwirkend"}},
+                 [{"schluessel": "karl", "email": KARL, "rolle": "mitwirkend", "name": name}])])
+    _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-1", "name": name, "person": "karl", "konto_id": u.karl["id"]}])
+    konten.loeschen(u.karl["id"])
+    for p in [*sorted(x for x in u.neu.rglob("*") if x.is_file()), u.ausstehend]:
+        t = p.read_text(encoding="utf-8")
+        assert KARL not in t and u.karl["id"] not in t and not re.search(rf"\b{re.escape(name)}\b", t), p.name
+
+
+def test_neu_unlesbare_zeilen_bleiben(neu_lage):
+    u = neu_lage()
+    _bitte(u, u.karl)
+    with (u.neu / "meldungen.jsonl").open("a", encoding="utf-8") as f:
+        f.write("{kaputt\n")
+    konten.loeschen(u.karl["id"])
+    assert (u.neu / "meldungen.jsonl").read_text(encoding="utf-8") == "{kaputt\n"
+
+
+def test_neu_fehler_bricht_vor_datenbank_ab(neu_lage, monkeypatch):
+    u = neu_lage()
+    _bitte(u, u.karl)
+
+    def boom(*a, **kw):
+        raise OSError("Platte voll")
+    echt = konten._ablage_neu_bereinigen
+    monkeypatch.setattr(konten, "_ablage_neu_bereinigen", boom)
+    with pytest.raises(konten.KontoFehler) as fehler:
+        konten.loeschen(u.karl["id"])
+    assert fehler.value.schluessel == "konto.fehler.loeschen_spaeter"
+    assert konten.konto(u.karl["id"]) and konten.mitgliedschaften(u.karl["id"])
+    monkeypatch.setattr(konten, "_ablage_neu_bereinigen", echt)
+    konten.loeschen(u.karl["id"])
+    assert konten.konto(u.karl["id"]) is None and _zeilen(u.neu / "meldungen.jsonl") == []
+
+
+def _sperren_protokollieren(monkeypatch):
+    genommen = []
+
+    @contextlib.contextmanager
+    def sperre(ordner):
+        genommen.append(Path(ordner))
+        yield
+    monkeypatch.setattr(rm, "ablage_sperre", sperre)
+    return genommen
+
+
+def test_neu_sperre_in_meldung_anlegen(neu_lage, monkeypatch):
+    u = neu_lage()
+    genommen = _sperren_protokollieren(monkeypatch)
+    _bitte(u, u.b)
+    assert genommen == [u.neu]
+
+
+def test_neu_sperre_beim_bereinigen(neu_lage, monkeypatch):
+    u = neu_lage()
+    _bitte(u, u.karl)
+    _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-1", "name": "Karl", "person": "karl", "konto_id": u.karl["id"]}])
+    genommen = _sperren_protokollieren(monkeypatch)
+    konten.loeschen(u.karl["id"])
+    assert u.neu in genommen and u.ausstehend.parent in genommen
+
+
+def test_neu_bestehende_ablage_der_reisen_unveraendert(neu_lage):
+    u = neu_lage()
+    (u.o / "eingang.jsonl").write_text(json.dumps({"id": "R-01", "name": "Karl", "text": "Idee"}) + "\n")
+    _bitte(u, u.karl)
+    konten.loeschen(u.karl["id"])
+    text = (u.o / "eingang.jsonl").read_text(encoding="utf-8")
+    assert '"Karl"' not in text and GELOESCHT in text
+
+
+from test_konnektor import seiten, dienst, schreibweg, Schreibweg, IDA_KONTO  # noqa: E402,F401,F811
+
+
+def test_neu_sperre_im_konnektor_anhaengen(schreibweg, tmp_path, monkeypatch):
+    import konnektor as kn
+    ausstehend = tmp_path / "ausstehend" / "neue-reisen-ausstehend.jsonl"
+    monkeypatch.setenv("KN_AUSSTEHEND", str(ausstehend))
+    Schreibweg.antwort = (200, {"ok": True, "text": "Die Reise „Skiwoche“ ist angelegt (Ordner skiwoche-2027, Status Idee)."})
+    genommen = _sperren_protokollieren(monkeypatch)
+    t, f = kn.reise_anlegen(IDA_KONTO, {"titel": "Skiwoche", "von": "2027-02-06", "bis": "2027-02-13", "sprache": "de",
+                                        "personen": [{"vorname": "Karl", "rolle": "mitwirkend"}]})
+    assert not f, t
+    assert rm.ordner_neu() in genommen and ausstehend.parent in genommen

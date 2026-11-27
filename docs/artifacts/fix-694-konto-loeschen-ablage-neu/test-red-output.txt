@@ -1,0 +1,401 @@
+FFFFFFFF.FFFFF.F                                                         [100%]
+=================================== FAILURES ===================================
+_________________ test_neu_anfrage_reisen_der_person_entfaellt _________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x1067df100>
+
+    def test_neu_anfrage_reisen_der_person_entfaellt(neu_lage):
+        u = neu_lage()
+        _bitte(u, u.karl)
+        _bitte(u, u.karl, mit_konto=False)          # alte Zeile von vor #687: nur über die Adresse zuzuordnen
+        fremd = _bitte(u, u.b)
+        konten.loeschen(u.karl["id"])
+>       assert _zeilen(u.neu / "meldungen.jsonl") == [fremd]
+E       AssertionError: assert [{'id': 'M-20...reisen', ...}] == [{'id': 'M-20...reisen', ...}]
+E         
+E         At index 0 diff: {'id': 'M-20261127-091850-a6eb', 'erstellt': '2026-11-27T09:18:50+00:00', 'an': ['K-77122d771b31c51b'], 'art': 'anfrage_reisen', 'ziel': 'reise', 'text': 'Karl <karl@beispiel.invalid> bittet', 'auftraege': [], 't': [['konto.meldungen.text.anfrage_reisen', {'name': 'Karl', 'email': 'karl@beispiel.invalid'}]], 'konto': 'K-bc18eb686c82f932'} != {'id': 'M-20261127-091850-5b4e', 'erstellt': '2026-11-27T09:18:50+00:00', 'an': ['K-77122d771b31c51b'], 'art': 'anfrage_reisen', 'ziel': 'reise', 'text': 'Tom <tom@beispiel.invalid> bittet', 'auftraege': [], 't': [[...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+engine/tests/test_loeschen_konto.py:345: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+___________ test_neu_anfrage_warteliste_derselben_adresse_entfaellt ____________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x1067deca0>
+
+    def test_neu_anfrage_warteliste_derselben_adresse_entfaellt(neu_lage):
+        u = neu_lage()
+        _warteliste(u, KARL)
+        fremd = _warteliste(u, LEA)
+        konten.loeschen(u.karl["id"])
+>       assert _zeilen(u.neu / "meldungen.jsonl") == [fremd]
+E       AssertionError: assert [{'id': 'M-20...eliste', ...}] == [{'id': 'M-20...eliste', ...}]
+E         
+E         At index 0 diff: {'id': 'M-20261127-091851-a62d', 'erstellt': '2026-11-27T09:18:51+00:00', 'an': ['K-e1480d6309728862'], 'art': 'anfrage_warteliste', 'ziel': 'reise', 'text': 'karl@beispiel.invalid wartet', 'auftraege': [], 't': [['konto.meldungen.text.anfrage_warteliste', {'email': 'karl@beispiel.invalid'}]]} != {'id': 'M-20261127-091851-35fc', 'erstellt': '2026-11-27T09:18:51+00:00', 'an': ['K-e1480d6309728862'], 'art': 'anfrage_warteliste', 'ziel': 'reise', 'text': 'lea@beispiel.invalid wartet', 'auftraege': [], 't': [['konto.meldungen.text.anfrage_warteliste', {'ema...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+engine/tests/test_loeschen_konto.py:353: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_neu_betreiberin_nur_kennung_aus_an ____________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecae80>
+
+    def test_neu_betreiberin_nur_kennung_aus_an(neu_lage):
+        u = neu_lage()
+        konten.recht_setzen(u.karl["id"], "betreiber")
+        beide = rm.meldung_anlegen(u.neu, [u.a["id"], u.karl["id"]], "anfrage_reisen", "reise", "Tom bittet",
+                                   extra={"konto": u.b["id"]})
+        rm.meldung_anlegen(u.neu, [u.karl["id"]], "technik", "reise", "Sicherung gelungen")
+        konten.loeschen(u.karl["id"])
+>       assert _zeilen(u.neu / "meldungen.jsonl") == [beide | {"an": [u.a["id"]]}]
+E       AssertionError: assert [{'id': 'M-20...echnik', ...}] == [{'id': 'M-20...reisen', ...}]
+E         
+E         At index 0 diff: {'id': 'M-20261127-091852-c579', 'erstellt': '2026-11-27T09:18:52+00:00', 'an': ['K-b6fb2d7e13860ceb', 'K-b790c3f76f6e2eb6'], 'art': 'anfrage_reisen', 'ziel': 'reise', 'text': 'Tom bittet', 'auftraege': [], 'konto': 'K-d401203e81dacbab'} != {'id': 'M-20261127-091852-c579', 'erstellt': '2026-11-27T09:18:52+00:00', 'an': ['K-b6fb2d7e13860ceb'], 'art': 'anfrage_reisen', 'ziel': 'reise', 'text': 'Tom bittet', 'auftraege': [], 'konto': 'K-d401203e81dacbab'}
+E         Left contains one more item: {'id': 'M-20261127-091852-b224', 'erstellt': '2026-11-27T09:18:52+00:00', ...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+engine/tests/test_loeschen_konto.py:363: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_neu_neue_reise_an_person_entfaellt ____________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecafc0>
+
+    def test_neu_neue_reise_an_person_entfaellt(neu_lage):
+        u = neu_lage()
+        rm.meldung_anlegen(u.neu, [u.karl["id"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+        rm.meldung_anlegen(u.neu, [u.karl["name"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")  # alter Rückfall
+        rm.meldung_anlegen(u.neu, [u.karl["id"]], "loeschung", "reise", "Ida hat eine Reise vorgemerkt")
+        konten.loeschen(u.karl["id"])
+>       assert _zeilen(u.neu / "meldungen.jsonl") == []
+E       AssertionError: assert [{'id': 'M-20...schung', ...}] == []
+E         
+E         Left contains 3 more items, first extra item: {'id': 'M-20261127-091853-6bb6', 'erstellt': '2026-11-27T09:18:53+00:00', 'an': ['K-91f0402aed2eb2da'], 'art': 'neue_reise', ...}
+E         Use -v to get more diff
+
+engine/tests/test_loeschen_konto.py:372: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+___________ test_neu_name_in_an_bleibt_wenn_anderes_konto_ihn_traegt ___________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x1067dea20>
+
+    def test_neu_name_in_an_bleibt_wenn_anderes_konto_ihn_traegt(neu_lage):
+        u = neu_lage()
+        konten.name_setzen(u.b["id"], u.karl["name"])
+        gleich = rm.meldung_anlegen(u.neu, [u.karl["name"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+        rm.meldung_anlegen(u.neu, [u.karl["id"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+        konten.loeschen(u.karl["id"])
+>       assert _zeilen(u.neu / "meldungen.jsonl") == [gleich]
+E       AssertionError: assert [{'id': 'M-20..._reise', ...}] == [{'id': 'M-20..._reise', ...}]
+E         
+E         Left contains one more item: {'id': 'M-20261127-091855-c023', 'erstellt': '2026-11-27T09:18:55+00:00', 'an': ['K-e1d5b5d10aa5bd52'], 'art': 'neue_reise', ...}
+E         Use -v to get more diff
+
+engine/tests/test_loeschen_konto.py:381: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+_________________ test_neu_auftrag_der_person_pseudonymisiert __________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecbe20>
+
+    def test_neu_auftrag_der_person_pseudonymisiert(neu_lage):
+        u = neu_lage()
+        name = u.karl["name"]
+        personen = {"karl": {"name": name, "rolle": "organisator"}, "karla": {"name": name + "a", "rolle": "mitwirkend"}}
+        _schreiben(u.neu / "auftraege.jsonl", [_auftrag("A-20261120-100000-ab12", u.karl, "skiwoche-2027", personen)])
+        konten.loeschen(u.karl["id"])
+        [a] = _zeilen(u.neu / "auftraege.jsonl")
+>       assert a["name"] == GELOESCHT and a["konto"] == GELOESCHT
+E       AssertionError: assert ('Karl' == 'gelöschte Person'
+E         
+E         - gelöschte Person
+E         + Karl)
+
+engine/tests/test_loeschen_konto.py:391: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________ test_neu_einladen_mit_adresse_entfernt_fremder_auftrag ____________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecbce0>
+
+    def test_neu_einladen_mit_adresse_entfernt_fremder_auftrag(neu_lage):
+        u = neu_lage()
+        personen = {"tom": {"name": "Tom", "rolle": "organisator"}, "karl": {"name": "Karli", "rolle": "mitwirkend"},
+                    "lea": {"name": "Lea", "rolle": "mitwirkend"}}
+        lea = {"schluessel": "lea", "email": LEA, "rolle": "mitwirkend", "name": "Lea"}
+        _schreiben(u.neu / "auftraege.jsonl", [_auftrag("A-20261121-100000-cd34", u.b, "segeltoern-2027", personen, [
+            {"schluessel": "karl", "email": KARL.upper(), "rolle": "mitwirkend", "name": "Karli"}, lea])])
+        vorher = _zeilen(u.neu / "auftraege.jsonl")[0]
+        konten.loeschen(u.karl["id"])
+        [a] = _zeilen(u.neu / "auftraege.jsonl")
+>       assert a["einladen"] == [lea]
+E       AssertionError: assert [{'schluessel...name': 'Lea'}] == [{'schluessel...name': 'Lea'}]
+E         
+E         At index 0 diff: {'schluessel': 'karl', 'email': 'KARL@BEISPIEL.INVALID', 'rolle': 'mitwirkend', 'name': 'Karli'} != {'schluessel': 'lea', 'email': 'lea@beispiel.invalid', 'rolle': 'mitwirkend', 'name': 'Lea'}
+E         Left contains one more item: {'schluessel': 'lea', 'email': 'lea@beispiel.invalid', 'rolle': 'mitwirkend', 'name': 'Lea'}
+E         Use -v to get more diff
+
+engine/tests/test_loeschen_konto.py:409: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________________ test_neu_ausstehende_reise_vorgemerkt _____________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecbe20>
+
+    def test_neu_ausstehende_reise_vorgemerkt(neu_lage):
+        u = neu_lage()
+        fremd = {"ordner": "segeltoern-2027", "aid": "A-20261121-100000-cd34", "name": "Tom", "person": "tom", "konto_id": u.b["id"]}
+        _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-20261120-100000-ab12", "name": u.karl["name"],
+                                   "person": "karl", "konto_id": u.karl["id"]}, fremd])
+        konten.loeschen(u.karl["id"])
+>       assert _zeilen(u.ausstehend) == [fremd]
+E       AssertionError: assert [{'ordner': '...: 'tom', ...}] == [{'ordner': '...: 'tom', ...}]
+E         
+E         At index 0 diff: {'ordner': 'skiwoche-2027', 'aid': 'A-20261120-100000-ab12', 'name': 'Karl', 'person': 'karl', 'konto_id': 'K-05aac0015d7e1058'} != {'ordner': 'segeltoern-2027', 'aid': 'A-20261121-100000-cd34', 'name': 'Tom', 'person': 'tom', 'konto_id': 'K-6b7a545ba337510e'}
+E         Left contains one more item: {'ordner': 'segeltoern-2027', 'aid': 'A-20261121-100000-cd34', 'name': 'Tom', 'person': 'tom', ...}
+E         Use -v to get more diff
+
+engine/tests/test_loeschen_konto.py:424: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+_______________________ test_neu_volltextsuche_ohne_spur _______________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x1067dec00>
+
+    def test_neu_volltextsuche_ohne_spur(neu_lage):
+        u = neu_lage()
+        name = u.karl["name"]
+        _bitte(u, u.karl)
+        _warteliste(u, KARL)
+        rm.meldung_anlegen(u.neu, [u.karl["id"]], "neue_reise", "skiwoche-2027", "Deine Reise ist online")
+        _schreiben(u.neu / "auftraege.jsonl", [
+            _auftrag("A-1", u.karl, "skiwoche-2027", {"karl": {"name": name, "rolle": "organisator"}}),
+            _auftrag("A-2", u.b, "segeltoern-2027", {"tom": {"name": "Tom", "rolle": "organisator"},
+                                                     "karl": {"name": name, "rolle": "mitwirkend"}},
+                     [{"schluessel": "karl", "email": KARL, "rolle": "mitwirkend", "name": name}])])
+        _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-1", "name": name, "person": "karl", "konto_id": u.karl["id"]}])
+        konten.loeschen(u.karl["id"])
+        for p in [*sorted(x for x in u.neu.rglob("*") if x.is_file()), u.ausstehend]:
+            t = p.read_text(encoding="utf-8")
+>           assert KARL not in t and u.karl["id"] not in t and not re.search(rf"\b{re.escape(name)}\b", t), p.name
+E           AssertionError: auftraege.jsonl
+E           assert ('karl@beispiel.invalid' not in '{"id": "A-1... "Karl"}]}\n'
+E             
+E             'karl@beispiel.invalid' is contained here:
+E               "email": "karl@beispiel.invalid", "rolle": "mitwirkend", "name": "Karl"}]}
+E             ?           +++++++++++++++++++++)
+
+engine/tests/test_loeschen_konto.py:457: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+______________________ test_neu_unlesbare_zeilen_bleiben _______________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecbce0>
+
+    def test_neu_unlesbare_zeilen_bleiben(neu_lage):
+        u = neu_lage()
+        _bitte(u, u.karl)
+        with (u.neu / "meldungen.jsonl").open("a", encoding="utf-8") as f:
+            f.write("{kaputt\n")
+        konten.loeschen(u.karl["id"])
+>       assert (u.neu / "meldungen.jsonl").read_text(encoding="utf-8") == "{kaputt\n"
+E       assert '{"id": "M-20..."}\n{kaputt\n' == '{kaputt\n'
+E         
+E         + {"id": "M-20261127-091904-2469", "erstellt": "2026-11-27T09:19:04+00:00", "an": ["K-945539d21713ab77"], "art": "anfrage_reisen", "ziel": "reise", "text": "Karl <karl@beispiel.invalid> bittet", "auftraege": [], "t": [["konto.meldungen.text.anfrage_reisen", {"name": "Karl", "email": "karl@beispiel.invalid"}]], "konto": "K-bff25cb84f238964"}
+E           {kaputt
+
+engine/tests/test_loeschen_konto.py:466: AssertionError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+___________________ test_neu_fehler_bricht_vor_datenbank_ab ____________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecaac0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10766b4d0>
+
+    def test_neu_fehler_bricht_vor_datenbank_ab(neu_lage, monkeypatch):
+        u = neu_lage()
+        _bitte(u, u.karl)
+    
+        def boom(*a, **kw):
+            raise OSError("Platte voll")
+>       echt = konten._ablage_neu_bereinigen
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'konten' has no attribute '_ablage_neu_bereinigen'
+
+engine/tests/test_loeschen_konto.py:475: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+______________________ test_neu_sperre_in_meldung_anlegen ______________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108ecb6a0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107971a60>
+
+    def test_neu_sperre_in_meldung_anlegen(neu_lage, monkeypatch):
+        u = neu_lage()
+>       genommen = _sperren_protokollieren(monkeypatch)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_loeschen_konto.py:499: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107971a60>
+
+    def _sperren_protokollieren(monkeypatch):
+        genommen = []
+    
+        @contextlib.contextmanager
+        def sperre(ordner):
+            genommen.append(Path(ordner))
+            yield
+>       monkeypatch.setattr(rm, "ablage_sperre", sperre)
+E       AttributeError: <module 'rueckmeldungen' from 'engine/rueckmeldungen.py'> has no attribute 'ablage_sperre'
+
+engine/tests/test_loeschen_konto.py:493: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+_______________________ test_neu_sperre_beim_bereinigen ________________________
+
+neu_lage = <function neu_lage.<locals>.bauen at 0x108eca660>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1078828a0>
+
+    def test_neu_sperre_beim_bereinigen(neu_lage, monkeypatch):
+        u = neu_lage()
+        _bitte(u, u.karl)
+        _schreiben(u.ausstehend, [{"ordner": "skiwoche-2027", "aid": "A-1", "name": "Karl", "person": "karl", "konto_id": u.karl["id"]}])
+>       genommen = _sperren_protokollieren(monkeypatch)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_loeschen_konto.py:508: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1078828a0>
+
+    def _sperren_protokollieren(monkeypatch):
+        genommen = []
+    
+        @contextlib.contextmanager
+        def sperre(ordner):
+            genommen.append(Path(ordner))
+            yield
+>       monkeypatch.setattr(rm, "ablage_sperre", sperre)
+E       AttributeError: <module 'rueckmeldungen' from 'engine/rueckmeldungen.py'> has no attribute 'ablage_sperre'
+
+engine/tests/test_loeschen_konto.py:493: AttributeError
+----------------------------- Captured stderr call -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+POST 200
+POST 303
+____________________ test_neu_sperre_im_konnektor_anhaengen ____________________
+
+schreibweg = ('http://127.0.0.1:65076', PosixPath('pytest-of-<benutzer>/pytest-2654/test_neu_sperre_im_konnektor_a0/ablage'))
+tmp_path = PosixPath('pytest-of-<benutzer>/pytest-2654/test_neu_sperre_im_konnektor_a0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107a22c00>
+
+    def test_neu_sperre_im_konnektor_anhaengen(schreibweg, tmp_path, monkeypatch):
+        import konnektor as kn
+        ausstehend = tmp_path / "ausstehend" / "neue-reisen-ausstehend.jsonl"
+        monkeypatch.setenv("KN_AUSSTEHEND", str(ausstehend))
+        Schreibweg.antwort = (200, {"ok": True, "text": "Die Reise „Skiwoche“ ist angelegt (Ordner skiwoche-2027, Status Idee)."})
+>       genommen = _sperren_protokollieren(monkeypatch)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+engine/tests/test_loeschen_konto.py:530: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107a22c00>
+
+    def _sperren_protokollieren(monkeypatch):
+        genommen = []
+    
+        @contextlib.contextmanager
+        def sperre(ordner):
+            genommen.append(Path(ordner))
+            yield
+>       monkeypatch.setattr(rm, "ablage_sperre", sperre)
+E       AttributeError: <module 'rueckmeldungen' from 'engine/rueckmeldungen.py'> has no attribute 'ablage_sperre'
+
+engine/tests/test_loeschen_konto.py:493: AttributeError
+=========================== short test summary info ============================
+FAILED engine/tests/test_loeschen_konto.py::test_neu_anfrage_reisen_der_person_entfaellt
+FAILED engine/tests/test_loeschen_konto.py::test_neu_anfrage_warteliste_derselben_adresse_entfaellt
+FAILED engine/tests/test_loeschen_konto.py::test_neu_betreiberin_nur_kennung_aus_an
+FAILED engine/tests/test_loeschen_konto.py::test_neu_neue_reise_an_person_entfaellt
+FAILED engine/tests/test_loeschen_konto.py::test_neu_name_in_an_bleibt_wenn_anderes_konto_ihn_traegt
+FAILED engine/tests/test_loeschen_konto.py::test_neu_auftrag_der_person_pseudonymisiert
+FAILED engine/tests/test_loeschen_konto.py::test_neu_einladen_mit_adresse_entfernt_fremder_auftrag
+FAILED engine/tests/test_loeschen_konto.py::test_neu_ausstehende_reise_vorgemerkt
+FAILED engine/tests/test_loeschen_konto.py::test_neu_volltextsuche_ohne_spur
+FAILED engine/tests/test_loeschen_konto.py::test_neu_unlesbare_zeilen_bleiben
+FAILED engine/tests/test_loeschen_konto.py::test_neu_fehler_bricht_vor_datenbank_ab
+FAILED engine/tests/test_loeschen_konto.py::test_neu_sperre_in_meldung_anlegen
+FAILED engine/tests/test_loeschen_konto.py::test_neu_sperre_beim_bereinigen
+FAILED engine/tests/test_loeschen_konto.py::test_neu_sperre_im_konnektor_anhaengen
+14 failed, 2 passed, 19 deselected in 23.95s
