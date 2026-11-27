@@ -11,7 +11,7 @@ Dieses Repo enthält nur die Software (Generator, Vorlage, Service Worker, Rück
 - **Git ist allein Claudes Sache:** Branch, Commit, Push, PR, CI abwarten, Vorspulen auf `main`, Deploy, Issues, ohne Rückfrage und ohne Bericht darüber, nach dem Lieferweg unten (PR, grüne Pflichtprüfungen, dann `git push origin HEAD:main`). Das hebt die Standardvorsicht („Commit/Push nur auf Nachfrage“) für dieses Repo ausdrücklich auf. Andere Sitzungen und Instanzen sind ebenfalls Claude Code; nie Arbeit an den Product Owner abgeben.
 - **Den Product Owner fragen nur zu Produktentscheidungen** (Freigabe von Anforderungen, fachliche Zielkonflikte), per `AskUserQuestion`, nie als Freitext. Tooling, Git, Hooks und Server-Mechanik klärt Claude selbst.
 - **Erst zeigen, dann bauen** (Product Owner, 9.11.2026, #436): Was der Product Owner sieht oder liest (neue Seiten, Gestaltung, Texte, Beispiele, Bilder), zeigt Claude ihm vor dem Ausliefern als Entwurf in einem Claude-Artefakt (privat, mit den erfundenen Beispieldaten) und baut erst nach seiner Zustimmung fertig. Änderungen daran ebenso: zuerst in den Entwurf, dann ausliefern.
-- **Aufgaben nur als GitHub-Issues** in diesem Repo; ein Issue erst schließen, wenn es end-to-end erledigt ist.
+- **Aufgaben nur als GitHub-Issues** in diesem Repo; ein Issue erst schließen, wenn es end-to-end erledigt ist. Neue Issues ordnet ein stündlicher Cloud-Auftrag nach `.github/einordnung.md` ein (Ort `cloud`/`imac`/`server`, Art, Meilenstein, Epic; #726); wer ein Issue anlegt, kann die Kennzeichen gleich selbst nach diesen Regeln setzen.
 
 ## Was nie hierher gehört
 
