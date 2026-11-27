@@ -169,7 +169,7 @@ Bestehende Tests `test_bilder_eigen.py` und `test_seite_bilder.py` bleiben grün
 - Pfeilknopf im Öffnen: eigener Fehler, #706.
 - Nach dem Klick im Öffnen kommt die Frage rund 0,4 s später (am Ende des Öffnens), dann ohne Schließ-Übergang (`showHideAnimationType` ist „none“, wie bisher bei „Foto entfernen“).
 - Bei reduzierter Bewegung kommt `openingAnimationEnd` synchron in `init()`, vor dem nachher angehängten Fokus-Hörer. Ob der Fokus dann erst später in die Großansicht kommt, ist aus dem Code geschlossen und nicht gemessen; nicht Teil des Tickets.
-- WebKit nur in der CI messbar.
+- WebKit wurde nach dem RED-Lauf auch lokal gemessen (`webkit-messung.txt`): Der Pfeilknopf-Fehler aus #706 heißt dort „undefined is not an object (evaluating 'pswp.currSlide.data')“; der Test lässt im Ablauf „blaettern“ je Browser genau diesen einen Wortlaut zu (wie unter Risks vorgesehen).
 - Das schmale Fenster in der Meldung `openingAnimationEnd` selbst (Schließen mitten in der Meldung) wird durch `setTimeout` umgangen, nicht gesondert geprüft.
 
 ## Definition of Done
@@ -186,3 +186,4 @@ Bestehende Tests `test_bilder_eigen.py` und `test_seite_bilder.py` bleiben grün
 ## Changelog
 
 - 2026-11-25: Initiale Spec (#689)
+- 2026-11-26: Known Limitations: WebKit lokal gemessen, Wortlaut des #706-Fehlers in WebKit (Validierung)
