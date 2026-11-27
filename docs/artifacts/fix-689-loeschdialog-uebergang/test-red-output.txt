@@ -1,0 +1,141 @@
+..FFFFFF.F                                                               [100%]
+=================================== FAILURES ===================================
+______________ test_gross_klick_im_oeffnen_fragt_einmal[chromium] ______________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},...alse, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}, ...}
+
+    def test_gross_klick_im_oeffnen_fragt_einmal(oeffnen):
+        """#689 AC-1"""
+>       _gross_frage_da(oeffnen["einmal"])
+
+engine/tests/test_bilder_eigen.py:1517:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'geloescht': [], ...}
+
+    def _gross_frage_da(a):
+        """Genau eine Frage, Großansicht zu, Fokus im Dialog, kein Abbruch und kein Seitenfehler."""
+        assert "abbruch" not in a and a["fehler"] == [], a
+        d = a["danach"]
+>       assert d["da"] and d["titel"] and d["dialoge"] == 1 and not d["gross"] and d["fokusImDialog"], a
+E       AssertionError: {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'geloescht': [], ...}
+E       assert (False)
+
+engine/tests/test_bilder_eigen.py:1505: AssertionError
+___________ test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium] ___________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},...alse, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}, ...}
+
+    def test_gross_dreifachklick_im_oeffnen_ein_dialog(oeffnen):
+        """#689 AC-2"""
+>       _gross_frage_da(oeffnen["dreimal"])
+
+engine/tests/test_bilder_eigen.py:1522:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'geloescht': [], ...}
+
+    def _gross_frage_da(a):
+        """Genau eine Frage, Großansicht zu, Fokus im Dialog, kein Abbruch und kein Seitenfehler."""
+        assert "abbruch" not in a and a["fehler"] == [], a
+        d = a["danach"]
+>       assert d["da"] and d["titel"] and d["dialoge"] == 1 and not d["gross"] and d["fokusImDialog"], a
+E       AssertionError: {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'geloescht': [], ...}
+E       assert (False)
+
+engine/tests/test_bilder_eigen.py:1505: AssertionError
+______ test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium] _______
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},...alse, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}, ...}
+
+    def test_gross_behalten_und_entfernen_nach_klick_im_oeffnen(oeffnen):
+        """#689 AC-3: „Behalten“ sendet nichts und lässt keine zweite Frage zurück; „Entfernen“ löscht das Foto vom Klick."""
+        a = oeffnen["behalten"]
+>       _gross_frage_da(a)
+
+engine/tests/test_bilder_eigen.py:1528:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}
+
+    def _gross_frage_da(a):
+        """Genau eine Frage, Großansicht zu, Fokus im Dialog, kein Abbruch und kein Seitenfehler."""
+>       assert "abbruch" not in a and a["fehler"] == [], a
+E       AssertionError: {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}
+E       assert ('abbruch' not in {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...})
+
+engine/tests/test_bilder_eigen.py:1503: AssertionError
+________ test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium] _________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},...alse, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}, ...}
+
+    def test_gross_klick_im_oeffnen_dann_blaettern_verwirft(oeffnen):
+        """#689 AC-4: Blättern im Öffnen verwirft den Klick: keine Frage, kein DELETE, auch nicht nach dem Schließen."""
+        a = oeffnen["blaettern"]
+        assert "abbruch" not in a and a["pfeil"] == {"isOpen": False, "index": 1}, a
+        assert a["danach"]["dialoge"] == 0 and a["danach"]["isOpen"], a
+>       assert not a["zu"]["gross"] and a["zu"]["dialoge"] == 0 and a["geloescht"] == [], a
+E       AssertionError: {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'pfeil': {'isOpen': False, 'index': 1}, 'danach': {'dialoge': 0, 'gross': True, 'isOpen': True, 'fokusImDialog': False}, ...}
+E       assert (not False and 1 == 0)
+
+engine/tests/test_bilder_eigen.py:1541: AssertionError
+______________ test_gross_frage_meint_das_gezeigte_foto[chromium] ______________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},...alse, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}, ...}
+
+    def test_gross_frage_meint_das_gezeigte_foto(oeffnen):
+        """#689 AC-4b: Die Frage kommt sofort nach dem Öffnen, nie erst, wenn nach Blättern und Schließen ein anderes Foto dran war."""
+        a = oeffnen["entfernen"]
+>       assert "zuletztGezeigt" not in a, f"Klick verloren; gezeigt {a.get('zuletztGezeigt')}, gelöscht {a['geloescht']}: {a}"
+E       AssertionError: Klick verloren; gezeigt BI-90, gelöscht ['BI-91']: {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, 'isOpen': True, 'fokusImDialog': False}, 'zuletztGezeigt': 'BI-90', 'zu': {'dialoge': 1, 'gross': False, 'isOpen': False, 'fokusImDialog': True}, 'geloescht': ['BI-91'], 'gesendet': 1, 'fehler': []}
+E       assert 'zuletztGezeigt' not in {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'zuletztGezeigt': 'BI-90', ...}
+
+engine/tests/test_bilder_eigen.py:1550: AssertionError
+___________ test_gross_klick_im_oeffnen_dann_escape_fragt[chromium] ____________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},...alse, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}, ...}
+
+    def test_gross_klick_im_oeffnen_dann_escape_fragt(oeffnen):
+        """#689 AC-7: Escape wirkt im Öffnen nicht, die Frage kommt."""
+>       _gross_frage_da(oeffnen["escape"])
+
+engine/tests/test_bilder_eigen.py:1557:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+a = {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'geloescht': [], ...}
+
+    def _gross_frage_da(a):
+        """Genau eine Frage, Großansicht zu, Fokus im Dialog, kein Abbruch und kein Seitenfehler."""
+        assert "abbruch" not in a and a["fehler"] == [], a
+        d = a["danach"]
+>       assert d["da"] and d["titel"] and d["dialoge"] == 1 and not d["gross"] and d["fokusImDialog"], a
+E       AssertionError: {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, 'geloescht': [], ...}
+E       assert (False)
+
+engine/tests/test_bilder_eigen.py:1505: AssertionError
+___________ test_gross_fehlender_dialog_ist_klarer_fehler[chromium] ____________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},...alse, 'dialoge': 0, 'gross': True, ...}, 'abbruch': 'TimeoutError: locator.click: Timeout 4000ms exceeded.', ...}, ...}
+
+    def test_gross_fehlender_dialog_ist_klarer_fehler(oeffnen):
+        """#689 AC-8 (Gegenprobe): Bleibt der Dialog aus, scheitert der Ablauf mit dem Zustand als Grund; Mo hat weiter keinen Knopf."""
+        a = oeffnen["gegenprobe"]
+>       assert "verschluckt" not in a, a
+E       AssertionError: {'verlaengerung': [1], 'verschluckt': True, 'geloescht': [], 'gesendet': 0, ...}
+E       assert 'verschluckt' not in {'verlaengerung': [1], 'verschluckt': True, 'geloescht': [], 'gesendet': 0, ...}
+
+engine/tests/test_bilder_eigen.py:1569: AssertionError
+============================= slowest 3 durations ==============================
+105.56s setup    engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[chromium]
+8.97s call     engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+
+(1 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_fragt_einmal[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_frage_meint_das_gezeigte_foto[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_escape_fragt[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_fehlender_dialog_ist_klarer_fehler[chromium]
+7 failed, 3 passed, 90 deselected in 114.93s (0:01:54)

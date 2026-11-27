@@ -1,0 +1,67 @@
+GREEN #689: Chromium lokal, Stand der Änderung (Vorlage und Skript), Interpreter aus dem Hauptrepo, Code aus dem Worktree
+
+== 1) pytest -q -n 3 engine/tests/test_bilder_eigen.py engine/tests/test_seite_bilder.py -k "not webkit" -rsfE --durations=3
+
+bringing up nodes...
+bringing up nodes...
+
+........................................................................ [ 72%]
+.s..........................                                             [100%]
+============================= slowest 3 durations ==============================
+49.32s setup    engine/tests/test_bilder_eigen.py::test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium]
+49.19s setup    engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[chromium]
+49.18s setup    engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium]
+=========================== short test summary info ============================
+SKIPPED [1] engine/tests/test_bilder_eigen.py:1329: flock fehlt
+99 passed, 1 skipped in 85.20s (0:01:25)
+
+== 2) pytest -v (ohne -n) engine/tests/test_bilder_eigen.py -k "(gross or hochladen_hinweis) and not webkit"
+
+============================= test session starts ==============================
+configfile: pytest.ini
+collecting ... collected 100 items / 88 deselected / 12 selected
+
+engine/tests/test_bilder_eigen.py::test_zu_grosses_foto_vor_der_verkleinerung PASSED [  8%]
+engine/tests/test_bilder_eigen.py::test_zu_gross_und_falsches_format_erreichen_den_schreibweg_nicht PASSED [ 16%]
+engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium] PASSED [ 25%]
+engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[chromium] PASSED [ 33%]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_fragt_einmal[chromium] PASSED [ 41%]
+engine/tests/test_bilder_eigen.py::test_gross_dreifachklick_im_oeffnen_ein_dialog[chromium] PASSED [ 50%]
+engine/tests/test_bilder_eigen.py::test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[chromium] PASSED [ 58%]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_blaettern_verwirft[chromium] PASSED [ 66%]
+engine/tests/test_bilder_eigen.py::test_gross_frage_meint_das_gezeigte_foto[chromium] PASSED [ 75%]
+engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_escape_fragt[chromium] PASSED [ 83%]
+engine/tests/test_bilder_eigen.py::test_gross_reduzierte_bewegung_klick_sofort[chromium] PASSED [ 91%]
+engine/tests/test_bilder_eigen.py::test_gross_fehlender_dialog_ist_klarer_fehler[chromium] PASSED [100%]
+
+============================= slowest 3 durations ==============================
+49.45s setup    engine/tests/test_bilder_eigen.py::test_gross_verlaengerung_greift[chromium]
+9.23s call     engine/tests/test_bilder_eigen.py::test_browser_hochladen_hinweis_nennung_und_loeschen[chromium]
+0.70s call     engine/tests/test_bilder_eigen.py::test_zu_gross_und_falsches_format_erreichen_den_schreibweg_nicht
+================= 12 passed, 88 deselected in 60.10s (0:01:00) =================
+
+== 3) derselbe Lauf wie 1 ohne -k: WebKit ist lokal nicht installiert (browserType.launch: Executable doesn't exist)
+Letzte Zeile: 2 failed, 99 passed, 1 skipped, 20 errors in 84.77s (0:01:24)
+Alle 22 Fehlschläge sind WebKit-Fälle, die am fehlenden Browser scheitern (WebKit läuft in der CI, AC-10):
+  ERROR at setup of test_bild_im_text_und_bildlink_mit_unterschrift_und_nennung[webkit]
+  ERROR at setup of test_gross_behalten_und_entfernen_nach_klick_im_oeffnen[webkit]
+  ERROR at setup of test_gross_dreifachklick_im_oeffnen_ein_dialog[webkit]
+  ERROR at setup of test_gross_fehlender_dialog_ist_klarer_fehler[webkit]
+  ERROR at setup of test_gross_frage_meint_das_gezeigte_foto[webkit]
+  ERROR at setup of test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+  ERROR at setup of test_gross_klick_im_oeffnen_dann_escape_fragt[webkit]
+  ERROR at setup of test_gross_klick_im_oeffnen_fragt_einmal[webkit]
+  ERROR at setup of test_gross_reduzierte_bewegung_klick_sofort[webkit]
+  ERROR at setup of test_gross_verlaengerung_greift[webkit]
+  ERROR at setup of test_grossansicht_oeffnet_aus_dem_vorschaubild[webkit]
+  ERROR at setup of test_grossansicht_zaehler_tasten_fokus_und_wischen[webkit]
+  ERROR at setup of test_handy_360_ohne_ueberbreite_und_ohne_pfeile[webkit]
+  ERROR at setup of test_jedes_bild_genau_einmal_verpackt[webkit]
+  ERROR at setup of test_kopfbilder_16_9_an_ort_etappe_tag_unterkunft_und_bildreihe[webkit]
+  ERROR at setup of test_mini_in_der_tagesliste_nur_bei_tagen_mit_kopfbild[webkit]
+  ERROR at setup of test_ohne_seitenfehler_und_ohne_csp_meldung[webkit]
+  ERROR at setup of test_stadtwochenende_ohne_bild_elemente[webkit]
+  ERROR at setup of test_titelbild_vor_dem_reisekopf_mit_nennung[webkit]
+  ERROR at setup of test_unterkunft_kopfbild_nur_an_der_ersten_nacht[webkit]
+  test_browser_hochladen_hinweis_nennung_und_loeschen[webkit]
+  test_browser_service_worker_vergisst_geloeschtes_bild[webkit]

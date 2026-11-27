@@ -1484,6 +1484,96 @@ def test_browser_hochladen_hinweis_nennung_und_loeschen(tmp_path, browser):
     assert a["stadt"]["knopfHochladen"], a["stadt"]
 
 
+@pytest.fixture(scope="module", params=["chromium", "webkit"])
+def oeffnen(request, tmp_path_factory):
+    """Alle Abläufe zum Klick auf „Foto entfernen“ im Öffnen der Großansicht (#689), ein Browserlauf je Browser."""
+    _browser_bereit()
+    tmp = tmp_path_factory.mktemp("oeffnen")
+    q = _quelle(tmp)
+    eigen_eintragen(q, "BI-91")   # zweites eigenes Foto am selben Ort, steht zuerst
+    bauen.bauen(q, tmp / "web" / "beispiel")
+    with _Server(tmp / "web") as s:
+        e = _node(["oeffnen", s.basis + "/beispiel/", "", "", json.dumps(_texte_fuer_browser())], request.param)
+    assert e["fehler"] == [], e["fehler"]
+    return e["aus"]
+
+
+def _gross_frage_da(a):
+    """Genau eine Frage, Großansicht zu, Fokus im Dialog, kein Abbruch und kein Seitenfehler."""
+    assert "abbruch" not in a and a["fehler"] == [], a
+    d = a["danach"]
+    assert d["da"] and d["titel"] and d["dialoge"] == 1 and not d["gross"] and d["fokusImDialog"], a
+
+
+def test_gross_verlaengerung_greift(oeffnen):
+    """#689 AC-12 (Wächter): Die Bibliothek enthält die Dauer genau einmal, das Öffnen dauert im Test 3 s, das Fenster ist offen."""
+    a = oeffnen["einmal"]
+    assert a["verlaengerung"] == [1], a
+    assert a["klick"] == {"isOpen": False, "dauer": 3000, "bild": "BI-91"}, a
+
+
+def test_gross_klick_im_oeffnen_fragt_einmal(oeffnen):
+    """#689 AC-1"""
+    _gross_frage_da(oeffnen["einmal"])
+
+
+def test_gross_dreifachklick_im_oeffnen_ein_dialog(oeffnen):
+    """#689 AC-2"""
+    _gross_frage_da(oeffnen["dreimal"])
+
+
+def test_gross_behalten_und_entfernen_nach_klick_im_oeffnen(oeffnen):
+    """#689 AC-3: „Behalten“ sendet nichts und lässt keine zweite Frage zurück; „Entfernen“ löscht das Foto vom Klick."""
+    a = oeffnen["behalten"]
+    _gross_frage_da(a)
+    assert a["wiederOffen"]["gross"] and a["wiederOffen"]["dialoge"] == 0, a
+    assert not a["wiederZu"]["gross"] and a["wiederZu"]["dialoge"] == 0 and a["gesendet"] == 0, a
+    b = oeffnen["entfernen"]
+    _gross_frage_da(b)
+    assert b["klick"]["bild"] == "BI-91" and b["geloescht"] == ["BI-91"], b
+
+
+def test_gross_klick_im_oeffnen_dann_blaettern_verwirft(oeffnen, request):
+    """#689 AC-4: Blättern im Öffnen verwirft den Klick: keine Frage, kein DELETE, auch nicht nach dem Schließen."""
+    a = oeffnen["blaettern"]
+    assert "abbruch" not in a and a["pfeil"] == {"isOpen": False, "index": 1}, a
+    assert a["danach"]["dialoge"] == 0 and a["danach"]["isOpen"], a
+    assert not a["zu"]["gross"] and a["zu"]["dialoge"] == 0 and a["geloescht"] == [], a
+    # Der Pfeilknopf im Öffnen hat einen eigenen Fehler (#706): nur hier und nur mit genau diesem Text je Browser zugelassen
+    bekannt = {"chromium": "pageerror: TypeError: Cannot read properties of undefined (reading 'data')",
+               "webkit": "pageerror: TypeError: undefined is not an object (evaluating 'pswp.currSlide.data')",
+               }[request.node.callspec.params["oeffnen"]]
+    assert [f for f in a["fehler"] if f != bekannt] == [], a
+
+
+def test_gross_frage_meint_das_gezeigte_foto(oeffnen):
+    """#689 AC-4b: Die Frage kommt sofort nach dem Öffnen, nie erst, wenn nach Blättern und Schließen ein anderes Foto dran war."""
+    a = oeffnen["entfernen"]
+    assert "zuletztGezeigt" not in a, f"Klick verloren; gezeigt {a.get('zuletztGezeigt')}, gelöscht {a['geloescht']}: {a}"
+    _gross_frage_da(a)
+    assert a["geloescht"] == [a["klick"]["bild"]] == ["BI-91"], a
+
+
+def test_gross_klick_im_oeffnen_dann_escape_fragt(oeffnen):
+    """#689 AC-7: Escape wirkt im Öffnen nicht, die Frage kommt."""
+    _gross_frage_da(oeffnen["escape"])
+
+
+def test_gross_reduzierte_bewegung_klick_sofort(oeffnen):
+    """#689 AC-6 (Wächter): ohne Übergang wirkt der Klick sofort."""
+    assert oeffnen["reduziert"]["klick"]["isOpen"], oeffnen["reduziert"]
+    _gross_frage_da(oeffnen["reduziert"])
+
+
+def test_gross_fehlender_dialog_ist_klarer_fehler(oeffnen):
+    """#689 AC-8 (Gegenprobe): Bleibt der Dialog aus, scheitert der Ablauf mit dem Zustand als Grund; Mo hat weiter keinen Knopf."""
+    a = oeffnen["gegenprobe"]
+    assert "verschluckt" not in a, a
+    assert all(teil in a["abbruch"] for teil in ("Foto entfernen", '"dialoge":0', '"gross":false', '"isOpen":false')), a
+    mo = oeffnen["mo"]
+    assert "abbruch" not in mo and mo["fehler"] == [] and mo["loeschen"] == {"knopf": False}, mo
+
+
 def _sw_ablauf(server, web, neu_web, browser, frist_ms=20000):
     """Service Worker (#654): Seite laden, neuen Stand hinlegen, Update anstoßen, zählen. Ausgabe des Messskripts: fehler, vorher,
     nachher, updateFehler (Texte der gescheiterten Anstöße), anstoesse, dauerMs (Anstoß bis zum Zählen) und zustaende: je „vorher“

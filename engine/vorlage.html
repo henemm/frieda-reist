@@ -1735,6 +1735,11 @@ function grossAnsicht(gruppe, i, ausloeser) {
       arrowNextTitle: T("seite.bild.naechstes"), errorMsg: T("seite.bild.ladefehler"),
       paddingFn: f => ({top: 56, bottom: 92, left: f.x > 560 ? 76 : 0, right: f.x > 560 ? 76 : 0})});   // Pfeile ab 560 px
     let danach = null;
+    // „Foto entfernen“ im Öffnen (#689): PhotoSwipe schließt dann noch nicht, der Klick wird gemerkt. Blättern verwirft ihn (die
+    // Frage meinte sonst ein anderes Foto als das gezeigte), deshalb vor den change-Hörern der Elemente; sonst schließt das Ende
+    // des Öffnens, aufgeschoben, also nicht mitten in der Meldung.
+    pswp.on("change", () => { danach = null; });
+    pswp.on("openingAnimationEnd", () => { setTimeout(() => { if (danach && !pswp.isDestroying) pswp.destroy(); }); });
     pswp.on("uiRegister", () => {
       pswp.ui.registerElement({name: "zaehler", order: 5, isButton: false, appendTo: "bar", className: "zaehler",
         onInit: z => {
@@ -1752,7 +1757,10 @@ function grossAnsicht(gruppe, i, ausloeser) {
             if (n) teile.push(el("div", {}, n));
             if (darfFotoEntfernen(b)) {   // nur eigene Fotos, für Besitzer und Organisator:innen (#582)
               const weg = el("button", {type: "button", class: "entfernen"}, T("seite.bild.entfernen"));
-              weg.addEventListener("click", () => { danach = () => bildEntfernenFragen(b); pswp.destroy(); });   // ohne Übergang: die Frage kommt sofort
+              weg.addEventListener("click", () => {   // ohne Übergang: die Frage kommt sofort, im Öffnen an dessen Ende
+                danach = () => bildEntfernenFragen(b);
+                if (pswp.opener.isOpen) pswp.destroy();
+              });
               teile.push(weg);
             }
             u.replaceChildren(...teile);

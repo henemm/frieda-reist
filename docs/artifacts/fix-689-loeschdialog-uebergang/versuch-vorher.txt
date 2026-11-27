@@ -1,0 +1,9 @@
+
+Fehler: []
+{'pause': 0, 'uebergangFertig': False, 'oeffnet': True, 'uiSichtbar': False, 'dialogNach5s': False, 'grossNochDa': True, 'dialogNachZweitemKlick': True}
+{'pause': 50, 'uebergangFertig': False, 'oeffnet': True, 'uiSichtbar': True, 'dialogNach5s': False, 'grossNochDa': True, 'dialogNachZweitemKlick': True}
+{'pause': 100, 'uebergangFertig': False, 'oeffnet': True, 'uiSichtbar': True, 'dialogNach5s': False, 'grossNochDa': True, 'dialogNachZweitemKlick': True}
+{'pause': 200, 'uebergangFertig': False, 'oeffnet': True, 'uiSichtbar': True, 'dialogNach5s': False, 'grossNochDa': True, 'dialogNachZweitemKlick': True}
+{'pause': 300, 'uebergangFertig': False, 'oeffnet': True, 'uiSichtbar': True, 'dialogNach5s': False, 'grossNochDa': True, 'dialogNachZweitemKlick': True}
+{'pause': 600, 'uebergangFertig': True, 'oeffnet': False, 'uiSichtbar': True, 'dialogNach5s': True, 'grossNochDa': False}
+{'pause': 1000, 'uebergangFertig': True, 'oeffnet': False, 'uiSichtbar': True, 'dialogNach5s': True, 'grossNochDa': False}

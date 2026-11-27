@@ -1,0 +1,8 @@
+WebKit lokal (Playwright 1.59.1, Build 2272), engine/tests/test_bilder_eigen.py VOR der Ergänzung des Wortlauts für WebKit.
+Vermerk nach der Messung des Orchestrators, nicht die wörtliche Ausgabe des Laufs.
+
+WebKit-Fälle: 10 von 11 grün, 1 rot: test_gross_klick_im_oeffnen_dann_blaettern_verwirft[webkit]
+Genau ein Eintrag in den Seitenfehlern:
+  pageerror: TypeError: undefined is not an object (evaluating 'pswp.currSlide.data')
+Das ist der Pfeilknopf-Fehler aus #706 im Wortlaut von WebKit (Chromium: Cannot read properties of undefined (reading 'data')).
+Daraufhin lässt der Test je Browser genau diesen einen Wortlaut zu; der Lauf danach steht in test-green-output.txt.
