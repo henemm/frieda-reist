@@ -16,7 +16,9 @@ Instanz. Dieses Skript hat zwei Befehle:
       Anfrage eine Zeile Antwort auf stdout, Benachrichtigungen ohne Antwort. Leitet an <FR_KN_ADRESSE>/mcp weiter,
       erneuert Tokens selbst (Rotation; eine Dateisperre verhindert, dass parallele Sitzungen dieselbe Familie zweimal
       einlösen) und prüft beim Start, dass der Zugang zum Testkonto gehört und kein Betreiber ist; sonst Abbruch ohne
-      Weiterleitung. Nur Standardbibliothek: läuft mit dem python3 des Systems.
+      Weiterleitung. Ist der Konnektor nicht erreichbar oder scheitert die Erneuerung, bekommt die Anfrage eine
+      JSON-RPC-Fehlerantwort -32603 und die Brücke läuft weiter; eine am Netz gescheiterte Kontoprüfung wird vor der
+      nächsten Weiterleitung nachgeholt (#669). Nur Standardbibliothek: läuft mit dem python3 des Systems.
 
 Instanzwerte (Umgebung vor der Einstellungsdatei der Instanz, wie engine/instanz.py): FR_KN_ADRESSE, FR_TESTKONTO,
 FR_TESTZUGANG, für `einrichten` außerdem FR_KONTEN und FR_BASIS.
@@ -45,6 +47,13 @@ PROTOKOLL = "2025-06-18"
 
 class Abbruch(Exception):
     """Fehler mit einer Meldung für stderr; der Befehl endet mit Exit-Code 1."""
+
+
+class ErneuernFehler(Abbruch):
+    """Token-Erneuerung gescheitert. Die Brücke beantwortet die Anfrage mit einem Fehler und läuft weiter (#669)."""
+
+
+NETZFEHLER = (OSError, http.client.HTTPException)    # Konnektor nicht erreichbar: abgelehnt, Zeitüberschreitung, …
 
 
 # ---------------------------------------------------------------- Instanzwerte (wie engine/instanz.py, ohne Engine)
@@ -242,6 +251,7 @@ class Bruecke:
     def __init__(self, adresse, pfad):
         self.adresse, self.pfad = adresse, pfad
         self.daten = ablage_lesen(pfad)
+        self.geprueft = False
 
     def erneuern(self, fehlgeschlagen):
         """Refresh-Token einlösen, unter einer Dateisperre: Hat ein anderer Prozess inzwischen erneuert (anderes,
@@ -258,7 +268,7 @@ class Bruecke:
                  "client_id": daten.get("client_id") or ""}).encode(),
                 {"Content-Type": "application/x-www-form-urlencoded"})
             if s != 200:
-                raise Abbruch(f"Token refresh failed (HTTP {s}); run `testzugang.py einrichten` again.")
+                raise ErneuernFehler(f"Token refresh failed (HTTP {s}); run `testzugang.py einrichten` again.")
             self.daten = _tokens_uebernehmen(daten, json.loads(t))
             ablage_schreiben(self.pfad, self.daten)
         finally:
@@ -301,6 +311,24 @@ class Bruecke:
         namen = {w.get("name") for w in self.frage("tools/list", {}).get("tools", [])}
         if "request_decide" in namen:
             raise Abbruch(f"The test account {email} has operator rights; nothing forwarded.")
+        self.geprueft = True
+
+    def weiterleiten(self, email, body):
+        """Eine beim Start am Netz gescheiterte Kontoprüfung wird zuerst nachgeholt (#669); erst danach senden."""
+        if not self.geprueft:
+            self.konto_pruefen(email)
+        return self.senden(body)
+
+
+def _voruebergehend(aufgabe):
+    """-> (Ergebnis, None) oder (None, Fehlertext) bei Netzfehler oder gescheiterter Erneuerung (#669).
+    Der Text nennt nur die Art des Fehlers, nie Tokens oder Pfade."""
+    try:
+        return aufgabe(), None
+    except NETZFEHLER as f:
+        return None, f"Connector unreachable ({type(f).__name__})"
+    except ErneuernFehler as f:
+        return None, str(f)
 
 
 def _fehler(nachricht, code, text):
@@ -311,7 +339,7 @@ def _fehler(nachricht, code, text):
 def dienst():
     email = testkonto()
     b = Bruecke(adresse_konnektor(), ablage_pfad())
-    b.konto_pruefen(email)
+    _voruebergehend(lambda: b.konto_pruefen(email))   # Netzfehler: Prüfung bleibt ausstehend, die Brücke läuft
     for zeile in sys.stdin:
         zeile = zeile.strip()
         if not zeile:
@@ -321,7 +349,15 @@ def dienst():
         except ValueError:
             antwort = _fehler(None, -32700, "Parse error")
         else:
-            s, t = b.senden(zeile.encode("utf-8"))
+            ergebnis, text = _voruebergehend(lambda: b.weiterleiten(email, zeile.encode("utf-8")))
+            if text is not None:
+                if isinstance(nachricht, dict) and "id" not in nachricht:
+                    continue                      # Benachrichtigung: auch im Fehlerfall keine Antwort
+                antwort = _fehler(nachricht, -32603, text)
+                sys.stdout.write(json.dumps(antwort, ensure_ascii=False) + "\n")
+                sys.stdout.flush()
+                continue
+            s, t = ergebnis
             if s == 202 or (s == 200 and not t.strip()):
                 continue                          # Benachrichtigung: keine Antwort
             try:
