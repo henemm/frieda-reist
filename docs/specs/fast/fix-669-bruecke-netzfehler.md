@@ -16,6 +16,23 @@
   Repos erscheint von der Instanz nur der Konnektor `Frieda`; weitere Konnektoren derselben Instanz gibt es nicht.
   Kommt einer hinzu, wird die Sperre in einem eigenen Issue erweitert.
 
+## Acceptance Criteria
+- AC-1: Ist der Konnektor nicht erreichbar, antwortet die Brücke auf jede Anfrage mit `-32603` und der ID der
+  Anfrage; Benachrichtigungen bleiben ohne Antwort; Exit-Code 0, kein Traceback.
+  - Test: test_bruecke_beantwortet_unerreichbaren_konnektor_mit_fehler
+- AC-2: Ein Netzfehler mitten im Lauf ergibt eine Fehlerantwort; die Brücke läuft weiter und leitet nach Wiederkehr
+  des Konnektors wieder weiter.
+  - Test: test_bruecke_ueberlebt_netzfehler_mitten_im_lauf
+- AC-3: Nach einem Netzfehler beim Start wird die Kontoprüfung vor der nächsten Weiterleitung nachgeholt; erst danach
+  wird weitergeleitet. Gehört der Zugang einem anderen Konto, bricht die Brücke auch dann ohne Weiterleitung ab.
+  - Test: test_bruecke_prueft_nach_netzfehler_beim_start_und_leitet_dann_weiter,
+    test_bruecke_bricht_nach_netzfehler_beim_start_bei_anderem_konto_ab
+- AC-4: Scheitert die Token-Erneuerung, antwortet die Brücke mit `-32603` und läuft weiter; kein Token in der Ausgabe.
+  - Test: test_bruecke_beantwortet_gescheiterte_erneuerung_mit_fehler
+- AC-5: Abbruch bei falschem Konto oder Betreiber, Abbruch bei fehlender Ablage oder fehlendem Instanzwert sowie das
+  Erneuern bei Ablauf und bei 401 bleiben unverändert.
+  - Test: bestehende Tests 3 bis 6 in engine/tests/test_testzugang.py
+
 ## Was darf sich nicht ändern
 - Gehört der Zugang nicht zum Testkonto oder ist das Testkonto Betreiber, bricht die Brücke wie bisher ab, ohne etwas
   weiterzuleiten (Exit-Code ungleich 0, keine Antworten).
