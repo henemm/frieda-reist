@@ -1,0 +1,8 @@
+POST 400
+=========================== short test summary info ============================
+FAILED engine/tests/test_testzugang.py::test_bruecke_beantwortet_unerreichbaren_konnektor_mit_fehler
+FAILED engine/tests/test_testzugang.py::test_bruecke_ueberlebt_netzfehler_mitten_im_lauf
+FAILED engine/tests/test_testzugang.py::test_bruecke_prueft_nach_netzfehler_beim_start_und_leitet_dann_weiter
+FAILED engine/tests/test_testzugang.py::test_bruecke_bricht_nach_netzfehler_beim_start_bei_anderem_konto_ab
+FAILED engine/tests/test_testzugang.py::test_bruecke_beantwortet_gescheiterte_erneuerung_mit_fehler
+5 failed, 17 deselected in 7.26s

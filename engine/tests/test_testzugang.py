@@ -16,11 +16,14 @@ Schnittstelle, die diese Tests festlegen:
 import ast
 import json
 import os
+import socket
 import stat
 import subprocess
 import sys
+import threading
 from contextlib import closing
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -335,3 +338,139 @@ def test_settings_bindet_bruecke_und_sperre_ein():
 def test_einstellungen_beispiel_nennt_die_instanzwerte():
     text = (WURZEL / "betrieb" / "einstellungen.beispiel").read_text(encoding="utf-8")
     assert "FR_TESTKONTO=" in text and "FR_TESTZUGANG=" in text
+
+
+# ---------- Test 8: Netzfehler (#669) ----------
+# Spec: docs/specs/fast/fix-669-bruecke-netzfehler.md
+
+def _freier_port():
+    """Port, auf dem gerade niemand lauscht (gebunden und wieder geschlossen)."""
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+class Weiterleiter:
+    """TCP-Weiterleiter zwischen Brücke und Konnektor der Testwelt. Ausgeschaltet nimmt er Verbindungen an und schließt
+    sie sofort (für die Brücke ein Netzfehler); eingeschaltet reicht er die Bytes in beide Richtungen durch."""
+
+    def __init__(self, ziel):
+        t = urlsplit(ziel)
+        self.ziel, self.an = (t.hostname, t.port), True
+        self.server = socket.create_server(("127.0.0.1", 0))
+        self.url = f"http://127.0.0.1:{self.server.getsockname()[1]}"
+        threading.Thread(target=self._annehmen, daemon=True).start()
+
+    def _annehmen(self):
+        while True:
+            try:
+                k, _ = self.server.accept()
+            except OSError:
+                return
+            if not self.an:
+                k.close()
+                continue
+            z = socket.create_connection(self.ziel)
+            for von, nach in ((k, z), (z, k)):
+                threading.Thread(target=self._pumpen, args=(von, nach), daemon=True).start()
+
+    @staticmethod
+    def _pumpen(von, nach):
+        try:
+            while daten := von.recv(65536):
+                nach.sendall(daten)
+        except OSError:
+            pass
+        finally:
+            for s in (von, nach):
+                try:
+                    s.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
+
+@pytest.fixture
+def weiterleiter(zugang, monkeypatch):
+    w = Weiterleiter(zugang.kurl)
+    monkeypatch.setenv("FR_KN_ADRESSE", w.url)
+    yield w
+    w.server.close()
+
+
+def _netzfehler(antwort, kennung):
+    return antwort["id"] == kennung and antwort["error"]["code"] == -32603 and "result" not in antwort
+
+
+def _zeile(p, nachricht):
+    p.stdin.write(json.dumps(nachricht) + "\n")
+    p.stdin.flush()
+    return json.loads(p.stdout.readline())
+
+
+def _ende(p):
+    p.stdin.close()
+    rest = [json.loads(z) for z in p.stdout.read().splitlines() if z.strip()]
+    return p.wait(timeout=60), rest, p.stderr.read()
+
+
+def test_bruecke_beantwortet_unerreichbaren_konnektor_mit_fehler(zugang):
+    assert einrichten().returncode == 0
+    rc, antworten, err = bruecke(INIT, INITIALISIERT, LISTE,
+                                 env={"FR_KN_ADRESSE": f"http://127.0.0.1:{_freier_port()}"})
+    assert rc == 0, err
+    assert [a["id"] for a in antworten] == [1, 2]            # die Benachrichtigung bleibt ohne Antwort
+    assert all(_netzfehler(a, a["id"]) for a in antworten), antworten
+    assert "ConnectionRefusedError" in antworten[0]["error"]["message"]
+    assert "Traceback" not in err
+    assert ablage(zugang)["refresh_token"] not in json.dumps(antworten) + err
+
+
+def test_bruecke_ueberlebt_netzfehler_mitten_im_lauf(zugang, weiterleiter):
+    assert einrichten({"FR_KN_ADRESSE": zugang.kurl}).returncode == 0
+    p, _ = bruecke_starten()
+    assert _zeile(p, INIT)["result"]["serverInfo"]["name"] == "frieda"
+    weiterleiter.an = False
+    assert _netzfehler(_zeile(p, LISTE), 2)
+    assert _netzfehler(_zeile(p, {**LISTE, "id": 3}), 3)      # die Brücke lebt und versucht es erneut
+    weiterleiter.an = True
+    assert "my_trips" in namen(_zeile(p, {**LISTE, "id": 4}))
+    rc, rest, err = _ende(p)
+    assert rc == 0 and rest == [], err
+    assert "Traceback" not in err
+
+
+def test_bruecke_prueft_nach_netzfehler_beim_start_und_leitet_dann_weiter(zugang, weiterleiter):
+    assert einrichten({"FR_KN_ADRESSE": zugang.kurl}).returncode == 0
+    weiterleiter.an = False
+    p, _ = bruecke_starten()
+    assert _netzfehler(_zeile(p, INIT), 1)
+    weiterleiter.an = True
+    assert "my_trips" in namen(_zeile(p, LISTE))
+    rc, rest, err = _ende(p)
+    assert rc == 0 and rest == [], err
+
+
+def test_bruecke_bricht_nach_netzfehler_beim_start_bei_anderem_konto_ab(zugang, weiterleiter):
+    assert einrichten({"FR_KN_ADRESSE": zugang.kurl, "FR_TESTKONTO": ANDERS}).returncode == 0
+    weiterleiter.an = False
+    p, _ = bruecke_starten()
+    assert _netzfehler(_zeile(p, INIT), 1)
+    weiterleiter.an = True
+    p.stdin.write(json.dumps(LISTE) + "\n")
+    rc, rest, err = _ende(p)
+    assert rc != 0
+    assert rest == []                                         # nichts weitergeleitet
+    assert err.strip() and "Traceback" not in err
+
+
+def test_bruecke_beantwortet_gescheiterte_erneuerung_mit_fehler(zugang):
+    assert einrichten().returncode == 0
+    daten = ablage(zugang)
+    zugang.ablage_zugang.write_text(json.dumps({**daten, "refresh_token": "verfaelscht-beispiel", "access_ablauf": 0}))
+    access_ablaufen_lassen()
+    rc, antworten, err = bruecke(INIT, INITIALISIERT, LISTE)
+    assert rc == 0, err
+    assert [a["id"] for a in antworten] == [1, 2]
+    assert all(_netzfehler(a, a["id"]) for a in antworten), antworten
+    assert "verfaelscht-beispiel" not in json.dumps(antworten) + err
+    assert "Traceback" not in err
