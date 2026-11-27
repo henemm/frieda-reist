@@ -568,6 +568,39 @@ def test_beitraege_gleich_belege_nach_rolle(export_welt):
     assert not any("einladungen" in n or "eingang.jsonl" in n for n in zi.namelist())
 
 
+def _export_ohne_seite(export_welt, monkeypatch, *speicherreisen):
+    """Welt mit gefüllter Ablage, eigenem Reisespeicher mit genau diesen Reisen und abgebauter Seite der Beispielreise."""
+    import reisespeicher
+    u = export_welt()
+    _ablage_fuellen(u.ablage / "beispielreise")
+    karl_keks, _ = anmelden(u, KARL)
+    monkeypatch.setenv("FR_SPEICHER", str(u.seiten.parent / ("_speicher-" + ("-".join(speicherreisen) or "leer"))))
+    for r in speicherreisen:
+        reisespeicher.importieren(BEISPIEL / r, r, "Ida", grund="Beispiel")
+    (u.seiten / "beispielreise" / "daten.json").unlink()
+    assert rm.zustand("beispielreise") is None
+    return u, karl_keks
+
+
+def _beleg_ids(u, keks):
+    z = als_zip(exportieren(u, keks)[2])
+    return [b["id"] for b in json.loads(z.read("beispielreise/belege/belege.json"))["belege"]]
+
+
+def test_belege_ohne_seite_nach_rolle_aus_speicher(export_welt, monkeypatch):
+    """#732 AC-1, AC-2: Reise im Speicher, Seite abgebaut: Rolle kommt aus reise.yaml, nicht pauschal Gast."""
+    u, karl_keks = _export_ohne_seite(export_welt, monkeypatch, "beispielreise")
+    o = u.ablage / "beispielreise"
+    assert _beleg_ids(u, u.a_keks) == ["D-01", "D-02", "D-03", "D-04"]
+    assert _beleg_ids(u, karl_keks) == [b["id"] for b in belege.liste(o, "Karl", "mitwirkend")] == ["D-02", "D-03"]
+
+
+def test_belege_ohne_seite_und_ohne_speicher_gast(export_welt, monkeypatch):
+    """#732 AC-3: Seite abgebaut und Reise nicht im Speicher: weiter Gast mit dem Namen des Kontos."""
+    u, _ = _export_ohne_seite(export_welt, monkeypatch)
+    assert _beleg_ids(u, u.a_keks) == [b["id"] for b in belege.liste(u.ablage / "beispielreise", "Ida", "gast")]
+
+
 def test_reise_ohne_ablage(export_welt, monkeypatch):
     u = export_welt()
     monkeypatch.setattr(rm, "ordner", lambda reise: None)
