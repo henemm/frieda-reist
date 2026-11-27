@@ -1,0 +1,93 @@
+....FFFF....                                                             [100%]
+=================================== FAILURES ===================================
+____________ test_gross_klick_im_oeffnen_dann_pfeil_fragt[chromium] ____________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},... 'gross': False, ...}, 'wiederOffen': {'dialoge': 0, 'gross': True, 'isOpen': True, 'fokusImDialog': False}, ...}, ...}
+
+    def test_gross_klick_im_oeffnen_dann_pfeil_fragt(oeffnen):
+        """#706 AC-4 (vorher #689 AC-4): Klick im Öffnen, dann Pfeilknopf: es blättert nichts, die Frage kommt zum gezeigten Foto;
+        jeder Seitenfehler macht den Test rot."""
+        a = oeffnen["blaettern"]
+>       assert a["pfeil"] == {"isOpen": False, "index": 0}, a
+E       AssertionError: {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'}, 'pfeil': {'isOpen': False, 'index': 1}, 'danach': {'da': False, 'titel': False, 'dialoge': 0, 'gross': True, ...}, ...}
+E       assert {'isOpen': False, 'index': 1} == {'isOpen': False, 'index': 0}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'index': 1} != {'index': 0}
+E         Use -v to get more diff
+
+engine/tests/test_bilder_eigen.py:1540: AssertionError
+_________________ test_gross_pfeil_im_oeffnen_bleibt[chromium] _________________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},... 'gross': False, ...}, 'wiederOffen': {'dialoge': 0, 'gross': True, 'isOpen': True, 'fokusImDialog': False}, ...}, ...}
+
+    def test_gross_pfeil_im_oeffnen_bleibt(oeffnen):
+        """#706 AC-1: Pfeilknopf im Öffnen wirkt nicht; nach dem Öffnen steht das angetippte Bild mit seinem Zähler."""
+        a = oeffnen["pfeil"]
+>       _gross_ohne_fehler(a)
+
+engine/tests/test_bilder_eigen.py:1552: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = {'verlaengerung': [1], 'pfeil': {'isOpen': False, 'index': 1}, 'nachOeffnen': {'index': 1, 'bild': None, 'zaehler': 'Dresden · 1 / 2'}, 'weiter': {'isOpen': True, 'index': 0}, ...}
+
+    def _gross_ohne_fehler(a):
+>       assert "abbruch" not in a and a["fehler"] == [], a
+E       AssertionError: {'verlaengerung': [1], 'pfeil': {'isOpen': False, 'index': 1}, 'nachOeffnen': {'index': 1, 'bild': None, 'zaehler': 'Dresden · 1 / 2'}, 'weiter': {'isOpen': True, 'index': 0}, ...}
+E       assert ('abbruch' not in {'verlaengerung': [1], 'pfeil': {'isOpen': False, 'index': 1}, 'nachOeffnen': {'index': 1, 'bild': None, 'zaehler': 'Dresden · 1 / 2'}, 'weiter': {'isOpen': True, 'index': 0}, ...} and ["pageerror: ...ding 'data')"] == []
+E         
+E         Left contains one more item: "pageerror: TypeError: Cannot read properties of undefined (reading 'data')"
+E         Use -v to get more diff)
+
+engine/tests/test_bilder_eigen.py:1546: AssertionError
+____________ test_gross_pfeil_nach_dem_oeffnen_blaettert[chromium] _____________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},... 'gross': False, ...}, 'wiederOffen': {'dialoge': 0, 'gross': True, 'isOpen': True, 'fokusImDialog': False}, ...}, ...}
+
+    def test_gross_pfeil_nach_dem_oeffnen_blaettert(oeffnen):
+        """#706 AC-2: Nach dem Öffnen blättert der Pfeilknopf wie bisher, der Zähler folgt."""
+        a = oeffnen["pfeil"]
+>       _gross_ohne_fehler(a)
+
+engine/tests/test_bilder_eigen.py:1561: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+a = {'verlaengerung': [1], 'pfeil': {'isOpen': False, 'index': 1}, 'nachOeffnen': {'index': 1, 'bild': None, 'zaehler': 'Dresden · 1 / 2'}, 'weiter': {'isOpen': True, 'index': 0}, ...}
+
+    def _gross_ohne_fehler(a):
+>       assert "abbruch" not in a and a["fehler"] == [], a
+E       AssertionError: {'verlaengerung': [1], 'pfeil': {'isOpen': False, 'index': 1}, 'nachOeffnen': {'index': 1, 'bild': None, 'zaehler': 'Dresden · 1 / 2'}, 'weiter': {'isOpen': True, 'index': 0}, ...}
+E       assert ('abbruch' not in {'verlaengerung': [1], 'pfeil': {'isOpen': False, 'index': 1}, 'nachOeffnen': {'index': 1, 'bild': None, 'zaehler': 'Dresden · 1 / 2'}, 'weiter': {'isOpen': True, 'index': 0}, ...} and ["pageerror: ...ding 'data')"] == []
+E         
+E         Left contains one more item: "pageerror: TypeError: Cannot read properties of undefined (reading 'data')"
+E         Use -v to get more diff)
+
+engine/tests/test_bilder_eigen.py:1546: AssertionError
+__________ test_gross_pfeil_dann_klick_meint_gezeigtes_foto[chromium] __________
+
+oeffnen = {'fotoVon': 'Foto: Karl', 'einmal': {'verlaengerung': [1], 'klick': {'isOpen': False, 'dauer': 3000, 'bild': 'BI-91'},... 'gross': False, ...}, 'wiederOffen': {'dialoge': 0, 'gross': True, 'isOpen': True, 'fokusImDialog': False}, ...}, ...}
+
+    def test_gross_pfeil_dann_klick_meint_gezeigtes_foto(oeffnen):
+        """#706 AC-3: Pfeilknopf, dann „Foto entfernen“ im Öffnen: eine Frage, gelöscht wird das gezeigte Foto, kein anderes."""
+        a = oeffnen["pfeilKlick"]
+>       assert a["pfeil"] == {"isOpen": False, "index": 0}, a
+E       AssertionError: {'verlaengerung': [1], 'pfeil': {'isOpen': False, 'index': 1}, 'klick': {'isOpen': False, 'index': 1, 'gezeigt': None}, 'danach': {'da': True, 'titel': True, 'dialoge': 1, 'gross': False, ...}, ...}
+E       assert {'isOpen': False, 'index': 1} == {'isOpen': False, 'index': 0}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'index': 1} != {'index': 0}
+E         Use -v to get more diff
+
+engine/tests/test_bilder_eigen.py:1570: AssertionError
+=========================== short test summary info ============================
+FAILED engine/tests/test_bilder_eigen.py::test_gross_klick_im_oeffnen_dann_pfeil_fragt[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_pfeil_im_oeffnen_bleibt[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_pfeil_nach_dem_oeffnen_blaettert[chromium]
+FAILED engine/tests/test_bilder_eigen.py::test_gross_pfeil_dann_klick_meint_gezeigtes_foto[chromium]
+4 failed, 8 passed, 94 deselected in 87.73s (0:01:27)
+
+# Anmerkung (Claude): Lauf in Chromium am Stand ohne Behebung. WebKit war lokal nicht installierbar (Download hing), WebKit läuft in der CI.
+# test_gross_pfeil_nach_dem_oeffnen_blaettert ist hier rot, weil im selben Ablauf der Pfeil im Öffnen den Seitenfehler aus #706 auslöst
+# (_gross_ohne_fehler); das Blättern nach dem Öffnen selbst funktioniert schon heute.

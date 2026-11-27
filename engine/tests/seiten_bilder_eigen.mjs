@@ -241,17 +241,47 @@ if (art === "seite" || art === "oeffnen") {
     await knopf(p, T.ja).first().click();
     await warten(gesendet, x => x.methode === "DELETE");
   });
-  await ablauf("blaettern", async (a, p, kopf) => {
+  // Pfeilknopf „weiter“ drücken (im selben evaluate: Fenster und Index festhalten); Ansicht: Index, gezeigtes Bild, Zähler (#706)
+  const pfeil = p => p.evaluate(() => {
+    document.querySelector("#gross .pswp__button--arrow--next").click();
+    return {isOpen: GROSS.opener.isOpen, index: GROSS.currIndex};
+  });
+  const ansicht = p => p.evaluate(() => ({index: GROSS.currIndex, bild: GROSS.currSlide ? GROSS.currSlide.data.bild.id : null,
+    zaehler: document.getElementById("gross-zaehler").textContent}));
+  // #689 AC-4, seit #706: Klick im Öffnen, dann Pfeilknopf: es blättert nichts, die Frage kommt zum gezeigten Foto
+  await ablauf("blaettern", async (a, p, kopf, gesendet) => {
     await klickImOeffnen(a, p, kopf);
-    a.pfeil = await p.evaluate(() => {
-      document.querySelector("#gross .pswp__button--arrow--next").click();
-      return {isOpen: GROSS.opener.isOpen, index: GROSS.currIndex};
-    });
-    await p.waitForFunction(() => !GROSS || GROSS.opener.isOpen, null, FRIST);
-    await p.waitForTimeout(1500);
-    a.danach = await stand(p);
+    a.pfeil = await pfeil(p);
+    a.danach = await nachFrage(p);
+    if (a.danach.da) { await knopf(p, T.ja).first().click(); await warten(gesendet, x => x.methode === "DELETE"); }
+    else a.zu = await schliessen(p);
+  });
+  // #706: Pfeilknopf im Öffnen wirkt nicht; nach dem Öffnen steht das angetippte Bild, danach blättert der Pfeil wie gewohnt
+  await ablauf("pfeil", async (a, p, kopf) => {
+    await kopf.click();
+    await p.waitForFunction(() => document.querySelector("#gross.pswp--ui-visible .pswp__button--arrow--next"), null, FRIST);
+    a.pfeil = await pfeil(p);
+    await offen(p);
+    await p.waitForTimeout(300);
+    a.nachOeffnen = await ansicht(p);
+    a.weiter = await pfeil(p);
+    await p.waitForFunction(() => GROSS.currSlide && GROSS.currIndex === 1, null, FRIST).catch(() => {});
+    await p.waitForTimeout(300);
+    a.nachBlaettern = await ansicht(p);
     a.zu = await schliessen(p);
-    if (a.zu.dialoge) { await knopf(p, T.ja).first().click(); await p.waitForTimeout(500); }
+  });
+  // #706 (Nachtrag aus #689): Pfeilknopf, dann „Foto entfernen“ im Öffnen: die Frage meint das gezeigte Foto
+  await ablauf("pfeilKlick", async (a, p, kopf, gesendet) => {
+    await kopf.click();
+    await p.waitForFunction(() => document.querySelector("#gross.pswp--ui-visible .gross-unten button.entfernen"), null, FRIST);
+    a.pfeil = await pfeil(p);
+    a.klick = await p.evaluate(() => {
+      document.querySelector("#gross .gross-unten button.entfernen").click();
+      return {isOpen: GROSS.opener.isOpen, index: GROSS.currIndex, gezeigt: GROSS.currSlide ? GROSS.currSlide.data.bild.id : null};
+    });
+    a.danach = await nachFrage(p);
+    if (a.danach.da) { await knopf(p, T.ja).first().click(); await warten(gesendet, x => x.methode === "DELETE"); }
+    else a.zu = await schliessen(p);
   });
   await ablauf("escape", async (a, p, kopf) => {
     await klickImOeffnen(a, p, kopf);

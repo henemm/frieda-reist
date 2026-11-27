@@ -1533,17 +1533,44 @@ def test_gross_behalten_und_entfernen_nach_klick_im_oeffnen(oeffnen):
     assert b["klick"]["bild"] == "BI-91" and b["geloescht"] == ["BI-91"], b
 
 
-def test_gross_klick_im_oeffnen_dann_blaettern_verwirft(oeffnen, request):
-    """#689 AC-4: Blättern im Öffnen verwirft den Klick: keine Frage, kein DELETE, auch nicht nach dem Schließen."""
+def test_gross_klick_im_oeffnen_dann_pfeil_fragt(oeffnen):
+    """#706 AC-4 (vorher #689 AC-4): Klick im Öffnen, dann Pfeilknopf: es blättert nichts, die Frage kommt zum gezeigten Foto;
+    jeder Seitenfehler macht den Test rot."""
     a = oeffnen["blaettern"]
-    assert "abbruch" not in a and a["pfeil"] == {"isOpen": False, "index": 1}, a
-    assert a["danach"]["dialoge"] == 0 and a["danach"]["isOpen"], a
-    assert not a["zu"]["gross"] and a["zu"]["dialoge"] == 0 and a["geloescht"] == [], a
-    # Der Pfeilknopf im Öffnen hat einen eigenen Fehler (#706): nur hier und nur mit genau diesem Text je Browser zugelassen
-    bekannt = {"chromium": "pageerror: TypeError: Cannot read properties of undefined (reading 'data')",
-               "webkit": "pageerror: TypeError: undefined is not an object (evaluating 'pswp.currSlide.data')",
-               }[request.node.callspec.params["oeffnen"]]
-    assert [f for f in a["fehler"] if f != bekannt] == [], a
+    assert a["pfeil"] == {"isOpen": False, "index": 0}, a
+    _gross_frage_da(a)
+    assert a["geloescht"] == [a["klick"]["bild"]] == ["BI-91"], a
+
+
+def _gross_ohne_fehler(a):
+    assert "abbruch" not in a and a["fehler"] == [], a
+
+
+def test_gross_pfeil_im_oeffnen_bleibt(oeffnen):
+    """#706 AC-1: Pfeilknopf im Öffnen wirkt nicht; nach dem Öffnen steht das angetippte Bild mit seinem Zähler."""
+    a = oeffnen["pfeil"]
+    _gross_ohne_fehler(a)
+    assert a["pfeil"] == {"isOpen": False, "index": 0}, a
+    n = a["nachOeffnen"]
+    assert n["index"] == 0 and n["bild"] == "BI-91" and n["zaehler"].endswith("· 1 / 2"), a
+
+
+def test_gross_pfeil_nach_dem_oeffnen_blaettert(oeffnen):
+    """#706 AC-2: Nach dem Öffnen blättert der Pfeilknopf wie bisher, der Zähler folgt."""
+    a = oeffnen["pfeil"]
+    _gross_ohne_fehler(a)
+    assert a["weiter"]["isOpen"], a
+    n = a["nachBlaettern"]
+    assert n["index"] == 1 and n["bild"] == "BI-90" and n["zaehler"].endswith("· 2 / 2"), a
+
+
+def test_gross_pfeil_dann_klick_meint_gezeigtes_foto(oeffnen):
+    """#706 AC-3: Pfeilknopf, dann „Foto entfernen“ im Öffnen: eine Frage, gelöscht wird das gezeigte Foto, kein anderes."""
+    a = oeffnen["pfeilKlick"]
+    assert a["pfeil"] == {"isOpen": False, "index": 0}, a
+    assert a["klick"] == {"isOpen": False, "index": 0, "gezeigt": "BI-91"}, a
+    _gross_frage_da(a)
+    assert a["geloescht"] == ["BI-91"], a
 
 
 def test_gross_frage_meint_das_gezeigte_foto(oeffnen):
