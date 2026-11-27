@@ -29,6 +29,11 @@
     test_bruecke_bricht_nach_netzfehler_beim_start_bei_anderem_konto_ab
 - AC-4: Scheitert die Token-Erneuerung, antwortet die Brücke mit `-32603` und läuft weiter; kein Token in der Ausgabe.
   - Test: test_bruecke_beantwortet_gescheiterte_erneuerung_mit_fehler
+- AC-6: Antwortet der Konnektor bei der Kontoprüfung (beim Start oder nachgeholt) mit einem Serverfehler 5xx, etwa
+  502 hinter nginx während eines Neustarts, gilt das wie ein Netzfehler: Fehlerantwort `-32603`, Prüfung bleibt
+  ausstehend, nichts wird weitergeleitet, die Brücke läuft weiter. Andere Antworten (4xx, 200 ohne Ergebnis) brechen
+  wie bisher ab. (Befund F001 der Prüfung zu #669.)
+  - Test: test_bruecke_ueberlebt_serverfehler_bei_der_kontopruefung
 - AC-5: Abbruch bei falschem Konto oder Betreiber, Abbruch bei fehlender Ablage oder fehlendem Instanzwert sowie das
   Erneuern bei Ablauf und bei 401 bleiben unverändert.
   - Test: bestehende Tests 3 bis 6 in engine/tests/test_testzugang.py
