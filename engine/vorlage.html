@@ -1734,10 +1734,14 @@ function grossAnsicht(gruppe, i, ausloeser) {
       closeTitle: T("seite.bild.schliessen"), zoomTitle: T("seite.bild.zoomen"), arrowPrevTitle: T("seite.bild.vorheriges"),
       arrowNextTitle: T("seite.bild.naechstes"), errorMsg: T("seite.bild.ladefehler"),
       paddingFn: f => ({top: 56, bottom: 92, left: f.x > 560 ? 76 : 0, right: f.x > 560 ? 76 : 0})});   // Pfeile ab 560 px
+    // Blättern erst nach dem Öffnen (#706): PhotoSwipe füllt die Nachbarbilder erst am Ende des Öffnens; der Pfeilknopf (next/prev
+    // → goTo) ließ die Ansicht sonst leer, Zähler und „Foto entfernen“ blieben beim vorigen Bild. Wie Pfeiltaste und Wischen.
+    const blaettern = pswp.goTo.bind(pswp);
+    pswp.goTo = i => { if (pswp.opener.isOpen) blaettern(i); };
     let danach = null;
-    // „Foto entfernen“ im Öffnen (#689): PhotoSwipe schließt dann noch nicht, der Klick wird gemerkt. Blättern verwirft ihn (die
-    // Frage meinte sonst ein anderes Foto als das gezeigte), deshalb vor den change-Hörern der Elemente; sonst schließt das Ende
-    // des Öffnens, aufgeschoben, also nicht mitten in der Meldung.
+    // „Foto entfernen“ im Öffnen (#689): PhotoSwipe schließt dann noch nicht, der Klick wird gemerkt. Blättern (erst nach dem
+    // Öffnen möglich, #706) verwirft ihn (die Frage meinte sonst ein anderes Foto als das gezeigte), deshalb vor den change-Hörern
+    // der Elemente; sonst schließt das Ende des Öffnens, aufgeschoben, also nicht mitten in der Meldung.
     pswp.on("change", () => { danach = null; });
     pswp.on("openingAnimationEnd", () => { setTimeout(() => { if (danach && !pswp.isDestroying) pswp.destroy(); }); });
     pswp.on("uiRegister", () => {
