@@ -1045,11 +1045,9 @@ def _export_reise(z, k, m):
 
 
 def _export_rolle(k, m):
-    """(Name, Rolle) der Person in der Reise aus der veröffentlichten Seite; ohne sie Gast mit dem Namen des Kontos."""
-    zs = rm.zustand(m["reise"])
-    if zs is None:
-        return k["name"], "gast"
-    p = _person(m["reise"], m["schluessel"], zs)
+    """(Name, Rolle) der Person in der Reise aus der veröffentlichten Seite, sonst aus reise.yaml im Speicher (#732);
+    findet sich niemand, Gast mit dem Namen des Kontos."""
+    p = _person(m["reise"], m["schluessel"])
     return p.get("name") or k["name"], rolle_neu(p.get("rolle")) or "gast"
 
 
