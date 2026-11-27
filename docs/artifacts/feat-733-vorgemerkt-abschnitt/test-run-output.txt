@@ -1,0 +1,8 @@
+........................................................................ [ 26%]
+........................................................................ [ 52%]
+..........................................................ss............ [ 78%]
+...........................................................              [100%]
+=========================== short test summary info ============================
+SKIPPED [2] engine/tests/test_bilder_konto.py:299: Playwright fehlt
+273 passed, 2 skipped in 54.88s
+273 passed, 2 skipped (test_texte, test_loeschen_reise, test_bilder_konto, test_design, test_anmeldung, test_export, test_protokolle_ohne_pfade; nach Umformulierung Info-Text)

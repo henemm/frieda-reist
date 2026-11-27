@@ -703,8 +703,8 @@ def personen_block(reise, z, ich, extra=""):
 
 # ---------------------------------------------------------------- Reise löschen (#381)
 # Nur Organisator:innen einer Reise im Reisespeicher: Link unter den Personen, Bestätigung 1 (Haken), Bestätigung 2
-# (Reisename eintippen), dann vorgemerkt mit Schonfrist; oben in „Meine Reisen“ der Block mit Datum und „Reise
-# zurückholen“. Alle anderen Mitglieder bekommen sofort Mail und Meldung, beim Zurückholen eine zweite.
+# (Reisename eintippen), dann vorgemerkt mit Schonfrist; unter den Reisen und dem Archiv der zugeklappte Abschnitt
+# „Zum Löschen vorgemerkt“ mit Datum und „Reise zurückholen“ (#733). Alle anderen Mitglieder bekommen sofort Mail und Meldung, beim Zurückholen eine zweite.
 
 def _speicherreisen():
     try:
@@ -841,20 +841,25 @@ def reise_loeschen_seite(k, reise, reise_info, schritt=1, meldung=""):
 
 
 def loeschen_block(k, vorgemerkt, reise_info):
-    """Block der vorgemerkten Reisen oben in „Meine Reisen“: Name, Datum des Entfernens mit Zone, „Reise zurückholen“ nur
-    für Organisator:innen und nur vor dem Fristende."""
+    """Zugeklappter Abschnitt „Zum Löschen vorgemerkt (n)“ unter Reiseliste und Archiv (#733): je Reise eine Kachel mit
+    Name, Datum des Entfernens mit Zone, „Reise zurückholen“ nur für Organisator:innen und nur vor dem Fristende."""
+    if not vorgemerkt:
+        return ""
     zone, jetzt = meldungen_zone(k), konten._jetzt()
     teile = []
     for z in vorgemerkt:
         titel = reise_titel(z["reise"], reise_info)
         offen = z["frist"] > jetzt
-        satz = (tx("konto.reise_loeschen.block", titel=titel, frist=frist_text(z["frist"], sprache_der_seite(), zone)) if offen
-                else tx("konto.reise_loeschen.block_vorbei", titel=titel))
+        satz = (tx("konto.reise_loeschen.kachel", frist=frist_text(z["frist"], sprache_der_seite(), zone)) if offen
+                else tx("konto.reise_loeschen.kachel_vorbei"))
         knopf = (f'<form method="post" action="/konto">{verdeckt(reise=z["reise"])}<button class="leise" name="aktion" '
                  f'value="reise_zurueckholen">{esc(tx("konto.reise_loeschen.zurueckholen"))}</button></form>'
                  if offen and ist_organisatorin(k, z["reise"]) else "")
-        teile.append(f'<div class="vorgemerkt kasten"><p style="margin:0 0 .4rem">{esc(satz)}</p>{knopf}</div>')
-    return "".join(teile)
+        teile.append(f'<div class="vorgemerkt kachel" style="padding:.8rem 1rem"><p style="margin:0 0 .3rem"><strong>'
+                     f'{esc(titel)}</strong></p><p class="klein" style="margin:0 0 .6rem">{esc(satz)}</p>{knopf}</div>')
+    return (f'<details class="archiv vorgemerkt"><summary>'
+            f'{esc(tx("konto.reise_loeschen.abschnitt", n=len(vorgemerkt)))}</summary>'
+            f'<div class="liste"><div class="kacheln">{"".join(teile)}</div></div></details>')
 
 
 def loeschen_link(k, reise, z, p):
@@ -1118,7 +1123,7 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
     vorgemerkt = {z["reise"]: z for z in konten.loeschungen()}
     meine_vorgemerkten = []
     for m in konten.mitgliedschaften(k["id"]):
-        if m["reise"] in vorgemerkt:   # #381: steht im Block oben, nicht in der Liste
+        if m["reise"] in vorgemerkt:   # #381, #733: steht im Abschnitt unter Liste und Archiv, nicht in der Liste
             meine_vorgemerkten.append(vorgemerkt[m["reise"]])
             continue
         info = reise_info(m["reise"]) or {}
@@ -1128,10 +1133,10 @@ def konto_seite(k, reise_info, meldung="", hinweis="", adresse_neu="", offen="")
             reise_kachel(m["reise"], info, p, personen_block(m["reise"], z, p, loeschen_link(k, m["reise"], z, p))))
     reisen = f'<div class="liste"><div class="kacheln">{"".join(zeilen)}</div></div>' if zeilen else (
         "" if archiv or meine_vorgemerkten else karte(f'<p class="hinweis">{esc(tx("konto.reisen.keine"))}</p>'))
-    reisen = loeschen_block(k, meine_vorgemerkten, reise_info) + reisen
     if archiv:   # archivierte Reisen (auch Testreisen) bleiben erreichbar, stören aber nicht die Liste (#416)
         reisen += (f'<details class="archiv"><summary>{esc(tx("konto.archiv.titel", n=len(archiv)))}</summary>'
                    f'<div class="liste"><div class="kacheln">{"".join(archiv)}</div></div></details>')
+    reisen += loeschen_block(k, meine_vorgemerkten, reise_info)   # #733: zugeklappt ganz unten
     if konten.recht(k, "reise_anlegen"):
         anlegen = f'<p class="hinweis">{esc(tx("konto.reisen.anlegen_darfst"))}</p>'
     else:

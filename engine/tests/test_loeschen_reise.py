@@ -279,24 +279,69 @@ def test_mitwirkender_kann_nicht_vormerken(zwei, monkeypatch):
     assert not konten.reise_vorgemerkt("beispielreise")
 
 
-def test_block_oben_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypatch):
+def _abschnitt_titel(n):
+    import texte
+    return texte.t("de", "konto.reise_loeschen.abschnitt", n=n)
+
+
+def _abschnitt(t):
+    """#733: der zugeklappte Abschnitt der vorgemerkten Reisen (Anfang des <details>, Inhalt bis </details>)."""
+    start = t.index('<details class="archiv vorgemerkt">')
+    return start, t[start:t.index("</details>", start)]
+
+
+def test_abschnitt_unten_knopf_nur_fuer_organisatorin_und_zurueckholen(zwei, monkeypatch):
+    """#733 AC-1 bis AC-3: zugeklappter Abschnitt „Zum Löschen vorgemerkt (n)“ nach der Reiseliste, darin je Reise eine
+    Kachel mit Titel und Datum samt Zone; Knopf nur für die Organisatorin, Zurückholen wie bisher."""
     u = zwei()
-    _im_speicher(monkeypatch, u, "beispielreise")
+    _im_speicher(monkeypatch, u, "beispielreise", "stadtwochenende")
     from test_anmeldung import anmelden
     karl_keks, _ = anmelden(u, KARL)   # Mitglied vor dem Vormerken: danach löst eine Einladung keine Mitgliedschaft mehr aus
+    konten.einladen("stadtwochenende", "lea", IDA, "mitwirkend", "Ida", "Tom")   # eine Reise bleibt in der Liste
     konten.loeschung_vormerken("beispielreise", u.a["id"])
     t = _seite(u, u.a_keks)
-    block = t.index('class="vorgemerkt')
-    assert block < t.index('class="liste"'), "Block steht oben in Meine Reisen"
-    assert re.search(r"\d{1,2}\.\s?\d{1,2}\.\s?\d{4}.{0,40}(UTC|MEZ|MESZ|CET|CEST|\+\d\d)", t[block:block + 2000]), \
-        "Datum mit Zeitzone"
-    assert 'value="reise_zurueckholen"' in t
+    assert 'class="archiv vorgemerkt" open' not in t, "Abschnitt zugeklappt (AC-1)"
+    start, abschnitt = _abschnitt(t)
+    liste = t.index('class="liste"')
+    assert liste < start, "Abschnitt steht nach der Reiseliste (AC-1)"
+    assert not re.search(r'class="[^"]*vorgemerkt', t[:liste]), "vor der Liste nichts Vorgemerktes (AC-1)"
+    assert f"<summary>{_abschnitt_titel(1)}</summary>" in abschnitt, "Titel „Zum Löschen vorgemerkt (1)“ (AC-1)"
+    kachel = abschnitt[abschnitt.index('class="vorgemerkt kachel"'):]
+    assert _titel("beispielreise") in kachel, "Kachel mit Titel der Reise (AC-2)"
+    assert re.search(r"\d{1,2}\.\s?\d{1,2}\.\s?\d{4}.{0,40}(UTC|MEZ|MESZ|CET|CEST|\+\d\d)", kachel), \
+        "Datum mit Zeitzone (AC-2)"
+    assert 'value="reise_zurueckholen"' in abschnitt, "Knopf für die Organisatorin im Abschnitt (AC-3)"
     tk = _seite(u, karl_keks)
-    assert 'class="vorgemerkt' in tk and 'value="reise_zurueckholen"' not in tk
+    assert 'class="vorgemerkt kachel"' in tk and 'value="reise_zurueckholen"' not in tk, "Mitwirkende ohne Knopf (AC-3)"
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_zurueckholen", "reise": "beispielreise"}, cookie=karl_keks)
     assert konten.reise_vorgemerkt("beispielreise"), "Mitwirkende holen nicht zurück"
     abruf(f"{u.kurl}/konto", "POST", {"aktion": "reise_zurueckholen", "reise": "beispielreise"}, cookie=u.a_keks)
     assert not konten.reise_vorgemerkt("beispielreise")
+
+
+def test_abschnitt_steht_nach_dem_archiv(zwei, monkeypatch):
+    """#733 AC-1: Mit archivierter Reise steht der Abschnitt der vorgemerkten Reisen auch nach dem Archiv."""
+    u = zwei(stadt_status="archiv")
+    _im_speicher(monkeypatch, u, "beispielreise")
+    konten.einladen("stadtwochenende", "lea", IDA, "mitwirkend", "Ida", "Tom")   # Ida auch im archivierten Wochenende
+    konten.loeschung_vormerken("beispielreise", u.a["id"])
+    t = _seite(u, u.a_keks)
+    archiv = t.index('<details class="archiv">')
+    start, abschnitt = _abschnitt(t)
+    assert archiv < start, "Abschnitt steht nach dem Archiv (AC-1)"
+    assert not re.search(r'class="[^"]*vorgemerkt', t[:archiv]), "vor dem Archiv nichts Vorgemerktes (AC-1)"
+    assert f"<summary>{_abschnitt_titel(1)}</summary>" in abschnitt and _titel("beispielreise") in abschnitt
+
+
+def test_ohne_vorgemerkte_kein_abschnitt(zwei, monkeypatch):
+    """#733 AC-4: Ohne vorgemerkte Reisen gibt es den Abschnitt nicht."""
+    u = zwei()
+    _im_speicher(monkeypatch, u, "beispielreise")
+    t = _seite(u, u.a_keks)
+    assert 'class="archiv vorgemerkt"' not in t and 'class="vorgemerkt kachel"' not in t
+    titel = _abschnitt_titel(1)
+    assert titel != "konto.reise_loeschen.abschnitt", "Text des Abschnitts im Katalog (AC-5)"
+    assert titel.split("(")[0].strip() not in t, "kein Text des Abschnitts (AC-4)"
 
 
 def test_knopf_auch_bei_abgebauter_seite(zwei, monkeypatch):

@@ -1,0 +1,8 @@
+E       ValueError: substring not found
+E       ValueError: substring not found
+E       AssertionError: Text des Abschnitts im Katalog (AC-5)
+E       assert 'konto.reise_loeschen.abschnitt' != 'konto.reise_loeschen.abschnitt'
+FAILED engine/tests/test_loeschen_reise.py::test_abschnitt_unten_knopf_nur_fuer_organisatorin_und_zurueckholen
+FAILED engine/tests/test_loeschen_reise.py::test_abschnitt_steht_nach_dem_archiv
+FAILED engine/tests/test_loeschen_reise.py::test_ohne_vorgemerkte_kein_abschnitt
+3 failed, 39 passed in 25.77s
