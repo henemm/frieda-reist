@@ -1,0 +1,182 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.15, pytest-9.1.1, pluggy-1.7.0 -- ~/Developer/frieda-reist/engine/.venv/bin/python
+rootdir: ~/Developer/frieda-reist/.claude/worktrees/spicy-wondering-waterfall
+configfile: pytest.ini
+plugins: xdist-3.8.0
+created: 3/3 workers
+3 workers [85 items]
+
+scheduling tests via LoadScheduling
+
+engine/tests/test_konten.py::test_code_mit_leerzeichen 
+engine/tests/test_konten.py::test_szenario5_neues_geraet_gleiches_konto 
+engine/tests/test_konten.py::test_szenario1_neu_ohne_einladung 
+[gw2] [  1%] PASSED engine/tests/test_konten.py::test_code_mit_leerzeichen 
+engine/tests/test_konten.py::test_begrenzung_je_adresse_und_ip 
+[gw0] [  2%] PASSED engine/tests/test_konten.py::test_szenario1_neu_ohne_einladung 
+engine/tests/test_konten.py::test_abgelehnte_bitte_bleibt_abgelehnt 
+[gw1] [  3%] PASSED engine/tests/test_konten.py::test_szenario5_neues_geraet_gleiches_konto 
+engine/tests/test_konten.py::test_szenario6_adresse_aendern 
+[gw0] [  4%] PASSED engine/tests/test_konten.py::test_abgelehnte_bitte_bleibt_abgelehnt 
+engine/tests/test_konten.py::test_nach_entzug_des_rechts_neu_bitten 
+[gw2] [  5%] PASSED engine/tests/test_konten.py::test_begrenzung_je_adresse_und_ip 
+engine/tests/test_konten.py::test_keine_auskunft_ueber_adressen 
+[gw1] [  7%] PASSED engine/tests/test_konten.py::test_szenario6_adresse_aendern 
+engine/tests/test_konten.py::test_hoechstens_ein_konto_je_adresse 
+[gw0] [  8%] PASSED engine/tests/test_konten.py::test_nach_entzug_des_rechts_neu_bitten 
+engine/tests/test_konten.py::test_szenario2_eingeladen_gilt_beim_ersten_anmelden 
+[gw2] [  9%] PASSED engine/tests/test_konten.py::test_keine_auskunft_ueber_adressen 
+engine/tests/test_konten.py::test_geheimnisse_nur_als_hash 
+[gw1] [ 10%] PASSED engine/tests/test_konten.py::test_hoechstens_ein_konto_je_adresse 
+engine/tests/test_konten.py::test_szenario10_entfernen_und_sperren 
+[gw0] [ 11%] PASSED engine/tests/test_konten.py::test_szenario2_eingeladen_gilt_beim_ersten_anmelden 
+engine/tests/test_konten.py::test_einladungslink_mit_anderer_adresse 
+[gw2] [ 12%] PASSED engine/tests/test_konten.py::test_geheimnisse_nur_als_hash 
+engine/tests/test_konten.py::test_sitzung_rollierend_und_abgelaufen 
+[gw1] [ 14%] PASSED engine/tests/test_konten.py::test_szenario10_entfernen_und_sperren 
+engine/tests/test_konten.py::test_szenario11_konto_selbst_loeschen 
+[gw0] [ 15%] PASSED engine/tests/test_konten.py::test_einladungslink_mit_anderer_adresse 
+engine/tests/test_konten.py::test_einladung_einloesen_angemeldet 
+[gw2] [ 16%] PASSED engine/tests/test_konten.py::test_sitzung_rollierend_und_abgelaufen 
+engine/tests/test_konten.py::test_eingaben_pruefen 
+[gw2] [ 17%] PASSED engine/tests/test_konten.py::test_eingaben_pruefen 
+engine/tests/test_konten.py::test_person_schon_mit_anderem_konto 
+[gw0] [ 18%] PASSED engine/tests/test_konten.py::test_einladung_einloesen_angemeldet 
+engine/tests/test_konten.py::test_szenario4_konto_und_zweite_reise_sofort 
+[gw1] [ 20%] PASSED engine/tests/test_konten.py::test_szenario11_konto_selbst_loeschen 
+engine/tests/test_konten.py::test_zusammenfuehren 
+[gw2] [ 21%] PASSED engine/tests/test_konten.py::test_person_schon_mit_anderem_konto 
+engine/tests/test_konten.py::test_neues_konto_bekommt_die_sprache_der_anmeldeseite 
+[gw0] [ 22%] PASSED engine/tests/test_konten.py::test_szenario4_konto_und_zweite_reise_sofort 
+engine/tests/test_konten.py::test_mail_ohne_einrichtung 
+[gw0] [ 23%] PASSED engine/tests/test_konten.py::test_mail_ohne_einrichtung 
+engine/tests/test_konten.py::test_mail_per_smtp 
+[gw2] [ 24%] PASSED engine/tests/test_konten.py::test_neues_konto_bekommt_die_sprache_der_anmeldeseite 
+[gw1] [ 25%] PASSED engine/tests/test_konten.py::test_zusammenfuehren 
+engine/tests/test_konten.py::test_alte_datenbank_ohne_spalte_wird_migriert 
+engine/tests/test_konten.py::test_code_falsch_abgelaufen_zu_oft 
+[gw0] [ 27%] PASSED engine/tests/test_konten.py::test_mail_per_smtp 
+engine/tests/test_konten.py::test_befehle 
+[gw2] [ 28%] PASSED engine/tests/test_konten.py::test_alte_datenbank_ohne_spalte_wird_migriert 
+[gw1] [ 29%] PASSED engine/tests/test_konten.py::test_code_falsch_abgelaufen_zu_oft 
+engine/tests/test_konten.py::test_bestand_mit_leerer_sprache_wird_einmal_deutsch 
+engine/tests/test_konten.py::test_ablage_ohne_reise_zieht_zu_den_konten 
+[gw1] [ 30%] PASSED engine/tests/test_konten.py::test_ablage_ohne_reise_zieht_zu_den_konten 
+engine/tests/test_oauth.py::test_metadaten 
+[gw0] [ 31%] PASSED engine/tests/test_konten.py::test_befehle 
+engine/tests/test_konten.py::test_konten_ordner_alt_und_neu 
+[gw2] [ 32%] PASSED engine/tests/test_konten.py::test_bestand_mit_leerer_sprache_wird_einmal_deutsch 
+engine/tests/test_konten.py::test_gespeicherte_unbekannte_sprache_zaehlt_wie_keine 
+[gw0] [ 34%] PASSED engine/tests/test_konten.py::test_konten_ordner_alt_und_neu 
+engine/tests/test_konten.py::test_dienst_geheimnis_gleichzeitig_beim_ersten_Aufruf 
+[gw0] [ 35%] PASSED engine/tests/test_konten.py::test_dienst_geheimnis_gleichzeitig_beim_ersten_Aufruf 
+engine/tests/test_konten.py::test_sprache_vorgabe_setzen_und_unbekannte 
+[gw2] [ 36%] PASSED engine/tests/test_konten.py::test_gespeicherte_unbekannte_sprache_zaehlt_wie_keine 
+engine/tests/test_konten.py::test_einladung_in_der_sprache_der_person_oder_der_reise 
+[gw0] [ 37%] PASSED engine/tests/test_konten.py::test_sprache_vorgabe_setzen_und_unbekannte 
+engine/tests/test_oauth.py::test_pkce_und_code_nur_einmal 
+[gw2] [ 38%] PASSED engine/tests/test_konten.py::test_einladung_in_der_sprache_der_person_oder_der_reise 
+engine/tests/test_konten.py::test_sichern_schreibt_einen_stimmigen_schnappschuss 
+[gw2] [ 40%] PASSED engine/tests/test_konten.py::test_sichern_schreibt_einen_stimmigen_schnappschuss 
+engine/tests/test_oauth.py::test_reisen_anlegen_mit_recht 
+[gw1] [ 41%] PASSED engine/tests/test_oauth.py::test_metadaten 
+[gw0] [ 42%] PASSED engine/tests/test_oauth.py::test_pkce_und_code_nur_einmal 
+[gw2] [ 43%] PASSED engine/tests/test_oauth.py::test_reisen_anlegen_mit_recht 
+engine/tests/test_oauth.py::test_nur_erlaubte_ruecksprungadressen 
+engine/tests/test_oauth.py::test_bitte_nach_entzug_des_rechts 
+[gw0] [ 44%] PASSED engine/tests/test_oauth.py::test_nur_erlaubte_ruecksprungadressen 
+[gw2] [ 45%] PASSED engine/tests/test_oauth.py::test_bitte_nach_entzug_des_rechts 
+engine/tests/test_oauth.py::test_symbol_von_frieda 
+[gw1] [ 47%] PASSED engine/tests/test_oauth.py::test_symbol_von_frieda 
+engine/tests/test_oauth.py::test_client_id_metadata_document 
+[gw0] [ 48%] PASSED engine/tests/test_oauth.py::test_client_id_metadata_document 
+engine/tests/test_oauth.py::test_betreiber_entscheidet_bitten 
+[gw2] [ 49%] PASSED engine/tests/test_oauth.py::test_betreiber_entscheidet_bitten 
+engine/tests/test_oauth.py::test_ohne_token_401_mit_zeiger 
+[gw1] [ 50%] PASSED engine/tests/test_oauth.py::test_ohne_token_401_mit_zeiger 
+engine/tests/test_oauth.py::test_sperren_und_ueberall_abmelden_beenden_den_zugriff 
+[gw0] [ 51%] PASSED engine/tests/test_oauth.py::test_sperren_und_ueberall_abmelden_beenden_den_zugriff 
+engine/tests/test_oauth.py::test_alte_links_gibt_es_nicht_mehr 
+[gw2] [ 52%] PASSED engine/tests/test_oauth.py::test_alte_links_gibt_es_nicht_mehr 
+engine/tests/test_oauth.py::test_ganzer_ablauf_wie_die_claude_app 
+engine/tests/test_oauth.py::test_einladen_per_mail 
+[gw1] [ 54%] PASSED engine/tests/test_oauth.py::test_ganzer_ablauf_wie_die_claude_app 
+[gw0] [ 55%] PASSED engine/tests/test_oauth.py::test_einladen_per_mail 
+engine/tests/test_oauth.py::test_person_entfernen 
+[gw2] [ 56%] PASSED engine/tests/test_oauth.py::test_person_entfernen 
+engine/tests/test_oauth.py::test_niemand_uebernimmt_eine_bestehende_person 
+engine/tests/test_anmeldung.py::test_aenderungen_nur_von_friedas_adresse 
+[gw0] [ 57%] PASSED engine/tests/test_anmeldung.py::test_aenderungen_nur_von_friedas_adresse 
+[gw1] [ 58%] PASSED engine/tests/test_oauth.py::test_niemand_uebernimmt_eine_bestehende_person 
+engine/tests/test_anmeldung.py::test_einladung_angemeldet_annehmen 
+[gw2] [ 60%] PASSED engine/tests/test_anmeldung.py::test_einladung_angemeldet_annehmen 
+engine/tests/test_oauth.py::test_sprache_am_konto_im_konnektor 
+[gw1] [ 61%] PASSED engine/tests/test_oauth.py::test_sprache_am_konto_im_konnektor 
+engine/tests/test_anmeldung.py::test_link_aus_der_mail_ohne_code 
+[gw0] [ 62%] PASSED engine/tests/test_anmeldung.py::test_link_aus_der_mail_ohne_code 
+engine/tests/test_anmeldung.py::test_rueckmeldung_traegt_den_namen_aus_der_sitzung 
+[gw2] [ 63%] PASSED engine/tests/test_anmeldung.py::test_rueckmeldung_traegt_den_namen_aus_der_sitzung 
+engine/tests/test_oauth.py::test_anleitung_und_werkzeuge_in_der_sprache_des_kontos 
+[gw1] [ 64%] PASSED engine/tests/test_oauth.py::test_anleitung_und_werkzeuge_in_der_sprache_des_kontos 
+engine/tests/test_anmeldung.py::test_rueckweg_nur_auf_friedas_adresse 
+[gw0] [ 65%] PASSED engine/tests/test_anmeldung.py::test_rueckweg_nur_auf_friedas_adresse 
+engine/tests/test_anmeldung.py::test_mitmachen_nur_angemeldet 
+[gw2] [ 67%] PASSED engine/tests/test_anmeldung.py::test_mitmachen_nur_angemeldet 
+engine/tests/test_anmeldung.py::test_einplanen_als_angemeldete_organisatorin 
+engine/tests/test_oauth.py::test_reise_anlegen_ohne_sprache_in_der_sprache_des_kontos 
+[gw2] [ 68%] PASSED engine/tests/test_anmeldung.py::test_einplanen_als_angemeldete_organisatorin 
+[gw1] [ 69%] PASSED engine/tests/test_oauth.py::test_reise_anlegen_ohne_sprache_in_der_sprache_des_kontos 
+engine/tests/test_anmeldung.py::test_einladung_mit_anderer_adresse 
+[gw0] [ 70%] PASSED engine/tests/test_anmeldung.py::test_einladung_mit_anderer_adresse 
+engine/tests/test_anmeldung.py::test_kontoseite 
+[gw2] [ 71%] PASSED engine/tests/test_anmeldung.py::test_kontoseite 
+engine/tests/test_anmeldung.py::test_anmelden_von_null 
+[gw1] [ 72%] PASSED engine/tests/test_anmeldung.py::test_anmelden_von_null 
+engine/tests/test_anmeldung.py::test_konnektor_braucht_das_geheimnis 
+[gw0] [ 74%] PASSED engine/tests/test_anmeldung.py::test_konnektor_braucht_das_geheimnis 
+engine/tests/test_anmeldung.py::test_bitte_nach_entzug_auf_mein_konto 
+[gw2] [ 75%] PASSED engine/tests/test_anmeldung.py::test_bitte_nach_entzug_auf_mein_konto 
+engine/tests/test_anmeldung.py::test_eingeloester_code_gilt_nach_der_nachfrist_nicht_mehr 
+engine/tests/test_anmeldung.py::test_doppeltes_absenden_zeigt_keinen_fehler 
+[gw1] [ 76%] PASSED engine/tests/test_anmeldung.py::test_eingeloester_code_gilt_nach_der_nachfrist_nicht_mehr 
+[gw0] [ 77%] PASSED engine/tests/test_anmeldung.py::test_doppeltes_absenden_zeigt_keinen_fehler 
+engine/tests/test_anmeldung.py::test_anleitung_mit_claude_verbinden 
+engine/tests/test_anmeldung.py::test_seiten_in_der_sprache_des_browsers_und_des_kontos 
+[gw2] [ 78%] PASSED engine/tests/test_anmeldung.py::test_anleitung_mit_claude_verbinden 
+[gw1] [ 80%] PASSED engine/tests/test_anmeldung.py::test_seiten_in_der_sprache_des_browsers_und_des_kontos 
+engine/tests/test_anmeldung.py::test_personen_auf_mein_konto 
+[gw0] [ 81%] PASSED engine/tests/test_anmeldung.py::test_personen_auf_mein_konto 
+engine/tests/test_anmeldung.py::test_meldungen_auf_mein_konto_und_der_reiseseite 
+[gw1] [ 82%] PASSED engine/tests/test_anmeldung.py::test_meldungen_auf_mein_konto_und_der_reiseseite 
+engine/tests/test_anmeldung.py::test_archivierte_reisen_ausgeblendet 
+[gw2] [ 83%] PASSED engine/tests/test_anmeldung.py::test_archivierte_reisen_ausgeblendet 
+engine/tests/test_anmeldung.py::test_meldungen_fuehren_an_die_stelle_mit_marke_und_buendel 
+[gw0] [ 84%] PASSED engine/tests/test_anmeldung.py::test_meldungen_fuehren_an_die_stelle_mit_marke_und_buendel 
+engine/tests/test_anmeldung.py::test_lesestand_gilt_fuer_konto_reiseseite_und_konnektor 
+[gw1] [ 85%] PASSED engine/tests/test_anmeldung.py::test_lesestand_gilt_fuer_konto_reiseseite_und_konnektor 
+engine/tests/test_anmeldung.py::test_seitensprache_frueherer_test_setzt 
+[gw0] [ 87%] PASSED engine/tests/test_anmeldung.py::test_seitensprache_frueherer_test_setzt 
+engine/tests/test_anmeldung.py::test_pruefungen_buendeln_je_reise_und_tag 
+[gw0] [ 88%] PASSED engine/tests/test_anmeldung.py::test_pruefungen_buendeln_je_reise_und_tag 
+engine/tests/test_anmeldung.py::test_meldung_aus_teilen_in_der_sprache_des_kontos 
+engine/tests/test_anmeldung.py::test_meldung_anker_und_text_ohne_adresse 
+[gw2] [ 89%] PASSED engine/tests/test_anmeldung.py::test_meldung_anker_und_text_ohne_adresse 
+engine/tests/test_anmeldung.py::test_anmeldecodes_an_fremde_adressen_haben_eine_tagesgrenze 
+[gw2] [ 90%] PASSED engine/tests/test_anmeldung.py::test_anmeldecodes_an_fremde_adressen_haben_eine_tagesgrenze 
+[gw0] [ 91%] PASSED engine/tests/test_anmeldung.py::test_meldung_aus_teilen_in_der_sprache_des_kontos 
+engine/tests/test_anmeldung.py::test_seitensprache_frueherer_test_stoert_nicht 
+[gw1] [ 92%] PASSED engine/tests/test_anmeldung.py::test_seitensprache_frueherer_test_stoert_nicht 
+engine/tests/test_protokolle_ohne_pfade.py::test_protokolle_ohne_absolute_pfade 
+[gw1] [ 94%] PASSED engine/tests/test_protokolle_ohne_pfade.py::test_protokolle_ohne_absolute_pfade 
+engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pfade 
+[gw1] [ 95%] PASSED engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pfade 
+engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pytest_tmp 
+[gw1] [ 96%] PASSED engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_pytest_tmp 
+engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_macos_temp 
+[gw1] [ 97%] PASSED engine/tests/test_protokolle_ohne_pfade.py::test_muster_erkennt_macos_temp 
+engine/tests/test_anmeldung.py::test_meldung_ohne_reise_folgt_nicht_dem_namen 
+engine/tests/test_anmeldung.py::test_adresswechsel_verraet_nicht_unbegrenzt_welche_adressen_konten_haben 
+[gw0] [ 98%] PASSED engine/tests/test_anmeldung.py::test_meldung_ohne_reise_folgt_nicht_dem_namen 
+[gw2] [100%] PASSED engine/tests/test_anmeldung.py::test_adresswechsel_verraet_nicht_unbegrenzt_welche_adressen_konten_haben 
+
+============================= 85 passed in 23.54s ==============================

@@ -29,7 +29,7 @@ erkannt und bekommt darüber jederzeit wieder Zugang.
   - Ohne Einladung hat ein Konto keine Reisen.
 - **Reisen anlegen:**
   - Erst mit Freischaltung durch den Betreiber.
-  - Ein Konto kann darum bitten. Eine Ablehnung bleibt bestehen, bis der Betreiber sie ändert.
+  - Ein Konto kann darum bitten. Eine Ablehnung bleibt bestehen, bis der Betreiber sie ändert; wurde das Recht nach einer Freischaltung wieder entzogen, ist eine neue Bitte möglich.
 - **Einladung:**
   - Sie gilt für eine Reise und einen Personen-Schlüssel.
   - Hat die Adresse schon ein Konto, gilt sie sofort, sonst beim ersten Anmelden mit dieser Adresse.

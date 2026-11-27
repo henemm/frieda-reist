@@ -975,7 +975,9 @@ def recht_setzen(kid, r, an=True):
 
 
 def reisen_anlegen_anfragen(kid):
-    """Bitte „Ich möchte Reisen anlegen“. -> 'offen' | 'schon_erlaubt' | 'abgelehnt' (eine Ablehnung bleibt)."""
+    """Bitte „Ich möchte Reisen anlegen“. -> 'offen' | 'schon_erlaubt' | 'abgelehnt' (eine Ablehnung bleibt).
+
+    Wurde das Recht nach einer Freischaltung entzogen, öffnet die Bitte neu: ein Entzug ist keine Ablehnung (#695)."""
     with closing(db()) as v, v:
         k = v.execute("SELECT rechte FROM konten WHERE id = ?", (kid,)).fetchone()
         if not k:
@@ -983,6 +985,10 @@ def reisen_anlegen_anfragen(kid):
         if "reise_anlegen" in k["rechte"].split(","):
             return "schon_erlaubt"
         z = v.execute("SELECT status FROM anfragen WHERE konto = ?", (kid,)).fetchone()
+        if z and z["status"] == "freigeschaltet":
+            v.execute("UPDATE anfragen SET status = 'offen', erstellt = ?, entschieden = NULL WHERE konto = ?",
+                      (_datum(), kid))
+            return "offen"
         if z:
             return z["status"]
         v.execute("INSERT INTO anfragen (konto, erstellt) VALUES (?, ?)", (kid, _datum()))

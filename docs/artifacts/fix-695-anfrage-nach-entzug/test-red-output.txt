@@ -13,7 +13,7 @@ engine/tests/test_anmeldung.py::test_bitte_nach_entzug_auf_mein_konto FAILED [10
 =================================== FAILURES ===================================
 ____________________ test_nach_entzug_des_rechts_neu_bitten ____________________
 
-umgebung = {'tmp': PosixPath('/private/var/folders/9n/w5wl_q1x7j17v9y0b5nw6vj80000gn/T/pytest-of-<benutzer>/pytest-3225/test_nach_entzug_des_rechts_ne0'), 'uhr': {'t': 1800000000.0}}
+umgebung = {'tmp': PosixPath('$TMPDIR/pytest-of-<benutzer>/pytest-3225/test_nach_entzug_des_rechts_ne0'), 'uhr': {'t': 1800000000.0}}
 
     def test_nach_entzug_des_rechts_neu_bitten(umgebung):
         """#695: Ein Entzug ist keine Ablehnung. Nach Freischalten und Entzug öffnet eine neue Bitte die alte wieder."""
