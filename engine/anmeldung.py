@@ -459,7 +459,7 @@ def push_karte(k, offen=False):
     Einschaltknopfs (#249); ohne Skript bleibt der Platz leer."""
     import push
     e = push.einstellungen_von(k["id"])
-    geraete = len({a["geraet"] or a["endpoint"] for a in konten.push_abos(k["id"])})
+    geraete = len({a["geraet"] or a["endpoint"] for a in push.wirksam(konten.push_abos(k["id"]))})
     haken = lambda name, an, text: (f'<label class="haken"><input type="checkbox" name="{esc(name)}" value="ja"'   # noqa: E731
                                     f'{" checked" if an else ""}> {esc(text)}</label>')
     def gruppe(kat):   # je Gruppe (#517): aufs Handy ja/nein, per Mail wie (Leises nie per Mail)

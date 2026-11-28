@@ -363,6 +363,14 @@ def ziele(abos, reise):
     return list(je.values())
 
 
+def wirksam(abos):
+    """Abos, an die zugestellt wird (#709): Hat das Konto mindestens ein Abo der Frieda-App (Reise leer), nur diese,
+    in unveränderter Reihenfolge; sonst alle. Alte Abos einer Reiseseite bleiben so stumm, sobald die Frieda-App Push
+    hat (kein fremder Absender, keine doppelten Nachrichten)."""
+    app = [a for a in abos if a["reise"] == ""]
+    return app if app else abos
+
+
 def nachricht(kid, reise, eintraege):
     """Inhalt der Nachricht an ein Gerät: Titel (Kurzname der Reise), Text, Link zur Stelle, Kennung für das Ersetzen.
     Ohne Reise (#631): Titel aus dem Katalog, Link auf Mein Konto."""
@@ -415,7 +423,7 @@ def zustellen(senden, jetzt=None):
         for reise, eintraege in je_reise.items():
             inhalt = nachricht(kid, reise, eintraege)
             ok = weg = 0
-            geraete = ziele(abos, reise)
+            geraete = ziele(wirksam(abos), reise)
             for a in geraete:
                 try:
                     if senden(a, inhalt) == "weg":
