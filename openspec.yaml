@@ -2,6 +2,7 @@
 # Ausgeliefert wird bis `main`; der Server einer Instanz wird dabei nicht berührt
 # (der Timer des Veröffentlichens holt und prüft den neuen Stand selbst, #454, #557).
 deploy:
+  autonomous: true   # Claude stößt das Deploy selbst an (Product Owner, 28.11.2026)
   command:
     - gh pr create --fill --base main
     - gh pr checks --watch --required
