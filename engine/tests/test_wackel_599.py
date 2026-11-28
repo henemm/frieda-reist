@@ -68,20 +68,24 @@ def _server(tmp_path, seite_aendern=None):
         s.shutdown()
 
 
-def _rundgang(tmp_path, browser, verzoegern, skript=None, seite_aendern=None, frist=600):
-    """Rundgang aus test_seite.py mit verzögerter Seite; zurück kommen seine Ausgabe und die gespeicherten Ansichten."""
+def _rundgang(tmp_path, browser, verzoegern, skript=None, seite_aendern=None, frist=600, erwarte_ok=True):
+    """Rundgang aus test_seite.py mit verzögerter Seite; zurück kommen seine Ausgabe und die gespeicherten Ansichten.
+    Mit erwarte_ok=False ist ein Absturz (Rückgabecode ≠ 0) kein Testfehler, zurück kommt dann None (#697)."""
     with _server(tmp_path, seite_aendern) as basis:
         aus = subprocess.run(["node", str(skript or HIER / "seiten_browser.mjs"), str(VERZOEGERUNG), basis, str(tmp_path / "dom.json")],
                              capture_output=True, text=True, timeout=frist,
                              env={**os.environ, "RH_BROWSER": browser, "RH_PLAYWRIGHT_ECHT": str(PLAYWRIGHT),
                                   "RH_VERZOEGERN": json.dumps(verzoegern)})
+    if not erwarte_ok and aus.returncode != 0:
+        return None
     assert aus.returncode == 0, aus.stderr[-2000:]
     return json.loads(aus.stdout.strip().splitlines()[-1]), json.loads((tmp_path / "dom.json").read_text(encoding="utf-8"))
 
 
-def _leiste(tmp_path, browser, verzoegern, skript=None):
-    """Nur die Höhen der Leiste (App und Browser) aus dem Rundgang."""
-    return _rundgang(tmp_path, browser, verzoegern, skript)[0]["leiste"]
+def _leiste(tmp_path, browser, verzoegern, skript=None, erwarte_ok=True):
+    """Nur die Höhen der Leiste (App und Browser) aus dem Rundgang; None, wenn der Rundgang abgestürzt ist (erwarte_ok=False)."""
+    aus = _rundgang(tmp_path, browser, verzoegern, skript, erwarte_ok=erwarte_ok)
+    return None if aus is None else aus[0]["leiste"]
 
 
 def _v01_stimmt(v01):
@@ -100,7 +104,9 @@ def _gehe_quelle():
 
 
 def _leiste_stimmt(leiste):
-    """Dieselben Erwartungen wie test_seite.py::test_alle_ansichten_der_beispielreise."""
+    """Dieselben Erwartungen wie test_seite.py::test_alle_ansichten_der_beispielreise; ein abgestürzter Rundgang (None) stimmt nie."""
+    if leiste is None:
+        return False
     a, w = leiste["app"], leiste["browser"]
     return (a["start"] == a["klein"] == a["zu"] == a["voll"] == a["luege"] == 788 and a["tippt"] == 488
             and w == {"start": 788, "klein": 488, "tippt": 488, "zu": 488, "voll": 788, "luege": 788})
@@ -156,8 +162,20 @@ def test_alter_ablauf_ist_unter_verzoegerung_rot(tmp_path, browser, monkeypatch)
     aus = _karte(tmp_path / "karte", browser, monkeypatch, {"resizeobserver": 1500}, _alter_stand(tmp_path, "seiten_karte_popup.mjs"))
     assert not all(_ansicht_stimmt(aus[b]["ansicht"]) for b in ("390", "1300")), aus
     alt = _alter_stand(tmp_path, "seiten_browser.mjs")
-    assert not _leiste_stimmt(_leiste(tmp_path / "zeitgeber", browser, {"zeitgeber": 700}, alt))
-    assert not _leiste_stimmt(_leiste(tmp_path / "resize", browser, {"resize": 1500}, alt))
+    assert not _leiste_stimmt(_leiste(tmp_path / "zeitgeber", browser, {"zeitgeber": 700}, alt, erwarte_ok=False))
+    assert not _leiste_stimmt(_leiste(tmp_path / "resize", browser, {"resize": 1500}, alt, erwarte_ok=False))
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="node fehlt")
+def test_absturz_des_alten_ablaufs_zaehlt_als_rot(tmp_path):
+    """#697: Stürzt der alte Rundgang unter Last ab (Rückgabecode ≠ 0), zählt das als nicht stimmende Leiste, ohne dass der
+    Test scheitert; der neue Ablauf (Standard) bleibt bei einem Absturz rot. Ersatzskript statt Browser."""
+    skript = tmp_path / "absturz.mjs"
+    skript.write_text("process.stderr.write(\"TypeError: null is not an object (evaluating 'box.parentElement')\\n\");\n"
+                      "process.exit(1);\n", encoding="utf-8")
+    assert _leiste_stimmt(_leiste(tmp_path / "a", "webkit", {}, skript, erwarte_ok=False)) is False
+    with pytest.raises(AssertionError):
+        _leiste(tmp_path / "b", "webkit", {}, skript)
 
 
 @browsertest
