@@ -1,0 +1,94 @@
+...FFFFFF.                                                               [100%]
+=================================== FAILURES ===================================
+__________________________ test_wirksam_nur_app_abos ___________________________
+
+    def test_wirksam_nur_app_abos():
+        abos = [_app("a2", "g2"), _app("a1", "g1")]
+>       assert push.wirksam(abos) == abos
+               ^^^^^^^^^^^^
+E       AttributeError: module 'push' has no attribute 'wirksam'
+
+engine/tests/test_push.py:420: AttributeError
+_______________________ test_wirksam_nur_alte_reise_abos _______________________
+
+    def test_wirksam_nur_alte_reise_abos():
+        abos = [_alt("r2", "stadtwochenende", "g1"), _alt("r1", "beispielreise", "g1")]
+>       assert push.wirksam(abos) == abos
+               ^^^^^^^^^^^^
+E       AttributeError: module 'push' has no attribute 'wirksam'
+
+engine/tests/test_push.py:425: AttributeError
+_____________________ test_wirksam_app_abo_verdraengt_alte _____________________
+
+    def test_wirksam_app_abo_verdraengt_alte():
+        abos = [_alt("r2", "stadtwochenende", "g-alt-2"), _app("a1"), _alt("r1", "beispielreise", "g-alt-1")]
+>       assert [a["endpoint"] for a in push.wirksam(abos)] == ["a1"]
+                                       ^^^^^^^^^^^^
+E       AttributeError: module 'push' has no attribute 'wirksam'
+
+engine/tests/test_push.py:431: AttributeError
+___________________ test_wirksam_app_abo_ohne_geraetekennung ___________________
+
+    def test_wirksam_app_abo_ohne_geraetekennung():
+        abos = [_alt("r1", "beispielreise", "g-alt"), _app("a1", "")]
+>       assert [a["endpoint"] for a in push.ziele(push.wirksam(abos), "beispielreise")] == ["a1"]
+                                                  ^^^^^^^^^^^^
+E       AttributeError: module 'push' has no attribute 'wirksam'
+
+engine/tests/test_push.py:438: AttributeError
+___________________ test_zustellen_nur_ueber_die_frieda_app ____________________
+
+reise = <test_regeln.Umgebung object at 0x10ae7a5a0>
+
+    def test_zustellen_nur_ueber_die_frieda_app(reise):
+        u = reise
+        konten.push_abo_speichern(u.ida_id, abo("ida-app"), "", f"{BASIS}/konto", "geraet-ida-app", "Europe/Berlin")
+        assert rueckmeldung(u, u.karl)[0] == 201                               # Nachricht zu beispielreise an Ida
+        rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [u.ida_id], "loeschung", "reise", "Eine Reise wird gelöscht.")
+        assert push.sammeln(MITTAG) == 2
+        push.zustellen(u.senden, MITTAG)
+        an_ida = [ziel for ziel, _ in u.gesendet if ziel in ("ida", "app")]
+>       assert an_ida == ["app", "app"], "je Nachricht genau ein Versand, nur an die Frieda-App, nie an das alte Reise-Abo"
+E       AssertionError: je Nachricht genau ein Versand, nur an die Frieda-App, nie an das alte Reise-Abo
+E       assert ['app', 'ida', 'app', 'ida'] == ['app', 'app']
+E         
+E         At index 1 diff: 'ida' != 'app'
+E         Left contains 2 more items, first extra item: 'app'
+E         Use -v to get more diff
+
+engine/tests/test_push.py:449: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+----------------------------- Captured stderr call -----------------------------
+POST 201
+______________ test_kontoseite_zaehlt_geraete_ueber_wirksame_abos ______________
+
+reise = <test_regeln.Umgebung object at 0x10a889f70>
+
+    def test_kontoseite_zaehlt_geraete_ueber_wirksame_abos(reise):
+        u = reise
+        konten.push_abo_speichern(u.ida_id, abo("ida-app"), "", f"{BASIS}/konto", "geraet-ida-app", "Europe/Berlin")
+        s, _, t = abruf(f"{u.kurl}/konto", cookie=u.ida)
+>       assert s == 200 and meldet(t, "konto.push.geraete.one") and not meldet(t, "konto.push.geraete.other")
+E       assert (200 == 200 and False)
+E        +  where False = meldet('<!DOCTYPE html><html lang="de" dir="ltr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-widt...tz">Datenschutz</a><a href="/impressum">Impressum</a><a href="/alpha">Alpha-Hinweis</a></p></div></main></body></html>', 'konto.push.geraete.one')
+
+engine/tests/test_push.py:456: AssertionError
+---------------------------- Captured stderr setup -----------------------------
+POST 200
+POST 303
+POST 200
+POST 303
+----------------------------- Captured stderr call -----------------------------
+GET 200
+=========================== short test summary info ============================
+FAILED engine/tests/test_push.py::test_wirksam_nur_app_abos - AttributeError:...
+FAILED engine/tests/test_push.py::test_wirksam_nur_alte_reise_abos - Attribut...
+FAILED engine/tests/test_push.py::test_wirksam_app_abo_verdraengt_alte - Attr...
+FAILED engine/tests/test_push.py::test_wirksam_app_abo_ohne_geraetekennung - ...
+FAILED engine/tests/test_push.py::test_zustellen_nur_ueber_die_frieda_app - A...
+FAILED engine/tests/test_push.py::test_kontoseite_zaehlt_geraete_ueber_wirksame_abos
+6 failed, 4 passed, 40 deselected in 6.31s

@@ -402,6 +402,59 @@ def test_nachricht_an_die_frieda_app_fuehrt_zur_reise(reise):
     [(ziel, inhalt)] = [g for g in u.gesendet if g[0] == "app"]
     assert inhalt["url"].startswith(SEITE) and inhalt["tag"] == "frieda-beispielreise"
 
+# ---------- Nur über die Frieda-App, sobald es sie gibt (#709) ----------
+# iOS schreibt unter jede Nachricht „from <Name der Web-App>“, die das Abo hält. Alte Abos einer Reiseseite (vor
+# Entscheidung A, 2.11.2026) gehören der als App installierten Reiseseite; ihre Gerätekennung ist eine andere als die
+# der Frieda-App. Hat ein Konto die Frieda-App mit Push, gehen Nachrichten nur noch dorthin.
+
+def _app(e, g="geraet-app"):
+    return {"endpoint": e, "geraet": g, "reise": ""}
+
+
+def _alt(e, reise="beispielreise", g="geraet-alt"):
+    return {"endpoint": e, "geraet": g, "reise": reise}
+
+
+def test_wirksam_nur_app_abos():
+    abos = [_app("a2", "g2"), _app("a1", "g1")]
+    assert push.wirksam(abos) == abos
+
+
+def test_wirksam_nur_alte_reise_abos():
+    abos = [_alt("r2", "stadtwochenende", "g1"), _alt("r1", "beispielreise", "g1")]
+    assert push.wirksam(abos) == abos
+    assert push.ziele(push.wirksam(abos), "beispielreise") == push.ziele(abos, "beispielreise")
+
+
+def test_wirksam_app_abo_verdraengt_alte():
+    abos = [_alt("r2", "stadtwochenende", "g-alt-2"), _app("a1"), _alt("r1", "beispielreise", "g-alt-1")]
+    assert [a["endpoint"] for a in push.wirksam(abos)] == ["a1"]
+    for reise in ("", "beispielreise"):
+        assert [a["endpoint"] for a in push.ziele(push.wirksam(abos), reise)] == ["a1"]
+
+
+def test_wirksam_app_abo_ohne_geraetekennung():
+    abos = [_alt("r1", "beispielreise", "g-alt"), _app("a1", "")]
+    assert [a["endpoint"] for a in push.ziele(push.wirksam(abos), "beispielreise")] == ["a1"]
+
+
+def test_zustellen_nur_ueber_die_frieda_app(reise):
+    u = reise
+    konten.push_abo_speichern(u.ida_id, abo("ida-app"), "", f"{BASIS}/konto", "geraet-ida-app", "Europe/Berlin")
+    assert rueckmeldung(u, u.karl)[0] == 201                               # Nachricht zu beispielreise an Ida
+    rm.meldung_anlegen(rm.ordner_neu(anlegen=True), [u.ida_id], "loeschung", "reise", "Eine Reise wird gelöscht.")
+    assert push.sammeln(MITTAG) == 2
+    push.zustellen(u.senden, MITTAG)
+    an_ida = [ziel for ziel, _ in u.gesendet if ziel in ("ida", "app")]
+    assert an_ida == ["app", "app"], "je Nachricht genau ein Versand, nur an die Frieda-App, nie an das alte Reise-Abo"
+
+
+def test_kontoseite_zaehlt_geraete_ueber_wirksame_abos(reise):
+    u = reise
+    konten.push_abo_speichern(u.ida_id, abo("ida-app"), "", f"{BASIS}/konto", "geraet-ida-app", "Europe/Berlin")
+    s, _, t = abruf(f"{u.kurl}/konto", cookie=u.ida)
+    assert s == 200 and meldet(t, "konto.push.geraete.one") and not meldet(t, "konto.push.geraete.other")
+
 
 def test_dateien_der_frieda_app():
     """Manifest (Scope /, Start Mein Konto), Worker nur für Push (kein fetch-Handler: er liegt über Anmeldung und OAuth)."""
